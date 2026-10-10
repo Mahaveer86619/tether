@@ -15,11 +15,12 @@ Non-goals for v1: driving phones or desktop GUIs, multi-user tenancy, agents oth
 
 Runs on every machine that has Claude Code: the Windows laptop and the mini PC.
 
-- Starts Claude Code headless: `claude -p --output-format stream-json --input-format stream-json --include-partial-messages --verbose`, plus `--resume`/`--fork-session` when continuing a session.
+- Hosts sessions the app starts: interactive Claude Code in tmux windows where tmux exists (Linux), otherwise headless `claude -p` in stream-json mode (Windows). See [hosting.md](hosting.md).
+- Tracks the live state of every Claude Code session on the machine, including ones you start yourself, through HTTP hooks installed in `~/.claude/settings.json`.
 - Indexes sessions created anywhere on the machine, including in the TUI, by reading `~/.claude/projects/*/*.jsonl` (see [sessions.md](sessions.md)).
 - Mirrors live TUI sessions read-only by tailing their transcript file.
 - Forwards raw events to the hub untouched. Parsing happens in one place, the hub.
-- Answers permission prompts through Claude Code's stdio control protocol (`--permission-prompt-tool stdio`): the CLI writes a `can_use_tool` request on stdout and waits for the reply on stdin, which the agent sends once the app decides.
+- Routes permission prompts to the app: through the `PermissionRequest` hook for interactive sessions (the terminal can answer too; first answer wins), and through Claude Code's stdio control protocol (`--permission-prompt-tool stdio`) for headless runs.
 - On the mini PC, launches each session in a sandbox container instead of directly on the host ([home-server.md](home-server.md)).
 - Reports node health: CPU, memory, disk, Claude Code version, online state.
 

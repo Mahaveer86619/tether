@@ -43,11 +43,17 @@ Afterwards the hub pushes `nodeStatus`, `sessionInfo`, `approvalRequested` and `
 | `subscribe {session, afterSeq}` | Replays timeline items changed after `afterSeq`, then streams live changes. The hub also asks the owning agent to mirror the transcript, so history and terminal sessions load. | Timeline frames, then an empty `timeline` frame with `replyTo` set: end of replay. |
 | `unsubscribe {session}` | Stops the stream. | `ack` |
 | `createSession {node, cwd, prompt, model, permissionMode, name}` | Starts a new headless session on a node. | `ack {session}` with the new id |
-| `sendMessage {session, text, fork}` | Sends a follow-up. If no process is running, the agent resumes the session. With `fork`, continues in a new session id and leaves the original untouched. Refused with `terminal_active` while a terminal is using the session. | `ack {session}` |
+| `sendMessage {session, text, fork}` | Sends a follow-up: pasted into the tmux window, written to the headless process, or, if no process is running, the agent resumes the session. With `fork`, continues in a new session id and leaves the original untouched. Refused with `terminal_active` while a session you started yourself is open (`host: terminal`). | `ack {session}` |
 | `interruptSession {session}` | Stops the current turn. | `ack` |
-| `approvalDecision {approvalId, decision, message}` | Answers a permission prompt. | `ack` |
+| `approvalDecision {approvalId, decision, message}` | Answers a permission prompt (`kind: TOOL`) or a folder-trust dialog (`kind: FOLDER_TRUST`). | `ack` |
 
 Errors come back as `error {code, message}` with `replyTo`. Codes: `not_found`, `node_offline`, `invalid`, `terminal_active`, `unauthorized`, `internal`.
+
+## Sessions
+
+`sessionInfo` carries the dashboard view of a session: title, node, cwd, branch, model, to-dos, last cost, `state` (`idle`, `running`, `awaiting_approval`, `ready`, `terminal_active`, `error`), `host` (`none`, `headless`, `tmux`, `terminal`) and, for tmux sessions, `attachCommand`. See [hosting.md](hosting.md).
+
+Interactive (tmux and terminal) sessions have no `result` item at the end of a turn, because the transcript doesn't record one. Clients see the turn end when `state` changes from `running` to `ready`.
 
 ## Timeline items
 
@@ -103,7 +109,8 @@ This makes ingestion idempotent: the hub can feed a session from either source, 
 | `agentHello` | agent → hub | token, node status |
 | `sessionIndex` | agent → hub | sessions found on disk or run by the agent, with their state |
 | `rawEvents` | agent → hub | `source` (`STREAM` or `TRANSCRIPT`), original JSON lines, and for transcripts the byte offset reached |
-| `approvalRequested` | agent → hub | a `can_use_tool` request from a headless run |
+| `approvalRequested` | agent → hub | a permission prompt (from the hook or a headless run) or a folder-trust dialog |
+| `approvalResolved` | agent → hub | a prompt was answered on the node itself, usually in the terminal |
 | `nodeStatus` | agent → hub | updated status, e.g. running session count |
 | `agentCommand` | hub → agent | `start`, `send`, `interrupt`, `mirror {session, fromOffset}`, `stopMirror` |
 | `approvalDecision` | hub → agent | the app's answer |

@@ -30,8 +30,8 @@ The agent scans `~/.claude/projects` on start and watches it for changes. For ea
 
 Two processes writing one transcript would corrupt it, so the agent decides who owns a session before resuming it:
 
-- **Owned by Tether:** the agent has the process.
-- **Owned by a terminal:** the transcript was written in the last 90 seconds and not by a Tether run. The app shows "Running in terminal" and only offers Mirror and Fork. This is a heuristic: a terminal session that just finished also looks active for 90 seconds. Claude Code hooks would make it exact; see [roadmap.md](roadmap.md).
+- **Owned by Tether:** the agent has the process, in tmux or headless.
+- **Owned by a terminal:** hooks report the session live and it isn't one of the agent's tmux windows or headless runs (`host: terminal`). The app can watch and approve, but only offers Fork for sending. Without hooks, a transcript written in the last 90 seconds by something else is treated the same way (`terminal_active`). See [hosting.md](hosting.md).
 - **Idle:** nobody is writing. Resume is allowed.
 
 When unsure, the app defaults to **Fork** (`--resume <id> --fork-session`), which copies history into a new session id and never touches the original.

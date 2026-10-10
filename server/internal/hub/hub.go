@@ -315,7 +315,8 @@ func (h *Hub) sendMessage(c *client, id string, m *v1.SendMessage) {
 		ack(c, id, fork.Id)
 		return
 	}
-	if info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE {
+	if info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE ||
+		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE {
 		c.conn.Send(errFrame(id, "terminal_active", "session is open in a terminal; fork it instead"))
 		return
 	}
@@ -429,9 +430,18 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 	case *v1.Frame_ApprovalRequested:
 		a := b.ApprovalRequested
 		a.Node, a.CreatedMs = node, time.Now().UnixMilli()
-		a.Preview = render.ToolCard(a.ApprovalId, a.ToolName, json.RawMessage(a.InputJson))
+		if a.Kind != v1.ApprovalRequest_KIND_FOLDER_TRUST {
+			a.Preview = render.ToolCard(a.ApprovalId, a.ToolName, json.RawMessage(a.InputJson))
+		}
 		h.approvals[a.ApprovalId] = a
 		h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: proto.Clone(a).(*v1.ApprovalRequest)}})
+	case *v1.Frame_ApprovalResolved:
+		// Answered on the node itself, usually in the terminal.
+		r := b.ApprovalResolved
+		if a := h.approvals[r.ApprovalId]; a != nil && a.Node == node {
+			delete(h.approvals, r.ApprovalId)
+			h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalResolved{ApprovalResolved: r}})
+		}
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()

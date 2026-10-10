@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
@@ -31,6 +32,10 @@ type printer struct {
 	printed map[string]bool
 	done    bool
 	failed  error
+	// Interactive (tmux) sessions write no result line; the turn ends when
+	// the session goes from busy back to ready.
+	busy     bool
+	finishAt time.Time
 }
 
 func newPrinter(c *ctl, session string, yes bool) *printer {
@@ -39,8 +44,18 @@ func newPrinter(c *ctl, session string, yes bool) *printer {
 
 // loop handles frames until the turn finishes (untilResult) or forever.
 func (p *printer) loop(untilResult bool) error {
-	for f := range p.c.frames {
-		p.handle(f)
+	tick := time.NewTicker(250 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case f := <-p.c.frames:
+			p.handle(f)
+		case <-tick.C:
+			// Give the transcript mirror a moment to deliver the final reply.
+			if !p.finishAt.IsZero() && time.Now().After(p.finishAt) {
+				p.done = true
+			}
+		}
 		if p.failed != nil {
 			return p.failed
 		}
@@ -48,7 +63,6 @@ func (p *printer) loop(untilResult bool) error {
 			return nil
 		}
 	}
-	return errors.New("connection closed")
 }
 
 func (p *printer) handle(f *v1.Frame) {
@@ -68,10 +82,29 @@ func (p *printer) handle(f *v1.Frame) {
 		if b.ApprovalRequested.Session == p.session {
 			p.approve(b.ApprovalRequested)
 		}
+	case *v1.Frame_ApprovalResolved:
+		if r := b.ApprovalResolved; r.Session == p.session && r.By == "terminal" {
+			fmt.Printf("%s· approval answered in the terminal%s\n", yellow, reset)
+		}
 	case *v1.Frame_SessionInfo:
 		s := b.SessionInfo
-		if s.Id == p.session && s.State == v1.SessionState_SESSION_STATE_ERROR && p.replayed {
-			p.failed = fmt.Errorf("session error: %s", s.Error)
+		if s.Id != p.session {
+			return
+		}
+		switch s.State {
+		case v1.SessionState_SESSION_STATE_ERROR:
+			if p.replayed {
+				p.failed = fmt.Errorf("session error: %s", s.Error)
+			}
+		case v1.SessionState_SESSION_STATE_RUNNING, v1.SessionState_SESSION_STATE_AWAITING_APPROVAL:
+			p.busy, p.finishAt = true, time.Time{}
+		case v1.SessionState_SESSION_STATE_READY, v1.SessionState_SESSION_STATE_IDLE:
+			if p.busy && p.finishAt.IsZero() && s.Host != v1.SessionHost_SESSION_HOST_HEADLESS {
+				p.finishAt = time.Now().Add(2 * time.Second)
+				if s.AttachCommand != "" {
+					fmt.Printf("%s── turn finished · %s%s\n", green, s.AttachCommand, reset)
+				}
+			}
 		}
 	case *v1.Frame_Error:
 		if b.Error.Code == "disconnected" {
@@ -132,7 +165,11 @@ func settled(it *v1.TimelineItem) bool {
 }
 
 func (p *printer) approve(a *v1.ApprovalRequest) {
-	fmt.Printf("%s? %s wants to run:%s\n%s\n", yellow, a.ToolName, reset, indent(renderCard(a.Preview), "  "))
+	if a.Kind == v1.ApprovalRequest_KIND_FOLDER_TRUST {
+		fmt.Printf("%s? %s%s\n", yellow, a.Description, reset)
+	} else {
+		fmt.Printf("%s? %s wants to run:%s\n%s\n", yellow, a.ToolName, reset, indent(renderCard(a.Preview), "  "))
+	}
 	allow := p.yes
 	if p.yes {
 		fmt.Println(green + "  allowed (-yes)" + reset)

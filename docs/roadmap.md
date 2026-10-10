@@ -21,6 +21,9 @@ Each milestone ends with something usable.
 
 ## M2: Every session, every node
 
+Done so far: session indexing, live mirroring, resume and fork; tmux hosting on the mini PC; hook-based state tracking and approvals for every session on both machines.
+
+
 - Session indexing from `~/.claude/projects`, live mirroring of terminal sessions, resume and fork.
 - Agent on the mini PC (host mode first).
 - Windows build of the app with the multi-pane layout.

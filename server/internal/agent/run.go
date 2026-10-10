@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -46,12 +44,6 @@ type startOpts struct {
 }
 
 func (a *Agent) startRun(o startOpts) (*run, error) {
-	if o.cwd == "" {
-		o.cwd, _ = os.UserHomeDir()
-	}
-	if st, err := os.Stat(o.cwd); err != nil || !st.IsDir() {
-		return nil, fmt.Errorf("working directory %q does not exist", o.cwd)
-	}
 	args := []string{
 		"-p",
 		"--output-format", "stream-json",
@@ -61,23 +53,7 @@ func (a *Agent) startRun(o startOpts) (*run, error) {
 		"--replay-user-messages",
 		"--permission-prompt-tool", "stdio",
 	}
-	switch {
-	case o.resume != "" && o.fork:
-		args = append(args, "--resume", o.resume, "--fork-session", "--session-id", o.session)
-	case o.resume != "":
-		args = append(args, "--resume", o.resume)
-	default:
-		args = append(args, "--session-id", o.session)
-	}
-	if o.model != "" {
-		args = append(args, "--model", o.model)
-	}
-	if o.permissionMode != "" {
-		args = append(args, "--permission-mode", o.permissionMode)
-	}
-	if o.name != "" {
-		args = append(args, "--name", o.name)
-	}
+	args = append(args, sessionArgs(o)...)
 
 	cmd := exec.Command(a.cfg.Claude, args...)
 	cmd.Dir = o.cwd

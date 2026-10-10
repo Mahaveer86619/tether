@@ -46,6 +46,11 @@ From an ordinary (not admin) PowerShell:
 
 It asks for the token once and stores it in `%USERPROFILE%\.tether\token`. It then registers a "Tether Agent" task that starts at logon as your user, so it uses your Claude Code login. Logs go to `%USERPROFILE%\.tether\agent.log`.
 
+## What the agent changes on a machine
+
+- Adds HTTP hooks to `~/.claude/settings.json` (backup: `settings.json.tether-backup`). Undo with `tether-agent uninstall-hooks`, or run with `-hooks=false`.
+- On Linux with tmux, creates a tmux session named `tether` with one window per Claude session. Attach with `tmux attach -t tether`.
+
 ## tetherctl
 
 A terminal client for the hub. It's useful for testing and scripting until the app exists.
@@ -59,6 +64,8 @@ tetherctl run -node minipc -cwd /srv/project "fix the failing test"
 tetherctl send 6b01a2b8 "now add a test for it"
 tetherctl send -fork 6b01a2b8 "try a different approach"
 tetherctl dump 6b01a2b8                        # timeline as JSON
+tetherctl approvals                            # pending approvals
+tetherctl approve [-deny] <approval id>
 ```
 
 Tool calls that need permission prompt `allow? [y/N]` in the terminal; `-yes` approves everything.

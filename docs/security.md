@@ -12,7 +12,9 @@ Tether lets a phone run commands on your machines through Claude. These rules ke
 ## Claude permissions
 
 - Headless sessions never use `--dangerously-skip-permissions` or `bypassPermissions` by default.
-- Every permission prompt in a Tether-run session goes to the app through `--permission-prompt-tool stdio`. Unanswered prompts are denied after 30 minutes.
+- Permission prompts go to the app through the `PermissionRequest` hook (interactive sessions) or `--permission-prompt-tool stdio` (headless). In a terminal the local prompt stays usable; headless prompts nobody answers are denied after 30 minutes.
+- The hook receiver listens on `127.0.0.1` only, without a token, so any local process could post fake hook events. At worst that shows a bogus approval in the app; it can't approve anything on Claude's behalf.
+- The agent edits `~/.claude/settings.json` to add its hooks, after backing it up to `settings.json.tether-backup`. `tether-agent uninstall-hooks` removes them; `-hooks=false` stops the agent from adding them.
 - "Always allow" rules chosen in the app are stored per node and per project and are visible and revocable in Settings.
 
 ## Sandbox

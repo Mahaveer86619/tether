@@ -9,9 +9,9 @@ Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/tether/bin/tether-agent -hub ${TETHER_HUB} -node ${TETHER_NODE}
 Restart=always
 RestartSec=5
-# Let headless Claude runs finish their current write on stop.
-KillMode=mixed
-TimeoutStopSec=15
+# Only stop the agent itself: the tmux server it starts holds your Claude
+# sessions and must survive agent restarts and upgrades.
+KillMode=process
 
 [Install]
 WantedBy=default.target

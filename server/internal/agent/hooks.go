@@ -279,7 +279,11 @@ func editHooks(path string, add func(map[string][]map[string]any)) error {
 				}
 				rest = append(rest, h)
 			}
-			if len(rest) == 0 && len(list) > 0 {
+			if len(list) == 0 {
+				kept = append(kept, g)
+				continue
+			}
+			if len(rest) == 0 {
 				continue
 			}
 			g["hooks"] = rest

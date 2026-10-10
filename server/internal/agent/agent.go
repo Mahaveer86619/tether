@@ -1,12 +1,13 @@
 // Package agent runs on each machine with Claude Code. It indexes local
-// sessions, runs headless sessions for the hub, and mirrors transcripts.
+// sessions, hosts sessions for the hub (in tmux where available, headless
+// otherwise), tracks every session's state through Claude Code hooks, and
+// mirrors transcripts.
 package agent
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
-	"io"
+	"errors"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
@@ -25,8 +27,8 @@ const (
 	scanInterval   = 3 * time.Second
 	tailInterval   = 500 * time.Millisecond
 	idleRunTimeout = 15 * time.Minute
-	// A transcript written this recently without a Tether run is treated as
-	// an open terminal session.
+	// Without hooks, a transcript written this recently by something other
+	// than the agent is treated as an open terminal session.
 	terminalWindow = 90 * time.Second
 	mirrorChunk    = 1 << 20
 	maxBackoff     = 30 * time.Second
@@ -38,43 +40,87 @@ type Config struct {
 	Node        string
 	Claude      string
 	ProjectsDir string
-	Version     string
-	Log         *slog.Logger
+	// Host is "auto", "tmux" or "headless".
+	Host string
+	// HookAddr is where the hook receiver listens; empty disables it.
+	HookAddr string
+	// SettingsPath is the Claude Code settings file hooks are installed into;
+	// empty leaves settings alone.
+	SettingsPath string
+	Version      string
+	Log          *slog.Logger
 }
 
 type Agent struct {
 	cfg   Config
 	log   *slog.Logger
 	index *Index
+	tmux  *tmuxHost
 
-	mu       sync.Mutex
-	conn     *wire.Conn
-	runs     map[string]*run
-	ended    map[string]*v1.SessionInfo
-	mirrors  map[string]context.CancelFunc
-	reported map[string]*v1.SessionInfo
-	claudeV  string
+	mu            sync.Mutex
+	conn          *wire.Conn
+	runs          map[string]*run
+	panes         map[string]string
+	trust         map[string]string
+	hooks         map[string]*hookSession
+	hookApprovals map[string]*hookApproval
+	ended         map[string]*v1.SessionInfo
+	mirrors       map[string]context.CancelFunc
+	reported      map[string]*v1.SessionInfo
+	claudeV       string
 }
 
-func New(cfg Config) *Agent {
-	return &Agent{
-		cfg:      cfg,
-		log:      cfg.Log,
-		index:    NewIndex(cfg.ProjectsDir),
-		runs:     map[string]*run{},
-		ended:    map[string]*v1.SessionInfo{},
-		mirrors:  map[string]context.CancelFunc{},
-		reported: map[string]*v1.SessionInfo{},
+func New(cfg Config) (*Agent, error) {
+	a := &Agent{
+		cfg:           cfg,
+		log:           cfg.Log,
+		index:         NewIndex(cfg.ProjectsDir),
+		runs:          map[string]*run{},
+		panes:         map[string]string{},
+		trust:         map[string]string{},
+		hooks:         map[string]*hookSession{},
+		hookApprovals: map[string]*hookApproval{},
+		ended:         map[string]*v1.SessionInfo{},
+		mirrors:       map[string]context.CancelFunc{},
+		reported:      map[string]*v1.SessionInfo{},
 	}
+	switch cfg.Host {
+	case "auto", "":
+		a.tmux = newTmuxHost()
+	case "tmux":
+		if a.tmux = newTmuxHost(); a.tmux == nil {
+			return nil, errors.New("tmux not found on PATH")
+		}
+	case "headless":
+	default:
+		return nil, errors.New("host must be auto, tmux or headless")
+	}
+	return a, nil
 }
 
 // Run connects to the hub and keeps reconnecting until ctx ends.
 func (a *Agent) Run(ctx context.Context) error {
 	a.claudeV = claudeVersion(a.cfg.Claude)
+	if a.cfg.HookAddr != "" {
+		if err := a.serveHooks(a.cfg.HookAddr); err != nil {
+			return err
+		}
+		if a.cfg.SettingsPath != "" {
+			if err := InstallHooks(a.cfg.SettingsPath, "http://"+a.cfg.HookAddr+hookPath); err != nil {
+				return err
+			}
+			a.log.Info("hooks installed", "settings", a.cfg.SettingsPath)
+		}
+	}
+	host := "headless"
+	if a.tmux != nil {
+		host = "tmux"
+		a.refreshPanes()
+	}
 	if err := a.index.Scan(); err != nil {
 		a.log.Warn("initial scan", "err", err)
 	}
-	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir)
+	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir, "host", host)
 	go a.scanLoop(ctx)
 
 	backoff := time.Second
@@ -137,7 +183,7 @@ func (a *Agent) session(ctx context.Context) error {
 func (a *Agent) status() *v1.NodeStatus {
 	host, _ := os.Hostname()
 	a.mu.Lock()
-	running := int32(len(a.runs))
+	running := int32(len(a.runs) + len(a.panes))
 	a.mu.Unlock()
 	return &v1.NodeStatus{
 		Node: a.cfg.Node, Online: true, Os: runtime.GOOS, Hostname: host,
@@ -165,11 +211,7 @@ func (a *Agent) onFrame(f *v1.Frame) {
 		case *v1.AgentCommand_Send:
 			a.sendInput(op.Send.Session, op.Send.Text)
 		case *v1.AgentCommand_Interrupt_:
-			if r := a.run(op.Interrupt.Session); r != nil {
-				if err := r.interrupt(); err != nil {
-					a.log.Warn("interrupt", "session", r.id, "err", err)
-				}
-			}
+			a.interrupt(op.Interrupt.Session)
 		case *v1.AgentCommand_Mirror_:
 			a.startMirror(op.Mirror.Session, op.Mirror.FromOffset)
 		case *v1.AgentCommand_StopMirror_:
@@ -181,17 +223,30 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			a.mu.Unlock()
 		}
 	case *v1.Frame_ApprovalDecision:
-		d := b.ApprovalDecision
-		a.mu.Lock()
-		runs := make([]*run, 0, len(a.runs))
-		for _, r := range a.runs {
-			runs = append(runs, r)
-		}
-		a.mu.Unlock()
-		for _, r := range runs {
-			if r.answer(d.ApprovalId, d.Decision == v1.Decision_DECISION_ALLOW, d.Message) {
-				return
-			}
+		a.decide(b.ApprovalDecision)
+	}
+}
+
+func (a *Agent) decide(d *v1.ApprovalDecision) {
+	a.mu.Lock()
+	pane, isTrust := a.trust[d.ApprovalId]
+	delete(a.trust, d.ApprovalId)
+	runs := make([]*run, 0, len(a.runs))
+	for _, r := range a.runs {
+		runs = append(runs, r)
+	}
+	a.mu.Unlock()
+
+	if isTrust {
+		go a.answerTrust(d.ApprovalId, pane, d.Decision == v1.Decision_DECISION_ALLOW)
+		return
+	}
+	if a.answerHook(d) {
+		return
+	}
+	for _, r := range runs {
+		if r.answer(d.ApprovalId, d.Decision == v1.Decision_DECISION_ALLOW, d.Message) {
+			return
 		}
 	}
 }
@@ -202,20 +257,36 @@ func (a *Agent) run(session string) *run {
 	return a.runs[session]
 }
 
+func (a *Agent) pane(session string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.panes[session]
+}
+
 func (a *Agent) start(o startOpts) {
-	if r := a.run(o.session); r != nil {
-		if err := r.send(o.prompt); err != nil {
-			a.fail(o.session, err)
-		}
+	if a.pane(o.session) != "" || a.run(o.session) != nil {
+		a.sendInput(o.session, o.prompt)
 		return
 	}
 	if o.resume != "" && o.cwd == "" {
 		o.cwd = a.index.Cwd(o.resume)
 	}
-	if info := a.info(o.resume); o.resume != "" && !o.fork && info != nil && info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE {
+	if o.resume != "" && !o.fork && a.openElsewhere(o.resume) {
 		a.fail(o.session, errTerminalActive)
 		return
 	}
+	if o.cwd == "" {
+		o.cwd, _ = os.UserHomeDir()
+	}
+	if st, err := os.Stat(o.cwd); err != nil || !st.IsDir() {
+		a.fail(o.session, errors.New("working directory "+o.cwd+" does not exist"))
+		return
+	}
+	if a.tmux != nil {
+		a.startTmux(o)
+		return
+	}
+
 	r, err := a.startRun(o)
 	if err != nil {
 		a.fail(o.session, err)
@@ -231,7 +302,107 @@ func (a *Agent) start(o startOpts) {
 	}
 }
 
+func (a *Agent) startTmux(o startOpts) {
+	args := []string{a.cfg.Claude}
+	args = append(args, sessionArgs(o)...)
+	if o.prompt != "" {
+		args = append(args, o.prompt)
+	}
+	pane, err := a.tmux.start(o.session, o.cwd, args)
+	if err != nil {
+		a.fail(o.session, err)
+		return
+	}
+	a.log.Info("tmux session started", "session", o.session, "pane", pane, "cwd", o.cwd, "resume", o.resume, "fork", o.fork)
+	a.mu.Lock()
+	a.panes[o.session] = pane
+	delete(a.ended, o.session)
+	a.hooks[o.session] = &hookSession{state: v1.SessionState_SESSION_STATE_RUNNING, last: time.Now()}
+	a.mu.Unlock()
+	a.sendStatus()
+	a.report(o.session)
+	go a.watchTrust(o.session, o.cwd, pane)
+}
+
+// sessionArgs are the Claude Code flags shared by tmux and headless runs.
+func sessionArgs(o startOpts) []string {
+	var args []string
+	switch {
+	case o.resume != "" && o.fork:
+		args = append(args, "--resume", o.resume, "--fork-session", "--session-id", o.session)
+	case o.resume != "":
+		args = append(args, "--resume", o.resume)
+	default:
+		args = append(args, "--session-id", o.session)
+	}
+	if o.model != "" {
+		args = append(args, "--model", o.model)
+	}
+	if o.permissionMode != "" {
+		args = append(args, "--permission-mode", o.permissionMode)
+	}
+	if o.name != "" {
+		args = append(args, "--name", o.name)
+	}
+	return args
+}
+
+// watchTrust turns Claude Code's folder-trust dialog into an approval in the
+// app, since nothing else would answer it in a detached window.
+func (a *Agent) watchTrust(session, cwd, pane string) {
+	deadline := time.Now().Add(trustWatch)
+	for time.Now().Before(deadline) {
+		time.Sleep(500 * time.Millisecond)
+		if !awaitingTrust(a.tmux.capture(pane)) {
+			continue
+		}
+		id := uuid.NewString()
+		a.mu.Lock()
+		a.trust[id] = pane
+		a.mu.Unlock()
+		input, _ := json.Marshal(map[string]string{"path": cwd})
+		a.send(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequest{
+			ApprovalId: id, Session: session, Kind: v1.ApprovalRequest_KIND_FOLDER_TRUST, ToolName: "Trust folder",
+			InputJson: string(input), Description: "Trust " + cwd + " so Claude Code can read, edit and run files there?",
+		}}})
+		a.setHookState(session, v1.SessionState_SESSION_STATE_AWAITING_APPROVAL)
+		return
+	}
+}
+
+// answerTrust drives the trust dialog by looking at the screen: keys sent
+// while the TUI is still starting up are dropped, so it moves the selection,
+// confirms, and checks again until the dialog is gone.
+func (a *Agent) answerTrust(id, pane string, allow bool) {
+	for range 20 {
+		screen := a.tmux.capture(pane)
+		if !awaitingTrust(screen) {
+			a.log.Info("trust dialog answered", "approval", id, "allow", allow)
+			return
+		}
+		key := "Enter"
+		switch yes := trustSelected(screen); {
+		case allow && !yes:
+			key = "Down"
+		case !allow && yes:
+			key = "Up"
+		}
+		if err := a.tmux.keys(pane, key); err != nil {
+			a.log.Warn("answer trust dialog", "err", err)
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	a.log.Warn("trust dialog did not close", "approval", id)
+}
+
 func (a *Agent) sendInput(session, text string) {
+	if pane := a.pane(session); pane != "" {
+		if err := a.tmux.paste(pane, text); err != nil {
+			a.fail(session, err)
+		}
+		return
+	}
 	if r := a.run(session); r != nil {
 		if err := r.send(text); err != nil {
 			a.fail(session, err)
@@ -239,6 +410,18 @@ func (a *Agent) sendInput(session, text string) {
 		return
 	}
 	a.start(startOpts{session: session, resume: session, prompt: text})
+}
+
+func (a *Agent) interrupt(session string) {
+	var err error
+	if pane := a.pane(session); pane != "" {
+		err = a.tmux.keys(pane, "Escape")
+	} else if r := a.run(session); r != nil {
+		err = r.interrupt()
+	}
+	if err != nil {
+		a.log.Warn("interrupt", "session", session, "err", err)
+	}
 }
 
 func (a *Agent) endRun(r *run) {
@@ -254,16 +437,19 @@ func (a *Agent) endRun(r *run) {
 }
 
 func (a *Agent) fail(session string, err error) {
-	a.log.Warn("run failed", "session", session, "err", err)
+	a.log.Warn("session failed", "session", session, "err", err)
 	a.mu.Lock()
 	a.ended[session] = &v1.SessionInfo{Id: session, State: v1.SessionState_SESSION_STATE_ERROR, Error: err.Error(), UpdatedMs: time.Now().UnixMilli()}
 	a.mu.Unlock()
 	a.report(session)
 }
 
-func (a *Agent) terminalActive(session string) bool {
-	mod, ok := a.index.Modified(session)
-	return ok && time.Since(mod) < terminalWindow
+// openElsewhere reports whether a live process the agent doesn't control
+// is using the session.
+func (a *Agent) openElsewhere(session string) bool {
+	info := a.info(session)
+	return info != nil && (info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE ||
+		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE)
 }
 
 func (a *Agent) sendStatus() {
@@ -272,25 +458,44 @@ func (a *Agent) sendStatus() {
 
 // info is the agent's current view of one session.
 func (a *Agent) info(session string) *v1.SessionInfo {
+	if session == "" {
+		return nil
+	}
 	info := a.index.Info(session)
 	a.mu.Lock()
 	r := a.runs[session]
+	pane := a.panes[session]
 	ended := a.ended[session]
 	a.mu.Unlock()
+	hs, hookLive := a.hookState(session)
 	if info == nil {
-		if r == nil && ended == nil {
+		if r == nil && pane == "" && ended == nil && !hookLive {
 			return nil
 		}
 		info = &v1.SessionInfo{Id: session}
 	}
 	info.Node = a.cfg.Node
+	info.Host = v1.SessionHost_SESSION_HOST_NONE
 	mod, _ := a.index.Modified(session)
 	// Writes from our own finished run are not a terminal.
 	ownWrite := ended != nil && !mod.After(time.UnixMilli(ended.UpdatedMs).Add(5*time.Second))
+
 	switch {
 	case r != nil:
+		info.Host = v1.SessionHost_SESSION_HOST_HEADLESS
 		info.State, info.Error = r.State()
-	case a.terminalActive(session) && !ownWrite:
+	case pane != "":
+		info.Host = v1.SessionHost_SESSION_HOST_TMUX
+		info.AttachCommand = attachCommand(session)
+		info.State = v1.SessionState_SESSION_STATE_READY
+		if hs != nil {
+			info.State, info.Error = hs.state, hs.errText
+		}
+	case hookLive:
+		info.Host = v1.SessionHost_SESSION_HOST_TERMINAL
+		info.State, info.Error = hs.state, hs.errText
+	case hs == nil && !ownWrite && time.Since(mod) < terminalWindow:
+		info.Host = v1.SessionHost_SESSION_HOST_TERMINAL
 		info.State = v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE
 	case ended != nil && ended.State == v1.SessionState_SESSION_STATE_ERROR:
 		info.State, info.Error = ended.State, ended.Error
@@ -311,6 +516,12 @@ func (a *Agent) publish(full bool) {
 	ids := a.index.IDs()
 	a.mu.Lock()
 	for id := range a.runs {
+		ids = append(ids, id)
+	}
+	for id := range a.panes {
+		ids = append(ids, id)
+	}
+	for id := range a.hooks {
 		ids = append(ids, id)
 	}
 	a.mu.Unlock()
@@ -357,10 +568,42 @@ func (a *Agent) scanLoop(ctx context.Context) {
 			if err := a.index.Scan(); err != nil {
 				a.log.Warn("scan", "err", err)
 			}
+			if a.tmux != nil && a.refreshPanes() {
+				a.sendStatus()
+			}
 			a.publish(false)
 			a.closeIdleRuns()
 		}
 	}
+}
+
+// refreshPanes re-reads which tmux windows are alive and reports whether
+// that changed.
+func (a *Agent) refreshPanes() bool {
+	panes := a.tmux.panes()
+	if panes == nil {
+		panes = map[string]string{}
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	changed := len(panes) != len(a.panes)
+	for s, p := range panes {
+		if a.panes[s] != p {
+			changed = true
+		}
+	}
+	for s := range a.panes {
+		if _, ok := panes[s]; !ok {
+			// The window closed; record when so its last transcript writes
+			// aren't mistaken for a terminal.
+			a.ended[s] = &v1.SessionInfo{Id: s, State: v1.SessionState_SESSION_STATE_IDLE, UpdatedMs: time.Now().UnixMilli()}
+			if hs := a.hooks[s]; hs != nil {
+				hs.closed = true
+			}
+		}
+	}
+	a.panes = panes
+	return changed
 }
 
 func (a *Agent) closeIdleRuns() {
@@ -376,98 +619,14 @@ func (a *Agent) closeIdleRuns() {
 	}
 }
 
+// shutdown ends headless runs. tmux sessions are left running on purpose:
+// they belong to the user and survive agent restarts.
 func (a *Agent) shutdown() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for _, r := range a.runs {
 		r.closeInput()
 	}
-}
-
-// ---- transcript mirroring ----
-
-var mirrorTypes = map[string]bool{"user": true, "assistant": true, "system": true, "ai-title": true, "custom-title": true}
-
-func (a *Agent) startMirror(session string, from int64) {
-	ctx, cancel := context.WithCancel(context.Background())
-	a.mu.Lock()
-	if stop := a.mirrors[session]; stop != nil {
-		stop()
-	}
-	a.mirrors[session] = cancel
-	a.mu.Unlock()
-	go a.mirror(ctx, session, from)
-}
-
-// mirror streams a transcript from an offset and keeps tailing it, which is
-// how terminal sessions show up live in the app.
-func (a *Agent) mirror(ctx context.Context, session string, off int64) {
-	t := time.NewTicker(tailInterval)
-	defer t.Stop()
-	for {
-		if path := a.index.Path(session); path != "" {
-			next, err := a.mirrorOnce(session, path, off)
-			if err != nil {
-				a.log.Warn("mirror", "session", session, "err", err)
-			}
-			off = next
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-		}
-	}
-}
-
-func (a *Agent) mirrorOnce(session, path string, off int64) (int64, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return off, err
-	}
-	defer f.Close()
-	st, err := f.Stat()
-	if err != nil {
-		return off, err
-	}
-	if st.Size() < off {
-		off = 0
-	}
-	if st.Size() == off {
-		return off, nil
-	}
-	if _, err := f.Seek(off, io.SeekStart); err != nil {
-		return off, err
-	}
-	r := bufio.NewReaderSize(f, 1<<20)
-	var lines []string
-	size := 0
-	flush := func() {
-		a.send(&v1.Frame{Body: &v1.Frame_RawEvents{RawEvents: &v1.RawEvents{
-			Session: session, Source: v1.RawEvents_SOURCE_TRANSCRIPT, Lines: lines, EndOffset: off,
-		}}})
-		lines, size = nil, 0
-	}
-	for {
-		line, err := r.ReadBytes('\n')
-		if err != nil {
-			break
-		}
-		off += int64(len(line))
-		var head struct {
-			Type string `json:"type"`
-		}
-		if json.Unmarshal(line, &head) != nil || !mirrorTypes[head.Type] {
-			continue
-		}
-		lines = append(lines, strings.TrimRight(string(line), "\r\n"))
-		size += len(line)
-		if size >= mirrorChunk {
-			flush()
-		}
-	}
-	flush()
-	return off, nil
 }
 
 func claudeVersion(bin string) string {

@@ -30,6 +30,8 @@ commands:
                                               start a new session
   send [-fork] [-yes] <session> <message>     continue (or fork) a session
   dump <session>                              print a session's timeline as JSON
+  approvals                                   list pending approvals
+  approve [-deny] <approval id>               answer one
 
 TETHER_TOKEN must be set. -hub defaults to $TETHER_HUB.`
 
@@ -59,6 +61,12 @@ func main() {
 		err = c.send(args)
 	case "dump":
 		err = c.dump(args)
+	case "approvals":
+		for _, a := range c.welcome.PendingApprovals {
+			fmt.Printf("%s  %-10s %s  %s  %s\n", a.ApprovalId, a.Node, a.Session[:8], a.ToolName, a.Description)
+		}
+	case "approve":
+		err = c.approve(args)
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -176,7 +184,10 @@ func (c *ctl) sessions(args []string) error {
 			break
 		}
 		shown++
-		fmt.Printf("%s  %-14s %-16s %-8s %s\n", s.Id[:8], s.Node, stateName(s.State), ago(s.UpdatedMs), s.Title)
+		fmt.Printf("%s  %-10s %-18s %-9s %-5s %s\n", s.Id[:8], s.Node, stateName(s.State), hostName(s.Host), ago(s.UpdatedMs), s.Title)
+		if s.AttachCommand != "" {
+			fmt.Printf("          attach: %s\n", s.AttachCommand)
+		}
 	}
 	return nil
 }
@@ -315,8 +326,30 @@ collect:
 	return nil
 }
 
+func (c *ctl) approve(args []string) error {
+	fs := flag.NewFlagSet("approve", flag.ExitOnError)
+	deny := fs.Bool("deny", false, "deny instead of allow")
+	_ = fs.Parse(args)
+	if fs.NArg() != 1 {
+		return errors.New("approve [-deny] <approval id>")
+	}
+	d := v1.Decision_DECISION_ALLOW
+	if *deny {
+		d = v1.Decision_DECISION_DENY
+	}
+	_, err := c.request(&v1.Frame{Body: &v1.Frame_ApprovalDecision{ApprovalDecision: &v1.ApprovalDecision{ApprovalId: fs.Arg(0), Decision: d}}}, nil)
+	return err
+}
+
 func stateName(s v1.SessionState) string {
 	return strings.ToLower(strings.TrimPrefix(s.String(), "SESSION_STATE_"))
+}
+
+func hostName(h v1.SessionHost) string {
+	if h == v1.SessionHost_SESSION_HOST_UNSPECIFIED || h == v1.SessionHost_SESSION_HOST_NONE {
+		return "-"
+	}
+	return strings.ToLower(strings.TrimPrefix(h.String(), "SESSION_HOST_"))
 }
 
 func ago(ms int64) string {

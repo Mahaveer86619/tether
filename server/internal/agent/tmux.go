@@ -114,3 +114,13 @@ func (t *tmuxHost) capture(pane string) string {
 func awaitingTrust(screen string) bool {
 	return strings.Contains(screen, "trust this folder")
 }
+
+// trustSelected reports whether the dialog's cursor is on the "Yes" option.
+func trustSelected(screen string) bool {
+	for _, line := range strings.Split(screen, "\n") {
+		if strings.Contains(line, "trust this folder") && strings.Contains(line, "❯") {
+			return true
+		}
+	}
+	return false
+}
