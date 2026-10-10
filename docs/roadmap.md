@@ -13,7 +13,7 @@ Each milestone ends with something usable.
 ## M1: One laptop session on the phone
 
 - `tether-agent` on Windows starts `claude -p` in stream-json mode and forwards raw events.
-- `tether-hub` on the mini PC via `tsnet`, SQLite event log, replay by `seq`.
+- `tether-hub` on the mini PC, SQLite event log, replay by `seq`.
 - Flutter Android app: session view rendering blocks and tool cards live, send messages, interrupt.
 - Approvals round-trip to the app.
 

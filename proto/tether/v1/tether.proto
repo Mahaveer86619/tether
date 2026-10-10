@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package tether.v1;
+
+import "tether/v1/render.proto";
+
+option go_package = "github.com/Mahaveer86619/tether/server/gen/tether/v1;tetherv1";
+
+// Every WebSocket message is one Frame, encoded with protojson.
+message Frame {
+  uint32 v = 1;
+  // Set by the sender of a command; echoed in reply_to on the Ack or Error.
+  string id = 2;
+  string reply_to = 3;
+  // Per-session sequence number on timeline frames, assigned by the hub.
+  uint64 seq = 4;
+
+  oneof body {
+    // Client -> hub
+    ClientHello client_hello = 10;
+    Subscribe subscribe = 11;
+    Unsubscribe unsubscribe = 12;
+    CreateSession create_session = 13;
+    SendMessage send_message = 14;
+    InterruptSession interrupt_session = 15;
+    ApprovalDecision approval_decision = 16;
+
+    // Hub -> client
+    Welcome welcome = 30;
+    Ack ack = 31;
+    Error error = 32;
+    NodeStatus node_status = 33;
+    SessionInfo session_info = 34;
+    TimelineUpdate timeline = 35;
+    ApprovalRequest approval_requested = 36;
+    ApprovalResolved approval_resolved = 37;
+
+    // Agent -> hub
+    AgentHello agent_hello = 50;
+    SessionIndex session_index = 51;
+    RawEvents raw_events = 52;
+    // Also reuses approval_requested, approval_resolved (answered in the
+    // terminal) and node_status (agent -> hub).
+
+    // Hub -> agent
+    AgentCommand agent_command = 60;
+    // Also reuses approval_decision (hub -> agent).
+  }
+}
+
+// ---- Shared types ----
+
+message NodeStatus {
+  string node = 1;
+  bool online = 2;
+  string os = 3;
+  string hostname = 4;
+  string claude_version = 5;
+  string agent_version = 6;
+  int64 last_seen_ms = 7;
+  int32 running_sessions = 8;
+}
+
+enum SessionState {
+  SESSION_STATE_UNSPECIFIED = 0;
+  // Nobody is writing to the session; it can be resumed.
+  SESSION_STATE_IDLE = 1;
+  // A Tether-run process is working on a turn.
+  SESSION_STATE_RUNNING = 2;
+  SESSION_STATE_AWAITING_APPROVAL = 3;
+  // A Tether-run process is alive and waiting for the next message.
+  SESSION_STATE_READY = 4;
+  // Transcript written recently by a process Tether can't see (no hooks);
+  // mirror only, or fork.
+  SESSION_STATE_TERMINAL_ACTIVE = 5;
+  SESSION_STATE_ERROR = 6;
+}
+
+// Where a session's live process runs.
+enum SessionHost {
+  SESSION_HOST_UNSPECIFIED = 0;
+  // No live process.
+  SESSION_HOST_NONE = 1;
+  // `claude -p` run by the agent; no terminal to attach to.
+  SESSION_HOST_HEADLESS = 2;
+  // Interactive Claude Code in a tmux window owned by the agent; attachable.
+  SESSION_HOST_TMUX = 3;
+  // Interactive Claude Code started by you in some terminal; Tether sees it
+  // through hooks but cannot type into it.
+  SESSION_HOST_TERMINAL = 4;
+}
+
+message SessionInfo {
+  string id = 1;
+  string node = 2;
+  string title = 3;
+  string cwd = 4;
+  string git_branch = 5;
+  int64 created_ms = 6;
+  int64 updated_ms = 7;
+  int32 message_count = 8;
+  SessionState state = 9;
+  string last_prompt = 10;
+  string claude_version = 11;
+  string model = 12;
+  // Filled by the hub from the timeline.
+  repeated Todo todos = 13;
+  double last_cost_usd = 14;
+  string error = 15;
+  SessionHost host = 16;
+  // Command to open the live session in a terminal on its node, if any.
+  string attach_command = 17;
+}
+
+message TimelineUpdate {
+  string session = 1;
+  repeated TimelineItem items = 2;
+}
+
+message ApprovalRequest {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_TOOL = 1;
+    // Claude Code asks whether to trust a folder it hasn't opened before.
+    KIND_FOLDER_TRUST = 2;
+  }
+  string approval_id = 1;
+  string session = 2;
+  string node = 3;
+  string tool_name = 4;
+  string input_json = 5;
+  string description = 6;
+  int64 created_ms = 7;
+  // The tool rendered as a card, for the approval sheet.
+  ToolCard preview = 8;
+  Kind kind = 9;
+}
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  DECISION_ALLOW = 1;
+  DECISION_DENY = 2;
+}
+
+message ApprovalDecision {
+  string approval_id = 1;
+  Decision decision = 2;
+  // Shown to Claude when denying.
+  string message = 3;
+}
+
+message ApprovalResolved {
+  string approval_id = 1;
+  string session = 2;
+  Decision decision = 3;
+  string by = 4;
+}
+
+// ---- Client -> hub ----
+
+message ClientHello {
+  string token = 1;
+  string client_name = 2;
+  string platform = 3;
+}
+
+message Subscribe {
+  string session = 1;
+  // Replay items with seq greater than this; 0 replays everything.
+  uint64 after_seq = 2;
+}
+
+message Unsubscribe {
+  string session = 1;
+}
+
+message CreateSession {
+  string node = 1;
+  string cwd = 2;
+  string prompt = 3;
+  string model = 4;
+  string permission_mode = 5;
+  string name = 6;
+}
+
+message SendMessage {
+  string session = 1;
+  string text = 2;
+  // Continue in a new session id, leaving the original untouched.
+  bool fork = 3;
+}
+
+message InterruptSession {
+  string session = 1;
+}
+
+// ---- Hub -> client ----
+
+message Welcome {
+  string hub_version = 1;
+  repeated NodeStatus nodes = 2;
+  repeated SessionInfo sessions = 3;
+  repeated ApprovalRequest pending_approvals = 4;
+}
+
+message Ack {
+  // Set when the command created a session (create, or send with fork).
+  string session = 1;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+}
+
+// ---- Agent <-> hub ----
+
+message AgentHello {
+  string token = 1;
+  NodeStatus status = 2;
+}
+
+message SessionIndex {
+  // True when sessions is the node's complete list.
+  bool full = 1;
+  repeated SessionInfo sessions = 2;
+  repeated string removed = 3;
+}
+
+message RawEvents {
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    // Live output of a Tether-run `claude -p --output-format stream-json`.
+    SOURCE_STREAM = 1;
+    // Lines from ~/.claude/projects/<project>/<session>.jsonl.
+    SOURCE_TRANSCRIPT = 2;
+  }
+  string session = 1;
+  Source source = 2;
+  repeated string lines = 3;
+  // For transcripts: byte offset just past the last line.
+  int64 end_offset = 4;
+}
+
+message AgentCommand {
+  oneof op {
+    StartRun start = 1;
+    SendInput send = 2;
+    Interrupt interrupt = 3;
+    Mirror mirror = 4;
+    StopMirror stop_mirror = 5;
+  }
+
+  message StartRun {
+    // Pre-assigned by the hub so clients can subscribe immediately.
+    string session = 1;
+    string cwd = 2;
+    string prompt = 3;
+    string model = 4;
+    string permission_mode = 5;
+    string name = 6;
+    // Resume this existing session instead of starting fresh.
+    string resume = 7;
+    bool fork = 8;
+  }
+
+  message SendInput {
+    string session = 1;
+    string text = 2;
+  }
+
+  message Interrupt {
+    string session = 1;
+  }
+
+  message Mirror {
+    string session = 1;
+    int64 from_offset = 2;
+  }
+
+  message StopMirror {
+    string session = 1;
+  }
+}

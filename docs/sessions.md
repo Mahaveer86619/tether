@@ -31,7 +31,7 @@ The agent scans `~/.claude/projects` on start and watches it for changes. For ea
 Two processes writing one transcript would corrupt it, so the agent decides who owns a session before resuming it:
 
 - **Owned by Tether:** the agent has the process.
-- **Owned by a terminal:** the transcript changed recently and a `claude` process is running with that cwd. The app shows "Running in terminal" and only offers Mirror and Fork.
+- **Owned by a terminal:** the transcript was written in the last 90 seconds and not by a Tether run. The app shows "Running in terminal" and only offers Mirror and Fork. This is a heuristic: a terminal session that just finished also looks active for 90 seconds. Claude Code hooks would make it exact; see [roadmap.md](roadmap.md).
 - **Idle:** nobody is writing. Resume is allowed.
 
 When unsure, the app defaults to **Fork** (`--resume <id> --fork-session`), which copies history into a new session id and never touches the original.
@@ -47,9 +47,12 @@ When unsure, the app defaults to **Fork** (`--resume <id> --fork-session`), whic
 claude -p
   --output-format stream-json --input-format stream-json
   --include-partial-messages --verbose
-  --permission-prompt-tool mcp__tether__approve
-  --mcp-config <agent-generated config with the tether MCP server>
-  [--resume <id> [--fork-session]] [--name <name>] [--permission-mode <mode>]
+  --replay-user-messages
+  --permission-prompt-tool stdio
+  --session-id <id>                      (new sessions; id chosen by the hub)
+  | --resume <id>                        (continue)
+  | --resume <id> --fork-session --session-id <new id>
+  [--model <m>] [--permission-mode <mode>] [--name <name>]
 ```
 
 Never default to skipping permissions. The approval round-trip through the app is the safety net.

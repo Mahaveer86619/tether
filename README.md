@@ -36,29 +36,31 @@ Details: [docs/architecture.md](docs/architecture.md).
 
 | Part | Stack |
 |---|---|
-| `tether-hub`, `tether-agent` | Go, `tsnet` (embedded Tailscale node), `coder/websocket`, `modernc.org/sqlite`, `goldmark` (GFM) |
+| `tether-hub`, `tether-agent`, `tetherctl` | Go, `coder/websocket`, `modernc.org/sqlite` (pure Go), `goldmark` (GFM) |
 | Wire contract | Protocol Buffers (`buf`) → Go + Dart code generation; JSON encoding on the wire |
 | App | Flutter for Android and Windows, Riverpod, generated Dart protobuf types |
 | Home server | Ubuntu 24.04 mini PC, Docker sandboxes, NAS over SMB |
 
-## Repository layout (planned)
+## Repository layout
 
 ```
 proto/tether/v1/        wire contract (source of truth)
 server/                 Go module
   cmd/tether-hub/
   cmd/tether-agent/
-  internal/claude/      stream-json adapter, transcript reader
-  internal/render/      Markdown → blocks, tool → cards
-  internal/hub/  internal/agent/  internal/store/  internal/nas/  internal/mcp/
-app/                    Flutter app (android, windows)
-deploy/                 systemd units, sandbox Dockerfile, Windows startup task
+  internal/render/      stream-json and transcript lines → timeline items
+  internal/hub/         routing, subscriptions, approvals
+  internal/agent/       session index, headless runs, transcript mirror
+  internal/store/       SQLite
+  cmd/tetherctl/        terminal client for testing
+app/                    Flutter app (android, windows), not started
+deploy/                 systemd user units, Windows logon task
 docs/                   design docs
 ```
 
 ## Status
 
-Design phase. See [docs/roadmap.md](docs/roadmap.md) for milestones.
+The hub, agent and contract work end to end (milestones M0 and most of M1): sessions on the laptop and the home server are indexed, mirrored live, started, continued, forked and approved from `tetherctl`. The Flutter app is next. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
 
 ## Docs
 

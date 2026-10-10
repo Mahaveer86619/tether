@@ -4,15 +4,15 @@ Tether lets a phone run commands on your machines through Claude. These rules ke
 
 ## Network
 
-- The hub only listens inside the tailnet, through `tsnet`. Nothing is exposed on the LAN or the internet.
+- The hub listens only on the host's Tailscale IP. Nothing is exposed on the LAN or the internet.
 - Tailscale ACLs: tag the hub `tag:tether-hub` and allow only your own devices to reach it. Agents and apps only make outbound connections to the hub.
-- The hub checks every connection with Tailscale `WhoIs` and only accepts devices owned by your account.
-- Agents also present a per-node token issued at enrollment, so a stolen tailnet device key alone isn't enough to impersonate a node.
+- Every connection must present the shared `TETHER_TOKEN` (compared in constant time). It lives in `~/tether/tether.env` on the hub (mode 600) and `%USERPROFILE%\.tether\token` on Windows, never in the repo.
+- Planned: per-device identity with Tailscale `WhoIs` via `tsnet`, and per-node tokens.
 
 ## Claude permissions
 
 - Headless sessions never use `--dangerously-skip-permissions` or `bypassPermissions` by default.
-- Every permission prompt goes to the app through `--permission-prompt-tool`. Unanswered prompts time out as **deny**.
+- Every permission prompt in a Tether-run session goes to the app through `--permission-prompt-tool stdio`. Unanswered prompts are denied after 30 minutes.
 - "Always allow" rules chosen in the app are stored per node and per project and are visible and revocable in Settings.
 
 ## Sandbox

@@ -1,113 +1,111 @@
 # Protocol (contract v1)
 
-The contract is defined in `proto/tether/v1/` and generated into Go and Dart. This doc describes it; the `.proto` files are the source of truth once they exist.
+The source of truth is [`proto/tether/v1`](../proto/tether/v1): `tether.proto` (frames, commands, events) and `render.proto` (timeline items, Markdown blocks, tool cards). Go code is generated with `buf generate`; the Flutter app will generate Dart from the same files.
 
 There are two hops:
 
 - **Agent ↔ hub:** carries Claude Code output *raw*. Agents never interpret it.
-- **Hub ↔ app:** carries rendered, typed events. The app never sees Claude Code's raw format.
+- **Hub ↔ app:** carries rendered, typed timeline items. The app never sees Claude Code's raw format.
 
-Claude is never instructed how to format replies. Whatever Claude Code emits is accepted as-is and turned into contract types by the hub.
+Claude is never instructed how to format replies. Whatever Claude Code emits is accepted as-is and turned into contract types by the hub (`server/internal/render`).
 
-## Envelope
+## Framing
 
-Every frame on either hop:
+Every WebSocket text message is one `Frame`, encoded with protojson. Exactly one body field is set:
 
 ```json
-{
-  "v": 1,
-  "id": "01J…",          // ULID, unique per frame
-  "node": "laptop",
-  "session": "6b01a2b8-…", // Claude Code session id, when relevant
-  "seq": 812,              // per-session, assigned by the hub; absent on commands
-  "ts": "2026-10-11T07:00:03Z",
-  "type": "block.upsert",
-  "payload": { }
-}
+{ "v": 1, "id": "c9…", "seq": "812",
+  "timeline": { "session": "6b01a2b8-…", "items": [ … ] } }
 ```
 
-Clients send `subscribe {session, after_seq}` on connect and the hub replays everything after `after_seq` before going live. Nothing is lost when a phone drops off mobile data.
+| Field | Meaning |
+|---|---|
+| `v` | Contract version. Breaking changes bump it; new fields are additive. |
+| `id` | Set by the sender of a command. |
+| `replyTo` | On `ack` / `error` (and the subscribe end-of-replay marker): the command's `id`. |
+| `seq` | On `timeline` frames: the session's highest sequence number in the frame. |
 
-Unknown `type` values must be ignored by clients. New fields are additive within v1; anything breaking bumps `v`.
+Clients must ignore body types and fields they don't know.
+
+## Connecting
+
+The first frame on a connection is a hello carrying the shared token (`TETHER_TOKEN`):
+
+- Apps send `clientHello {token, clientName, platform}` and get back `welcome {nodes, sessions, pendingApprovals}`: everything needed to draw the dashboard.
+- Agents send `agentHello {token, status}`.
+
+Afterwards the hub pushes `nodeStatus`, `sessionInfo`, `approvalRequested` and `approvalResolved` to every client as they change.
 
 ## App → hub commands
 
-| Type | Payload |
+| Body | Does | Reply |
+|---|---|---|
+| `subscribe {session, afterSeq}` | Replays timeline items changed after `afterSeq`, then streams live changes. The hub also asks the owning agent to mirror the transcript, so history and terminal sessions load. | Timeline frames, then an empty `timeline` frame with `replyTo` set: end of replay. |
+| `unsubscribe {session}` | Stops the stream. | `ack` |
+| `createSession {node, cwd, prompt, model, permissionMode, name}` | Starts a new headless session on a node. | `ack {session}` with the new id |
+| `sendMessage {session, text, fork}` | Sends a follow-up. If no process is running, the agent resumes the session. With `fork`, continues in a new session id and leaves the original untouched. Refused with `terminal_active` while a terminal is using the session. | `ack {session}` |
+| `interruptSession {session}` | Stops the current turn. | `ack` |
+| `approvalDecision {approvalId, decision, message}` | Answers a permission prompt. | `ack` |
+
+Errors come back as `error {code, message}` with `replyTo`. Codes: `not_found`, `node_offline`, `invalid`, `terminal_active`, `unauthorized`, `internal`.
+
+## Timeline items
+
+A session is an ordered list of `TimelineItem`s. Clients keep a map keyed by `itemId`, **replace** an item whenever it arrives again, and sort by `ord` (stable, assigned on first sight). `seq` only says which updates a client has seen.
+
+| Kind | Content |
 |---|---|
-| `session.create` | `node`, `cwd`, `prompt`, optional `model`, `permission_mode`, `name`, `sandbox` |
-| `session.send` | `session`, `text`, optional attachments (NAS paths) |
-| `session.resume` | `session`, `fork` (bool), optional `node` to move it |
-| `session.interrupt` | `session` |
-| `approval.respond` | `approval_id`, `decision` (`allow` / `deny`), optional `remember` rule, optional `message` |
-| `subscribe` / `unsubscribe` | `session` or `"*"` for dashboard-level events, `after_seq` |
-| `files.list` / `files.get` / `files.put` | NAS path |
-| `schedule.upsert` / `schedule.delete` | cron expression, node, cwd, prompt |
+| `user` | A prompt you or a client sent. |
+| `markdown` | Assistant text parsed into blocks; `streaming: true` while still arriving. |
+| `thinking` | Thinking text, when Claude Code exposes it. |
+| `tool` | A tool card (below), updated as it runs and finishes. |
+| `notice` | Slash commands, interruptions, compaction, errors. |
+| `result` | End of a turn: status, turns, duration, cost. |
 
-## Hub → app events
+`parentToolUseId` is set on items produced inside a sub-agent, so clients can nest them under its card.
 
-| Type | Meaning |
+### Markdown blocks
+
+`heading`, `paragraph`, `list` (ordered, start, items with optional `checked`), `code {lang, text}`, `table {align, header, rows}`, `quote`, `divider`, `image`. Inline text is a list of `Span {text, bold, italic, code, strike, link}`.
+
+While text streams, the hub re-parses the whole text block on each update and coalesces updates to at most one every 100 ms per session. An unterminated code fence already renders as code. A table appears once its header and separator rows have arrived.
+
+### Tool cards
+
+| Tool | Card detail |
 |---|---|
-| `node.status` | Online/offline, health, Claude Code version |
-| `session.indexed` | A session was found or updated (title, cwd, branch, last activity, owner) |
-| `session.started` | Headless run began (model, tools, permission mode) |
-| `session.state` | `idle`, `running`, `awaiting_approval`, `mirroring` (owned by a terminal), `ended`, `error` |
-| `block.upsert` | Create or replace a render block by `block_id` (see below) |
-| `tool.started` / `tool.output` / `tool.finished` | Tool card lifecycle |
-| `todo.updated` | Current to-do list from `TodoWrite` |
-| `approval.requested` / `approval.resolved` | Permission prompt lifecycle |
-| `session.result` | Final status, turns, duration, cost |
-| `error` | Problem with a command, with a code |
+| `Bash`, `PowerShell` | `shell {shell, command, description}` |
+| `Edit`, `MultiEdit` | `edit {path, unifiedDiff, added, removed}` |
+| `Write` | `write {path, preview, lines}` |
+| `Read` | `read {path, offset, limit}` |
+| `Grep`, `Glob` | `search {pattern, path, glob}` |
+| `TodoWrite` | `todos {todos}`; also copied to the session's `todos` for the dashboard |
+| `Task`, `Agent` | `agent {description, subagentType, prompt}` |
+| `WebFetch`, `WebSearch` | `web {url, query}` |
+| anything else | `generic {inputJson}` |
 
-## Render blocks
+`status` goes `PENDING` (input still streaming) → `RUNNING` → `SUCCEEDED` / `FAILED`. `output` holds the tool result; long output keeps the first 200 and last 100 lines, with `omittedLines` set.
 
-Assistant text arrives as Markdown. The hub parses it with goldmark (GFM) into blocks:
+## Item identity
 
-| Block | Fields |
-|---|---|
-| `heading` | `level`, `spans` |
-| `paragraph` | `spans` |
-| `list` | `ordered`, `start`, `items[]` (each item: `checked?`, `blocks[]`) |
-| `code` | `lang`, `text` |
-| `table` | `align[]`, `header[]` (spans), `rows[][]` (spans) |
-| `quote` | `blocks[]` |
-| `divider` | none |
-| `image` | `url`, `alt` |
-| `thinking` | `text`, collapsed by default |
+The live stream and the transcript file describe the same session, so they must produce the same ids:
 
-`spans` are inline runs: `{text, bold?, italic?, code?, strike?, link?}`.
+- assistant blocks: `<message id>:<block index>`
+- tools: the `tool_use` id
+- user text, notices, results: a prefix plus the line's `uuid`
 
-### Streaming
-
-Partial text arrives in pieces. The hub keeps the in-progress Markdown for the current message, re-parses only its last top-level block on each delta, and sends `block.upsert` with the same `block_id`. The app replaces that block in place. A half-written table or code fence is shown as a table or code block that is still growing, never as raw `|` or backticks.
-
-## Tool cards
-
-Built from each `tool_use` input and its matching `tool_result`:
-
-| Tool | Card |
-|---|---|
-| `Bash` | Command, description, live output (truncated, full on demand), exit status |
-| `Edit`, `MultiEdit` | File path and a unified diff computed from `old_string` / `new_string` |
-| `Write` | File path, size, collapsible preview |
-| `Read` | File path and line range |
-| `Grep`, `Glob` | Pattern, match count, list of matches |
-| `TodoWrite` | Checklist; also emitted as `todo.updated` for the dashboard |
-| `Task` / `Agent` | Sub-agent card with its own nested blocks and cards |
-| `WebFetch`, `WebSearch` | URL or query and a short result |
-| MCP tools and anything unknown | Name plus pretty-printed input and output JSON |
-
-Large tool output is truncated in the event (first and last N lines) with a `full_ref` the app can fetch.
+This makes ingestion idempotent: the hub can feed a session from either source, or both, in any order. A transcript replay never resets a finished tool card.
 
 ## Agent ↔ hub
 
-| Type | Direction | Payload |
+| Body | Direction | Payload |
 |---|---|---|
-| `agent.hello` | agent → hub | node name, OS, Claude Code version, capabilities (`sandbox`, `windows`) |
-| `raw.event` | agent → hub | `source` (`stream-json` / `transcript`), the original JSON line |
-| `session.index` | agent → hub | session metadata found on disk |
-| `approval.request` | agent → hub | tool name, input, `approval_id` |
-| `agent.run` | hub → agent | start, send, resume or interrupt a session |
-| `approval.result` | hub → agent | decision |
-| `health` | agent → hub | periodic metrics |
+| `agentHello` | agent → hub | token, node status |
+| `sessionIndex` | agent → hub | sessions found on disk or run by the agent, with their state |
+| `rawEvents` | agent → hub | `source` (`STREAM` or `TRANSCRIPT`), original JSON lines, and for transcripts the byte offset reached |
+| `approvalRequested` | agent → hub | a `can_use_tool` request from a headless run |
+| `nodeStatus` | agent → hub | updated status, e.g. running session count |
+| `agentCommand` | hub → agent | `start`, `send`, `interrupt`, `mirror {session, fromOffset}`, `stopMirror` |
+| `approvalDecision` | hub → agent | the app's answer |
 
-The hub stores every `raw.event` before rendering it, so improved parsers can re-render old sessions.
+The hub stores each session's transcript offset, so re-subscribing resumes mirroring where it stopped.

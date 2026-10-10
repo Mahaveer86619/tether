@@ -16,7 +16,7 @@ Things this means for the design:
 
 - RAM is the limit. Each Claude Code process uses a few hundred MB, so cap concurrent sandbox sessions at about 3 to start with.
 - The machine may host other services too. Sandboxed sessions must not get the Docker socket or host networking, or one bad `Bash` command could take those down.
-- Using `tsnet` for the hub means it never competes for ports with whatever else runs on the host.
+- The hub listens only on the Tailscale IP (port 7420 by default), so it isn't reachable from the LAN.
 
 Machine-specific details (addresses, users, credentials) stay out of the repo, in the git-ignored `.local/` folder.
 

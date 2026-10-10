@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package tether.v1;
+
+option go_package = "github.com/Mahaveer86619/tether/server/gen/tether/v1;tetherv1";
+
+// One entry in a session's timeline. Clients key items by item_id, replace
+// them on every upsert, and order them by ord.
+message TimelineItem {
+  string item_id = 1;
+  uint64 ord = 2;
+  // Set when the item was produced inside a sub-agent run.
+  string parent_tool_use_id = 3;
+  int64 ts_ms = 4;
+
+  oneof kind {
+    UserText user = 10;
+    Markdown markdown = 11;
+    ToolCard tool = 12;
+    Thinking thinking = 13;
+    Notice notice = 14;
+    ResultSummary result = 15;
+  }
+}
+
+message UserText {
+  string text = 1;
+}
+
+message Markdown {
+  repeated Block blocks = 1;
+  // True while text is still arriving.
+  bool streaming = 2;
+}
+
+message Thinking {
+  string text = 1;
+  bool streaming = 2;
+}
+
+message Notice {
+  enum Level {
+    LEVEL_UNSPECIFIED = 0;
+    LEVEL_INFO = 1;
+    LEVEL_WARNING = 2;
+    LEVEL_ERROR = 3;
+  }
+  Level level = 1;
+  string text = 2;
+}
+
+message ResultSummary {
+  bool is_error = 1;
+  string subtype = 2;
+  int32 num_turns = 3;
+  int64 duration_ms = 4;
+  double cost_usd = 5;
+}
+
+// ---- Markdown blocks ----
+
+message Span {
+  string text = 1;
+  bool bold = 2;
+  bool italic = 3;
+  bool code = 4;
+  bool strike = 5;
+  string link = 6;
+}
+
+message Block {
+  oneof kind {
+    Heading heading = 1;
+    Paragraph paragraph = 2;
+    ListBlock list = 3;
+    CodeBlock code = 4;
+    Table table = 5;
+    Quote quote = 6;
+    Divider divider = 7;
+    Image image = 8;
+  }
+}
+
+message Heading {
+  int32 level = 1;
+  repeated Span spans = 2;
+}
+
+message Paragraph {
+  repeated Span spans = 1;
+}
+
+message ListBlock {
+  bool ordered = 1;
+  int32 start = 2;
+  repeated ListItem items = 3;
+}
+
+message ListItem {
+  optional bool checked = 1;
+  repeated Block blocks = 2;
+}
+
+message CodeBlock {
+  string lang = 1;
+  string text = 2;
+}
+
+message Table {
+  enum Align {
+    ALIGN_UNSPECIFIED = 0;
+    ALIGN_LEFT = 1;
+    ALIGN_CENTER = 2;
+    ALIGN_RIGHT = 3;
+  }
+  repeated Align align = 1;
+  repeated TableCell header = 2;
+  repeated TableRow rows = 3;
+}
+
+message TableRow {
+  repeated TableCell cells = 1;
+}
+
+message TableCell {
+  repeated Span spans = 1;
+}
+
+message Quote {
+  repeated Block blocks = 1;
+}
+
+message Divider {}
+
+message Image {
+  string url = 1;
+  string alt = 2;
+}
+
+// ---- Tool cards ----
+
+message ToolCard {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_PENDING = 1;
+    STATUS_RUNNING = 2;
+    STATUS_SUCCEEDED = 3;
+    STATUS_FAILED = 4;
+  }
+
+  string tool_use_id = 1;
+  string name = 2;
+  Status status = 3;
+  // Short human summary, e.g. the Bash description or the file path.
+  string title = 4;
+
+  oneof detail {
+    ShellCard shell = 10;
+    EditCard edit = 11;
+    WriteCard write = 12;
+    ReadCard read = 13;
+    SearchCard search = 14;
+    TodoCard todos = 15;
+    AgentCard agent = 16;
+    WebCard web = 17;
+    GenericCard generic = 18;
+  }
+
+  ToolOutput output = 30;
+}
+
+message ToolOutput {
+  string text = 1;
+  bool is_error = 2;
+  // Lines dropped from the middle of text.
+  int32 omitted_lines = 3;
+}
+
+message ShellCard {
+  string shell = 1;
+  string command = 2;
+  string description = 3;
+}
+
+message EditCard {
+  string path = 1;
+  string unified_diff = 2;
+  int32 added = 3;
+  int32 removed = 4;
+}
+
+message WriteCard {
+  string path = 1;
+  string preview = 2;
+  int32 lines = 3;
+}
+
+message ReadCard {
+  string path = 1;
+  int32 offset = 2;
+  int32 limit = 3;
+}
+
+message SearchCard {
+  string pattern = 1;
+  string path = 2;
+  string glob = 3;
+}
+
+message Todo {
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_PENDING = 1;
+    STATUS_IN_PROGRESS = 2;
+    STATUS_COMPLETED = 3;
+  }
+  string content = 1;
+  Status status = 2;
+  string active_form = 3;
+}
+
+message TodoCard {
+  repeated Todo todos = 1;
+}
+
+message AgentCard {
+  string description = 1;
+  string subagent_type = 2;
+  string prompt = 3;
+}
+
+message WebCard {
+  string url = 1;
+  string query = 2;
+}
+
+message GenericCard {
+  // Pretty-printed tool input.
+  string input_json = 1;
+}
