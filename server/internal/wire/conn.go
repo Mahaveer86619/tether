@@ -78,6 +78,21 @@ func (c *Conn) Send(f *v1.Frame) bool {
 	}
 }
 
+// WriteNow writes a frame immediately, bypassing the queue. Use it before
+// Run, e.g. to answer a hello that is being rejected.
+func (c *Conn) WriteNow(ctx context.Context, f *v1.Frame) error {
+	if f.V == 0 {
+		f.V = Version
+	}
+	data, err := marshal.Marshal(f)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, writeTimeout)
+	defer cancel()
+	return c.ws.Write(ctx, websocket.MessageText, data)
+}
+
 // Read blocks for the next frame. Use it before Run, e.g. for the hello.
 func (c *Conn) Read(ctx context.Context) (*v1.Frame, error) {
 	_, data, err := c.ws.Read(ctx)

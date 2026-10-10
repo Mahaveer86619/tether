@@ -630,7 +630,9 @@ func (a *Agent) shutdown() {
 }
 
 func claudeVersion(bin string) string {
-	out, err := exec.Command(bin, "--version").Output()
+	cmd := exec.Command(bin, "--version")
+	hideWindow(cmd)
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}

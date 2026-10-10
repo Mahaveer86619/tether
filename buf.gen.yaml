@@ -1,6 +1,7 @@
 version: v2
-clean: true
 plugins:
   - local: protoc-gen-go
     out: server/gen
     opt: paths=source_relative
+  - local: ["dart", "pub", "global", "run", "protoc_plugin"]
+    out: app/lib/gen

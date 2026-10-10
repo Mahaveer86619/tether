@@ -35,10 +35,30 @@ func main() {
 	hostMode := flag.String("host", "auto", "where new sessions run: auto (tmux if installed), tmux, or headless")
 	hookAddr := flag.String("hook-addr", "127.0.0.1:7421", "local address for Claude Code hooks; empty disables them")
 	hooks := flag.Bool("hooks", true, "install Tether's hooks into Claude Code's settings.json (undo with 'tether-agent uninstall-hooks')")
+	tokenFile := flag.String("token-file", "", "read the hub token from this file instead of TETHER_TOKEN")
+	logFile := flag.String("log", "", "append logs to this file instead of stderr")
 	flag.Parse()
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	out := os.Stderr
+	if *logFile != "" {
+		f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		defer f.Close()
+		out = f
+	}
+	log := slog.New(slog.NewTextHandler(out, nil))
 	token := os.Getenv("TETHER_TOKEN")
+	if *tokenFile != "" {
+		b, err := os.ReadFile(*tokenFile)
+		if err != nil {
+			log.Error("read token file", "err", err)
+			os.Exit(2)
+		}
+		token = strings.TrimSpace(string(b))
+	}
 	if *hubURL == "" || token == "" {
 		log.Error("-hub and TETHER_TOKEN are required")
 		os.Exit(2)

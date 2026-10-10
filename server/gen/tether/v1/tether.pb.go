@@ -244,7 +244,7 @@ func (x ApprovalRequest_Kind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ApprovalRequest_Kind.Descriptor instead.
 func (ApprovalRequest_Kind) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{4, 0}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{5, 0}
 }
 
 type RawEvents_Source int32
@@ -295,7 +295,7 @@ func (x RawEvents_Source) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RawEvents_Source.Descriptor instead.
 func (RawEvents_Source) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{18, 0}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 0}
 }
 
 // Every WebSocket message is one Frame, encoded with protojson.
@@ -1017,6 +1017,69 @@ func (x *TimelineUpdate) GetItems() []*TimelineItem {
 	return nil
 }
 
+// Response of GET /api/v1/sessions/{id}/timeline.
+type TimelinePage struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Session string                 `protobuf:"bytes,1,opt,name=session,proto3" json:"session,omitempty"`
+	// Ordered by ord.
+	Items []*TimelineItem `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	// Subscribe with this as after_seq to receive only later changes.
+	Seq           uint64 `protobuf:"varint,3,opt,name=seq,proto3" json:"seq,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TimelinePage) Reset() {
+	*x = TimelinePage{}
+	mi := &file_tether_v1_tether_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TimelinePage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TimelinePage) ProtoMessage() {}
+
+func (x *TimelinePage) ProtoReflect() protoreflect.Message {
+	mi := &file_tether_v1_tether_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TimelinePage.ProtoReflect.Descriptor instead.
+func (*TimelinePage) Descriptor() ([]byte, []int) {
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TimelinePage) GetSession() string {
+	if x != nil {
+		return x.Session
+	}
+	return ""
+}
+
+func (x *TimelinePage) GetItems() []*TimelineItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *TimelinePage) GetSeq() uint64 {
+	if x != nil {
+		return x.Seq
+	}
+	return 0
+}
+
 type ApprovalRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	ApprovalId  string                 `protobuf:"bytes,1,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
@@ -1035,7 +1098,7 @@ type ApprovalRequest struct {
 
 func (x *ApprovalRequest) Reset() {
 	*x = ApprovalRequest{}
-	mi := &file_tether_v1_tether_proto_msgTypes[4]
+	mi := &file_tether_v1_tether_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1047,7 +1110,7 @@ func (x *ApprovalRequest) String() string {
 func (*ApprovalRequest) ProtoMessage() {}
 
 func (x *ApprovalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[4]
+	mi := &file_tether_v1_tether_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1060,7 +1123,7 @@ func (x *ApprovalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalRequest.ProtoReflect.Descriptor instead.
 func (*ApprovalRequest) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{4}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ApprovalRequest) GetApprovalId() string {
@@ -1138,7 +1201,7 @@ type ApprovalDecision struct {
 
 func (x *ApprovalDecision) Reset() {
 	*x = ApprovalDecision{}
-	mi := &file_tether_v1_tether_proto_msgTypes[5]
+	mi := &file_tether_v1_tether_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1150,7 +1213,7 @@ func (x *ApprovalDecision) String() string {
 func (*ApprovalDecision) ProtoMessage() {}
 
 func (x *ApprovalDecision) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[5]
+	mi := &file_tether_v1_tether_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1163,7 +1226,7 @@ func (x *ApprovalDecision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalDecision.ProtoReflect.Descriptor instead.
 func (*ApprovalDecision) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{5}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ApprovalDecision) GetApprovalId() string {
@@ -1199,7 +1262,7 @@ type ApprovalResolved struct {
 
 func (x *ApprovalResolved) Reset() {
 	*x = ApprovalResolved{}
-	mi := &file_tether_v1_tether_proto_msgTypes[6]
+	mi := &file_tether_v1_tether_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1211,7 +1274,7 @@ func (x *ApprovalResolved) String() string {
 func (*ApprovalResolved) ProtoMessage() {}
 
 func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[6]
+	mi := &file_tether_v1_tether_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1224,7 +1287,7 @@ func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalResolved.ProtoReflect.Descriptor instead.
 func (*ApprovalResolved) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{6}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApprovalResolved) GetApprovalId() string {
@@ -1266,7 +1329,7 @@ type ClientHello struct {
 
 func (x *ClientHello) Reset() {
 	*x = ClientHello{}
-	mi := &file_tether_v1_tether_proto_msgTypes[7]
+	mi := &file_tether_v1_tether_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1278,7 +1341,7 @@ func (x *ClientHello) String() string {
 func (*ClientHello) ProtoMessage() {}
 
 func (x *ClientHello) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[7]
+	mi := &file_tether_v1_tether_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1291,7 +1354,7 @@ func (x *ClientHello) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientHello.ProtoReflect.Descriptor instead.
 func (*ClientHello) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{7}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ClientHello) GetToken() string {
@@ -1326,7 +1389,7 @@ type Subscribe struct {
 
 func (x *Subscribe) Reset() {
 	*x = Subscribe{}
-	mi := &file_tether_v1_tether_proto_msgTypes[8]
+	mi := &file_tether_v1_tether_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1338,7 +1401,7 @@ func (x *Subscribe) String() string {
 func (*Subscribe) ProtoMessage() {}
 
 func (x *Subscribe) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[8]
+	mi := &file_tether_v1_tether_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1351,7 +1414,7 @@ func (x *Subscribe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subscribe.ProtoReflect.Descriptor instead.
 func (*Subscribe) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{8}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Subscribe) GetSession() string {
@@ -1377,7 +1440,7 @@ type Unsubscribe struct {
 
 func (x *Unsubscribe) Reset() {
 	*x = Unsubscribe{}
-	mi := &file_tether_v1_tether_proto_msgTypes[9]
+	mi := &file_tether_v1_tether_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1389,7 +1452,7 @@ func (x *Unsubscribe) String() string {
 func (*Unsubscribe) ProtoMessage() {}
 
 func (x *Unsubscribe) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[9]
+	mi := &file_tether_v1_tether_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1402,7 +1465,7 @@ func (x *Unsubscribe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Unsubscribe.ProtoReflect.Descriptor instead.
 func (*Unsubscribe) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{9}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Unsubscribe) GetSession() string {
@@ -1426,7 +1489,7 @@ type CreateSession struct {
 
 func (x *CreateSession) Reset() {
 	*x = CreateSession{}
-	mi := &file_tether_v1_tether_proto_msgTypes[10]
+	mi := &file_tether_v1_tether_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1438,7 +1501,7 @@ func (x *CreateSession) String() string {
 func (*CreateSession) ProtoMessage() {}
 
 func (x *CreateSession) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[10]
+	mi := &file_tether_v1_tether_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1451,7 +1514,7 @@ func (x *CreateSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSession.ProtoReflect.Descriptor instead.
 func (*CreateSession) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{10}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CreateSession) GetNode() string {
@@ -1508,7 +1571,7 @@ type SendMessage struct {
 
 func (x *SendMessage) Reset() {
 	*x = SendMessage{}
-	mi := &file_tether_v1_tether_proto_msgTypes[11]
+	mi := &file_tether_v1_tether_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1520,7 +1583,7 @@ func (x *SendMessage) String() string {
 func (*SendMessage) ProtoMessage() {}
 
 func (x *SendMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[11]
+	mi := &file_tether_v1_tether_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1533,7 +1596,7 @@ func (x *SendMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessage.ProtoReflect.Descriptor instead.
 func (*SendMessage) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{11}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SendMessage) GetSession() string {
@@ -1566,7 +1629,7 @@ type InterruptSession struct {
 
 func (x *InterruptSession) Reset() {
 	*x = InterruptSession{}
-	mi := &file_tether_v1_tether_proto_msgTypes[12]
+	mi := &file_tether_v1_tether_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1578,7 +1641,7 @@ func (x *InterruptSession) String() string {
 func (*InterruptSession) ProtoMessage() {}
 
 func (x *InterruptSession) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[12]
+	mi := &file_tether_v1_tether_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1591,7 +1654,7 @@ func (x *InterruptSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterruptSession.ProtoReflect.Descriptor instead.
 func (*InterruptSession) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{12}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *InterruptSession) GetSession() string {
@@ -1613,7 +1676,7 @@ type Welcome struct {
 
 func (x *Welcome) Reset() {
 	*x = Welcome{}
-	mi := &file_tether_v1_tether_proto_msgTypes[13]
+	mi := &file_tether_v1_tether_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1625,7 +1688,7 @@ func (x *Welcome) String() string {
 func (*Welcome) ProtoMessage() {}
 
 func (x *Welcome) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[13]
+	mi := &file_tether_v1_tether_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +1701,7 @@ func (x *Welcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Welcome.ProtoReflect.Descriptor instead.
 func (*Welcome) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{13}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Welcome) GetHubVersion() string {
@@ -1679,7 +1742,7 @@ type Ack struct {
 
 func (x *Ack) Reset() {
 	*x = Ack{}
-	mi := &file_tether_v1_tether_proto_msgTypes[14]
+	mi := &file_tether_v1_tether_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1691,7 +1754,7 @@ func (x *Ack) String() string {
 func (*Ack) ProtoMessage() {}
 
 func (x *Ack) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[14]
+	mi := &file_tether_v1_tether_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1704,7 +1767,7 @@ func (x *Ack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ack.ProtoReflect.Descriptor instead.
 func (*Ack) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{14}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Ack) GetSession() string {
@@ -1724,7 +1787,7 @@ type Error struct {
 
 func (x *Error) Reset() {
 	*x = Error{}
-	mi := &file_tether_v1_tether_proto_msgTypes[15]
+	mi := &file_tether_v1_tether_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1736,7 +1799,7 @@ func (x *Error) String() string {
 func (*Error) ProtoMessage() {}
 
 func (x *Error) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[15]
+	mi := &file_tether_v1_tether_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1749,7 +1812,7 @@ func (x *Error) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Error.ProtoReflect.Descriptor instead.
 func (*Error) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{15}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Error) GetCode() string {
@@ -1776,7 +1839,7 @@ type AgentHello struct {
 
 func (x *AgentHello) Reset() {
 	*x = AgentHello{}
-	mi := &file_tether_v1_tether_proto_msgTypes[16]
+	mi := &file_tether_v1_tether_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1788,7 +1851,7 @@ func (x *AgentHello) String() string {
 func (*AgentHello) ProtoMessage() {}
 
 func (x *AgentHello) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[16]
+	mi := &file_tether_v1_tether_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1801,7 +1864,7 @@ func (x *AgentHello) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentHello.ProtoReflect.Descriptor instead.
 func (*AgentHello) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{16}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AgentHello) GetToken() string {
@@ -1830,7 +1893,7 @@ type SessionIndex struct {
 
 func (x *SessionIndex) Reset() {
 	*x = SessionIndex{}
-	mi := &file_tether_v1_tether_proto_msgTypes[17]
+	mi := &file_tether_v1_tether_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1842,7 +1905,7 @@ func (x *SessionIndex) String() string {
 func (*SessionIndex) ProtoMessage() {}
 
 func (x *SessionIndex) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[17]
+	mi := &file_tether_v1_tether_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1855,7 +1918,7 @@ func (x *SessionIndex) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionIndex.ProtoReflect.Descriptor instead.
 func (*SessionIndex) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{17}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SessionIndex) GetFull() bool {
@@ -1892,7 +1955,7 @@ type RawEvents struct {
 
 func (x *RawEvents) Reset() {
 	*x = RawEvents{}
-	mi := &file_tether_v1_tether_proto_msgTypes[18]
+	mi := &file_tether_v1_tether_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1904,7 +1967,7 @@ func (x *RawEvents) String() string {
 func (*RawEvents) ProtoMessage() {}
 
 func (x *RawEvents) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[18]
+	mi := &file_tether_v1_tether_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1917,7 +1980,7 @@ func (x *RawEvents) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawEvents.ProtoReflect.Descriptor instead.
 func (*RawEvents) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{18}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RawEvents) GetSession() string {
@@ -1964,7 +2027,7 @@ type AgentCommand struct {
 
 func (x *AgentCommand) Reset() {
 	*x = AgentCommand{}
-	mi := &file_tether_v1_tether_proto_msgTypes[19]
+	mi := &file_tether_v1_tether_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1976,7 +2039,7 @@ func (x *AgentCommand) String() string {
 func (*AgentCommand) ProtoMessage() {}
 
 func (x *AgentCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[19]
+	mi := &file_tether_v1_tether_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1989,7 +2052,7 @@ func (x *AgentCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand.ProtoReflect.Descriptor instead.
 func (*AgentCommand) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AgentCommand) GetOp() isAgentCommand_Op {
@@ -2096,7 +2159,7 @@ type AgentCommand_StartRun struct {
 
 func (x *AgentCommand_StartRun) Reset() {
 	*x = AgentCommand_StartRun{}
-	mi := &file_tether_v1_tether_proto_msgTypes[20]
+	mi := &file_tether_v1_tether_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2108,7 +2171,7 @@ func (x *AgentCommand_StartRun) String() string {
 func (*AgentCommand_StartRun) ProtoMessage() {}
 
 func (x *AgentCommand_StartRun) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[20]
+	mi := &file_tether_v1_tether_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2121,7 +2184,7 @@ func (x *AgentCommand_StartRun) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand_StartRun.ProtoReflect.Descriptor instead.
 func (*AgentCommand_StartRun) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 0}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20, 0}
 }
 
 func (x *AgentCommand_StartRun) GetSession() string {
@@ -2190,7 +2253,7 @@ type AgentCommand_SendInput struct {
 
 func (x *AgentCommand_SendInput) Reset() {
 	*x = AgentCommand_SendInput{}
-	mi := &file_tether_v1_tether_proto_msgTypes[21]
+	mi := &file_tether_v1_tether_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2202,7 +2265,7 @@ func (x *AgentCommand_SendInput) String() string {
 func (*AgentCommand_SendInput) ProtoMessage() {}
 
 func (x *AgentCommand_SendInput) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[21]
+	mi := &file_tether_v1_tether_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2215,7 +2278,7 @@ func (x *AgentCommand_SendInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand_SendInput.ProtoReflect.Descriptor instead.
 func (*AgentCommand_SendInput) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 1}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20, 1}
 }
 
 func (x *AgentCommand_SendInput) GetSession() string {
@@ -2241,7 +2304,7 @@ type AgentCommand_Interrupt struct {
 
 func (x *AgentCommand_Interrupt) Reset() {
 	*x = AgentCommand_Interrupt{}
-	mi := &file_tether_v1_tether_proto_msgTypes[22]
+	mi := &file_tether_v1_tether_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2253,7 +2316,7 @@ func (x *AgentCommand_Interrupt) String() string {
 func (*AgentCommand_Interrupt) ProtoMessage() {}
 
 func (x *AgentCommand_Interrupt) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[22]
+	mi := &file_tether_v1_tether_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2266,7 +2329,7 @@ func (x *AgentCommand_Interrupt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand_Interrupt.ProtoReflect.Descriptor instead.
 func (*AgentCommand_Interrupt) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 2}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20, 2}
 }
 
 func (x *AgentCommand_Interrupt) GetSession() string {
@@ -2286,7 +2349,7 @@ type AgentCommand_Mirror struct {
 
 func (x *AgentCommand_Mirror) Reset() {
 	*x = AgentCommand_Mirror{}
-	mi := &file_tether_v1_tether_proto_msgTypes[23]
+	mi := &file_tether_v1_tether_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2298,7 +2361,7 @@ func (x *AgentCommand_Mirror) String() string {
 func (*AgentCommand_Mirror) ProtoMessage() {}
 
 func (x *AgentCommand_Mirror) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[23]
+	mi := &file_tether_v1_tether_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2311,7 +2374,7 @@ func (x *AgentCommand_Mirror) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand_Mirror.ProtoReflect.Descriptor instead.
 func (*AgentCommand_Mirror) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 3}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20, 3}
 }
 
 func (x *AgentCommand_Mirror) GetSession() string {
@@ -2337,7 +2400,7 @@ type AgentCommand_StopMirror struct {
 
 func (x *AgentCommand_StopMirror) Reset() {
 	*x = AgentCommand_StopMirror{}
-	mi := &file_tether_v1_tether_proto_msgTypes[24]
+	mi := &file_tether_v1_tether_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2349,7 +2412,7 @@ func (x *AgentCommand_StopMirror) String() string {
 func (*AgentCommand_StopMirror) ProtoMessage() {}
 
 func (x *AgentCommand_StopMirror) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_tether_proto_msgTypes[24]
+	mi := &file_tether_v1_tether_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2362,7 +2425,7 @@ func (x *AgentCommand_StopMirror) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCommand_StopMirror.ProtoReflect.Descriptor instead.
 func (*AgentCommand_StopMirror) Descriptor() ([]byte, []int) {
-	return file_tether_v1_tether_proto_rawDescGZIP(), []int{19, 4}
+	return file_tether_v1_tether_proto_rawDescGZIP(), []int{20, 4}
 }
 
 func (x *AgentCommand_StopMirror) GetSession() string {
@@ -2442,7 +2505,11 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x0eattach_command\x18\x11 \x01(\tR\rattachCommand\"Y\n" +
 	"\x0eTimelineUpdate\x12\x18\n" +
 	"\asession\x18\x01 \x01(\tR\asession\x12-\n" +
-	"\x05items\x18\x02 \x03(\v2\x17.tether.v1.TimelineItemR\x05items\"\x85\x03\n" +
+	"\x05items\x18\x02 \x03(\v2\x17.tether.v1.TimelineItemR\x05items\"i\n" +
+	"\fTimelinePage\x12\x18\n" +
+	"\asession\x18\x01 \x01(\tR\asession\x12-\n" +
+	"\x05items\x18\x02 \x03(\v2\x17.tether.v1.TimelineItemR\x05items\x12\x10\n" +
+	"\x03seq\x18\x03 \x01(\x04R\x03seq\"\x85\x03\n" +
 	"\x0fApprovalRequest\x12\x1f\n" +
 	"\vapproval_id\x18\x01 \x01(\tR\n" +
 	"approvalId\x12\x18\n" +
@@ -2584,7 +2651,7 @@ func file_tether_v1_tether_proto_rawDescGZIP() []byte {
 }
 
 var file_tether_v1_tether_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_tether_v1_tether_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_tether_v1_tether_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_tether_v1_tether_proto_goTypes = []any{
 	(SessionState)(0),               // 0: tether.v1.SessionState
 	(SessionHost)(0),                // 1: tether.v1.SessionHost
@@ -2595,75 +2662,77 @@ var file_tether_v1_tether_proto_goTypes = []any{
 	(*NodeStatus)(nil),              // 6: tether.v1.NodeStatus
 	(*SessionInfo)(nil),             // 7: tether.v1.SessionInfo
 	(*TimelineUpdate)(nil),          // 8: tether.v1.TimelineUpdate
-	(*ApprovalRequest)(nil),         // 9: tether.v1.ApprovalRequest
-	(*ApprovalDecision)(nil),        // 10: tether.v1.ApprovalDecision
-	(*ApprovalResolved)(nil),        // 11: tether.v1.ApprovalResolved
-	(*ClientHello)(nil),             // 12: tether.v1.ClientHello
-	(*Subscribe)(nil),               // 13: tether.v1.Subscribe
-	(*Unsubscribe)(nil),             // 14: tether.v1.Unsubscribe
-	(*CreateSession)(nil),           // 15: tether.v1.CreateSession
-	(*SendMessage)(nil),             // 16: tether.v1.SendMessage
-	(*InterruptSession)(nil),        // 17: tether.v1.InterruptSession
-	(*Welcome)(nil),                 // 18: tether.v1.Welcome
-	(*Ack)(nil),                     // 19: tether.v1.Ack
-	(*Error)(nil),                   // 20: tether.v1.Error
-	(*AgentHello)(nil),              // 21: tether.v1.AgentHello
-	(*SessionIndex)(nil),            // 22: tether.v1.SessionIndex
-	(*RawEvents)(nil),               // 23: tether.v1.RawEvents
-	(*AgentCommand)(nil),            // 24: tether.v1.AgentCommand
-	(*AgentCommand_StartRun)(nil),   // 25: tether.v1.AgentCommand.StartRun
-	(*AgentCommand_SendInput)(nil),  // 26: tether.v1.AgentCommand.SendInput
-	(*AgentCommand_Interrupt)(nil),  // 27: tether.v1.AgentCommand.Interrupt
-	(*AgentCommand_Mirror)(nil),     // 28: tether.v1.AgentCommand.Mirror
-	(*AgentCommand_StopMirror)(nil), // 29: tether.v1.AgentCommand.StopMirror
-	(*Todo)(nil),                    // 30: tether.v1.Todo
-	(*TimelineItem)(nil),            // 31: tether.v1.TimelineItem
-	(*ToolCard)(nil),                // 32: tether.v1.ToolCard
+	(*TimelinePage)(nil),            // 9: tether.v1.TimelinePage
+	(*ApprovalRequest)(nil),         // 10: tether.v1.ApprovalRequest
+	(*ApprovalDecision)(nil),        // 11: tether.v1.ApprovalDecision
+	(*ApprovalResolved)(nil),        // 12: tether.v1.ApprovalResolved
+	(*ClientHello)(nil),             // 13: tether.v1.ClientHello
+	(*Subscribe)(nil),               // 14: tether.v1.Subscribe
+	(*Unsubscribe)(nil),             // 15: tether.v1.Unsubscribe
+	(*CreateSession)(nil),           // 16: tether.v1.CreateSession
+	(*SendMessage)(nil),             // 17: tether.v1.SendMessage
+	(*InterruptSession)(nil),        // 18: tether.v1.InterruptSession
+	(*Welcome)(nil),                 // 19: tether.v1.Welcome
+	(*Ack)(nil),                     // 20: tether.v1.Ack
+	(*Error)(nil),                   // 21: tether.v1.Error
+	(*AgentHello)(nil),              // 22: tether.v1.AgentHello
+	(*SessionIndex)(nil),            // 23: tether.v1.SessionIndex
+	(*RawEvents)(nil),               // 24: tether.v1.RawEvents
+	(*AgentCommand)(nil),            // 25: tether.v1.AgentCommand
+	(*AgentCommand_StartRun)(nil),   // 26: tether.v1.AgentCommand.StartRun
+	(*AgentCommand_SendInput)(nil),  // 27: tether.v1.AgentCommand.SendInput
+	(*AgentCommand_Interrupt)(nil),  // 28: tether.v1.AgentCommand.Interrupt
+	(*AgentCommand_Mirror)(nil),     // 29: tether.v1.AgentCommand.Mirror
+	(*AgentCommand_StopMirror)(nil), // 30: tether.v1.AgentCommand.StopMirror
+	(*Todo)(nil),                    // 31: tether.v1.Todo
+	(*TimelineItem)(nil),            // 32: tether.v1.TimelineItem
+	(*ToolCard)(nil),                // 33: tether.v1.ToolCard
 }
 var file_tether_v1_tether_proto_depIdxs = []int32{
-	12, // 0: tether.v1.Frame.client_hello:type_name -> tether.v1.ClientHello
-	13, // 1: tether.v1.Frame.subscribe:type_name -> tether.v1.Subscribe
-	14, // 2: tether.v1.Frame.unsubscribe:type_name -> tether.v1.Unsubscribe
-	15, // 3: tether.v1.Frame.create_session:type_name -> tether.v1.CreateSession
-	16, // 4: tether.v1.Frame.send_message:type_name -> tether.v1.SendMessage
-	17, // 5: tether.v1.Frame.interrupt_session:type_name -> tether.v1.InterruptSession
-	10, // 6: tether.v1.Frame.approval_decision:type_name -> tether.v1.ApprovalDecision
-	18, // 7: tether.v1.Frame.welcome:type_name -> tether.v1.Welcome
-	19, // 8: tether.v1.Frame.ack:type_name -> tether.v1.Ack
-	20, // 9: tether.v1.Frame.error:type_name -> tether.v1.Error
+	13, // 0: tether.v1.Frame.client_hello:type_name -> tether.v1.ClientHello
+	14, // 1: tether.v1.Frame.subscribe:type_name -> tether.v1.Subscribe
+	15, // 2: tether.v1.Frame.unsubscribe:type_name -> tether.v1.Unsubscribe
+	16, // 3: tether.v1.Frame.create_session:type_name -> tether.v1.CreateSession
+	17, // 4: tether.v1.Frame.send_message:type_name -> tether.v1.SendMessage
+	18, // 5: tether.v1.Frame.interrupt_session:type_name -> tether.v1.InterruptSession
+	11, // 6: tether.v1.Frame.approval_decision:type_name -> tether.v1.ApprovalDecision
+	19, // 7: tether.v1.Frame.welcome:type_name -> tether.v1.Welcome
+	20, // 8: tether.v1.Frame.ack:type_name -> tether.v1.Ack
+	21, // 9: tether.v1.Frame.error:type_name -> tether.v1.Error
 	6,  // 10: tether.v1.Frame.node_status:type_name -> tether.v1.NodeStatus
 	7,  // 11: tether.v1.Frame.session_info:type_name -> tether.v1.SessionInfo
 	8,  // 12: tether.v1.Frame.timeline:type_name -> tether.v1.TimelineUpdate
-	9,  // 13: tether.v1.Frame.approval_requested:type_name -> tether.v1.ApprovalRequest
-	11, // 14: tether.v1.Frame.approval_resolved:type_name -> tether.v1.ApprovalResolved
-	21, // 15: tether.v1.Frame.agent_hello:type_name -> tether.v1.AgentHello
-	22, // 16: tether.v1.Frame.session_index:type_name -> tether.v1.SessionIndex
-	23, // 17: tether.v1.Frame.raw_events:type_name -> tether.v1.RawEvents
-	24, // 18: tether.v1.Frame.agent_command:type_name -> tether.v1.AgentCommand
+	10, // 13: tether.v1.Frame.approval_requested:type_name -> tether.v1.ApprovalRequest
+	12, // 14: tether.v1.Frame.approval_resolved:type_name -> tether.v1.ApprovalResolved
+	22, // 15: tether.v1.Frame.agent_hello:type_name -> tether.v1.AgentHello
+	23, // 16: tether.v1.Frame.session_index:type_name -> tether.v1.SessionIndex
+	24, // 17: tether.v1.Frame.raw_events:type_name -> tether.v1.RawEvents
+	25, // 18: tether.v1.Frame.agent_command:type_name -> tether.v1.AgentCommand
 	0,  // 19: tether.v1.SessionInfo.state:type_name -> tether.v1.SessionState
-	30, // 20: tether.v1.SessionInfo.todos:type_name -> tether.v1.Todo
+	31, // 20: tether.v1.SessionInfo.todos:type_name -> tether.v1.Todo
 	1,  // 21: tether.v1.SessionInfo.host:type_name -> tether.v1.SessionHost
-	31, // 22: tether.v1.TimelineUpdate.items:type_name -> tether.v1.TimelineItem
-	32, // 23: tether.v1.ApprovalRequest.preview:type_name -> tether.v1.ToolCard
-	3,  // 24: tether.v1.ApprovalRequest.kind:type_name -> tether.v1.ApprovalRequest.Kind
-	2,  // 25: tether.v1.ApprovalDecision.decision:type_name -> tether.v1.Decision
-	2,  // 26: tether.v1.ApprovalResolved.decision:type_name -> tether.v1.Decision
-	6,  // 27: tether.v1.Welcome.nodes:type_name -> tether.v1.NodeStatus
-	7,  // 28: tether.v1.Welcome.sessions:type_name -> tether.v1.SessionInfo
-	9,  // 29: tether.v1.Welcome.pending_approvals:type_name -> tether.v1.ApprovalRequest
-	6,  // 30: tether.v1.AgentHello.status:type_name -> tether.v1.NodeStatus
-	7,  // 31: tether.v1.SessionIndex.sessions:type_name -> tether.v1.SessionInfo
-	4,  // 32: tether.v1.RawEvents.source:type_name -> tether.v1.RawEvents.Source
-	25, // 33: tether.v1.AgentCommand.start:type_name -> tether.v1.AgentCommand.StartRun
-	26, // 34: tether.v1.AgentCommand.send:type_name -> tether.v1.AgentCommand.SendInput
-	27, // 35: tether.v1.AgentCommand.interrupt:type_name -> tether.v1.AgentCommand.Interrupt
-	28, // 36: tether.v1.AgentCommand.mirror:type_name -> tether.v1.AgentCommand.Mirror
-	29, // 37: tether.v1.AgentCommand.stop_mirror:type_name -> tether.v1.AgentCommand.StopMirror
-	38, // [38:38] is the sub-list for method output_type
-	38, // [38:38] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	32, // 22: tether.v1.TimelineUpdate.items:type_name -> tether.v1.TimelineItem
+	32, // 23: tether.v1.TimelinePage.items:type_name -> tether.v1.TimelineItem
+	33, // 24: tether.v1.ApprovalRequest.preview:type_name -> tether.v1.ToolCard
+	3,  // 25: tether.v1.ApprovalRequest.kind:type_name -> tether.v1.ApprovalRequest.Kind
+	2,  // 26: tether.v1.ApprovalDecision.decision:type_name -> tether.v1.Decision
+	2,  // 27: tether.v1.ApprovalResolved.decision:type_name -> tether.v1.Decision
+	6,  // 28: tether.v1.Welcome.nodes:type_name -> tether.v1.NodeStatus
+	7,  // 29: tether.v1.Welcome.sessions:type_name -> tether.v1.SessionInfo
+	10, // 30: tether.v1.Welcome.pending_approvals:type_name -> tether.v1.ApprovalRequest
+	6,  // 31: tether.v1.AgentHello.status:type_name -> tether.v1.NodeStatus
+	7,  // 32: tether.v1.SessionIndex.sessions:type_name -> tether.v1.SessionInfo
+	4,  // 33: tether.v1.RawEvents.source:type_name -> tether.v1.RawEvents.Source
+	26, // 34: tether.v1.AgentCommand.start:type_name -> tether.v1.AgentCommand.StartRun
+	27, // 35: tether.v1.AgentCommand.send:type_name -> tether.v1.AgentCommand.SendInput
+	28, // 36: tether.v1.AgentCommand.interrupt:type_name -> tether.v1.AgentCommand.Interrupt
+	29, // 37: tether.v1.AgentCommand.mirror:type_name -> tether.v1.AgentCommand.Mirror
+	30, // 38: tether.v1.AgentCommand.stop_mirror:type_name -> tether.v1.AgentCommand.StopMirror
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_tether_v1_tether_proto_init() }
@@ -2693,7 +2762,7 @@ func file_tether_v1_tether_proto_init() {
 		(*Frame_RawEvents)(nil),
 		(*Frame_AgentCommand)(nil),
 	}
-	file_tether_v1_tether_proto_msgTypes[19].OneofWrappers = []any{
+	file_tether_v1_tether_proto_msgTypes[20].OneofWrappers = []any{
 		(*AgentCommand_Start)(nil),
 		(*AgentCommand_Send)(nil),
 		(*AgentCommand_Interrupt_)(nil),
@@ -2706,7 +2775,7 @@ func file_tether_v1_tether_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tether_v1_tether_proto_rawDesc), len(file_tether_v1_tether_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   25,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

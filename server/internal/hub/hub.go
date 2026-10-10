@@ -111,6 +111,7 @@ func live(s v1.SessionState) bool {
 func (h *Hub) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.serveWS)
+	h.routes(mux)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	return mux
 }
@@ -169,8 +170,8 @@ func (h *Hub) authorized(token string) bool {
 
 func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 	h.log.Warn("rejected connection", "remote", r.RemoteAddr)
-	conn.Send(errFrame("", "unauthorized", "bad token"))
-	time.Sleep(200 * time.Millisecond)
+	// The write queue only runs once a connection is accepted, so write directly.
+	_ = conn.WriteNow(r.Context(), errFrame("", errUnauthorized.Code, errUnauthorized.Message))
 	conn.Close(errors.New("unauthorized"))
 }
 
@@ -217,36 +218,38 @@ func (h *Hub) welcome() *v1.Welcome {
 func (h *Hub) onClient(c *client, f *v1.Frame) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	var session string
+	var err *opError
 	switch b := f.Body.(type) {
 	case *v1.Frame_Subscribe:
 		h.subscribe(c, f.Id, b.Subscribe)
+		return
 	case *v1.Frame_Unsubscribe:
 		if set := h.subs[b.Unsubscribe.Session]; set != nil {
 			delete(set, c)
 			h.maybeStopMirror(b.Unsubscribe.Session)
 		}
-		ack(c, f.Id, "")
 	case *v1.Frame_CreateSession:
-		h.createSession(c, f.Id, b.CreateSession)
+		session, err = h.createSession(b.CreateSession)
 	case *v1.Frame_SendMessage:
-		h.sendMessage(c, f.Id, b.SendMessage)
+		session, err = h.sendMessage(b.SendMessage)
 	case *v1.Frame_InterruptSession:
-		info, agent := h.target(c, f.Id, b.InterruptSession.Session)
-		if agent == nil {
-			return
-		}
-		agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Interrupt_{Interrupt: &v1.AgentCommand_Interrupt{Session: info.Id}}}))
-		ack(c, f.Id, info.Id)
+		session, err = h.interrupt(b.InterruptSession.Session)
 	case *v1.Frame_ApprovalDecision:
-		h.decide(c, f.Id, b.ApprovalDecision)
+		session, err = h.decide(c.name, b.ApprovalDecision)
 	default:
-		c.conn.Send(errFrame(f.Id, "unsupported", "unsupported frame"))
+		err = errUnsupported
 	}
+	if err != nil {
+		c.conn.Send(errFrame(f.Id, err.Code, err.Message))
+		return
+	}
+	ack(c, f.Id, session)
 }
 
 func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
 	if h.sessions[s.Session] == nil {
-		c.conn.Send(errFrame(id, "not_found", "unknown session"))
+		c.conn.Send(errFrame(id, errNotFound.Code, errNotFound.Message))
 		return
 	}
 	if h.subs[s.Session] == nil {
@@ -271,15 +274,16 @@ func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
 	h.ensureMirror(s.Session)
 }
 
-func (h *Hub) createSession(c *client, id string, cs *v1.CreateSession) {
+// The operations below are shared by the WebSocket and REST APIs. They
+// expect h.mu to be held and return the affected session id.
+
+func (h *Hub) createSession(cs *v1.CreateSession) (string, *opError) {
 	agent := h.agents[cs.Node]
 	if agent == nil {
-		c.conn.Send(errFrame(id, "node_offline", "node is not connected"))
-		return
+		return "", errNodeOffline
 	}
 	if strings.TrimSpace(cs.Prompt) == "" {
-		c.conn.Send(errFrame(id, "invalid", "prompt is empty"))
-		return
+		return "", invalid("prompt is empty")
 	}
 	now := time.Now().UnixMilli()
 	info := &v1.SessionInfo{
@@ -290,17 +294,16 @@ func (h *Hub) createSession(c *client, id string, cs *v1.CreateSession) {
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 		Session: info.Id, Cwd: cs.Cwd, Prompt: cs.Prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name,
 	}}}))
-	ack(c, id, info.Id)
+	return info.Id, nil
 }
 
-func (h *Hub) sendMessage(c *client, id string, m *v1.SendMessage) {
-	info, agent := h.target(c, id, m.Session)
-	if agent == nil {
-		return
+func (h *Hub) sendMessage(m *v1.SendMessage) (string, *opError) {
+	info, agent, err := h.target(m.Session)
+	if err != nil {
+		return "", err
 	}
 	if strings.TrimSpace(m.Text) == "" {
-		c.conn.Send(errFrame(id, "invalid", "message is empty"))
-		return
+		return "", invalid("message is empty")
 	}
 	if m.Fork {
 		now := time.Now().UnixMilli()
@@ -312,49 +315,52 @@ func (h *Hub) sendMessage(c *client, id string, m *v1.SendMessage) {
 		agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true,
 		}}}))
-		ack(c, id, fork.Id)
-		return
+		return fork.Id, nil
 	}
 	if info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE ||
 		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE {
-		c.conn.Send(errFrame(id, "terminal_active", "session is open in a terminal; fork it instead"))
-		return
+		return "", errTerminalActive
 	}
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: m.Text}}}))
-	ack(c, id, info.Id)
+	return info.Id, nil
 }
 
-func (h *Hub) target(c *client, id, session string) (*v1.SessionInfo, *wire.Conn) {
+func (h *Hub) interrupt(session string) (string, *opError) {
+	info, agent, err := h.target(session)
+	if err != nil {
+		return "", err
+	}
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Interrupt_{Interrupt: &v1.AgentCommand_Interrupt{Session: info.Id}}}))
+	return info.Id, nil
+}
+
+func (h *Hub) target(session string) (*v1.SessionInfo, *wire.Conn, *opError) {
 	info := h.sessions[session]
 	if info == nil {
-		c.conn.Send(errFrame(id, "not_found", "unknown session"))
-		return nil, nil
+		return nil, nil, errNotFound
 	}
 	agent := h.agents[info.Node]
 	if agent == nil {
-		c.conn.Send(errFrame(id, "node_offline", "node is not connected"))
-		return nil, nil
+		return nil, nil, errNodeOffline
 	}
-	return info, agent
+	return info, agent, nil
 }
 
-func (h *Hub) decide(c *client, id string, d *v1.ApprovalDecision) {
+func (h *Hub) decide(by string, d *v1.ApprovalDecision) (string, *opError) {
 	a := h.approvals[d.ApprovalId]
 	if a == nil {
-		c.conn.Send(errFrame(id, "not_found", "approval already resolved"))
-		return
+		return "", &opError{Code: "not_found", Message: "approval already resolved", Status: http.StatusNotFound}
 	}
 	agent := h.agents[a.Node]
 	if agent == nil {
-		c.conn.Send(errFrame(id, "node_offline", "node is not connected"))
-		return
+		return "", errNodeOffline
 	}
 	agent.Send(&v1.Frame{Body: &v1.Frame_ApprovalDecision{ApprovalDecision: d}})
 	delete(h.approvals, d.ApprovalId)
 	h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalResolved{ApprovalResolved: &v1.ApprovalResolved{
-		ApprovalId: a.ApprovalId, Session: a.Session, Decision: d.Decision, By: c.name,
+		ApprovalId: a.ApprovalId, Session: a.Session, Decision: d.Decision, By: by,
 	}}})
-	ack(c, id, a.Session)
+	return a.Session, nil
 }
 
 // ---- agents ----

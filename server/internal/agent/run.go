@@ -57,6 +57,7 @@ func (a *Agent) startRun(o startOpts) (*run, error) {
 
 	cmd := exec.Command(a.cfg.Claude, args...)
 	cmd.Dir = o.cwd
+	hideWindow(cmd)
 	r := &run{a: a, id: o.session, cmd: cmd, approvals: map[string]json.RawMessage{}, lastActive: time.Now()}
 	cmd.Stderr = &r.stderr
 	stdin, err := cmd.StdinPipe()
