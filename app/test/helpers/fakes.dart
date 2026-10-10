@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:tether/core/result.dart';
+import 'package:tether/data/datasources/hub_cache.dart';
 import 'package:tether/data/datasources/hub_endpoint.dart';
 import 'package:tether/data/datasources/hub_socket.dart';
 import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/repositories/repositories.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
+import 'package:tether/gen/tether/v1/tether.pb.dart' as pb;
 
 /// A hub repository driven by the test.
 class FakeHubRepository implements HubRepository {
@@ -20,6 +22,7 @@ class FakeHubRepository implements HubRepository {
   final created = <NewSessionRequest>[];
   final decided = <(String, bool)>[];
   final interrupted = <String>[];
+  final ended = <String>[];
 
   Result<String> Function(String session, bool fork)? onSend;
   Result<String>? createResult;
@@ -70,6 +73,12 @@ class FakeHubRepository implements HubRepository {
   @override
   Future<Result<void>> interrupt(String sessionId) async {
     interrupted.add(sessionId);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> endSession(String sessionId) async {
+    ended.add(sessionId);
     return const Ok(null);
   }
 
@@ -148,3 +157,31 @@ HubSnapshot snapshotWith(List<Session> sessions, {List<Approval> approvals = con
       sessions: {for (final s in sessions) s.id: s},
       approvals: {for (final a in approvals) a.id: a},
     );
+
+/// An on-device cache that lives in memory.
+class MemoryHubCache implements HubCache {
+  final timelines = <String, pb.TimelinePage>{};
+  pb.Welcome? state;
+
+  @override
+  Future<pb.TimelinePage?> readTimeline(String session) async => timelines[session]?.deepCopy();
+
+  @override
+  Future<void> writeTimeline(pb.TimelinePage page) async => timelines[page.session] = page.deepCopy();
+
+  @override
+  Future<pb.Welcome?> readState() async => state?.deepCopy();
+
+  @override
+  Future<void> writeState(pb.Welcome s) async => state = s.deepCopy();
+
+  @override
+  Future<void> clear() async {
+    timelines.clear();
+    state = null;
+  }
+}
+
+extension SessionCopy on Session {
+  Session copyWithId(String id) => Session(id: id, node: node, title: 'Session $id', state: state, host: host, cwd: cwd, updated: updated);
+}

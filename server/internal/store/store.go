@@ -176,6 +176,19 @@ func (s *Store) ItemsAfter(session string, after uint64) ([]*v1.TimelineItem, ui
 	return out, maxSeq, rows.Err()
 }
 
+// LatestSeq is the highest seq assigned in a session so far.
+func (s *Store) LatestSeq(session string) (uint64, error) {
+	var next uint64
+	err := s.db.QueryRow(`SELECT next_seq FROM sessions WHERE id = ?`, session).Scan(&next)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return next - 1, nil
+}
+
 func (s *Store) Item(session, itemID string) (*v1.TimelineItem, error) {
 	var b []byte
 	err := s.db.QueryRow(`SELECT payload FROM items WHERE session = ? AND item_id = ?`, session, itemID).Scan(&b)

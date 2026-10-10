@@ -24,6 +24,7 @@ message Frame {
     SendMessage send_message = 14;
     InterruptSession interrupt_session = 15;
     ApprovalDecision approval_decision = 16;
+    StopSession stop_session = 17;
 
     // Hub -> client
     Welcome welcome = 30;
@@ -110,6 +111,8 @@ message SessionInfo {
   SessionHost host = 16;
   // Command to open the live session in a terminal on its node, if any.
   string attach_command = 17;
+  // A terminal session the agent can type into anyway (Windows consoles).
+  bool terminal_input = 18;
 }
 
 message TimelineUpdate {
@@ -122,7 +125,8 @@ message TimelinePage {
   string session = 1;
   // Ordered by ord.
   repeated TimelineItem items = 2;
-  // Subscribe with this as after_seq to receive only later changes.
+  // The session's latest seq. Subscribe with it as after_seq to receive
+  // only later changes; if it is lower than a cached seq, the hub was reset.
   uint64 seq = 3;
 }
 
@@ -199,7 +203,14 @@ message SendMessage {
   bool fork = 3;
 }
 
+// Stops the current turn; the session stays open.
 message InterruptSession {
+  string session = 1;
+}
+
+// Ends a session the agent hosts (tmux or headless). Sessions open in your
+// own terminal can only be interrupted, not ended.
+message StopSession {
   string session = 1;
 }
 
@@ -258,6 +269,7 @@ message AgentCommand {
     Interrupt interrupt = 3;
     Mirror mirror = 4;
     StopMirror stop_mirror = 5;
+    Stop stop = 6;
   }
 
   message StartRun {
@@ -288,6 +300,10 @@ message AgentCommand {
   }
 
   message StopMirror {
+    string session = 1;
+  }
+
+  message Stop {
     string session = 1;
   }
 }

@@ -8,27 +8,46 @@ import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../../gen/tether/v1/render.pb.dart' as rpb;
 import '../../gen/tether/v1/tether.pb.dart' as pb;
+import '../datasources/hub_cache.dart';
 import '../datasources/hub_endpoint.dart';
 import '../datasources/hub_rest_api.dart';
 import '../datasources/hub_socket.dart';
 import '../mappers/hub_mappers.dart';
 import 'failure_mapper.dart';
 
-/// Combines the REST API (commands, history) with the WebSocket (live
-/// pushes) into one consistent view of the hub.
+/// Combines the REST API (commands, history), the WebSocket (live pushes)
+/// and the on-device cache into one consistent view of the hub.
 class HubRepositoryImpl implements HubRepository {
-  HubRepositoryImpl({required this._api, required this._socket, this.keepTimeline = const Duration(seconds: 30)}) {
+  HubRepositoryImpl({
+    required this._api,
+    required this._socket,
+    required this._cache,
+    this.keepTimeline = const Duration(seconds: 30),
+    this.keepBackground = const Duration(minutes: 2),
+  }) {
     _socketSub = _socket.events.listen(_onSocket);
   }
 
   final HubRestApi _api;
   final HubSocket _socket;
+  final HubCache _cache;
   final Duration keepTimeline;
+
+  /// How long a session that stopped working stays subscribed in the
+  /// background.
+  final Duration keepBackground;
   late final StreamSubscription<SocketEvent> _socketSub;
 
   final _hub = StreamController<HubSnapshot>.broadcast();
   final _timelines = <String, _Timeline>{};
+  final _background = <String, StreamSubscription<TimelineSnapshot>>{};
+  final _backgroundDrop = <String, Timer>{};
   HubSnapshot _snap = const HubSnapshot();
+
+  // Wire copies of the state, kept for the on-device cache.
+  final _wireNodes = <String, pb.NodeStatus>{};
+  final _wireSessions = <String, pb.SessionInfo>{};
+  Timer? _saveState;
 
   @override
   HubSnapshot get current => _snap;
@@ -38,7 +57,31 @@ class HubRepositoryImpl implements HubRepository {
     final endpoint = HubEndpoint(connection.url, connection.token);
     _api.endpoint = endpoint;
     _emit(_snap.copyWith(status: ConnectionStatus.connecting, endpoint: connection.url, lastError: () => null));
+    if (_snap.sessions.isEmpty) _restoreState();
     _socket.connect(endpoint);
+  }
+
+  /// Shows the last known devices and sessions until the hub answers.
+  Future<void> _restoreState() async {
+    final cached = await _cache.readState();
+    if (cached == null || _snap.connected || _snap.sessions.isNotEmpty) return;
+    for (final n in cached.nodes) {
+      _wireNodes[n.node] = n..online = false;
+    }
+    for (final s in cached.sessions) {
+      _wireSessions[s.id] = s;
+    }
+    _emit(_snap.copyWith(
+      nodes: {for (final n in _wireNodes.values) n.node: nodeFromPb(n)},
+      sessions: {for (final s in _wireSessions.values) s.id: sessionFromPb(s)},
+    ));
+  }
+
+  void _scheduleStateSave() {
+    _saveState?.cancel();
+    _saveState = Timer(const Duration(seconds: 2), () {
+      _cache.writeState(pb.Welcome(nodes: _wireNodes.values, sessions: _wireSessions.values)).catchError((Object _) {});
+    });
   }
 
   @override
@@ -80,6 +123,12 @@ class HubRepositoryImpl implements HubRepository {
     switch (f.whichBody()) {
       case pb.Frame_Body.welcome:
         final w = f.welcome;
+        _wireNodes
+          ..clear()
+          ..addEntries(w.nodes.map((n) => MapEntry(n.node, n)));
+        _wireSessions
+          ..clear()
+          ..addEntries(w.sessions.map((s) => MapEntry(s.id, s)));
         _emit(_snap.copyWith(
           status: ConnectionStatus.connected,
           hubVersion: w.hubVersion,
@@ -88,13 +137,20 @@ class HubRepositoryImpl implements HubRepository {
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
         ));
+        _scheduleStateSave();
         for (final t in _timelines.values) {
           if (t.refs > 0) t.started ? _subscribe(t) : _start(t);
         }
+        _syncBackground();
       case pb.Frame_Body.nodeStatus:
+        _wireNodes[f.nodeStatus.node] = f.nodeStatus;
         _emit(_snap.copyWith(nodes: {..._snap.nodes, f.nodeStatus.node: nodeFromPb(f.nodeStatus)}));
+        _scheduleStateSave();
       case pb.Frame_Body.sessionInfo:
+        _wireSessions[f.sessionInfo.id] = f.sessionInfo;
         _emit(_snap.copyWith(sessions: {..._snap.sessions, f.sessionInfo.id: sessionFromPb(f.sessionInfo)}));
+        _scheduleStateSave();
+        _syncBackground();
       case pb.Frame_Body.approvalRequested:
         final a = approvalFromPb(f.approvalRequested);
         _emit(_snap.copyWith(approvals: {..._snap.approvals, a.id: a}));
@@ -121,14 +177,39 @@ class HubRepositoryImpl implements HubRepository {
         lastSeen: n.lastSeen,
       );
 
+  /// Keeps sessions that are working subscribed even when no screen shows
+  /// them, so their chat is current the moment you open one.
+  void _syncBackground() {
+    for (final s in _snap.sessions.values) {
+      if (!s.isBusy) continue;
+      _backgroundDrop.remove(s.id)?.cancel();
+      _background[s.id] ??= watchTimeline(s.id).listen((_) {});
+    }
+    for (final id in _background.keys.toList()) {
+      final s = _snap.sessions[id];
+      if (s != null && s.isBusy) continue;
+      _backgroundDrop[id] ??= Timer(keepBackground, () {
+        _backgroundDrop.remove(id);
+        _background.remove(id)?.cancel();
+      });
+    }
+  }
+
+  /// Sessions currently followed in the background.
+  Set<String> get backgroundSessions => _background.keys.toSet();
+
   // ---- timelines ----
 
   @override
   Stream<TimelineSnapshot> watchTimeline(String sessionId) async* {
-    final t = _timelines.putIfAbsent(sessionId, () => _Timeline(sessionId));
+    final t = _timelines.putIfAbsent(sessionId, () => _Timeline(sessionId, _cache));
     t.refs++;
     t.drop?.cancel();
-    if (!t.started && _snap.connected) _start(t);
+    if (!t.started && _snap.connected) {
+      _start(t);
+    } else if (!t.cacheLoaded) {
+      _loadCache(t);
+    }
     try {
       yield t.snapshot;
       yield* t.changes;
@@ -146,11 +227,23 @@ class HubRepositoryImpl implements HubRepository {
     }
   }
 
-  /// Loads stored history over REST, then subscribes for live changes from
-  /// that point on.
+  Future<void> _loadCache(_Timeline t) async {
+    t.cacheLoaded = true;
+    final cached = await _cache.readTimeline(t.session);
+    if (cached != null && t.isEmpty) t.apply(cached.items, cached.seq, persist: false);
+  }
+
+  /// Shows cached history at once, fetches only what changed since over
+  /// REST, then subscribes for live changes from that point on.
   Future<void> _start(_Timeline t) async {
     t.started = true;
-    final page = await guard(() => _api.fetchTimeline(t.session));
+    if (!t.cacheLoaded) await _loadCache(t);
+    var page = await guard(() => _api.fetchTimeline(t.session, after: t.seq));
+    if (page case Ok(:final value) when value.seq < t.seq) {
+      // The hub's history is shorter than our cache: it was reset.
+      t.reset();
+      page = await guard(() => _api.fetchTimeline(t.session));
+    }
     switch (page) {
       case Ok(:final value):
         t.apply(value.items, value.seq);
@@ -188,6 +281,9 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<void>> interrupt(String sessionId) => _command(() => _api.interrupt(sessionId));
 
   @override
+  Future<Result<void>> endSession(String sessionId) => _command(() => _api.stop(sessionId));
+
+  @override
   Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {
     final r = await _command(() => _api.decide(approvalId, allow: allow, message: message));
     // Optimistic: the hub broadcasts the resolution, but don't wait for it.
@@ -202,6 +298,13 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   Future<void> dispose() async {
+    _saveState?.cancel();
+    for (final t in _backgroundDrop.values) {
+      t.cancel();
+    }
+    for (final s in _background.values) {
+      await s.cancel();
+    }
     await _socketSub.cancel();
     await _socket.close();
     for (final t in _timelines.values) {
@@ -212,18 +315,20 @@ class HubRepositoryImpl implements HubRepository {
 }
 
 class _Timeline {
-  _Timeline(this.session);
+  _Timeline(this.session, this._cache);
 
   final String session;
+  final HubCache _cache;
   final Map<String, rpb.TimelineItem> _items = {};
   final _controller = StreamController<TimelineSnapshot>.broadcast();
   Int64 seq = Int64.ZERO;
-  bool loading = true, started = false, subscribed = false;
+  bool loading = true, started = false, subscribed = false, cacheLoaded = false;
   int refs = 0, _version = 0;
-  Timer? drop, _flush;
+  Timer? drop, _flush, _persist;
   TimelineSnapshot? _cached;
 
   Stream<TimelineSnapshot> get changes => _controller.stream;
+  bool get isEmpty => _items.isEmpty;
 
   TimelineSnapshot get snapshot => _cached ??= TimelineSnapshot(
         sessionId: session,
@@ -232,7 +337,7 @@ class _Timeline {
         version: _version,
       );
 
-  void apply(List<rpb.TimelineItem> items, Int64 frameSeq, {bool endOfReplay = false}) {
+  void apply(List<rpb.TimelineItem> items, Int64 frameSeq, {bool endOfReplay = false, bool persist = true}) {
     for (final it in items) {
       _items[it.itemId] = it;
     }
@@ -245,11 +350,29 @@ class _Timeline {
       _flush = null;
       if (!_controller.isClosed) _controller.add(snapshot);
     });
+    if (persist && items.isNotEmpty) {
+      _persist?.cancel();
+      _persist = Timer(const Duration(seconds: 1), _save);
+    }
   }
+
+  void reset() {
+    _items.clear();
+    seq = Int64.ZERO;
+    _version++;
+    _cached = null;
+  }
+
+  void _save() =>
+      _cache.writeTimeline(pb.TimelinePage(session: session, items: _items.values, seq: seq)).catchError((Object _) {});
 
   void close() {
     drop?.cancel();
     _flush?.cancel();
+    if (_persist?.isActive ?? false) {
+      _persist!.cancel();
+      _save();
+    }
     _controller.close();
   }
 }

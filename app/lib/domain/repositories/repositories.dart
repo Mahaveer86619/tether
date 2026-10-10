@@ -26,7 +26,11 @@ abstract interface class HubRepository {
   /// new fork when [fork] is set.
   Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false});
 
+  /// Stops Claude's current turn; the session stays open.
   Future<Result<void>> interrupt(String sessionId);
+
+  /// Ends a session the agent hosts (tmux or headless).
+  Future<Result<void>> endSession(String sessionId);
 
   Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''});
 

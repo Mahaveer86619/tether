@@ -6,18 +6,19 @@
 @Tags(['live'])
 library;
 
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:tether/core/error/failures.dart';
 import 'package:tether/core/result.dart';
+import 'package:tether/data/datasources/hub_cache.dart';
 import 'package:tether/data/datasources/hub_rest_api.dart';
 import 'package:tether/data/datasources/hub_socket.dart';
 import 'package:tether/data/repositories/hub_repository_impl.dart';
 import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/usecases/usecases.dart';
+import 'package:tether/gen/tether/v1/tether.pb.dart' as pb;
 
 final env = Platform.environment;
 final hubUrl = env['TETHER_HUB'] ?? '';
@@ -31,6 +32,7 @@ class Client {
       : repo = HubRepositoryImpl(
           api: HubRestApi(http.Client(), clientName: name),
           socket: WebSocketHubSocket(clientName: name, platform: 'test'),
+          cache: _NoCache(),
         ) {
     repo.connect(HubConnection(url: hubUrl, token: token));
   }
@@ -120,6 +122,16 @@ void main() {
     expect(a.repo.current.sessions[fork]?.node, 'minipc');
   }, skip: skip, timeout: const Timeout(Duration(minutes: 4)));
 
+  test('B interrupts and then ends the tmux session', () async {
+    ok(await b.send(tmuxSession, 'Write the numbers 1 to 300 as words, one per line. No tools.'));
+    await b.hubWhere((h) => h.sessions[tmuxSession]?.state == SessionState.running);
+    ok(await b.repo.interrupt(tmuxSession));
+    await b.hubWhere((h) => h.sessions[tmuxSession]?.state == SessionState.ready, timeout: const Duration(seconds: 60));
+    ok(await EndSession(b.repo)(tmuxSession));
+    final h = await a.hubWhere((h) => h.sessions[tmuxSession]?.host == SessionHost.none, timeout: const Duration(seconds: 30));
+    expect(h.sessions[tmuxSession]!.state, SessionState.idle);
+  }, skip: skip, timeout: const Timeout(Duration(minutes: 3)));
+
   test('A starts a headless session on the laptop', () async {
     final id = ok(await a.create(NewSessionRequest(node: 'laptop', cwd: windowsCwd, model: 'haiku', prompt: 'Reply with exactly: pong-four')));
     final seenByB = b.replyContaining(id, 'pong-four');
@@ -129,11 +141,13 @@ void main() {
   }, skip: skip == null && windowsCwd.isEmpty ? 'set LIVE_WINDOWS_CWD' : skip, timeout: const Timeout(Duration(minutes: 4)));
 
   test("typing into a terminal you're using is refused, forking is offered", () async {
+    // Never sends to a terminal the agent can type into: those are your
+    // real sessions, and the message would really be typed there.
     final open = a.repo.current.sessions.values
-        .where((s) => s.node == 'laptop' && s.host == SessionHost.terminal && s.state != SessionState.idle)
+        .where((s) => s.host == SessionHost.terminal && s.state != SessionState.idle && !s.terminalInput)
         .firstOrNull;
     if (open == null) {
-      markTestSkipped('no open terminal session on the laptop right now');
+      markTestSkipped('no terminal session that refuses input is open right now');
       return;
     }
     final r = await a.send(open.id, 'hello from the app');
@@ -143,11 +157,25 @@ void main() {
   test('hub errors map to typed failures', () async {
     expect((await a.repo.sendMessage('no-such-session', 'x')).failureOrNull, isA<NotFoundFailure>());
     final bad = HubRestApi(http.Client(), clientName: 'bad');
-    final badRepo = HubRepositoryImpl(api: bad, socket: WebSocketHubSocket(clientName: 'bad', platform: 'test'));
+    final badRepo = HubRepositoryImpl(api: bad, socket: WebSocketHubSocket(clientName: 'bad', platform: 'test'), cache: _NoCache());
     badRepo.connect(HubConnection(url: hubUrl, token: 'wrong-token'));
     expect((await badRepo.interrupt('x')).failureOrNull, isA<UnauthorizedFailure>());
     final h = await badRepo.watchHub().firstWhere((h) => h.status == ConnectionStatus.unauthorized).timeout(const Duration(seconds: 15));
     expect(h.lastError, isNotNull);
     await badRepo.dispose();
   }, skip: skip);
+}
+
+/// The live tests check the hub, not the device cache.
+class _NoCache implements HubCache {
+  @override
+  Future<pb.TimelinePage?> readTimeline(String session) async => null;
+  @override
+  Future<void> writeTimeline(pb.TimelinePage page) async {}
+  @override
+  Future<pb.Welcome?> readState() async => null;
+  @override
+  Future<void> writeState(pb.Welcome state) async {}
+  @override
+  Future<void> clear() async {}
 }

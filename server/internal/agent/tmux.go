@@ -104,6 +104,11 @@ func (t *tmuxHost) keys(pane string, keys ...string) error {
 	return err
 }
 
+func (t *tmuxHost) killPane(pane string) error {
+	_, err := t.cmd("kill-pane", "-t", pane)
+	return err
+}
+
 func (t *tmuxHost) capture(pane string) string {
 	out, _ := t.cmd("capture-pane", "-p", "-t", pane)
 	return out

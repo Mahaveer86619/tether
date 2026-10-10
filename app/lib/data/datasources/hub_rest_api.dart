@@ -37,6 +37,8 @@ class HubRestApi {
 
   Future<void> interrupt(String session) => _post('/sessions/${Uri.encodeComponent(session)}/interrupt', null, pb.Ack());
 
+  Future<void> stop(String session) => _post('/sessions/${Uri.encodeComponent(session)}/stop', null, pb.Ack());
+
   Future<void> decide(String approvalId, {required bool allow, String message = ''}) => _post(
         '/approvals/${Uri.encodeComponent(approvalId)}',
         pb.ApprovalDecision(decision: allow ? pbe.Decision.DECISION_ALLOW : pbe.Decision.DECISION_DENY, message: message),

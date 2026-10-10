@@ -150,6 +150,61 @@ void main() {
       expect(repo.sent.single, ('t1', 'carry on', true));
     });
 
+    testWidgets('desktop: interrupt a working session, end it after confirming', (tester) async {
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.running)]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.text('Session s1').first);
+      await settle(tester);
+      expect(find.text('Claude is working'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('interrupt')));
+      await settle(tester);
+      expect(repo.interrupted, ['s1']);
+
+      await tester.tap(find.byTooltip('More'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('end-session')));
+      await settle(tester);
+      expect(find.text('End this session?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('confirm-end')));
+      await settle(tester);
+      expect(repo.ended, ['s1']);
+    });
+
+    testWidgets('desktop: a Windows terminal session can be typed into directly', (tester) async {
+      repo.emitHub(snapshotWith([
+        const Session(id: 'w1', node: 'laptop', title: 'Session w1', host: SessionHost.terminal, state: SessionState.ready, terminalInput: true),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.text('Session w1').first);
+      await settle(tester);
+      expect(find.textContaining('messages are typed there'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('composer')), 'from the app');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('send')));
+      await settle(tester);
+      expect(repo.sent.single, ('w1', 'from the app', false));
+    });
+
+    testWidgets('new messages animate in; history does not', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.text('Session s1').first);
+      await settle(tester);
+      repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'old', ord: Int64(1), user: rpb.UserText(text: 'history'))]);
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'old', ord: Int64(1), user: rpb.UserText(text: 'history')),
+        rpb.TimelineItem(itemId: 'new', ord: Int64(2), user: rpb.UserText(text: 'fresh')),
+      ], version: 2);
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.pump(const Duration(milliseconds: 10));
+      final fade = tester.widget<FadeTransition>(find.ancestor(of: find.text('fresh'), matching: find.byType(FadeTransition)).first);
+      expect(fade.opacity.value, lessThan(1));
+      final old = tester.widget<FadeTransition>(find.ancestor(of: find.text('history'), matching: find.byType(FadeTransition)).first);
+      expect(old.opacity.value, 1);
+      await settle(tester);
+    });
+
     testWidgets('phone: dashboard with devices and a pushed session page', (tester) async {
       await pumpApp(tester, const Size(400, 860));
       expect(find.byType(FloatingActionButton), findsOneWidget);

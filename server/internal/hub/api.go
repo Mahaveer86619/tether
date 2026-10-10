@@ -29,6 +29,7 @@ var (
 	errNodeOffline    = &opError{"node_offline", "node is not connected", http.StatusServiceUnavailable}
 	errTerminalActive = &opError{"terminal_active", "session is open in a terminal; fork it instead", http.StatusConflict}
 	errUnsupported    = &opError{"unsupported", "unsupported request", http.StatusBadRequest}
+	errTerminalOwned  = &opError{"terminal_active", "session is open in your terminal; interrupt it or close it there", http.StatusConflict}
 )
 
 func invalid(msg string) *opError { return &opError{"invalid", msg, http.StatusBadRequest} }
@@ -65,6 +66,9 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/sessions/{id}/interrupt", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return ackOf(h.interrupt(r.PathValue("id")))
 	}))
+	mux.HandleFunc("POST /api/v1/sessions/{id}/stop", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return ackOf(h.stop(r.PathValue("id")))
+	}))
 	mux.HandleFunc("POST /api/v1/approvals/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		d := &v1.ApprovalDecision{}
 		if err := decode(r, d); err != nil {
@@ -91,12 +95,18 @@ func (h *Hub) apiTimeline(r *http.Request) (proto.Message, *opError) {
 		}
 		after = v
 	}
-	items, seq, err := h.store.ItemsAfter(id, after)
+	items, _, err := h.store.ItemsAfter(id, after)
+	if err != nil {
+		return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
+	}
+	latest, err := h.store.LatestSeq(id)
 	if err != nil {
 		return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Ord < items[j].Ord })
-	return &v1.TimelinePage{Session: id, Items: items, Seq: max(seq, after)}, nil
+	// Seq is always the session's latest, so a client whose cached seq is
+	// higher knows the hub was reset and its cache is stale.
+	return &v1.TimelinePage{Session: id, Items: items, Seq: latest}, nil
 }
 
 // api wraps a handler with auth, locking and JSON encoding. Errors are

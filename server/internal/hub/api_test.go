@@ -113,6 +113,12 @@ func TestAPIStateAndTimeline(t *testing.T) {
 	if protojson.Unmarshal([]byte(body), &page) != nil || len(page.Items) != 0 || page.Seq != 2 {
 		t.Fatalf("after=2 should be empty with seq 2: %s", body)
 	}
+
+	_, body = call(t, srv, "GET", "/api/v1/sessions/s1/timeline?after=99", "secret", "")
+	page.Reset()
+	if protojson.Unmarshal([]byte(body), &page) != nil || page.Seq != 2 {
+		t.Fatalf("a cache ahead of the hub must see the real latest seq: %s", body)
+	}
 }
 
 func TestWebSocketRejectsBadToken(t *testing.T) {

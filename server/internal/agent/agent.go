@@ -32,6 +32,7 @@ const (
 	terminalWindow = 90 * time.Second
 	mirrorChunk    = 1 << 20
 	maxBackoff     = 30 * time.Second
+	stopGrace      = 5 * time.Second
 )
 
 type Config struct {
@@ -212,6 +213,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			a.sendInput(op.Send.Session, op.Send.Text)
 		case *v1.AgentCommand_Interrupt_:
 			a.interrupt(op.Interrupt.Session)
+		case *v1.AgentCommand_Stop_:
+			a.stop(op.Stop.Session)
 		case *v1.AgentCommand_Mirror_:
 			a.startMirror(op.Mirror.Session, op.Mirror.FromOffset)
 		case *v1.AgentCommand_StopMirror_:
@@ -409,18 +412,88 @@ func (a *Agent) sendInput(session, text string) {
 		}
 		return
 	}
+	if hs, live := a.hookState(session); live && hs.pid != 0 {
+		a.typeIntoTerminal(session, hs.pid, text)
+		return
+	}
 	a.start(startOpts{session: session, resume: session, prompt: text})
+}
+
+// typeIntoTerminal sends a message to a session open in the user's own
+// terminal by typing it there. Failures are shown on the session rather
+// than marking it errored, since the terminal itself is fine.
+func (a *Agent) typeIntoTerminal(session string, pid uint32, text string) {
+	err := typeIntoConsole(pid, text)
+	a.mu.Lock()
+	if hs := a.hooks[session]; hs != nil {
+		if err != nil {
+			hs.errText = "Couldn't type into the terminal: " + err.Error()
+		} else {
+			hs.errText = ""
+		}
+	}
+	a.mu.Unlock()
+	if err != nil {
+		a.log.Warn("type into terminal", "session", session, "pid", pid, "err", err)
+	}
+	a.report(session)
 }
 
 func (a *Agent) interrupt(session string) {
 	var err error
+	interactive := false
 	if pane := a.pane(session); pane != "" {
-		err = a.tmux.keys(pane, "Escape")
+		err, interactive = a.tmux.keys(pane, "Escape"), true
 	} else if r := a.run(session); r != nil {
 		err = r.interrupt()
+	} else if hs, live := a.hookState(session); live && hs.pid != 0 {
+		err, interactive = pressEscape(hs.pid), true
 	}
 	if err != nil {
 		a.log.Warn("interrupt", "session", session, "err", err)
+		return
+	}
+	// Claude Code fires no Stop hook when a turn is interrupted, so nothing
+	// else would move an interactive session out of "running".
+	if interactive {
+		go func() {
+			time.Sleep(time.Second)
+			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+		}()
+	}
+}
+
+// stop ends a session the agent hosts: /exit for tmux, so Claude Code
+// saves cleanly, with the window killed if that doesn't work; closing input
+// for headless runs, then killing the process if it lingers.
+func (a *Agent) stop(session string) {
+	if pane := a.pane(session); pane != "" {
+		_ = a.tmux.keys(pane, "Escape")
+		time.Sleep(300 * time.Millisecond)
+		if err := a.tmux.paste(pane, "/exit"); err != nil {
+			a.log.Warn("exit tmux session", "session", session, "err", err)
+		}
+		go func() {
+			time.Sleep(stopGrace)
+			if a.tmux.panes()[session] == pane {
+				_ = a.tmux.killPane(pane)
+			}
+			if a.refreshPanes() {
+				a.sendStatus()
+			}
+			a.report(session)
+		}()
+		return
+	}
+	if r := a.run(session); r != nil {
+		r.closeInput()
+		go func() {
+			select {
+			case <-r.done:
+			case <-time.After(stopGrace):
+				_ = r.cmd.Process.Kill()
+			}
+		}()
 	}
 }
 
@@ -449,7 +522,7 @@ func (a *Agent) fail(session string, err error) {
 func (a *Agent) openElsewhere(session string) bool {
 	info := a.info(session)
 	return info != nil && (info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE ||
-		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE)
+		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE && !info.TerminalInput)
 }
 
 func (a *Agent) sendStatus() {
@@ -494,6 +567,7 @@ func (a *Agent) info(session string) *v1.SessionInfo {
 	case hookLive:
 		info.Host = v1.SessionHost_SESSION_HOST_TERMINAL
 		info.State, info.Error = hs.state, hs.errText
+		info.TerminalInput = terminalInputSupported && hs.pid != 0
 	case hs == nil && !ownWrite && time.Since(mod) < terminalWindow:
 		info.Host = v1.SessionHost_SESSION_HOST_TERMINAL
 		info.State = v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE

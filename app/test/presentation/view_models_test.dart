@@ -17,6 +17,7 @@ SessionBloc sessionBloc(FakeHubRepository repo, String id) => SessionBloc(
       watchTimeline: WatchTimeline(repo),
       sendMessage: SendMessage(repo),
       interrupt: InterruptSession(repo),
+      endSession: EndSession(repo),
     );
 
 void main() {
@@ -96,7 +97,7 @@ void main() {
     blocTest<SessionBloc, SessionViewState>(
       'hub failures surface as failures, not crashes',
       build: () {
-        repo.onSend = (_, __) => const Err(NodeOfflineFailure());
+        repo.onSend = (_, _) => const Err(NodeOfflineFailure());
         return sessionBloc(repo, 's1');
       },
       act: (b) async {
@@ -107,6 +108,30 @@ void main() {
       wait: const Duration(milliseconds: 20),
       verify: (b) => expect(b.state.failure, isA<NodeOfflineFailure>()),
     );
+  });
+
+  group('SessionBloc controls', () {
+    blocTest<SessionBloc, SessionViewState>(
+      'interrupt and end reach the hub',
+      build: () => sessionBloc(FakeHubRepository(snapshotWith([session('s1', state: SessionState.running)])), 's1'),
+      act: (b) => b
+        ..add(const InterruptRequested())
+        ..add(const EndRequested()),
+      wait: const Duration(milliseconds: 20),
+      verify: (b) => expect(b.state.failure, isNull),
+    );
+
+    test('a Windows terminal session takes typed input; others refuse', () async {
+      final typed = session('w1', node: 'laptop', host: SessionHost.terminal, state: SessionState.ready);
+      final repo = FakeHubRepository(snapshotWith([
+        Session(id: 'w1', node: 'laptop', host: SessionHost.terminal, state: SessionState.ready, terminalInput: true),
+        typed.copyWithId('l1'),
+      ]));
+      expect((await SendMessage(repo)('w1', 'hi')).valueOrNull, 'w1');
+      expect((await SendMessage(repo)('l1', 'hi')).failureOrNull, isA<TerminalActiveFailure>());
+      expect((await EndSession(repo)('w1')).failureOrNull, isA<ValidationFailure>());
+      expect(repo.ended, isEmpty);
+    });
   });
 
   group('HubCubit', () {

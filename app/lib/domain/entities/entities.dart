@@ -71,6 +71,7 @@ class Session extends Equatable {
     this.todos = const [],
     this.lastCostUsd = 0,
     this.error = '',
+    this.terminalInput = false,
   });
 
   final String id, node, title, cwd, gitBranch;
@@ -82,6 +83,9 @@ class Session extends Equatable {
   final List<TodoItem> todos;
   final double lastCostUsd;
   final String error;
+
+  /// Open in your own terminal, but the agent can type into it (Windows).
+  final bool terminalInput;
 
   String get displayTitle => title.isNotEmpty ? title : 'Untitled session';
 
@@ -96,7 +100,14 @@ class Session extends Equatable {
 
   /// Messages from the app can reach it (it's not someone's open terminal).
   bool get acceptsInput =>
-      !(state == SessionState.terminalActive || host == SessionHost.terminal && state != SessionState.idle);
+      !(state == SessionState.terminalActive ||
+          host == SessionHost.terminal && state != SessionState.idle && !terminalInput);
+
+  /// The agent hosts the live process, so it can be ended from the app.
+  bool get canEnd => isLive && (host == SessionHost.tmux || host == SessionHost.headless);
+
+  /// Claude can be interrupted wherever it runs, Windows terminals included.
+  bool get canInterrupt => isBusy && (host != SessionHost.terminal || terminalInput);
 
   int get todosDone => todos.where((t) => t.status == TodoStatus.completed).length;
   TodoItem? get currentTodo => todos.where((t) => t.status == TodoStatus.inProgress).firstOrNull;
@@ -104,7 +115,7 @@ class Session extends Equatable {
   @override
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
-        lastPrompt, claudeVersion, model, todos, lastCostUsd, error,
+        lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput,
       ];
 }
 

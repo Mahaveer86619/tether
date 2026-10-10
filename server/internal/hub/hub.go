@@ -235,6 +235,8 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 		session, err = h.sendMessage(b.SendMessage)
 	case *v1.Frame_InterruptSession:
 		session, err = h.interrupt(b.InterruptSession.Session)
+	case *v1.Frame_StopSession:
+		session, err = h.stop(b.StopSession.Session)
 	case *v1.Frame_ApprovalDecision:
 		session, err = h.decide(c.name, b.ApprovalDecision)
 	default:
@@ -318,7 +320,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage) (string, *opError) {
 		return fork.Id, nil
 	}
 	if info.State == v1.SessionState_SESSION_STATE_TERMINAL_ACTIVE ||
-		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE {
+		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE && !info.TerminalInput {
 		return "", errTerminalActive
 	}
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: m.Text}}}))
@@ -331,6 +333,18 @@ func (h *Hub) interrupt(session string) (string, *opError) {
 		return "", err
 	}
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Interrupt_{Interrupt: &v1.AgentCommand_Interrupt{Session: info.Id}}}))
+	return info.Id, nil
+}
+
+func (h *Hub) stop(session string) (string, *opError) {
+	info, agent, err := h.target(session)
+	if err != nil {
+		return "", err
+	}
+	if info.Host == v1.SessionHost_SESSION_HOST_TERMINAL {
+		return "", errTerminalOwned
+	}
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Stop_{Stop: &v1.AgentCommand_Stop{Session: info.Id}}}))
 	return info.Id, nil
 }
 

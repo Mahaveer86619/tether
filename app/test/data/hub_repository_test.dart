@@ -53,9 +53,11 @@ void main() {
   late FakeHubSocket socket;
   late HubRepositoryImpl repo;
   late List<http.Request> requests;
+  late MemoryHubCache cache;
 
   setUp(() {
     socket = FakeHubSocket();
+    cache = MemoryHubCache();
     requests = [];
     final api = HubRestApi(
       MockClient((req) async {
@@ -71,7 +73,13 @@ void main() {
       }),
       clientName: 'test',
     );
-    repo = HubRepositoryImpl(api: api, socket: socket, keepTimeline: const Duration(milliseconds: 10));
+    repo = HubRepositoryImpl(
+      api: api,
+      socket: socket,
+      cache: cache,
+      keepTimeline: const Duration(milliseconds: 10),
+      keepBackground: const Duration(milliseconds: 10),
+    );
     repo.connect(const HubConnection(url: 'ws://100.64.0.1:7420/ws', token: 'tok'));
   });
 
@@ -127,8 +135,56 @@ void main() {
     socket.push(SocketFrame(welcome()));
     expect(socket.subscribed.last, ('s1', Int64(4)));
 
+    // s1 is working, so it stays subscribed in the background after the
+    // screen closes; once it goes idle it is released.
     await sub.cancel();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(repo.backgroundSessions, {'s1'});
+    expect(socket.unsubscribed, isEmpty);
+    socket.push(SocketFrame(pb.Frame(sessionInfo: pb.SessionInfo(id: 's1', node: 'minipc', state: pbe.SessionState.SESSION_STATE_READY))));
     await eventually(() => expect(socket.unsubscribed, ['s1']));
+    expect(repo.backgroundSessions, isEmpty);
+  });
+
+  test('history is cached on the device and reused, fetching only what changed', () async {
+    socket.push(SocketFrame(welcome()));
+    final first = repo.watchTimeline('s1').listen((_) {});
+    await eventually(() => expect(cache.timelines['s1']?.items.length, 2));
+    expect(cache.timelines['s1']!.seq, Int64(2));
+    await first.cancel();
+    await eventually(() => expect(cache.state?.sessions.single.id, 's1'));
+
+    // A fresh repository (app restart) shows the cached chat before the
+    // hub answers, then asks only for changes after the cached seq.
+    final socket2 = FakeHubSocket();
+    final requests2 = <http.Request>[];
+    final repo2 = HubRepositoryImpl(
+      api: HubRestApi(
+        MockClient((req) async {
+          requests2.add(req);
+          return http.Response(jsonEncode(pb.TimelinePage(session: 's1', seq: Int64(2)).toProto3Json()), 200);
+        }),
+        clientName: 'test',
+      ),
+      socket: socket2,
+      cache: cache,
+    );
+    repo2.connect(const HubConnection(url: 'ws://100.64.0.1:7420/ws', token: 'tok'));
+    await eventually(() => expect(repo2.current.sessions.keys, ['s1']), timeout: const Duration(seconds: 2));
+    final offline = await repo2.watchTimeline('s1').firstWhere((t) => t.items.length == 2).timeout(const Duration(seconds: 2));
+    expect(offline.items.first.user.text, 'first');
+    socket2.push(SocketFrame(welcome()));
+    await eventually(() => expect(requests2.single.url.queryParameters['after'], '2'));
+    await repo2.dispose();
+  });
+
+  test('a cache ahead of the hub (hub reset) is thrown away', () async {
+    cache.timelines['s1'] = pb.TimelinePage(session: 's1', seq: Int64(50), items: [item('old', 1, 'stale')]);
+    socket.push(SocketFrame(welcome()));
+    final snaps = <TimelineSnapshot>[];
+    final sub = repo.watchTimeline('s1').listen(snaps.add);
+    await eventually(() => expect(snaps.last.items.map((i) => i.itemId), ['a', 'b']));
+    await sub.cancel();
   });
 
   test('command errors come back as failures', () async {

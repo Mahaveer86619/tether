@@ -36,6 +36,7 @@ type run struct {
 	approvals  map[string]json.RawMessage
 	lastActive time.Time
 	stderr     tailBuffer
+	done       chan struct{}
 }
 
 type startOpts struct {
@@ -58,7 +59,7 @@ func (a *Agent) startRun(o startOpts) (*run, error) {
 	cmd := exec.Command(a.cfg.Claude, args...)
 	cmd.Dir = o.cwd
 	hideWindow(cmd)
-	r := &run{a: a, id: o.session, cmd: cmd, approvals: map[string]json.RawMessage{}, lastActive: time.Now()}
+	r := &run{a: a, id: o.session, cmd: cmd, approvals: map[string]json.RawMessage{}, lastActive: time.Now(), done: make(chan struct{})}
 	cmd.Stderr = &r.stderr
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -231,6 +232,7 @@ func (r *run) handleLine(line []byte) bool {
 
 func (r *run) wait() {
 	err := r.cmd.Wait()
+	close(r.done)
 	r.mu.Lock()
 	switch {
 	case err != nil && r.state != v1.SessionState_SESSION_STATE_READY:

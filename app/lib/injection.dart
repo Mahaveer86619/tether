@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 
+import 'data/datasources/hub_cache.dart';
 import 'data/datasources/hub_rest_api.dart';
 import 'data/datasources/hub_socket.dart';
 import 'data/datasources/settings_local.dart';
@@ -33,8 +34,9 @@ void configureDependencies({bool withData = true}) {
         () => WebSocketHubSocket(clientName: client, platform: Platform.operatingSystem),
       )
       ..registerLazySingleton(SettingsLocalDataSource.new)
+      ..registerLazySingleton<HubCache>(FileHubCache.new)
       ..registerLazySingleton<HubRepository>(
-        () => HubRepositoryImpl(api: sl(), socket: sl()),
+        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl()),
         dispose: (r) => r.dispose(),
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()));
@@ -48,6 +50,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => CreateSession(sl()))
     ..registerLazySingleton(() => SendMessage(sl()))
     ..registerLazySingleton(() => InterruptSession(sl()))
+    ..registerLazySingleton(() => EndSession(sl()))
     ..registerLazySingleton(() => DecideApproval(sl()))
     ..registerLazySingleton(() => LoadConnection(sl()))
     ..registerLazySingleton(() => SaveConnection(sl(), sl()))
@@ -57,7 +60,14 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), theme: sl()))
     ..registerFactoryParam<SessionBloc, String, void>(
       (sessionId, _) =>
-          SessionBloc(sessionId: sessionId, watchHub: sl(), watchTimeline: sl(), sendMessage: sl(), interrupt: sl()),
+          SessionBloc(
+        sessionId: sessionId,
+        watchHub: sl(),
+        watchTimeline: sl(),
+        sendMessage: sl(),
+        interrupt: sl(),
+        endSession: sl(),
+      ),
     )
     ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(
       (hub, preferredNode) => NewSessionCubit(hub: hub, createSession: sl(), preferredNode: preferredNode),

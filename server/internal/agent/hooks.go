@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,6 +48,8 @@ type hookSession struct {
 	closed  bool
 	last    time.Time
 	errText string
+	// The Claude Code process, when known; lets Windows type into its console.
+	pid uint32
 }
 
 type hookApproval struct {
@@ -71,7 +74,14 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	a.noteHook(in)
+	var pid uint32
+	if terminalInputSupported {
+		if _, port, err := net.SplitHostPort(a.cfg.HookAddr); err == nil {
+			p, _ := strconv.Atoi(port)
+			pid, _ = pidOfLocalPeer(r.RemoteAddr, p)
+		}
+	}
+	a.noteHook(in, pid)
 	if in.Event != "PermissionRequest" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -125,7 +135,7 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 
 // noteHook updates a session's state from a hook event. Any event after a
 // permission request means it was answered elsewhere, usually the terminal.
-func (a *Agent) noteHook(in hookInput) {
+func (a *Agent) noteHook(in hookInput, pid uint32) {
 	var next v1.SessionState
 	closed := false
 	switch in.Event {
@@ -159,6 +169,9 @@ func (a *Agent) noteHook(in hookInput) {
 	}
 	hs.last = time.Now()
 	hs.closed = closed
+	if pid != 0 {
+		hs.pid = pid
+	}
 	if next != v1.SessionState_SESSION_STATE_UNSPECIFIED {
 		hs.state = next
 	}

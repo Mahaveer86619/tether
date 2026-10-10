@@ -32,8 +32,14 @@ class ForkModeChanged extends SessionEvent {
   List<Object?> get props => [forking];
 }
 
+/// Stops Claude's current turn; the session stays open.
 class InterruptRequested extends SessionEvent {
   const InterruptRequested();
+}
+
+/// Ends the session's Claude Code process (tmux or headless only).
+class EndRequested extends SessionEvent {
+  const EndRequested();
 }
 
 // ---- state ----
@@ -113,18 +119,21 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     required this._watchTimeline,
     required SendMessage sendMessage,
     required this._interrupt,
+    required this._endSession,
   })  : _send = sendMessage,
         super(SessionViewState(sessionId: sessionId)) {
     on<SessionOpened>(_onOpened);
     on<MessageSubmitted>(_onSubmitted);
     on<ForkModeChanged>((e, emit) => emit(state.copyWith(forking: e.forking)));
     on<InterruptRequested>(_onInterrupt);
+    on<EndRequested>(_onEnd);
   }
 
   final WatchHub _watchHub;
   final WatchTimeline _watchTimeline;
   final SendMessage _send;
   final InterruptSession _interrupt;
+  final EndSession _endSession;
 
   Future<void> _onOpened(SessionOpened e, Emitter<SessionViewState> emit) async {
     await Future.wait([
@@ -154,6 +163,11 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
         forkedTo: fork ? () => id : null,
       )),
     );
+  }
+
+  Future<void> _onEnd(EndRequested e, Emitter<SessionViewState> emit) async {
+    final result = await _endSession(state.sessionId);
+    if (result.failureOrNull case final f?) emit(state.copyWith(failure: f, failureId: state.failureId + 1));
   }
 
   Future<void> _onInterrupt(InterruptRequested e, Emitter<SessionViewState> emit) async {

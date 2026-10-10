@@ -30,6 +30,7 @@ enum Frame_Body {
   sendMessage,
   interruptSession,
   approvalDecision,
+  stopSession,
   welcome,
   ack,
   error,
@@ -59,6 +60,7 @@ class Frame extends $pb.GeneratedMessage {
     SendMessage? sendMessage,
     InterruptSession? interruptSession,
     ApprovalDecision? approvalDecision,
+    StopSession? stopSession,
     Welcome? welcome,
     Ack? ack,
     Error? error,
@@ -84,6 +86,7 @@ class Frame extends $pb.GeneratedMessage {
     if (sendMessage != null) result.sendMessage = sendMessage;
     if (interruptSession != null) result.interruptSession = interruptSession;
     if (approvalDecision != null) result.approvalDecision = approvalDecision;
+    if (stopSession != null) result.stopSession = stopSession;
     if (welcome != null) result.welcome = welcome;
     if (ack != null) result.ack = ack;
     if (error != null) result.error = error;
@@ -116,6 +119,7 @@ class Frame extends $pb.GeneratedMessage {
     14: Frame_Body.sendMessage,
     15: Frame_Body.interruptSession,
     16: Frame_Body.approvalDecision,
+    17: Frame_Body.stopSession,
     30: Frame_Body.welcome,
     31: Frame_Body.ack,
     32: Frame_Body.error,
@@ -142,6 +146,7 @@ class Frame extends $pb.GeneratedMessage {
       14,
       15,
       16,
+      17,
       30,
       31,
       32,
@@ -174,6 +179,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: InterruptSession.$_createMessage)
     ..aOM<ApprovalDecision>(16, _omitFieldNames ? '' : 'approvalDecision',
         subBuilder: ApprovalDecision.$_createMessage)
+    ..aOM<StopSession>(17, _omitFieldNames ? '' : 'stopSession',
+        subBuilder: StopSession.$_createMessage)
     ..aOM<Welcome>(30, _omitFieldNames ? '' : 'welcome',
         subBuilder: Welcome.$_createMessage)
     ..aOM<Ack>(31, _omitFieldNames ? '' : 'ack',
@@ -227,6 +234,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
   @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -247,6 +255,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
   @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -377,140 +386,151 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   ApprovalDecision ensureApprovalDecision() => $_ensure(10);
 
+  @$pb.TagNumber(17)
+  StopSession get stopSession => $_getN(11);
+  @$pb.TagNumber(17)
+  set stopSession(StopSession value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasStopSession() => $_has(11);
+  @$pb.TagNumber(17)
+  void clearStopSession() => $_clearField(17);
+  @$pb.TagNumber(17)
+  StopSession ensureStopSession() => $_ensure(11);
+
   /// Hub -> client
   @$pb.TagNumber(30)
-  Welcome get welcome => $_getN(11);
+  Welcome get welcome => $_getN(12);
   @$pb.TagNumber(30)
   set welcome(Welcome value) => $_setField(30, value);
   @$pb.TagNumber(30)
-  $core.bool hasWelcome() => $_has(11);
+  $core.bool hasWelcome() => $_has(12);
   @$pb.TagNumber(30)
   void clearWelcome() => $_clearField(30);
   @$pb.TagNumber(30)
-  Welcome ensureWelcome() => $_ensure(11);
+  Welcome ensureWelcome() => $_ensure(12);
 
   @$pb.TagNumber(31)
-  Ack get ack => $_getN(12);
+  Ack get ack => $_getN(13);
   @$pb.TagNumber(31)
   set ack(Ack value) => $_setField(31, value);
   @$pb.TagNumber(31)
-  $core.bool hasAck() => $_has(12);
+  $core.bool hasAck() => $_has(13);
   @$pb.TagNumber(31)
   void clearAck() => $_clearField(31);
   @$pb.TagNumber(31)
-  Ack ensureAck() => $_ensure(12);
+  Ack ensureAck() => $_ensure(13);
 
   @$pb.TagNumber(32)
-  Error get error => $_getN(13);
+  Error get error => $_getN(14);
   @$pb.TagNumber(32)
   set error(Error value) => $_setField(32, value);
   @$pb.TagNumber(32)
-  $core.bool hasError() => $_has(13);
+  $core.bool hasError() => $_has(14);
   @$pb.TagNumber(32)
   void clearError() => $_clearField(32);
   @$pb.TagNumber(32)
-  Error ensureError() => $_ensure(13);
+  Error ensureError() => $_ensure(14);
 
   @$pb.TagNumber(33)
-  NodeStatus get nodeStatus => $_getN(14);
+  NodeStatus get nodeStatus => $_getN(15);
   @$pb.TagNumber(33)
   set nodeStatus(NodeStatus value) => $_setField(33, value);
   @$pb.TagNumber(33)
-  $core.bool hasNodeStatus() => $_has(14);
+  $core.bool hasNodeStatus() => $_has(15);
   @$pb.TagNumber(33)
   void clearNodeStatus() => $_clearField(33);
   @$pb.TagNumber(33)
-  NodeStatus ensureNodeStatus() => $_ensure(14);
+  NodeStatus ensureNodeStatus() => $_ensure(15);
 
   @$pb.TagNumber(34)
-  SessionInfo get sessionInfo => $_getN(15);
+  SessionInfo get sessionInfo => $_getN(16);
   @$pb.TagNumber(34)
   set sessionInfo(SessionInfo value) => $_setField(34, value);
   @$pb.TagNumber(34)
-  $core.bool hasSessionInfo() => $_has(15);
+  $core.bool hasSessionInfo() => $_has(16);
   @$pb.TagNumber(34)
   void clearSessionInfo() => $_clearField(34);
   @$pb.TagNumber(34)
-  SessionInfo ensureSessionInfo() => $_ensure(15);
+  SessionInfo ensureSessionInfo() => $_ensure(16);
 
   @$pb.TagNumber(35)
-  TimelineUpdate get timeline => $_getN(16);
+  TimelineUpdate get timeline => $_getN(17);
   @$pb.TagNumber(35)
   set timeline(TimelineUpdate value) => $_setField(35, value);
   @$pb.TagNumber(35)
-  $core.bool hasTimeline() => $_has(16);
+  $core.bool hasTimeline() => $_has(17);
   @$pb.TagNumber(35)
   void clearTimeline() => $_clearField(35);
   @$pb.TagNumber(35)
-  TimelineUpdate ensureTimeline() => $_ensure(16);
+  TimelineUpdate ensureTimeline() => $_ensure(17);
 
   @$pb.TagNumber(36)
-  ApprovalRequest get approvalRequested => $_getN(17);
+  ApprovalRequest get approvalRequested => $_getN(18);
   @$pb.TagNumber(36)
   set approvalRequested(ApprovalRequest value) => $_setField(36, value);
   @$pb.TagNumber(36)
-  $core.bool hasApprovalRequested() => $_has(17);
+  $core.bool hasApprovalRequested() => $_has(18);
   @$pb.TagNumber(36)
   void clearApprovalRequested() => $_clearField(36);
   @$pb.TagNumber(36)
-  ApprovalRequest ensureApprovalRequested() => $_ensure(17);
+  ApprovalRequest ensureApprovalRequested() => $_ensure(18);
 
   @$pb.TagNumber(37)
-  ApprovalResolved get approvalResolved => $_getN(18);
+  ApprovalResolved get approvalResolved => $_getN(19);
   @$pb.TagNumber(37)
   set approvalResolved(ApprovalResolved value) => $_setField(37, value);
   @$pb.TagNumber(37)
-  $core.bool hasApprovalResolved() => $_has(18);
+  $core.bool hasApprovalResolved() => $_has(19);
   @$pb.TagNumber(37)
   void clearApprovalResolved() => $_clearField(37);
   @$pb.TagNumber(37)
-  ApprovalResolved ensureApprovalResolved() => $_ensure(18);
+  ApprovalResolved ensureApprovalResolved() => $_ensure(19);
 
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(19);
+  AgentHello get agentHello => $_getN(20);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(19);
+  $core.bool hasAgentHello() => $_has(20);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(19);
+  AgentHello ensureAgentHello() => $_ensure(20);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(20);
+  SessionIndex get sessionIndex => $_getN(21);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(20);
+  $core.bool hasSessionIndex() => $_has(21);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(20);
+  SessionIndex ensureSessionIndex() => $_ensure(21);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(21);
+  RawEvents get rawEvents => $_getN(22);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(21);
+  $core.bool hasRawEvents() => $_has(22);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(21);
+  RawEvents ensureRawEvents() => $_ensure(22);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(22);
+  AgentCommand get agentCommand => $_getN(23);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(22);
+  $core.bool hasAgentCommand() => $_has(23);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(22);
+  AgentCommand ensureAgentCommand() => $_ensure(23);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -671,6 +691,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     $core.String? error,
     SessionHost? host,
     $core.String? attachCommand,
+    $core.bool? terminalInput,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -690,6 +711,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (error != null) result.error = error;
     if (host != null) result.host = host;
     if (attachCommand != null) result.attachCommand = attachCommand;
+    if (terminalInput != null) result.terminalInput = terminalInput;
     return result;
   }
 
@@ -726,6 +748,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     ..aE<SessionHost>(16, _omitFieldNames ? '' : 'host',
         enumValues: SessionHost.values)
     ..aOS(17, _omitFieldNames ? '' : 'attachCommand')
+    ..aOB(18, _omitFieldNames ? '' : 'terminalInput')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -898,6 +921,16 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasAttachCommand() => $_has(16);
   @$pb.TagNumber(17)
   void clearAttachCommand() => $_clearField(17);
+
+  /// A terminal session the agent can type into anyway (Windows consoles).
+  @$pb.TagNumber(18)
+  $core.bool get terminalInput => $_getBF(17);
+  @$pb.TagNumber(18)
+  set terminalInput($core.bool value) => $_setBool(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasTerminalInput() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearTerminalInput() => $_clearField(18);
 }
 
 class TimelineUpdate extends $pb.GeneratedMessage {
@@ -1033,7 +1066,8 @@ class TimelinePage extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   $pb.PbList<$0.TimelineItem> get items => $_getList(1);
 
-  /// Subscribe with this as after_seq to receive only later changes.
+  /// The session's latest seq. Subscribe with it as after_seq to receive
+  /// only later changes; if it is lower than a cached seq, the hub was reset.
   @$pb.TagNumber(3)
   $fixnum.Int64 get seq => $_getI64(2);
   @$pb.TagNumber(3)
@@ -1786,6 +1820,7 @@ class SendMessage extends $pb.GeneratedMessage {
   void clearFork() => $_clearField(3);
 }
 
+/// Stops the current turn; the session stays open.
 class InterruptSession extends $pb.GeneratedMessage {
   factory InterruptSession({
     $core.String? session,
@@ -1832,6 +1867,65 @@ class InterruptSession extends $pb.GeneratedMessage {
       _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<InterruptSession>(
           InterruptSession.$_createMessage);
   static InterruptSession? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+}
+
+/// Ends a session the agent hosts (tmux or headless). Sessions open in your
+/// own terminal can only be interrupted, not ended.
+class StopSession extends $pb.GeneratedMessage {
+  factory StopSession({
+    $core.String? session,
+  }) {
+    final result = StopSession._();
+    if (session != null) result.session = session;
+    return result;
+  }
+
+  StopSession._();
+
+  factory StopSession.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StopSession()..mergeFromBuffer(data, registry);
+  factory StopSession.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      StopSession()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'StopSession',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: StopSession.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StopSession clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  StopSession copyWith(void Function(StopSession) updates) =>
+      super.copyWith((message) => updates(message as StopSession))
+          as StopSession;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use StopSession() / StopSession.new instead')
+  static StopSession create() => StopSession._();
+  static $pb.GeneratedMessage $_createMessage() => StopSession._();
+  @$core.override
+  StopSession createEmptyInstance() => StopSession._();
+  @$core.pragma('dart2js:noInline')
+  static StopSession getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<StopSession>(
+          StopSession.$_createMessage);
+  static StopSession? _defaultInstance;
 
   @$pb.TagNumber(1)
   $core.String get session => $_getSZ(0);
@@ -2675,7 +2769,72 @@ class AgentCommand_StopMirror extends $pb.GeneratedMessage {
   void clearSession() => $_clearField(1);
 }
 
-enum AgentCommand_Op { start, send, interrupt, mirror, stopMirror, notSet }
+class AgentCommand_Stop extends $pb.GeneratedMessage {
+  factory AgentCommand_Stop({
+    $core.String? session,
+  }) {
+    final result = AgentCommand_Stop._();
+    if (session != null) result.session = session;
+    return result;
+  }
+
+  AgentCommand_Stop._();
+
+  factory AgentCommand_Stop.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_Stop()..mergeFromBuffer(data, registry);
+  factory AgentCommand_Stop.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_Stop()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.Stop',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_Stop.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_Stop clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_Stop copyWith(void Function(AgentCommand_Stop) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_Stop))
+          as AgentCommand_Stop;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AgentCommand_Stop() / AgentCommand_Stop.new instead')
+  static AgentCommand_Stop create() => AgentCommand_Stop._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_Stop._();
+  @$core.override
+  AgentCommand_Stop createEmptyInstance() => AgentCommand_Stop._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_Stop getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AgentCommand_Stop>(
+          AgentCommand_Stop.$_createMessage);
+  static AgentCommand_Stop? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+}
+
+enum AgentCommand_Op {
+  start,
+  send,
+  interrupt,
+  mirror,
+  stopMirror,
+  stop,
+  notSet
+}
 
 class AgentCommand extends $pb.GeneratedMessage {
   factory AgentCommand({
@@ -2684,6 +2843,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_Interrupt? interrupt,
     AgentCommand_Mirror? mirror,
     AgentCommand_StopMirror? stopMirror,
+    AgentCommand_Stop? stop,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -2691,6 +2851,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (interrupt != null) result.interrupt = interrupt;
     if (mirror != null) result.mirror = mirror;
     if (stopMirror != null) result.stopMirror = stopMirror;
+    if (stop != null) result.stop = stop;
     return result;
   }
 
@@ -2709,13 +2870,14 @@ class AgentCommand extends $pb.GeneratedMessage {
     3: AgentCommand_Op.interrupt,
     4: AgentCommand_Op.mirror,
     5: AgentCommand_Op.stopMirror,
+    6: AgentCommand_Op.stop,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5])
+    ..oo(0, [1, 2, 3, 4, 5, 6])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -2726,6 +2888,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_Mirror.$_createMessage)
     ..aOM<AgentCommand_StopMirror>(5, _omitFieldNames ? '' : 'stopMirror',
         subBuilder: AgentCommand_StopMirror.$_createMessage)
+    ..aOM<AgentCommand_Stop>(6, _omitFieldNames ? '' : 'stop',
+        subBuilder: AgentCommand_Stop.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2755,12 +2919,14 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -2817,6 +2983,17 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearStopMirror() => $_clearField(5);
   @$pb.TagNumber(5)
   AgentCommand_StopMirror ensureStopMirror() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  AgentCommand_Stop get stop => $_getN(5);
+  @$pb.TagNumber(6)
+  set stop(AgentCommand_Stop value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasStop() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearStop() => $_clearField(6);
+  @$pb.TagNumber(6)
+  AgentCommand_Stop ensureStop() => $_ensure(5);
 }
 
 const $core.bool _omitFieldNames =

@@ -30,6 +30,8 @@ commands:
                                               start a new session
   send [-fork] [-yes] <session> <message>     continue (or fork) a session
   dump <session>                              print a session's timeline as JSON
+  interrupt <session>                         stop the current turn
+  stop <session>                              end a tmux or headless session
   approvals                                   list pending approvals
   approve [-deny] <approval id>               answer one
 
@@ -67,6 +69,8 @@ func main() {
 		}
 	case "approve":
 		err = c.approve(args)
+	case "interrupt", "stop":
+		err = c.control(flag.Arg(0), args)
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -324,6 +328,22 @@ collect:
 		fmt.Println(string(b))
 	}
 	return nil
+}
+
+func (c *ctl) control(cmd string, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("%s <session>", cmd)
+	}
+	s, err := c.resolve(args[0])
+	if err != nil {
+		return err
+	}
+	f := &v1.Frame{Body: &v1.Frame_InterruptSession{InterruptSession: &v1.InterruptSession{Session: s.Id}}}
+	if cmd == "stop" {
+		f = &v1.Frame{Body: &v1.Frame_StopSession{StopSession: &v1.StopSession{Session: s.Id}}}
+	}
+	_, err = c.request(f, nil)
+	return err
 }
 
 func (c *ctl) approve(args []string) error {

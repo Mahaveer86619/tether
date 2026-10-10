@@ -68,6 +68,19 @@ class InterruptSession {
   Future<Result<void>> call(String sessionId) => _hub.interrupt(sessionId);
 }
 
+class EndSession {
+  const EndSession(this._hub);
+  final HubRepository _hub;
+
+  Future<Result<void>> call(String sessionId) async {
+    final s = _hub.current.sessions[sessionId];
+    if (s != null && s.host == SessionHost.terminal) {
+      return const Err(ValidationFailure('This session is open in your terminal. Interrupt it, or close it there.'));
+    }
+    return _hub.endSession(sessionId);
+  }
+}
+
 class DecideApproval {
   const DecideApproval(this._hub);
   final HubRepository _hub;

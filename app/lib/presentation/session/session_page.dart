@@ -75,8 +75,11 @@ class _SessionBody extends StatelessWidget {
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
                         if (!session.acceptsInput && !s.forking)
                           _TerminalNotice(session: session)
-                        else
+                        else ...[
+                          if (session.host == SessionHost.terminal && session.terminalInput && !s.forking)
+                            _TypingHint(session: session),
                           Composer(state: s),
+                        ],
                       ],
                     ),
                   ),
@@ -139,8 +142,13 @@ class SessionHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (session.isBusy)
-            IconButton(tooltip: 'Stop', icon: const Icon(Icons.stop_circle_outlined), onPressed: () => bloc.add(const InterruptRequested())),
+          if (session.canInterrupt)
+            IconButton(
+              key: const Key('interrupt'),
+              tooltip: 'Interrupt (Esc)',
+              icon: const Icon(Icons.stop_circle_outlined),
+              onPressed: () => bloc.add(const InterruptRequested()),
+            ),
           IconButton(
             tooltip: 'Fork and continue',
             icon: const Icon(Icons.call_split_rounded),
@@ -149,7 +157,11 @@ class SessionHeader extends StatelessWidget {
           PopupMenuButton<String>(
             tooltip: 'More',
             icon: const Icon(Icons.more_horiz_rounded),
-            onSelected: (v) {
+            onSelected: (v) async {
+              if (v == 'end') {
+                if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
+                return;
+              }
               final text = switch (v) {
                 'attach' => session.attachCommand,
                 'resume' => 'claude --resume ${session.id}',
@@ -162,6 +174,14 @@ class SessionHeader extends StatelessWidget {
               if (session.attachCommand.isNotEmpty) const PopupMenuItem(value: 'attach', child: Text('Copy tmux attach command')),
               const PopupMenuItem(value: 'resume', child: Text('Copy "claude --resume" command')),
               const PopupMenuItem(value: 'id', child: Text('Copy session id')),
+              if (session.canEnd) ...[
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  key: const Key('end-session'),
+                  value: 'end',
+                  child: Text('End session', style: TextStyle(color: context.colors.danger)),
+                ),
+              ],
             ],
           ),
         ],
@@ -170,33 +190,206 @@ class SessionHeader extends StatelessWidget {
   }
 }
 
-class _Timeline extends StatelessWidget {
+class _Timeline extends StatefulWidget {
   const _Timeline({required this.state});
 
   final SessionViewState state;
 
   @override
+  State<_Timeline> createState() => _TimelineState();
+}
+
+class _TimelineState extends State<_Timeline> {
+  /// Items present when the history finished loading; only items arriving
+  /// after that animate in.
+  Set<String>? _initial;
+
+  @override
   Widget build(BuildContext context) {
-    final items = state.items;
+    final s = widget.state;
+    final items = s.items;
+    if (_initial == null && (!s.loading || items.isNotEmpty)) {
+      _initial = {for (final i in items) i.itemId};
+    }
     if (items.isEmpty) {
-      return state.loading
+      if (s.session?.isBusy ?? false) {
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: contentWidth),
+              child: _Working(waitingForApproval: s.session?.state == SessionState.awaitingApproval),
+            ),
+          ),
+        );
+      }
+      return s.loading
           ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
           : const EmptyState(icon: Icons.forum_outlined, title: 'No messages yet', body: 'History appears here as the session runs.');
     }
+    final last = items.last;
+    final streaming = last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
+    final working = (s.session?.isBusy ?? false) && !streaming;
+    final extra = working ? 1 : 0;
     // Reversed so the view stays pinned to the newest item.
     return ListView.builder(
       reverse: true,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      itemCount: items.length,
+      itemCount: items.length + extra,
       itemBuilder: (context, i) {
-        final item = items[items.length - 1 - i];
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: contentWidth),
-            child: TimelineItemView(key: ValueKey(item.itemId), item: item),
-          ),
-        );
+        final Widget child;
+        if (i < extra) {
+          child = _Working(waitingForApproval: s.session?.state == SessionState.awaitingApproval);
+        } else {
+          final item = items[items.length - 1 - (i - extra)];
+          child = _Appear(
+            key: ValueKey(item.itemId),
+            animate: !(_initial?.contains(item.itemId) ?? true),
+            child: TimelineItemView(item: item),
+          );
+        }
+        return Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child));
       },
+    );
+  }
+}
+
+/// Fades and slides a new message in once, when it first appears.
+class _Appear extends StatefulWidget {
+  const _Appear({super.key, required this.animate, required this.child});
+
+  final bool animate;
+  final Widget child;
+
+  @override
+  State<_Appear> createState() => _AppearState();
+}
+
+class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 320), value: widget.animate ? 0 : 1);
+  late final _curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _curve,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(_curve),
+          child: widget.child,
+        ),
+      );
+}
+
+/// Shown at the end of the chat while Claude works between messages.
+class _Working extends StatefulWidget {
+  const _Working({required this.waitingForApproval});
+
+  final bool waitingForApproval;
+
+  @override
+  State<_Working> createState() => _WorkingState();
+}
+
+class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Row(
+        children: [
+          AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < 3; i++)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c.accent.withValues(alpha: 0.25 + 0.75 * _pulse((_c.value - i * 0.18) % 1)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(widget.waitingForApproval ? 'Waiting for your approval' : 'Claude is working',
+              style: TextStyle(fontSize: 12.5, color: c.muted)),
+        ],
+      ),
+    );
+  }
+
+  static double _pulse(double t) => t < 0.5 ? t * 2 : (1 - t) * 2;
+}
+
+Future<bool> _confirmEnd(BuildContext context, Session session) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End this session?'),
+        content: Text(
+          session.host == SessionHost.tmux
+              ? 'Claude Code exits and its tmux window on ${session.node} closes. The history stays, and you can resume it later.'
+              : 'The Claude Code process on ${session.node} stops. The history stays, and you can resume it later.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('confirm-end'),
+            style: FilledButton.styleFrom(backgroundColor: ctx.colors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End session'),
+          ),
+        ],
+      ),
+    ) ??
+    false;
+
+class _TypingHint extends StatelessWidget {
+  const _TypingHint({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(left: 6, bottom: 6),
+      child: Row(
+        children: [
+          Icon(Icons.keyboard_outlined, size: 14, color: c.info),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('Open in your terminal on ${session.node} · messages are typed there',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -363,7 +556,10 @@ class _ComposerState extends State<Composer> {
               ),
             ),
           CallbackShortcuts(
-            bindings: {if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit},
+            bindings: {
+              if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit,
+              if (s.session?.canInterrupt ?? false) const SingleActivator(LogicalKeyboardKey.escape): () => bloc.add(const InterruptRequested()),
+            },
             child: TextField(
               key: const Key('composer'),
               controller: _text,
@@ -392,7 +588,7 @@ class _ComposerState extends State<Composer> {
                         style: TextStyle(fontSize: 11, color: c.faint))
                     : const SizedBox.shrink(),
               ),
-              if (s.session?.isBusy ?? false)
+              if (s.session?.canInterrupt ?? false)
                 Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: IconButton.outlined(

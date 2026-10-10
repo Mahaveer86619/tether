@@ -62,6 +62,7 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       todos: [for (final t in s.todos) todoFromPb(t)],
       lastCostUsd: s.lastCostUsd,
       error: s.error,
+      terminalInput: s.terminalInput,
     );
 
 Approval approvalFromPb(pb.ApprovalRequest a) => Approval(
