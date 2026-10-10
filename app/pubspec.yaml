@@ -25,6 +25,19 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   bloc_test: ^10.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#C2603E"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  ios: false
+  windows:
+    generate: true
+    image_path: assets/icon/icon.png
+    icon_size: 256
