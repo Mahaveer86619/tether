@@ -115,7 +115,7 @@ ThemeData buildTheme(Brightness brightness) {
   return base.copyWith(
     textTheme: text.copyWith(
       bodyMedium: text.bodyMedium?.copyWith(fontSize: 14.5, height: 1.5),
-      bodyLarge: text.bodyLarge?.copyWith(fontSize: 15.5, height: 1.6),
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: Platform.isAndroid ? 15 : 15.5, height: Platform.isAndroid ? 1.55 : 1.6),
     ),
     dividerTheme: DividerThemeData(color: c.border, thickness: 1, space: 1),
     appBarTheme: AppBarTheme(
@@ -173,7 +173,15 @@ ThemeData buildTheme(Brightness brightness) {
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: c.border)),
     ),
-    snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating, backgroundColor: c.text),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: c.surface,
+      contentTextStyle: TextStyle(color: c.text),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: c.border),
+      ),
+    ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(color: c.text, borderRadius: BorderRadius.circular(6)),
       textStyle: TextStyle(color: c.canvas, fontSize: 12),

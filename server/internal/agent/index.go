@@ -59,11 +59,12 @@ func NewIndex(dir string) *Index {
 	return &Index{dir: dir, files: map[string]*transcript{}}
 }
 
-// Scan picks up new and changed transcripts.
-func (ix *Index) Scan() error {
+// Scan picks up new and changed transcripts and returns the sessions
+// whose transcripts were deleted since the last scan.
+func (ix *Index) Scan() ([]string, error) {
 	paths, err := filepath.Glob(filepath.Join(ix.dir, "*", "*.jsonl"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	seen := map[string]bool{}
 	for _, p := range paths {
@@ -90,14 +91,16 @@ func (ix *Index) Scan() error {
 		ix.files[id] = t
 		ix.mu.Unlock()
 	}
+	var removed []string
 	ix.mu.Lock()
 	for id := range ix.files {
 		if !seen[id] {
 			delete(ix.files, id)
+			removed = append(removed, id)
 		}
 	}
 	ix.mu.Unlock()
-	return nil
+	return removed, nil
 }
 
 func (t *transcript) read() error {
@@ -131,7 +134,9 @@ func (m *meta) add(line []byte) {
 			m.created = ts.UnixMilli()
 		}
 	}
-	if l.Cwd != "" {
+	// The folder a session started in: the shell may cd elsewhere later, but
+	// the transcript (and claude --resume) stay with the first one.
+	if m.cwd == "" && l.Cwd != "" {
 		m.cwd = l.Cwd
 	}
 	if l.GitBranch != "" {

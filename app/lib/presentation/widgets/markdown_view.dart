@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
 import '../theme/theme.dart';
+import 'common.dart';
 
 /// Renders the hub's parsed Markdown blocks. The hub did the parsing, so
 /// this only maps block types to widgets.
@@ -196,7 +197,11 @@ class _TableView extends StatelessWidget {
           decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(8)),
           clipBehavior: Clip.antiAlias,
           child: Table(
-            defaultColumnWidth: const IntrinsicColumnWidth(),
+            // Long cells wrap instead of stretching their column off screen.
+            defaultColumnWidth: MinColumnWidth(
+              const IntrinsicColumnWidth(),
+              FixedColumnWidth(MediaQuery.sizeOf(context).width < 600 ? 220 : 340),
+            ),
             border: TableBorder(horizontalInside: BorderSide(color: c.border), verticalInside: BorderSide(color: c.border)),
             children: [row(table.header, header: true), for (final r in table.rows) row(r.cells)],
           ),
@@ -208,23 +213,23 @@ class _TableView extends StatelessWidget {
 
 /// A code block with its language and a copy button.
 class CodeBox extends StatelessWidget {
-  const CodeBox({super.key, required this.code, this.lang = '', this.maxHeight});
+  const CodeBox({super.key, required this.code, this.lang = '', this.maxLines});
 
   final String code;
   final String lang;
-  final double? maxHeight;
+
+  /// Longer code shows this many lines until expanded.
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget text = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-      child: SelectableText(code, style: monoStyle(context, size: 12.5)),
-    );
-    if (maxHeight != null) {
-      text = ConstrainedBox(constraints: BoxConstraints(maxHeight: maxHeight!), child: SingleChildScrollView(child: text));
-    }
+    final lines = code.split('\n');
+    Widget text(int? limit) => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+          child: SelectableText(limit == null ? code : lines.take(limit).join('\n'), style: monoStyle(context, size: 12.5)),
+        );
     return Container(
       decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.border)),
       child: Column(
@@ -244,13 +249,13 @@ class CodeBox extends StatelessWidget {
                   icon: const Icon(Icons.content_copy_rounded),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: code));
-                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('Copied'), duration: Duration(seconds: 1)));
+                    showToast(context, 'Code copied', icon: Icons.content_copy_rounded);
                   },
                 ),
               ],
             ),
           ),
-          text,
+          if (maxLines == null) text(null) else LineClamp(lines: lines.length, maxLines: maxLines!, builder: text),
         ],
       ),
     );

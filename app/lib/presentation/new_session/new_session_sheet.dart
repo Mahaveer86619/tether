@@ -12,10 +12,14 @@ const _models = {'': 'Default', 'opus': 'Opus', 'sonnet': 'Sonnet', 'haiku': 'Ha
 const _modes = {'': 'Default', 'acceptEdits': 'Accept edits', 'plan': 'Plan', 'auto': 'Auto'};
 
 /// Shows the new-session form; returns the created session's id.
-Future<String?> showNewSession(BuildContext context, {String? node}) {
+Future<String?> showNewSession(BuildContext context, {String? node, String? cwd, String prompt = ''}) {
   final form = BlocProvider(
-    create: (_) => sl<NewSessionCubit>(param1: context.read<HubCubit>().state.hub, param2: node),
-    child: const NewSessionForm(),
+    create: (_) {
+      final cubit = sl<NewSessionCubit>(param1: context.read<HubCubit>().state.hub, param2: node);
+      if (cwd != null && cubit.state.node == node) cubit.setCwd(cwd);
+      return cubit;
+    },
+    child: NewSessionForm(prompt: prompt),
   );
   if (isDesktop) {
     return showDialog<String>(
@@ -32,14 +36,16 @@ Future<String?> showNewSession(BuildContext context, {String? node}) {
 }
 
 class NewSessionForm extends StatefulWidget {
-  const NewSessionForm({super.key});
+  const NewSessionForm({super.key, this.prompt = ''});
+
+  final String prompt;
 
   @override
   State<NewSessionForm> createState() => _NewSessionFormState();
 }
 
 class _NewSessionFormState extends State<NewSessionForm> {
-  final _prompt = TextEditingController();
+  late final _prompt = TextEditingController(text: widget.prompt);
 
   @override
   void dispose() {

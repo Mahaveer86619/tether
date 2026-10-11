@@ -35,6 +35,7 @@ message Frame {
     TimelineUpdate timeline = 35;
     ApprovalRequest approval_requested = 36;
     ApprovalResolved approval_resolved = 37;
+    SessionRemoved session_removed = 38;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -113,6 +114,14 @@ message SessionInfo {
   string attach_command = 17;
   // A terminal session the agent can type into anyway (Windows consoles).
   bool terminal_input = 18;
+  // Set by the user ("mark as done"); kept by the hub across agent updates
+  // and cleared when the session starts working again.
+  bool archived = 19;
+}
+
+// A session no longer exists on its node (its transcript was deleted).
+message SessionRemoved {
+  string session = 1;
 }
 
 message TimelineUpdate {
@@ -196,6 +205,11 @@ message CreateSession {
   string name = 6;
 }
 
+// REST body for POST /api/v1/sessions/{id}/archive.
+message ArchiveSession {
+  bool archived = 1;
+}
+
 message SendMessage {
   string session = 1;
   string text = 2;
@@ -241,7 +255,8 @@ message AgentHello {
 }
 
 message SessionIndex {
-  // True when sessions is the node's complete list.
+  // True when sessions is the node's complete list; the hub forgets the
+  // node's other sessions.
   bool full = 1;
   repeated SessionInfo sessions = 2;
   repeated string removed = 3;

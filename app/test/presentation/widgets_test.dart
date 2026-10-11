@@ -143,6 +143,9 @@ void main() {
 
       await tester.tap(find.widgetWithText(OutlinedButton, 'Fork'));
       await settle(tester);
+      expect(find.text('Fork this session'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('confirm-fork')));
+      await settle(tester);
       await tester.enterText(find.byKey(const Key('composer')), 'carry on');
       await tester.pump();
       await tester.tap(find.byKey(const Key('send')));
@@ -178,7 +181,7 @@ void main() {
       await pumpApp(tester, const Size(1400, 900));
       await tester.tap(find.text('Session w1').first);
       await settle(tester);
-      expect(find.textContaining('messages are typed there'), findsOneWidget);
+      expect(find.textContaining('typed into your terminal on laptop'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('composer')), 'from the app');
       await tester.pump();
       await tester.tap(find.byKey(const Key('send')));
@@ -198,17 +201,42 @@ void main() {
       ], version: 2);
       await tester.pump(const Duration(milliseconds: 60));
       await tester.pump(const Duration(milliseconds: 10));
-      final fade = tester.widget<FadeTransition>(find.ancestor(of: find.text('fresh'), matching: find.byType(FadeTransition)).first);
-      expect(fade.opacity.value, lessThan(1));
-      final old = tester.widget<FadeTransition>(find.ancestor(of: find.text('history'), matching: find.byType(FadeTransition)).first);
-      expect(old.opacity.value, 1);
+      final fade = tester.widget<Opacity>(find.ancestor(of: find.text('fresh'), matching: find.byType(Opacity)).first);
+      expect(fade.opacity, lessThan(1));
+      final old = tester.widget<Opacity>(find.ancestor(of: find.text('history'), matching: find.byType(Opacity)).first);
+      expect(old.opacity, 1);
       await settle(tester);
+    });
+
+    testWidgets('consecutive tool calls fold into one group', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.text('Session s1').first);
+      await settle(tester);
+      rpb.TimelineItem tool(String id, String name) => rpb.TimelineItem(
+            itemId: id,
+            tool: rpb.ToolCard(toolUseId: id, name: name, title: 'step $id', status: rpbe.ToolCard_Status.STATUS_SUCCEEDED),
+          );
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', user: rpb.UserText(text: 'go')),
+        tool('a', 'Bash'),
+        tool('b', 'Bash'),
+        tool('c', 'Read'),
+        rpb.TimelineItem(itemId: 'm', markdown: rpb.Markdown(blocks: [])),
+        tool('d', 'Edit'),
+      ]);
+      await settle(tester);
+      expect(find.textContaining('Ran 3 steps', findRichText: true), findsOneWidget);
+      expect(find.text('step a'), findsNothing);
+      expect(find.text('step d'), findsOneWidget, reason: 'a lone tool call keeps its own card');
+      await tester.tap(find.textContaining('Ran 3 steps', findRichText: true));
+      await settle(tester);
+      expect(find.text('step a'), findsOneWidget);
     });
 
     testWidgets('phone: dashboard with devices and a pushed session page', (tester) async {
       await pumpApp(tester, const Size(400, 860));
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      await tester.tap(find.descendant(of: find.byType(CardShell), matching: find.text('Session s1')));
+      expect(find.byKey(const Key('quick-start')), findsOneWidget);
+      await tester.tap(find.descendant(of: find.byType(CardShell), matching: find.text('Session s1')).first);
       await settle(tester);
       expect(find.byType(BackButton), findsOneWidget);
       expect(find.byKey(const Key('composer')), findsOneWidget);

@@ -69,6 +69,16 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/sessions/{id}/stop", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return ackOf(h.stop(r.PathValue("id")))
 	}))
+	mux.HandleFunc("POST /api/v1/sessions/{id}/archive", h.api(func(r *http.Request) (proto.Message, *opError) {
+		a := &v1.ArchiveSession{}
+		if err := decode(r, a); err != nil {
+			return nil, err
+		}
+		return ackOf(h.archive(r.PathValue("id"), a.Archived))
+	}))
+	mux.HandleFunc("POST /api/v1/sessions/{id}/rebuild", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return ackOf(h.rebuild(r.PathValue("id")))
+	}))
 	mux.HandleFunc("POST /api/v1/approvals/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		d := &v1.ApprovalDecision{}
 		if err := decode(r, d); err != nil {

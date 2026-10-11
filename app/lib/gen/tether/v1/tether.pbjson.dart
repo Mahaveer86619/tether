@@ -222,6 +222,15 @@ const Frame$json = {
       '10': 'approvalResolved'
     },
     {
+      '1': 'session_removed',
+      '3': 38,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.SessionRemoved',
+      '9': 0,
+      '10': 'sessionRemoved'
+    },
+    {
       '1': 'agent_hello',
       '3': 50,
       '4': 1,
@@ -283,12 +292,13 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'Nlc3Npb25JbmZvEjcKCHRpbWVsaW5lGCMgASgLMhkudGV0aGVyLnYxLlRpbWVsaW5lVXBkYXRl'
     'SABSCHRpbWVsaW5lEksKEmFwcHJvdmFsX3JlcXVlc3RlZBgkIAEoCzIaLnRldGhlci52MS5BcH'
     'Byb3ZhbFJlcXVlc3RIAFIRYXBwcm92YWxSZXF1ZXN0ZWQSSgoRYXBwcm92YWxfcmVzb2x2ZWQY'
-    'JSABKAsyGy50ZXRoZXIudjEuQXBwcm92YWxSZXNvbHZlZEgAUhBhcHByb3ZhbFJlc29sdmVkEj'
-    'gKC2FnZW50X2hlbGxvGDIgASgLMhUudGV0aGVyLnYxLkFnZW50SGVsbG9IAFIKYWdlbnRIZWxs'
-    'bxI+Cg1zZXNzaW9uX2luZGV4GDMgASgLMhcudGV0aGVyLnYxLlNlc3Npb25JbmRleEgAUgxzZX'
-    'NzaW9uSW5kZXgSNQoKcmF3X2V2ZW50cxg0IAEoCzIULnRldGhlci52MS5SYXdFdmVudHNIAFIJ'
-    'cmF3RXZlbnRzEj4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZXRoZXIudjEuQWdlbnRDb21tYW'
-    '5kSABSDGFnZW50Q29tbWFuZEIGCgRib2R5');
+    'JSABKAsyGy50ZXRoZXIudjEuQXBwcm92YWxSZXNvbHZlZEgAUhBhcHByb3ZhbFJlc29sdmVkEk'
+    'QKD3Nlc3Npb25fcmVtb3ZlZBgmIAEoCzIZLnRldGhlci52MS5TZXNzaW9uUmVtb3ZlZEgAUg5z'
+    'ZXNzaW9uUmVtb3ZlZBI4CgthZ2VudF9oZWxsbxgyIAEoCzIVLnRldGhlci52MS5BZ2VudEhlbG'
+    'xvSABSCmFnZW50SGVsbG8SPgoNc2Vzc2lvbl9pbmRleBgzIAEoCzIXLnRldGhlci52MS5TZXNz'
+    'aW9uSW5kZXhIAFIMc2Vzc2lvbkluZGV4EjUKCnJhd19ldmVudHMYNCABKAsyFC50ZXRoZXIudj'
+    'EuUmF3RXZlbnRzSABSCXJhd0V2ZW50cxI+Cg1hZ2VudF9jb21tYW5kGDwgASgLMhcudGV0aGVy'
+    'LnYxLkFnZW50Q29tbWFuZEgAUgxhZ2VudENvbW1hbmRCBgoEYm9keQ==');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -356,6 +366,7 @@ const SessionInfo$json = {
     },
     {'1': 'attach_command', '3': 17, '4': 1, '5': 9, '10': 'attachCommand'},
     {'1': 'terminal_input', '3': 18, '4': 1, '5': 8, '10': 'terminalInput'},
+    {'1': 'archived', '3': 19, '4': 1, '5': 8, '10': 'archived'},
   ],
 };
 
@@ -371,7 +382,19 @@ final $typed_data.Uint8List sessionInfoDescriptor = $convert.base64Decode(
     'RvZG9SBXRvZG9zEiIKDWxhc3RfY29zdF91c2QYDiABKAFSC2xhc3RDb3N0VXNkEhQKBWVycm9y'
     'GA8gASgJUgVlcnJvchIqCgRob3N0GBAgASgOMhYudGV0aGVyLnYxLlNlc3Npb25Ib3N0UgRob3'
     'N0EiUKDmF0dGFjaF9jb21tYW5kGBEgASgJUg1hdHRhY2hDb21tYW5kEiUKDnRlcm1pbmFsX2lu'
-    'cHV0GBIgASgIUg10ZXJtaW5hbElucHV0');
+    'cHV0GBIgASgIUg10ZXJtaW5hbElucHV0EhoKCGFyY2hpdmVkGBMgASgIUghhcmNoaXZlZA==');
+
+@$core.Deprecated('Use sessionRemovedDescriptor instead')
+const SessionRemoved$json = {
+  '1': 'SessionRemoved',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+  ],
+};
+
+/// Descriptor for `SessionRemoved`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sessionRemovedDescriptor = $convert
+    .base64Decode('Cg5TZXNzaW9uUmVtb3ZlZBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u');
 
 @$core.Deprecated('Use timelineUpdateDescriptor instead')
 const TimelineUpdate$json = {
@@ -574,6 +597,18 @@ final $typed_data.Uint8List createSessionDescriptor = $convert.base64Decode(
     'Cg1DcmVhdGVTZXNzaW9uEhIKBG5vZGUYASABKAlSBG5vZGUSEAoDY3dkGAIgASgJUgNjd2QSFg'
     'oGcHJvbXB0GAMgASgJUgZwcm9tcHQSFAoFbW9kZWwYBCABKAlSBW1vZGVsEicKD3Blcm1pc3Np'
     'b25fbW9kZRgFIAEoCVIOcGVybWlzc2lvbk1vZGUSEgoEbmFtZRgGIAEoCVIEbmFtZQ==');
+
+@$core.Deprecated('Use archiveSessionDescriptor instead')
+const ArchiveSession$json = {
+  '1': 'ArchiveSession',
+  '2': [
+    {'1': 'archived', '3': 1, '4': 1, '5': 8, '10': 'archived'},
+  ],
+};
+
+/// Descriptor for `ArchiveSession`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List archiveSessionDescriptor = $convert.base64Decode(
+    'Cg5BcmNoaXZlU2Vzc2lvbhIaCghhcmNoaXZlZBgBIAEoCFIIYXJjaGl2ZWQ=');
 
 @$core.Deprecated('Use sendMessageDescriptor instead')
 const SendMessage$json = {

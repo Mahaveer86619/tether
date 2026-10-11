@@ -173,6 +173,8 @@ class _NoCache implements HubCache {
   @override
   Future<void> writeTimeline(pb.TimelinePage page) async {}
   @override
+  Future<void> removeTimeline(String session) async {}
+  @override
   Future<pb.Welcome?> readState() async => null;
   @override
   Future<void> writeState(pb.Welcome state) async {}

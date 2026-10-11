@@ -60,7 +60,7 @@ docs/                   design docs
 
 ## Status
 
-The hub, agent and contract work end to end: sessions on the laptop and the home server are indexed, mirrored live, started (in tmux on Linux, headless on Windows), continued, forked and approved from `tetherctl`. Hooks give every Claude Code session, including ones you start yourself, live state and remote approvals. The Flutter app is next. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
+The hub, agent and contract work end to end: sessions on the laptop and the home server are indexed, mirrored live, started (in tmux on Linux, headless on Windows), continued, forked and approved from `tetherctl`. Hooks give every Claude Code session, including ones you start yourself, live state and remote approvals; on Windows the app can even type into your own terminal sessions. The Flutter app ([app/](app/)) runs on Android and Windows. The Flutter app is next. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
 
 ## Docs
 

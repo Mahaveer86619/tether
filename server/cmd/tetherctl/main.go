@@ -8,6 +8,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -32,6 +34,7 @@ commands:
   dump <session>                              print a session's timeline as JSON
   interrupt <session>                         stop the current turn
   stop <session>                              end a tmux or headless session
+  rebuild <session>                           re-render a session's timeline from its transcript
   approvals                                   list pending approvals
   approve [-deny] <approval id>               answer one
 
@@ -71,6 +74,8 @@ func main() {
 		err = c.approve(args)
 	case "interrupt", "stop":
 		err = c.control(flag.Arg(0), args)
+	case "rebuild":
+		err = c.rebuild(*hubURL, args)
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -344,6 +349,34 @@ func (c *ctl) control(cmd string, args []string) error {
 	}
 	_, err = c.request(f, nil)
 	return err
+}
+
+// rebuild goes over REST: it's an admin action with no WebSocket command.
+func (c *ctl) rebuild(hubURL string, args []string) error {
+	if len(args) != 1 {
+		return errors.New("rebuild <session>")
+	}
+	s, err := c.resolve(args[0])
+	if err != nil {
+		return err
+	}
+	base := strings.TrimSuffix(strings.Replace(strings.Replace(hubURL, "wss://", "https://", 1), "ws://", "http://", 1), "/ws")
+	req, err := http.NewRequest("POST", base+"/api/v1/sessions/"+s.Id+"/rebuild", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("TETHER_TOKEN"))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: %s", resp.Status, body)
+	}
+	fmt.Println("rebuilding", s.Id[:8], "- it re-renders when next opened")
+	return nil
 }
 
 func (c *ctl) approve(args []string) error {

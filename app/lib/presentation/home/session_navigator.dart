@@ -7,7 +7,8 @@ import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 
-/// Devices and their sessions as a tree: the desktop sidebar's body.
+/// The desktop sidebar's body: sessions grouped by project (folder) or by
+/// device, with sessions marked done tucked away at the end.
 class SessionNavigator extends StatefulWidget {
   const SessionNavigator({
     super.key,
@@ -30,6 +31,8 @@ class _SessionNavigatorState extends State<SessionNavigator> {
   final _collapsed = <String>{};
   final _expanded = <String>{};
   String _query = '';
+  bool _byProject = true;
+  bool _showDone = false;
 
   static const _shown = 8;
 
@@ -54,10 +57,28 @@ class _SessionNavigatorState extends State<SessionNavigator> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+          child: SegmentedButton<bool>(
+            showSelectedIcon: false,
+            style: SegmentedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              textStyle: const TextStyle(fontSize: 12.5),
+              selectedBackgroundColor: c.raised,
+              side: BorderSide(color: c.border),
+            ),
+            segments: const [
+              ButtonSegment(value: true, label: Text('Projects'), icon: Icon(Icons.folder_outlined, size: 16)),
+              ButtonSegment(value: false, label: Text('Devices'), icon: Icon(Icons.devices_outlined, size: 16)),
+            ],
+            selected: {_byProject},
+            onSelectionChanged: (v) => setState(() => _byProject = v.first),
+          ),
+        ),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
-            children: [
+            children: _byProject ? _projects(hub) : [
               for (final n in nodes) ...[
                 _NodeRow(
                   node: n,
@@ -66,7 +87,7 @@ class _SessionNavigatorState extends State<SessionNavigator> {
                   onToggle: () => setState(() => _collapsed.contains(n.name) ? _collapsed.remove(n.name) : _collapsed.add(n.name)),
                   onTap: () => widget.onNode(n.name),
                 ),
-                if (!_collapsed.contains(n.name)) ..._sessions(hub, n.name),
+                if (!_collapsed.contains(n.name)) ..._sessions(hub.sessionsOf(n.name), n.name),
               ],
               if (nodes.isEmpty)
                 Padding(
@@ -80,19 +101,56 @@ class _SessionNavigatorState extends State<SessionNavigator> {
     );
   }
 
-  List<Widget> _sessions(HubSnapshot hub, String node) {
-    var list = hub.sessionsOf(node);
-    if (_query.isNotEmpty) {
-      list = list
-          .where((s) => s.title.toLowerCase().contains(_query) || s.cwd.toLowerCase().contains(_query) || s.id.startsWith(_query))
-          .toList();
-    }
+  bool _matches(Session s) =>
+      _query.isEmpty || s.title.toLowerCase().contains(_query) || s.cwd.toLowerCase().contains(_query) || s.id.startsWith(_query);
+
+  List<Widget> _projects(HubSnapshot hub) {
+    final c = context.colors;
+    final done = hub.sessions.values.where((s) => s.archived && !s.isLive && _matches(s)).toList()..sort(compareSessions);
+    return [
+      for (final p in hub.projects()) ...[
+        if (p.sessions.any(_matches)) ...[
+          _ProjectRow(
+            project: p,
+            collapsed: _collapsed.contains(p.key),
+            onToggle: () => setState(() => _collapsed.contains(p.key) ? _collapsed.remove(p.key) : _collapsed.add(p.key)),
+          ),
+          if (!_collapsed.contains(p.key)) ..._sessions(p.sessions, p.key, shown: 4),
+        ],
+      ],
+      if (done.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => setState(() => _showDone = !_showDone),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            child: Row(
+              children: [
+                Icon(_showDone ? Icons.expand_more_rounded : Icons.chevron_right_rounded, size: 18, color: c.faint),
+                const SizedBox(width: 4),
+                Icon(Icons.done_all_rounded, size: 16, color: c.faint),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Done', style: TextStyle(fontSize: 13, color: c.muted, fontWeight: FontWeight.w600))),
+                Text('${done.length}', style: TextStyle(fontSize: 12, color: c.faint)),
+              ],
+            ),
+          ),
+        ),
+        if (_showDone)
+          for (final s in done) SessionTile(session: s, selected: s.id == widget.selectedSession, onTap: () => widget.onSession(s.id)),
+      ],
+    ];
+  }
+
+  List<Widget> _sessions(List<Session> sessions, String node, {int shown = _shown}) {
+    final list = sessions.where(_matches).toList();
     final all = _expanded.contains(node) || _query.isNotEmpty;
     final live = list.where((s) => s.isLive).length;
-    final limit = all ? list.length : (live > _shown ? live : _shown);
+    final limit = all ? list.length : (live > shown ? live : shown);
     return [
       for (final s in list.take(limit)) SessionTile(session: s, selected: s.id == widget.selectedSession, onTap: () => widget.onSession(s.id)),
-      if (_query.isEmpty && list.length > _shown)
+      if (_query.isEmpty && list.length > shown)
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
@@ -101,6 +159,49 @@ class _SessionNavigatorState extends State<SessionNavigator> {
           ),
         ),
     ];
+  }
+}
+
+class _ProjectRow extends StatelessWidget {
+  const _ProjectRow({required this.project, required this.collapsed, required this.onToggle});
+
+  final Project project;
+  final bool collapsed;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = project;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 2),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
+          child: Row(
+            children: [
+              Icon(collapsed ? Icons.chevron_right_rounded : Icons.expand_more_rounded, size: 18, color: c.faint),
+              const SizedBox(width: 4),
+              Icon(Icons.folder_outlined, size: 16, color: c.muted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Tooltip(
+                  message: p.cwd.isEmpty ? 'Home folder on ${p.node}' : '${p.cwd} on ${p.node}',
+                  waitDuration: const Duration(milliseconds: 600),
+                  child: Text(p.cwd.isEmpty ? 'Home folder' : baseName(p.cwd), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ),
+              ),
+              if (p.liveCount > 0) ...[Pill('${p.liveCount} live', color: c.accent), const SizedBox(width: 6)],
+              Text(p.node, style: TextStyle(fontSize: 11.5, color: c.faint)),
+              const SizedBox(width: 6),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

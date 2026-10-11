@@ -44,14 +44,33 @@ Afterwards the hub pushes `nodeStatus`, `sessionInfo`, `approvalRequested` and `
 | `unsubscribe {session}` | Stops the stream. | `ack` |
 | `createSession {node, cwd, prompt, model, permissionMode, name}` | Starts a new headless session on a node. | `ack {session}` with the new id |
 | `sendMessage {session, text, fork}` | Sends a follow-up: pasted into the tmux window, written to the headless process, or, if no process is running, the agent resumes the session. With `fork`, continues in a new session id and leaves the original untouched. Refused with `terminal_active` while a session you started yourself is open (`host: terminal`). | `ack {session}` |
-| `interruptSession {session}` | Stops the current turn. | `ack` |
+| `interruptSession {session}` | Stops the current turn; the session stays open. Works for tmux, headless and (on Windows) your own terminal sessions. | `ack` |
+| `stopSession {session}` | Ends a session the agent hosts (tmux or headless). Refused with `terminal_active` for your own terminal sessions. | `ack` |
 | `approvalDecision {approvalId, decision, message}` | Answers a permission prompt (`kind: TOOL`) or a folder-trust dialog (`kind: FOLDER_TRUST`). | `ack` |
+
+### REST
+
+The same commands are available over HTTP, with `Authorization: Bearer <TETHER_TOKEN>`. Bodies and responses are protojson.
+
+| Method and path | Body | Response |
+|---|---|---|
+| `GET /api/v1/state` | | `Welcome` |
+| `GET /api/v1/sessions/{id}/timeline?after=<seq>` | | `TimelinePage`: items changed after `seq`, ordered by `ord`, plus the session's latest `seq` |
+| `POST /api/v1/sessions` | `CreateSession` | `Ack {session}` |
+| `POST /api/v1/sessions/{id}/messages` | `{text, fork}` | `Ack {session}` |
+| `POST /api/v1/sessions/{id}/interrupt` | | `Ack` |
+| `POST /api/v1/sessions/{id}/stop` | | `Ack` |
+| `POST /api/v1/sessions/{id}/archive` | `{archived}` | `Ack`. Marks a session done, or not, for every client. The flag (`SessionInfo.archived`) belongs to the hub: agent updates keep it, and it clears when the session starts working again. |
+| `POST /api/v1/sessions/{id}/rebuild` | | `Ack`. Drops the session's timeline and re-renders it from the transcript the next time it is mirrored, e.g. after the renderer learns a new line type. `seq` keeps growing, so clients merge the rebuilt items by id. Refused (`busy`, 409) for a live headless run. |
+| `POST /api/v1/approvals/{id}` | `{decision, message}` | `Ack` |
+
+Errors are an `Error {code, message}` body with a matching status: `unauthorized` 401, `invalid` 400, `not_found` 404, `terminal_active` 409, `busy` 409, `node_offline` 503.
 
 Errors come back as `error {code, message}` with `replyTo`. Codes: `not_found`, `node_offline`, `invalid`, `terminal_active`, `unauthorized`, `internal`.
 
 ## Sessions
 
-`sessionInfo` carries the dashboard view of a session: title, node, cwd, branch, model, to-dos, last cost, `state` (`idle`, `running`, `awaiting_approval`, `ready`, `terminal_active`, `error`), `host` (`none`, `headless`, `tmux`, `terminal`) and, for tmux sessions, `attachCommand`. See [hosting.md](hosting.md).
+`sessionInfo` carries the dashboard view of a session (`sessionRemoved {session}` means it no longer exists): title, node, cwd, branch, model, to-dos, last cost, `state` (`idle`, `running`, `awaiting_approval`, `ready`, `terminal_active`, `error`), `host` (`none`, `headless`, `tmux`, `terminal`) and, for tmux sessions, `attachCommand`. `terminalInput` is set on Windows terminal sessions the agent can type into. See [hosting.md](hosting.md).
 
 Interactive (tmux and terminal) sessions have no `result` item at the end of a turn, because the transcript doesn't record one. Clients see the turn end when `state` changes from `running` to `ready`.
 

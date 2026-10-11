@@ -74,6 +74,11 @@ type rawLine struct {
 	Message         json.RawMessage `json:"message"`
 	Event           json.RawMessage `json:"event"`
 	Content         json.RawMessage `json:"content"`
+	Attachment      struct {
+		Type        string `json:"type"`
+		Prompt      string `json:"prompt"`
+		CommandMode string `json:"commandMode"`
+	} `json:"attachment"`
 
 	Model       string `json:"model"`
 	Cwd         string `json:"cwd"`
@@ -186,6 +191,14 @@ func (b *Builder) Feed(line []byte) Output {
 			break
 		}
 		b.userMessage(l, m, &out, emit)
+	case "attachment":
+		// A message sent while Claude was busy, absorbed into the running turn.
+		a := l.Attachment
+		if a.Type == "queued_command" && (a.CommandMode == "" || a.CommandMode == "prompt") && !l.IsSidechain {
+			if text := strings.TrimSpace(a.Prompt); text != "" {
+				emit(&v1.TimelineItem{ItemId: itemID("user", l.UUID, []byte(text)), Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+			}
+		}
 	case "result":
 		cost := l.Cost
 		out.Patch.Cost = &cost

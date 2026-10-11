@@ -72,6 +72,7 @@ class Session extends Equatable {
     this.lastCostUsd = 0,
     this.error = '',
     this.terminalInput = false,
+    this.archived = false,
   });
 
   final String id, node, title, cwd, gitBranch;
@@ -86,6 +87,9 @@ class Session extends Equatable {
 
   /// Open in your own terminal, but the agent can type into it (Windows).
   final bool terminalInput;
+
+  /// The user marked it done; it stays out of "pick up" lists until it works again.
+  final bool archived;
 
   String get displayTitle => title.isNotEmpty ? title : 'Untitled session';
 
@@ -115,7 +119,7 @@ class Session extends Equatable {
   @override
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
-        lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput,
+        lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived,
       ];
 }
 
@@ -178,6 +182,20 @@ class HubSnapshot extends Equatable {
 
   List<Approval> approvalsFor(String session) => approvals.values.where((a) => a.session == session).toList()..sort(_byCreated);
 
+  /// Sessions grouped by the folder they ran in, most recently active first.
+  /// Sessions marked done are left out unless [includeArchived].
+  List<Project> projects({bool includeArchived = false}) {
+    final byKey = <String, List<Session>>{};
+    for (final s in sessions.values) {
+      if (s.archived && !includeArchived && !s.isLive) continue;
+      byKey.putIfAbsent(Project(node: s.node, cwd: s.cwd, sessions: const []).key, () => []).add(s);
+    }
+    final out = [
+      for (final list in byKey.values) Project(node: list.first.node, cwd: list.first.cwd, sessions: list..sort(compareSessions)),
+    ];
+    return out..sort((a, b) => (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0)));
+  }
+
   /// Folders used recently on a node, newest first.
   List<String> recentFolders(String node) {
     final seen = <String>{};
@@ -212,6 +230,24 @@ class HubSnapshot extends Equatable {
 }
 
 /// Live sessions first, then most recently updated.
+/// A folder on a node and the sessions that ran there.
+class Project extends Equatable {
+  const Project({required this.node, required this.cwd, required this.sessions});
+
+  final String node, cwd;
+
+  /// Live first, then newest.
+  final List<Session> sessions;
+
+  Session get latest => sessions.reduce((a, b) => (b.updated ?? DateTime(0)).isAfter(a.updated ?? DateTime(0)) ? b : a);
+  DateTime? get updated => latest.updated;
+  int get liveCount => sessions.where((s) => s.isLive).length;
+  String get key => '$node|$cwd';
+
+  @override
+  List<Object?> get props => [node, cwd, sessions];
+}
+
 int compareSessions(Session a, Session b) {
   if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
   return (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0));

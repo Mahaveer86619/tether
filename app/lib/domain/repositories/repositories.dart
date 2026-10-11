@@ -32,6 +32,9 @@ abstract interface class HubRepository {
   /// Ends a session the agent hosts (tmux or headless).
   Future<Result<void>> endSession(String sessionId);
 
+  /// Marks a session done (or not) on the hub, for every client.
+  Future<Result<void>> setArchived(String sessionId, {required bool archived});
+
   Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''});
 
   Future<void> dispose();

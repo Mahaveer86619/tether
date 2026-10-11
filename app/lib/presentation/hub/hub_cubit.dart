@@ -33,13 +33,18 @@ class HubState extends Equatable {
 
 /// App-wide view model: connection, devices, sessions and approvals.
 class HubCubit extends Cubit<HubState> {
-  HubCubit({required WatchHub watchHub, required DecideApproval decideApproval, required this._retry})
-      : _decide = decideApproval,
+  HubCubit({
+    required WatchHub watchHub,
+    required DecideApproval decideApproval,
+    required this._setArchived,
+    required this._retry,
+  })  : _decide = decideApproval,
         super(const HubState()) {
     _sub = watchHub().listen((hub) => emit(state.copyWith(hub: hub)));
   }
 
   final DecideApproval _decide;
+  final SetSessionArchived _setArchived;
   final RetryConnection _retry;
   late final StreamSubscription<HubSnapshot> _sub;
 
@@ -52,6 +57,11 @@ class HubCubit extends Cubit<HubState> {
       (f) => emit(state.copyWith(deciding: deciding, failure: f, failureId: state.failureId + 1)),
       (_) => emit(state.copyWith(deciding: deciding)),
     );
+  }
+
+  Future<void> setArchived(String sessionId, {required bool archived}) async {
+    final result = await _setArchived(sessionId, archived: archived);
+    result.fold((f) => emit(state.copyWith(failure: f, failureId: state.failureId + 1)), (_) {});
   }
 
   void retry() => _retry();

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../injection.dart';
 import '../hub/hub_cubit.dart';
+import '../new_session/new_session_cubit.dart';
+import '../new_session/new_session_sheet.dart';
 import '../session/session_page.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'session_navigator.dart';
 
-/// The dashboard: what needs you, what's running, and every device.
+/// The dashboard: start something, what needs you, and where you left off.
 class OverviewPage extends StatelessWidget {
-  const OverviewPage({super.key, required this.onSession, required this.onNode, this.showDeviceSessions = false});
+  const OverviewPage({super.key, required this.onSession, required this.onNode});
 
   final ValueChanged<String> onSession;
   final ValueChanged<String> onNode;
-
-  /// On phones the overview doubles as the device list, so show sessions too.
-  final bool showDeviceSessions;
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +37,11 @@ class OverviewPage extends StatelessWidget {
 
     final approvals = hub.sortedApprovals;
     final active = hub.liveSessions;
+    final projects = hub.projects().take(8).toList();
     final nodes = hub.sortedNodes;
+    final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+      padding: EdgeInsets.fromLTRB(side, 8, side, 40),
       children: [
         Center(
           child: ConstrainedBox(
@@ -46,6 +49,7 @@ class OverviewPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (hub.connected) ...[const SizedBox(height: 8), QuickStart(onCreated: onSession)],
                 if (approvals.isNotEmpty) ...[
                   SectionLabel('Needs you', trailing: Pill('${approvals.length}', color: c.warning)),
                   for (final a in approvals)
@@ -54,27 +58,270 @@ class OverviewPage extends StatelessWidget {
                       child: ApprovalCard(approval: a, sessionTitle: hub.sessions[a.session]?.displayTitle),
                     ),
                 ],
-                SectionLabel('Active now', trailing: Text('${active.length}', style: TextStyle(color: c.faint, fontSize: 12))),
-                if (active.isEmpty)
+                if (active.isNotEmpty) ...[
+                  SectionLabel('Active now', trailing: Text('${active.length}', style: TextStyle(color: c.faint, fontSize: 12))),
+                  _Grid(children: [for (final s in active) _ActiveCard(session: s, onTap: () => onSession(s.id))]),
+                ],
+                const SectionLabel('Pick up where you left off'),
+                if (projects.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text('Nothing running. Start a session or open one from a device.', style: TextStyle(color: c.muted, fontSize: 13)),
+                    child: Text('Sessions you start, or open on your devices, show up here by project.',
+                        style: TextStyle(color: c.muted, fontSize: 13)),
                   )
                 else
-                  _Grid(children: [for (final s in active) _ActiveCard(session: s, onTap: () => onSession(s.id))]),
+                  _Grid(children: [for (final p in projects) _ProjectCard(project: p, onSession: onSession)]),
                 const SectionLabel('Devices'),
                 _Grid(children: [for (final n in nodes) _DeviceCard(node: n, sessions: hub.sessionsOf(n.name).length, onTap: () => onNode(n.name))]),
-                if (showDeviceSessions)
-                  for (final n in nodes) ...[
-                    SectionLabel('${n.name} · recent'),
-                    for (final s in hub.sessionsOf(n.name).take(6))
-                      SessionTile(session: s, selected: false, dense: false, onTap: () => onSession(s.id)),
-                  ],
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A prompt box that starts a session straight away, on the device and in
+/// the folder used most recently; "more options" opens the full form.
+class QuickStart extends StatelessWidget {
+  const QuickStart({super.key, required this.onCreated});
+
+  final ValueChanged<String> onCreated;
+
+  @override
+  Widget build(BuildContext context) {
+    final hub = context.read<HubCubit>().state.hub;
+    final online = context.select<HubCubit, String>((c) => c.state.hub.sortedNodes.where((n) => n.online).map((n) => n.name).join(','));
+    return BlocProvider(
+      key: ValueKey(online),
+      create: (_) => sl<NewSessionCubit>(param1: hub, param2: hub.projects().firstOrNull?.node),
+      child: _QuickStartBox(onCreated: onCreated),
+    );
+  }
+}
+
+class _QuickStartBox extends StatefulWidget {
+  const _QuickStartBox({required this.onCreated});
+
+  final ValueChanged<String> onCreated;
+
+  @override
+  State<_QuickStartBox> createState() => _QuickStartBoxState();
+}
+
+class _QuickStartBoxState extends State<_QuickStartBox> {
+  final _prompt = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _prompt.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _prompt.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final cubit = context.read<NewSessionCubit>();
+    return BlocConsumer<NewSessionCubit, NewSessionState>(
+      listenWhen: (a, b) => a.failureId != b.failureId || a.createdId != b.createdId,
+      listener: (context, s) {
+        if (s.createdId != null) {
+          _prompt.clear();
+          widget.onCreated(s.createdId!);
+        } else if (s.failure != null) {
+          showFailure(context, s.failure!);
+        }
+      },
+      builder: (context, s) {
+        final canStart = s.node != null && !s.submitting && _prompt.text.trim().isNotEmpty;
+        void start() {
+          if (canStart) cubit.submit(_prompt.text);
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: c.border),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 6, 8, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              CallbackShortcuts(
+                bindings: {if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): start},
+                child: TextField(
+                  key: const Key('quick-start'),
+                  controller: _prompt,
+                  minLines: 1,
+                  maxLines: 5,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                  decoration: const InputDecoration(
+                    hintText: 'What should Claude work on?',
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  if (s.nodes.isEmpty)
+                    Text('No devices online', style: TextStyle(color: c.danger, fontSize: 12.5))
+                  else
+                    _ChipMenu(
+                      icon: osIcon(s.nodes.firstWhere((n) => n.name == s.node, orElse: () => s.nodes.first).os),
+                      label: s.node ?? '',
+                      tooltip: 'Device',
+                      options: {for (final n in s.nodes) n.name: n.name},
+                      onSelected: cubit.selectNode,
+                    ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: s.nodes.isEmpty
+                          ? const SizedBox.shrink()
+                          : _ChipMenu(
+                              icon: Icons.folder_outlined,
+                              label: s.cwd.isEmpty ? 'Home folder' : baseName(s.cwd),
+                              tooltip: s.cwd.isEmpty ? 'Folder' : s.cwd,
+                              options: {for (final f in s.folders.take(10)) f: baseName(f), '': 'Home folder'},
+                              onSelected: cubit.setCwd,
+                            ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'More options',
+                    icon: Icon(Icons.tune_rounded, size: 20, color: c.muted),
+                    onPressed: () async {
+                      final id = await showNewSession(context, node: s.node, cwd: s.cwd, prompt: _prompt.text);
+                      if (id != null) {
+                        _prompt.clear();
+                        widget.onCreated(id);
+                      }
+                    },
+                  ),
+                  IconButton.filled(
+                    key: const Key('quick-start-send'),
+                    tooltip: 'Start session',
+                    onPressed: canStart ? start : null,
+                    style: IconButton.styleFrom(
+                      backgroundColor: c.accent,
+                      disabledBackgroundColor: c.raised,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: s.submitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.arrow_upward_rounded, size: 20),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChipMenu extends StatelessWidget {
+  const _ChipMenu({required this.icon, required this.label, required this.tooltip, required this.options, required this.onSelected});
+
+  final IconData icon;
+  final String label, tooltip;
+  final Map<String, String> options;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return PopupMenuButton<String>(
+      tooltip: tooltip,
+      onSelected: onSelected,
+      itemBuilder: (_) => [for (final e in options.entries) PopupMenuItem(value: e.key, child: Text(e.value))],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: c.muted),
+            const SizedBox(width: 6),
+            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: c.text))),
+            Icon(Icons.expand_more_rounded, size: 16, color: c.faint),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A folder you worked in recently: tap to continue its latest session.
+class _ProjectCard extends StatelessWidget {
+  const _ProjectCard({required this.project, required this.onSession});
+
+  final Project project;
+  final ValueChanged<String> onSession;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = project;
+    final latest = p.latest;
+    return CardShell(
+      onTap: () => onSession(latest.id),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.folder_outlined, size: 17, color: c.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(p.cwd.isEmpty ? 'Home folder' : baseName(p.cwd), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              ),
+              if (p.liveCount > 0) ...[Pill('${p.liveCount} live', color: c.accent), const SizedBox(width: 6)],
+              Pill(p.node),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              StateDot(state: latest.state, size: 7),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(latest.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.text)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${p.sessions.length} ${p.sessions.length == 1 ? 'session' : 'sessions'} · ${ago(p.updated)}',
+                  style: TextStyle(fontSize: 12, color: c.faint),
+                ),
+              ),
+              Text('Continue', style: TextStyle(fontSize: 12, color: c.accent, fontWeight: FontWeight.w600)),
+              Icon(Icons.chevron_right_rounded, size: 16, color: c.accent),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

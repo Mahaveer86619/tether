@@ -203,3 +203,16 @@ func TestTodoWrite(t *testing.T) {
 		t.Fatalf("no todo card: %v", out.Items)
 	}
 }
+
+func TestQueuedMessageShowsAsUserText(t *testing.T) {
+	b := NewBuilder()
+	queued := []byte(`{"type":"attachment","uuid":"q1","attachment":{"type":"queued_command","prompt":"also check adb","commandMode":"prompt"}}`)
+	notification := []byte(`{"type":"attachment","uuid":"q2","attachment":{"type":"queued_command","prompt":"<task-notification>x</task-notification>","commandMode":"task-notification"}}`)
+	var items []*v1.TimelineItem
+	for _, l := range [][]byte{queued, queued, notification} {
+		items = append(items, b.Feed(l).Items...)
+	}
+	if len(items) != 2 || items[0].ItemId != items[1].ItemId || items[0].GetUser().GetText() != "also check adb" {
+		t.Fatalf("want the queued prompt once (re-emitted under one id), got %v", items)
+	}
+}

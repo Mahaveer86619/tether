@@ -176,6 +176,40 @@ func (s *Store) ItemsAfter(session string, after uint64) ([]*v1.TimelineItem, ui
 	return out, maxSeq, rows.Err()
 }
 
+// DeleteSession forgets a session and its timeline.
+func (s *Store) DeleteSession(id string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM items WHERE session = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM sessions WHERE id = ?`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ResetTimeline drops a session's items so they can be rebuilt from its
+// transcript. next_seq keeps counting, so clients see every rebuilt item as
+// new and merge it by id.
+func (s *Store) ResetTimeline(id string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM items WHERE session = ?`, id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE sessions SET next_ord = 1, transcript_offset = 0 WHERE id = ?`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // LatestSeq is the highest seq assigned in a session so far.
 func (s *Store) LatestSeq(session string) (uint64, error) {
 	var next uint64

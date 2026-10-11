@@ -52,11 +52,12 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => InterruptSession(sl()))
     ..registerLazySingleton(() => EndSession(sl()))
     ..registerLazySingleton(() => DecideApproval(sl()))
+    ..registerLazySingleton(() => SetSessionArchived(sl()))
     ..registerLazySingleton(() => LoadConnection(sl()))
     ..registerLazySingleton(() => SaveConnection(sl(), sl()))
     ..registerLazySingleton(() => ThemeSettings(sl()))
     // View models
-    ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), retry: sl()))
+    ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl()))
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), theme: sl()))
     ..registerFactoryParam<SessionBloc, String, void>(
       (sessionId, _) =>

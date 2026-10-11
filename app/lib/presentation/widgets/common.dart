@@ -9,10 +9,63 @@ import 'format.dart';
 
 bool get isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
-void showFailure(BuildContext context, Failure failure) {
+/// Runs [change] (usually a setState that opens or closes something) so the
+/// widget at [context] keeps its place on screen. In the chat list, which is
+/// anchored at the bottom, growing content would otherwise push it upwards.
+void keepInPlace(BuildContext context, VoidCallback change) {
+  final box = context.findRenderObject();
+  final scroll = Scrollable.maybeOf(context);
+  if (box is! RenderBox || !box.attached || scroll == null) return change();
+  final before = box.localToGlobal(Offset.zero).dy;
+  change();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!box.attached || !scroll.position.hasPixels) return;
+    final moved = box.localToGlobal(Offset.zero).dy - before;
+    final p = scroll.position;
+    final delta = scroll.axisDirection == AxisDirection.up ? -moved : moved;
+    p.jumpTo((p.pixels + delta).clamp(p.minScrollExtent, p.maxScrollExtent));
+  });
+}
+
+void showFailure(BuildContext context, Failure failure) =>
+    showToast(context, failure.userMessage, icon: Icons.error_outline_rounded, error: true);
+
+/// A small floating message, centred above the content instead of a
+/// full-width bar.
+void showToast(BuildContext context, String message, {IconData icon = Icons.check_rounded, bool error = false}) {
+  final c = context.colors;
+  // Centre on the pane that shows it (its own Scaffold), above the composer.
+  final width = context.findAncestorStateOfType<ScaffoldState>()?.context.size?.width ?? MediaQuery.sizeOf(context).width;
+  final side = width > 520 ? (width - 400) / 2 : 16.0;
   ScaffoldMessenger.maybeOf(context)
     ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(failure.userMessage)));
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.fromLTRB(side, 0, side, 132),
+        backgroundColor: c.raised,
+        elevation: 8,
+        duration: Duration(seconds: error ? 4 : 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: error ? c.danger.withValues(alpha: 0.5) : c.border),
+        ),
+        content: Row(
+          children: [
+            Icon(icon, size: 18, color: error ? c.danger : c.success),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: c.text, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
 }
 
 /// A session's state as a small dot that pulses while Claude is working.
@@ -68,6 +121,46 @@ class _StateDotState extends State<StateDot> with SingleTickerProviderStateMixin
           decoration: BoxDecoration(color: stateColor(context, widget.state), shape: BoxShape.circle),
         ),
       );
+}
+
+/// Shows the first [maxLines] of [lines] lines with a button for the rest.
+/// Long output stays inside the chat's one scroll instead of a nested one.
+class LineClamp extends StatefulWidget {
+  const LineClamp({super.key, required this.lines, required this.maxLines, required this.builder});
+
+  final int lines;
+  final int maxLines;
+
+  /// Builds the content showing at most `limit` lines, or all when null.
+  final Widget Function(int? limit) builder;
+
+  @override
+  State<LineClamp> createState() => _LineClampState();
+}
+
+class _LineClampState extends State<LineClamp> {
+  bool _all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final long = widget.lines > widget.maxLines;
+    if (!long) return widget.builder(null);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        widget.builder(_all ? null : widget.maxLines),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, textStyle: const TextStyle(fontSize: 12.5)),
+            onPressed: () => keepInPlace(context, () => setState(() => _all = !_all)),
+            icon: Icon(_all ? Icons.unfold_less_rounded : Icons.unfold_more_rounded, size: 16),
+            label: Text(_all ? 'Show less' : 'Show all ${widget.lines} lines'),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class OnlineDot extends StatelessWidget {

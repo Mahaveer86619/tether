@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -13,6 +14,12 @@ import (
 )
 
 var mirrorTypes = map[string]bool{"user": true, "assistant": true, "system": true, "ai-title": true, "custom-title": true}
+
+// mirrored reports whether the hub renders this transcript line. Of the
+// attachments, which can be large, only messages queued mid-turn are shown.
+func mirrored(typ string, line []byte) bool {
+	return mirrorTypes[typ] || typ == "attachment" && bytes.Contains(line, []byte(`"type":"queued_command"`))
+}
 
 func (a *Agent) startMirror(session string, from int64) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -83,7 +90,7 @@ func (a *Agent) mirrorOnce(session, path string, off int64) (int64, error) {
 		var head struct {
 			Type string `json:"type"`
 		}
-		if json.Unmarshal(line, &head) != nil || !mirrorTypes[head.Type] {
+		if json.Unmarshal(line, &head) != nil || !mirrored(head.Type, line) {
 			continue
 		}
 		lines = append(lines, strings.TrimRight(string(line), "\r\n"))

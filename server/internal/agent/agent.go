@@ -118,7 +118,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		host = "tmux"
 		a.refreshPanes()
 	}
-	if err := a.index.Scan(); err != nil {
+	if _, err := a.index.Scan(); err != nil {
 		a.log.Warn("initial scan", "err", err)
 	}
 	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir, "host", host)
@@ -639,9 +639,11 @@ func (a *Agent) scanLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			if err := a.index.Scan(); err != nil {
+			removed, err := a.index.Scan()
+			if err != nil {
 				a.log.Warn("scan", "err", err)
 			}
+			a.forget(append(removed, a.reapTerminals()...))
 			if a.tmux != nil && a.refreshPanes() {
 				a.sendStatus()
 			}
@@ -678,6 +680,48 @@ func (a *Agent) refreshPanes() bool {
 	}
 	a.panes = panes
 	return changed
+}
+
+// reapTerminals closes hook-tracked sessions whose Claude Code process has
+// exited without a SessionEnd hook, e.g. a terminal window that was closed.
+// It returns those whose transcript is already gone.
+func (a *Agent) reapTerminals() []string {
+	a.mu.Lock()
+	var dead []string
+	for id, hs := range a.hooks {
+		if !hs.closed && hs.pid != 0 && !processAlive(hs.pid) {
+			hs.closed = true
+			a.ended[id] = &v1.SessionInfo{Id: id, State: v1.SessionState_SESSION_STATE_IDLE, UpdatedMs: time.Now().UnixMilli()}
+			dead = append(dead, id)
+		}
+	}
+	a.mu.Unlock()
+	var gone []string
+	for _, id := range dead {
+		a.report(id)
+		if a.index.Path(id) == "" {
+			gone = append(gone, id)
+		}
+	}
+	return gone
+}
+
+// forget tells the hub about deleted transcripts, unless the session is
+// still alive here.
+func (a *Agent) forget(ids []string) {
+	var gone []string
+	for _, id := range ids {
+		if _, hookLive := a.hookState(id); a.run(id) == nil && a.pane(id) == "" && !hookLive {
+			a.mu.Lock()
+			delete(a.reported, id)
+			delete(a.ended, id)
+			a.mu.Unlock()
+			gone = append(gone, id)
+		}
+	}
+	if len(gone) > 0 {
+		a.send(&v1.Frame{Body: &v1.Frame_SessionIndex{SessionIndex: &v1.SessionIndex{Removed: gone}}})
+	}
 }
 
 func (a *Agent) closeIdleRuns() {

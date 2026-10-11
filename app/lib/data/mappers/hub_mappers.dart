@@ -63,6 +63,7 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       lastCostUsd: s.lastCostUsd,
       error: s.error,
       terminalInput: s.terminalInput,
+      archived: s.archived,
     );
 
 Approval approvalFromPb(pb.ApprovalRequest a) => Approval(

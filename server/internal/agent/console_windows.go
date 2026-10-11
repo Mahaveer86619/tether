@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 	"unicode/utf16"
 	"unsafe"
 )
@@ -53,25 +54,35 @@ func keyPair(vk, scan, ch uint16) []inputRecord {
 }
 
 // typeIntoConsole types text into the console of process pid and presses
-// Enter, as if the user had typed it. Line breaks become Claude Code's
-// "\ + Enter" newline so a multi-line message is submitted once.
+// Enter, as if the user had typed it. Line breaks become Ctrl+J, Claude
+// Code's newline key, so a multi-line message is submitted once.
 func typeIntoConsole(pid uint32, text string) error {
 	var recs []inputRecord
 	for _, r := range text {
-		if r == '\r' {
+		switch r {
+		case '\r':
 			continue
-		}
-		if r == '\n' {
-			recs = append(recs, keyPair(0, 0, '\\')...)
-			recs = append(recs, keyPair(vkReturn, 0x1C, '\r')...)
+		case '\n':
+			recs = append(recs, keyPair('J', 0x24, '\n')...)
 			continue
 		}
 		for _, u := range utf16.Encode([]rune{r}) {
 			recs = append(recs, keyPair(0, 0, u)...)
 		}
 	}
-	recs = append(recs, keyPair(vkReturn, 0x1C, '\r')...)
-	return writeConsole(pid, recs)
+	if len(recs) > 0 {
+		if err := writeConsole(pid, recs); err != nil {
+			return err
+		}
+		// The TUI reads a burst of keys as a paste, and an Enter inside a
+		// paste is only a newline; send it on its own once the paste lands.
+		time.Sleep(pasteSettle(len(text)))
+	}
+	return writeConsole(pid, keyPair(vkReturn, 0x1C, '\r'))
+}
+
+func pasteSettle(n int) time.Duration {
+	return min(300*time.Millisecond+time.Duration(n)*200*time.Microsecond, 2*time.Second)
 }
 
 // pressEscape interrupts Claude Code's current turn in that console.

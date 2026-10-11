@@ -66,7 +66,7 @@ class _SessionBody extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: contentWidth + 32),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                    padding: MediaQuery.sizeOf(context).width < 600 ? const EdgeInsets.fromLTRB(10, 2, 10, 8) : const EdgeInsets.fromLTRB(16, 4, 16, 12),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -103,14 +103,15 @@ class SessionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final bloc = context.read<SessionBloc>();
+    final narrow = MediaQuery.sizeOf(context).width < 600;
     final details = [
       session.node,
       if (session.cwd.isNotEmpty) baseName(session.cwd),
-      if (session.gitBranch.isNotEmpty) session.gitBranch,
-      if (session.model.isNotEmpty) shortModel(session.model),
+      if (!narrow && session.gitBranch.isNotEmpty) session.gitBranch,
+      if (!narrow && session.model.isNotEmpty) shortModel(session.model),
     ];
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      padding: EdgeInsets.fromLTRB(leading == null ? 16 : 0, narrow ? 4 : 10, 4, narrow ? 4 : 10),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.border))),
       child: Row(
         children: [
@@ -121,20 +122,15 @@ class SessionHeader extends StatelessWidget {
               children: [
                 Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     StateDot(state: session.state),
                     const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(stateLabel(session.state), maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: stateColor(context, session.state))),
-                    ),
-                    if (hostLabel(session.host).isNotEmpty) ...[const SizedBox(width: 8), Pill(hostLabel(session.host))],
-                    const SizedBox(width: 8),
+                    Text(stateLabel(session.state), style: TextStyle(fontSize: 12, color: stateColor(context, session.state))),
+                    if (!narrow && hostLabel(session.host).isNotEmpty) ...[const SizedBox(width: 8), Pill(hostLabel(session.host))],
                     Expanded(
-                      flex: 2,
-                      child: Text(details.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      child: Text('  ·  ${details.join(' · ')}', maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 12, color: c.muted)),
                     ),
                   ],
@@ -149,18 +145,27 @@ class SessionHeader extends StatelessWidget {
               icon: const Icon(Icons.stop_circle_outlined),
               onPressed: () => bloc.add(const InterruptRequested()),
             ),
-          IconButton(
-            tooltip: 'Fork and continue',
-            icon: const Icon(Icons.call_split_rounded),
-            onPressed: () => bloc.add(const ForkModeChanged(true)),
-          ),
+          if (!narrow)
+            IconButton(
+              tooltip: 'Fork: continue in a new session',
+              icon: const Icon(Icons.call_split_rounded),
+              onPressed: () => startFork(context),
+            ),
           PopupMenuButton<String>(
             tooltip: 'More',
-            icon: const Icon(Icons.more_horiz_rounded),
+            icon: const Icon(Icons.more_vert_rounded),
             onSelected: (v) async {
-              if (v == 'end') {
-                if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
-                return;
+              switch (v) {
+                case 'fork':
+                  startFork(context);
+                  return;
+                case 'archive':
+                  context.read<HubCubit>().setArchived(session.id, archived: !session.archived);
+                  showToast(context, session.archived ? 'Moved back to "Pick up"' : 'Marked as done', icon: Icons.done_all_rounded);
+                  return;
+                case 'end':
+                  if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
+                  return;
               }
               final text = switch (v) {
                 'attach' => session.attachCommand,
@@ -168,18 +173,28 @@ class SessionHeader extends StatelessWidget {
                 _ => session.id,
               };
               Clipboard.setData(ClipboardData(text: text));
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Copied: $text'), duration: const Duration(seconds: 2)));
+              if (context.mounted) showToast(context, 'Copied to clipboard', icon: Icons.content_copy_rounded);
             },
             itemBuilder: (_) => [
-              if (session.attachCommand.isNotEmpty) const PopupMenuItem(value: 'attach', child: Text('Copy tmux attach command')),
-              const PopupMenuItem(value: 'resume', child: Text('Copy "claude --resume" command')),
-              const PopupMenuItem(value: 'id', child: Text('Copy session id')),
+              if (narrow) _menuItem('fork', Icons.call_split_rounded, 'Fork into a new session'),
+              _menuItem('archive', session.archived ? Icons.unarchive_outlined : Icons.done_all_rounded,
+                  session.archived ? 'Move back to "Pick up"' : 'Mark as done'),
+              const PopupMenuDivider(),
+              if (session.attachCommand.isNotEmpty) _menuItem('attach', Icons.terminal_rounded, 'Copy tmux attach command'),
+              _menuItem('resume', Icons.content_copy_rounded, 'Copy "claude --resume" command'),
+              _menuItem('id', Icons.tag_rounded, 'Copy session id'),
               if (session.canEnd) ...[
                 const PopupMenuDivider(),
                 PopupMenuItem(
                   key: const Key('end-session'),
                   value: 'end',
-                  child: Text('End session', style: TextStyle(color: context.colors.danger)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.power_settings_new_rounded, size: 18, color: context.colors.danger),
+                      const SizedBox(width: 12),
+                      Text('End session', style: TextStyle(color: context.colors.danger)),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -188,6 +203,74 @@ class SessionHeader extends StatelessWidget {
       ),
     );
   }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label) => PopupMenuItem(
+        value: value,
+        child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 12), Flexible(child: Text(label))]),
+      );
+}
+
+/// Explains what a fork is, then puts the composer in fork mode.
+Future<void> startFork(BuildContext context) async {
+  final bloc = context.read<SessionBloc>();
+  final c = context.colors;
+  final body = Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Icon(Icons.call_split_rounded, color: c.accent),
+          const SizedBox(width: 10),
+          const Text('Fork this session', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+        ],
+      ),
+      const SizedBox(height: 14),
+      for (final (icon, text) in const [
+        (Icons.content_copy_rounded, 'A new session starts with a copy of this whole conversation, so Claude remembers everything said so far.'),
+        (Icons.lock_outline_rounded, 'This session stays exactly as it is. Nothing you do in the fork changes it.'),
+        (Icons.alt_route_rounded, 'Use it to try another approach, or to continue here a session that is open in a terminal.'),
+      ])
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: c.muted),
+              const SizedBox(width: 12),
+              Expanded(child: Text(text, style: TextStyle(color: c.muted, fontSize: 13.5, height: 1.45))),
+            ],
+          ),
+        ),
+    ],
+  );
+  Widget actions(BuildContext ctx) => Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            key: const Key('confirm-fork'),
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.call_split_rounded, size: 18),
+            label: const Text('Fork'),
+          ),
+        ],
+      );
+  final ok = isDesktop
+      ? await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(content: SizedBox(width: 420, child: body), actions: [actions(ctx)]),
+        )
+      : await showModalBottomSheet<bool>(
+          context: context,
+          useSafeArea: true,
+          builder: (ctx) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [body, const SizedBox(height: 8), actions(ctx)]),
+          ),
+        );
+  if (ok ?? false) bloc.add(const ForkModeChanged(true));
 }
 
 class _Timeline extends StatefulWidget {
@@ -199,28 +282,77 @@ class _Timeline extends StatefulWidget {
   State<_Timeline> createState() => _TimelineState();
 }
 
+/// One row of the chat: a single item, or a run of tool calls folded into
+/// an [ActivityGroup].
+class _Entry {
+  _Entry(this.items);
+
+  final List<TimelineItem> items;
+
+  String get key => items.first.itemId;
+  bool get isGroup => items.where((i) => i.whichKind() == TimelineItem_Kind.tool).length > 1;
+}
+
+bool _isStep(TimelineItem i) => i.whichKind() == TimelineItem_Kind.tool || i.whichKind() == TimelineItem_Kind.thinking;
+
+List<_Entry> _entries(List<TimelineItem> items) {
+  final runs = <_Entry>[];
+  List<TimelineItem>? run;
+  for (final it in items) {
+    if (_isStep(it) && run != null) {
+      run.add(it);
+    } else {
+      run = _isStep(it) ? [it] : null;
+      runs.add(_Entry(run ?? [it]));
+    }
+  }
+  // A run with a single tool call reads better as its own card.
+  return [
+    for (final e in runs)
+      if (e.items.length > 1 && !e.isGroup) ...[for (final i in e.items) _Entry([i])] else e,
+  ];
+}
+
 class _TimelineState extends State<_Timeline> {
-  /// Items present when the history finished loading; only items arriving
+  final _scroll = ScrollController();
+  bool _awayFromLatest = false;
+
+  /// Rows present when the history finished loading; only rows arriving
   /// after that animate in.
   Set<String>? _initial;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final away = _scroll.hasClients && _scroll.offset > 400;
+      if (away != _awayFromLatest) setState(() => _awayFromLatest = away);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final items = s.items;
+    final busy = s.session?.isBusy ?? false;
+    final approval = s.session?.state == SessionState.awaitingApproval;
+    final entries = _entries(items);
     if (_initial == null && (!s.loading || items.isNotEmpty)) {
-      _initial = {for (final i in items) i.itemId};
+      _initial = {for (final e in entries) e.key};
     }
     if (items.isEmpty) {
-      if (s.session?.isBusy ?? false) {
+      if (busy) {
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: contentWidth),
-              child: _Working(waitingForApproval: s.session?.state == SessionState.awaitingApproval),
-            ),
+            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: _Working(waitingForApproval: approval)),
           ),
         );
       }
@@ -230,34 +362,70 @@ class _TimelineState extends State<_Timeline> {
     }
     final last = items.last;
     final streaming = last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
-    final working = (s.session?.isBusy ?? false) && !streaming;
-    final extra = working ? 1 : 0;
-    // Reversed so the view stays pinned to the newest item.
-    return ListView.builder(
-      reverse: true,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      itemCount: items.length + extra,
-      itemBuilder: (context, i) {
-        final Widget child;
-        if (i < extra) {
-          child = _Working(waitingForApproval: s.session?.state == SessionState.awaitingApproval);
-        } else {
-          final item = items[items.length - 1 - (i - extra)];
-          child = _Appear(
-            key: ValueKey(item.itemId),
-            animate: !(_initial?.contains(item.itemId) ?? true),
-            child: TimelineItemView(item: item),
-          );
-        }
-        return Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child));
-      },
+    final working = busy && !streaming;
+    final keyIndex = {for (var i = 0; i < entries.length; i++) entries[i].key: entries.length - i};
+    final side = MediaQuery.sizeOf(context).width < 600 ? 14.0 : 16.0;
+    return Stack(
+      children: [
+        // Reversed so the view stays pinned to the newest row. Rows are keyed
+        // so a new message doesn't shift every row's state down by one.
+        ListView.builder(
+          controller: _scroll,
+          reverse: true,
+          padding: EdgeInsets.fromLTRB(side, 8, side, 12),
+          itemCount: entries.length + 1,
+          findChildIndexCallback: (key) => key is ValueKey<String> ? keyIndex[key.value] : null,
+          itemBuilder: (context, i) {
+            final Widget child;
+            final Key key;
+            if (i == 0) {
+              key = const ValueKey('working');
+              child = AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
+                child: working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+              );
+            } else {
+              final e = entries[entries.length - i];
+              key = ValueKey(e.key);
+              child = _Appear(
+                animate: !(_initial?.contains(e.key) ?? true),
+                child: e.isGroup
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: ActivityGroup(items: e.items, active: working && i == 1),
+                      )
+                    : TimelineItemView(item: e.items.first),
+              );
+            }
+            return KeyedSubtree(
+              key: key,
+              child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child)),
+            );
+          },
+        ),
+        Positioned(
+          right: 16,
+          bottom: 12,
+          child: AnimatedScale(
+            scale: _awayFromLatest ? 1 : 0,
+            duration: const Duration(milliseconds: 180),
+            child: IconButton.filledTonal(
+              tooltip: 'Jump to latest',
+              onPressed: () => _scroll.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic),
+              icon: const Icon(Icons.arrow_downward_rounded, size: 20),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// Fades and slides a new message in once, when it first appears.
+/// Fades a new row in once, rising a few pixels, when it first appears.
 class _Appear extends StatefulWidget {
-  const _Appear({super.key, required this.animate, required this.child});
+  const _Appear({required this.animate, required this.child});
 
   final bool animate;
   final Widget child;
@@ -267,7 +435,7 @@ class _Appear extends StatefulWidget {
 }
 
 class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 320), value: widget.animate ? 0 : 1);
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 260), value: widget.animate ? 0 : 1);
   late final _curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
 
   @override
@@ -283,12 +451,14 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _curve,
-        child: SlideTransition(
-          position: Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(_curve),
-          child: widget.child,
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _curve,
+        // A fixed offset: a relative one makes tall messages jump.
+        builder: (context, child) => Opacity(
+          opacity: _curve.value,
+          child: Transform.translate(offset: Offset(0, 10 * (1 - _curve.value)), child: child),
         ),
+        child: widget.child,
       );
 }
 
@@ -385,7 +555,7 @@ class _TypingHint extends StatelessWidget {
           Icon(Icons.keyboard_outlined, size: 14, color: c.info),
           const SizedBox(width: 6),
           Expanded(
-            child: Text('Open in your terminal on ${session.node} · messages are typed there',
+            child: Text('Messages are typed into your terminal on ${session.node}',
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted)),
           ),
         ],
@@ -472,7 +642,7 @@ class _TerminalNotice extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           OutlinedButton.icon(
-            onPressed: () => context.read<SessionBloc>().add(const ForkModeChanged(true)),
+            onPressed: () => startFork(context),
             icon: const Icon(Icons.call_split_rounded, size: 16),
             label: const Text('Fork'),
           ),
@@ -528,92 +698,105 @@ class _ComposerState extends State<Composer> {
         ? '${s.session?.node ?? 'Device'} is offline'
         : (s.forking ? 'First message of the new fork…' : 'Reply to Claude…');
     final canSubmit = s.canType && !s.sending && _text.text.trim().isNotEmpty;
+    final compact = !isDesktop;
+    final stop = (s.session?.canInterrupt ?? false)
+        ? IconButton.outlined(
+            tooltip: 'Stop',
+            onPressed: () => bloc.add(const InterruptRequested()),
+            icon: const Icon(Icons.stop_rounded, size: 18),
+            style: IconButton.styleFrom(side: BorderSide(color: c.border)),
+          )
+        : null;
+    final send = IconButton.filled(
+      key: const Key('send'),
+      tooltip: 'Send',
+      onPressed: canSubmit ? _submit : null,
+      style: IconButton.styleFrom(
+        backgroundColor: c.accent,
+        disabledBackgroundColor: c.raised,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      icon: s.sending
+          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          : const Icon(Icons.arrow_upward_rounded, size: 20),
+    );
+    final field = CallbackShortcuts(
+      bindings: {
+        if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit,
+        if (s.session?.canInterrupt ?? false) const SingleActivator(LogicalKeyboardKey.escape): () => bloc.add(const InterruptRequested()),
+      },
+      child: TextField(
+        key: const Key('composer'),
+        controller: _text,
+        enabled: s.canType,
+        autofocus: s.forking,
+        minLines: 1,
+        maxLines: compact ? 6 : 8,
+        textInputAction: TextInputAction.newline,
+        style: Theme.of(context).textTheme.bodyLarge,
+        decoration: InputDecoration(
+          hintText: hint,
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(vertical: compact ? 10 : 8),
+        ),
+      ),
+    );
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 22 : 18),
         border: Border.all(color: s.forking ? c.accent.withValues(alpha: 0.6) : c.border),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
       ),
-      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+      padding: compact ? const EdgeInsets.fromLTRB(16, 4, 5, 4) : const EdgeInsets.fromLTRB(14, 8, 8, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (s.forking)
             Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 4),
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
               child: Row(
                 children: [
                   Icon(Icons.call_split_rounded, size: 14, color: c.accent),
                   const SizedBox(width: 6),
-                  Text('Forking into a new session', style: TextStyle(fontSize: 12, color: c.accent)),
-                  const Spacer(),
+                  Expanded(
+                    child: Text('New fork · starts with this conversation; the original stays as it is',
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.accent)),
+                  ),
                   InkWell(
                     onTap: () => bloc.add(const ForkModeChanged(false)),
-                    child: Icon(Icons.close_rounded, size: 16, color: c.faint),
+                    child: Padding(padding: const EdgeInsets.all(4), child: Icon(Icons.close_rounded, size: 16, color: c.faint)),
                   ),
                 ],
               ),
             ),
-          CallbackShortcuts(
-            bindings: {
-              if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit,
-              if (s.session?.canInterrupt ?? false) const SingleActivator(LogicalKeyboardKey.escape): () => bloc.add(const InterruptRequested()),
-            },
-            child: TextField(
-              key: const Key('composer'),
-              controller: _text,
-              enabled: s.canType,
-              autofocus: s.forking,
-              minLines: 1,
-              maxLines: 8,
-              textInputAction: TextInputAction.newline,
-              style: Theme.of(context).textTheme.bodyLarge,
-              decoration: InputDecoration(
-                hintText: hint,
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-              ),
+          if (compact)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(child: field),
+                if (stop != null) Padding(padding: const EdgeInsets.only(bottom: 2), child: stop),
+                Padding(padding: const EdgeInsets.only(left: 4, bottom: 2), child: send),
+              ],
+            )
+          else ...[
+            field,
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Enter to send · Shift+Enter for a new line', maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: c.faint)),
+                ),
+                if (stop != null) Padding(padding: const EdgeInsets.only(right: 6), child: stop),
+                send,
+              ],
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: isDesktop
-                    ? Text('Enter to send · Shift+Enter for a new line', maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 11, color: c.faint))
-                    : const SizedBox.shrink(),
-              ),
-              if (s.session?.canInterrupt ?? false)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: IconButton.outlined(
-                    tooltip: 'Stop',
-                    onPressed: () => bloc.add(const InterruptRequested()),
-                    icon: const Icon(Icons.stop_rounded, size: 18),
-                    style: IconButton.styleFrom(side: BorderSide(color: c.border)),
-                  ),
-                ),
-              IconButton.filled(
-                key: const Key('send'),
-                tooltip: 'Send',
-                onPressed: canSubmit ? _submit : null,
-                style: IconButton.styleFrom(
-                  backgroundColor: c.accent,
-                  disabledBackgroundColor: c.raised,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                icon: s.sending
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.arrow_upward_rounded, size: 20),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
@@ -662,7 +845,7 @@ class ApprovalCard extends StatelessWidget {
             ),
           const SizedBox(height: 8),
           if (!trust && a.preview != null)
-            ConstrainedBox(constraints: const BoxConstraints(maxHeight: 260), child: SingleChildScrollView(child: ToolDetail(card: a.preview!)))
+            ToolDetail(card: a.preview!)
           else
             Text(a.description, style: TextStyle(fontSize: 13, color: c.muted)),
           const SizedBox(height: 10),

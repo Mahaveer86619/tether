@@ -151,6 +151,12 @@ class HubRepositoryImpl implements HubRepository {
         _emit(_snap.copyWith(sessions: {..._snap.sessions, f.sessionInfo.id: sessionFromPb(f.sessionInfo)}));
         _scheduleStateSave();
         _syncBackground();
+      case pb.Frame_Body.sessionRemoved:
+        final id = f.sessionRemoved.session;
+        _wireSessions.remove(id);
+        _emit(_snap.copyWith(sessions: {..._snap.sessions}..remove(id)));
+        _cache.removeTimeline(id);
+        _scheduleStateSave();
       case pb.Frame_Body.approvalRequested:
         final a = approvalFromPb(f.approvalRequested);
         _emit(_snap.copyWith(approvals: {..._snap.approvals, a.id: a}));
@@ -282,6 +288,10 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   Future<Result<void>> endSession(String sessionId) => _command(() => _api.stop(sessionId));
+
+  @override
+  Future<Result<void>> setArchived(String sessionId, {required bool archived}) =>
+      _command(() => _api.archive(sessionId, archived: archived));
 
   @override
   Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {

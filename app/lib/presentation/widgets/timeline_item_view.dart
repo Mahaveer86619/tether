@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
+import 'common.dart';
 import 'markdown_view.dart';
 import '../theme/theme.dart';
 import 'tool_card.dart';
@@ -41,6 +42,117 @@ class TimelineItemView extends StatelessWidget {
       _ => 14.0,
     };
     return Padding(padding: EdgeInsets.only(top: gap), child: child);
+  }
+}
+
+/// A run of consecutive tool calls (and the thinking between them) folded
+/// into one line, so a long turn reads as "Ran 12 steps" until opened.
+class ActivityGroup extends StatefulWidget {
+  const ActivityGroup({super.key, required this.items, this.active = false});
+
+  final List<pb.TimelineItem> items;
+
+  /// Claude is still working on this run.
+  final bool active;
+
+  @override
+  State<ActivityGroup> createState() => _ActivityGroupState();
+}
+
+class _ActivityGroupState extends State<ActivityGroup> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tools = [for (final i in widget.items) if (i.whichKind() == pb.TimelineItem_Kind.tool) i.tool];
+    final failed = tools.where((t) => t.status == pbe.ToolCard_Status.STATUS_FAILED).length;
+    final running = tools.lastWhere(
+      (t) => t.status == pbe.ToolCard_Status.STATUS_RUNNING || t.status == pbe.ToolCard_Status.STATUS_PENDING,
+      orElse: () => pb.ToolCard(),
+    );
+    final busy = widget.active || running.name.isNotEmpty;
+    final counts = <String, int>{};
+    for (final t in tools) {
+      counts[t.name] = (counts[t.name] ?? 0) + 1;
+    }
+    final summary = (counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+        .map((e) => e.value > 1 ? '${e.key} ×${e.value}' : e.key)
+        .join(' · ');
+    final current = running.name.isNotEmpty ? running : tools.last;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border.all(color: failed > 0 ? c.danger.withValues(alpha: 0.45) : c.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => keepInPlace(context, () => setState(() => _open = !_open)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
+              child: Row(
+                children: [
+                  Icon(Icons.layers_outlined, size: 16, color: c.muted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(
+                              text: busy ? 'Working · ${tools.length} steps' : 'Ran ${tools.length} steps',
+                              style: TextStyle(fontWeight: FontWeight.w600, color: c.text),
+                            ),
+                            TextSpan(text: '  $summary', style: TextStyle(color: c.faint)),
+                          ]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        if (busy && !_open)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '${current.name} · ${current.title}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: c.muted),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (busy)
+                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.8, color: c.accent))
+                  else if (failed > 0)
+                    Text('$failed failed', style: TextStyle(fontSize: 12, color: c.danger))
+                  else
+                    Icon(Icons.check_rounded, size: 16, color: c.success),
+                  const SizedBox(width: 4),
+                  Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: c.faint),
+                ],
+              ),
+            ),
+          ),
+          if (_open)
+            for (final i in widget.items) ...[
+              Divider(height: 1, color: c.border),
+              Padding(
+                padding: EdgeInsets.only(left: i.parentToolUseId.isNotEmpty ? 16 : 0),
+                child: i.whichKind() == pb.TimelineItem_Kind.tool
+                    ? ToolCardView(key: ValueKey(i.itemId), card: i.tool, flat: true)
+                    : Padding(padding: const EdgeInsets.fromLTRB(12, 4, 12, 4), child: _Thinking(thinking: i.thinking)),
+              ),
+            ],
+        ],
+      ),
+    );
   }
 }
 
@@ -86,7 +198,7 @@ class _ThinkingState extends State<_Thinking> {
       children: [
         InkWell(
           borderRadius: BorderRadius.circular(6),
-          onTap: () => setState(() => _open = !_open),
+          onTap: () => keepInPlace(context, () => setState(() => _open = !_open)),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(

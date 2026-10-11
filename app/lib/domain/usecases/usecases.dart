@@ -81,6 +81,12 @@ class EndSession {
   }
 }
 
+class SetSessionArchived {
+  const SetSessionArchived(this._hub);
+  final HubRepository _hub;
+  Future<Result<void>> call(String sessionId, {required bool archived}) => _hub.setArchived(sessionId, archived: archived);
+}
+
 class DecideApproval {
   const DecideApproval(this._hub);
   final HubRepository _hub;

@@ -22,6 +22,7 @@ class FakeHubRepository implements HubRepository {
   final created = <NewSessionRequest>[];
   final decided = <(String, bool)>[];
   final interrupted = <String>[];
+  final archivedCalls = <(String, bool)>[];
   final ended = <String>[];
 
   Result<String> Function(String session, bool fork)? onSend;
@@ -79,6 +80,12 @@ class FakeHubRepository implements HubRepository {
   @override
   Future<Result<void>> endSession(String sessionId) async {
     ended.add(sessionId);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> setArchived(String sessionId, {required bool archived}) async {
+    archivedCalls.add((sessionId, archived));
     return const Ok(null);
   }
 
@@ -168,6 +175,9 @@ class MemoryHubCache implements HubCache {
 
   @override
   Future<void> writeTimeline(pb.TimelinePage page) async => timelines[page.session] = page.deepCopy();
+
+  @override
+  Future<void> removeTimeline(String session) async => timelines.remove(session);
 
   @override
   Future<pb.Welcome?> readState() async => state?.deepCopy();

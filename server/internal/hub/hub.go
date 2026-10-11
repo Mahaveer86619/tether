@@ -100,6 +100,10 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 	return h, nil
 }
 
+func busy(s v1.SessionState) bool {
+	return s == v1.SessionState_SESSION_STATE_RUNNING || s == v1.SessionState_SESSION_STATE_AWAITING_APPROVAL
+}
+
 func live(s v1.SessionState) bool {
 	switch s {
 	case v1.SessionState_SESSION_STATE_RUNNING, v1.SessionState_SESSION_STATE_AWAITING_APPROVAL, v1.SessionState_SESSION_STATE_READY:
@@ -348,6 +352,48 @@ func (h *Hub) stop(session string) (string, *opError) {
 	return info.Id, nil
 }
 
+// archive marks a session as done, or not. It needs no agent: the flag is
+// the hub's own.
+func (h *Hub) archive(session string, archived bool) (string, *opError) {
+	info := h.sessions[session]
+	if info == nil {
+		return "", errNotFound
+	}
+	if info.Archived != archived {
+		next := proto.Clone(info).(*v1.SessionInfo)
+		next.Archived = archived
+		h.putSession(next)
+	}
+	return info.Id, nil
+}
+
+// rebuild re-renders a session's timeline from its transcript, e.g. after
+// the renderer learned a new line type.
+func (h *Hub) rebuild(session string) (string, *opError) {
+	info := h.sessions[session]
+	if info == nil {
+		return "", errNotFound
+	}
+	// A headless run streams partial blocks into the builder; only
+	// transcript-mirrored sessions can be reset while live.
+	if info.Host == v1.SessionHost_SESSION_HOST_HEADLESS && live(info.State) {
+		return "", &opError{"busy", "a headless run is live; rebuild it once it ends", http.StatusConflict}
+	}
+	if err := h.store.ResetTimeline(session); err != nil {
+		return "", &opError{"internal", err.Error(), http.StatusInternalServerError}
+	}
+	delete(h.builders, session)
+	delete(h.pending, session)
+	if h.mirroring[session] {
+		if agent := h.agents[info.Node]; agent != nil {
+			agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_StopMirror_{StopMirror: &v1.AgentCommand_StopMirror{Session: session}}}))
+		}
+		delete(h.mirroring, session)
+		h.ensureMirror(session)
+	}
+	return session, nil
+}
+
 func (h *Hub) target(session string) (*v1.SessionInfo, *wire.Conn, *opError) {
 	info := h.sessions[session]
 	if info == nil {
@@ -441,9 +487,22 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 	defer h.mu.Unlock()
 	switch b := f.Body.(type) {
 	case *v1.Frame_SessionIndex:
-		for _, s := range b.SessionIndex.Sessions {
+		idx := b.SessionIndex
+		known := map[string]bool{}
+		for _, s := range idx.Sessions {
 			s.Node = node
+			known[s.Id] = true
 			h.mergeSession(s)
+		}
+		for _, id := range idx.Removed {
+			h.removeSession(node, id)
+		}
+		if idx.Full {
+			for id, s := range h.sessions {
+				if s.Node == node && !known[id] {
+					h.removeSession(node, id)
+				}
+			}
 		}
 	case *v1.Frame_RawEvents:
 		h.ingest(node, b.RawEvents)
@@ -481,6 +540,7 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.Model = firstNonEmpty(in.Model, cur.Model)
 		in.LastPrompt = firstNonEmpty(in.LastPrompt, cur.LastPrompt)
 		in.ClaudeVersion = firstNonEmpty(in.ClaudeVersion, cur.ClaudeVersion)
+		in.Archived = cur.Archived && !busy(in.State)
 		if in.CreatedMs == 0 {
 			in.CreatedMs = cur.CreatedMs
 		}
@@ -685,6 +745,23 @@ func (h *Hub) maybeStopMirror(s string) {
 	if info == nil || !live(info.State) {
 		delete(h.builders, s)
 	}
+}
+
+// removeSession forgets a session its node no longer has. Live sessions
+// are kept: their transcript may simply not exist yet.
+func (h *Hub) removeSession(node, id string) {
+	s := h.sessions[id]
+	if s == nil || s.Node != node || live(s.State) {
+		return
+	}
+	delete(h.sessions, id)
+	delete(h.builders, id)
+	delete(h.pending, id)
+	delete(h.mirroring, id)
+	if err := h.store.DeleteSession(id); err != nil {
+		h.log.Error("delete session", "session", id, "err", err)
+	}
+	h.broadcast(&v1.Frame{Body: &v1.Frame_SessionRemoved{SessionRemoved: &v1.SessionRemoved{Session: id}}})
 }
 
 // ---- shared state ----

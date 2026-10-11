@@ -135,7 +135,15 @@ class _WideShellState extends State<_WideShell> {
             ),
           ),
           VerticalDivider(width: 1, color: c.border),
-          Expanded(child: SafeArea(child: _main())),
+          // Its own messenger so toasts centre on this pane, not the window.
+          Expanded(
+            child: ScaffoldMessenger(
+              child: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: SafeArea(child: _main()),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -261,9 +269,8 @@ class _PhoneHome extends StatelessWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async => context.read<HubCubit>().retry(),
-        child: OverviewPage(showDeviceSessions: true, onSession: (id) => openSession(context, id), onNode: (n) => _openNode(context, n)),
+        child: OverviewPage(onSession: (id) => openSession(context, id), onNode: (n) => _openNode(context, n)),
       ),
-      floatingActionButton: status == ConnectionStatus.connected ? _NewButton(onCreated: (id) => openSession(context, id)) : null,
     );
   }
 }

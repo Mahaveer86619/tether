@@ -134,12 +134,26 @@ void main() {
     });
   });
 
+  test('projects group sessions by folder and leave done sessions out', () {
+    final hub = snapshotWith([
+      session('a', state: SessionState.idle),
+      session('b', state: SessionState.idle, cwd: '/srv/other'),
+      const Session(id: 'c', node: 'minipc', cwd: '/srv/app', archived: true),
+      const Session(id: 'd', node: 'minipc', cwd: '/srv/gone', archived: true),
+    ]);
+    final projects = hub.projects();
+    expect(projects.map((p) => p.cwd), unorderedEquals(['/srv/app', '/srv/other']));
+    expect(projects.firstWhere((p) => p.cwd == '/srv/app').sessions.map((s) => s.id), ['a']);
+    expect(hub.projects(includeArchived: true).length, 3);
+  });
+
   group('HubCubit', () {
     test('tracks approvals being answered and reports failures', () async {
       final repo = FakeHubRepository(snapshotWith([session('s1')], approvals: [
         const Approval(id: 'ap', session: 's1', node: 'minipc', kind: ApprovalKind.tool, toolName: 'Bash'),
       ]));
-      final cubit = HubCubit(watchHub: WatchHub(repo), decideApproval: DecideApproval(repo), retry: RetryConnection(repo));
+      final cubit = HubCubit(
+          watchHub: WatchHub(repo), decideApproval: DecideApproval(repo), setArchived: SetSessionArchived(repo), retry: RetryConnection(repo));
       await Future<void>.delayed(Duration.zero);
       expect(cubit.state.hub.approvals, contains('ap'));
 

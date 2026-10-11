@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
 import '../../domain/entities/entities.dart' show TodoItem, TodoStatus;
+import 'common.dart';
 import 'format.dart';
 import 'markdown_view.dart';
 import 'todo_checklist.dart';
@@ -13,10 +14,13 @@ import '../theme/theme.dart';
 /// A tool call as a single collapsible line, like Claude's own UI: icon,
 /// tool, short title and status; details on tap.
 class ToolCardView extends StatefulWidget {
-  const ToolCardView({super.key, required this.card, this.initiallyExpanded = false});
+  const ToolCardView({super.key, required this.card, this.initiallyExpanded = false, this.flat = false});
 
   final pb.ToolCard card;
   final bool initiallyExpanded;
+
+  /// A row inside an activity group: no border of its own.
+  final bool flat;
 
   @override
   State<ToolCardView> createState() => _ToolCardViewState();
@@ -32,19 +36,21 @@ class _ToolCardViewState extends State<ToolCardView> {
     final running = card.status == pbe.ToolCard_Status.STATUS_RUNNING || card.status == pbe.ToolCard_Status.STATUS_PENDING;
     final failed = card.status == pbe.ToolCard_Status.STATUS_FAILED;
     return Container(
-      decoration: BoxDecoration(
-        color: c.surface,
-        border: Border.all(color: failed ? c.danger.withValues(alpha: 0.5) : c.border),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      clipBehavior: Clip.antiAlias,
+      decoration: widget.flat
+          ? null
+          : BoxDecoration(
+              color: c.surface,
+              border: Border.all(color: failed ? c.danger.withValues(alpha: 0.5) : c.border),
+              borderRadius: BorderRadius.circular(10),
+            ),
+      clipBehavior: widget.flat ? Clip.none : Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            onTap: () => setState(() => _open = !_open),
+            onTap: () => keepInPlace(context, () => setState(() => _open = !_open)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: widget.flat ? 8 : 9),
               child: Row(
                 children: [
                   Icon(toolIcon(card), size: 16, color: c.muted),
@@ -78,8 +84,8 @@ class _ToolCardViewState extends State<ToolCardView> {
             ),
           ),
           if (_open) ...[
-            Divider(height: 1, color: c.border),
-            Padding(padding: const EdgeInsets.all(12), child: ToolDetail(card: card)),
+            if (!widget.flat) Divider(height: 1, color: c.border),
+            Padding(padding: EdgeInsets.fromLTRB(12, widget.flat ? 0 : 12, 12, 12), child: ToolDetail(card: card)),
           ],
         ],
       ),
@@ -126,7 +132,7 @@ class ToolDetail extends StatelessWidget {
         parts.add(DiffView(diff: card.edit.unifiedDiff));
       case pb.ToolCard_Detail.write:
         parts.add(_label(context, '${card.write.path} · ${card.write.lines} lines'));
-        parts.add(CodeBox(code: card.write.preview, lang: _ext(card.write.path), maxHeight: 280));
+        parts.add(CodeBox(code: card.write.preview, lang: _ext(card.write.path), maxLines: 16));
       case pb.ToolCard_Detail.read:
         final r = card.read;
         parts.add(_label(context, r.path + (r.offset > 0 || r.limit > 0 ? ' · lines ${r.offset}–${r.offset + r.limit}' : '')));
@@ -154,7 +160,7 @@ class ToolDetail extends StatelessWidget {
       case pb.ToolCard_Detail.web:
         parts.add(_label(context, card.web.url.isNotEmpty ? card.web.url : card.web.query));
       case pb.ToolCard_Detail.generic:
-        parts.add(CodeBox(code: card.generic.inputJson, lang: 'json', maxHeight: 240));
+        parts.add(CodeBox(code: card.generic.inputJson, lang: 'json', maxLines: 14));
       case pb.ToolCard_Detail.notSet:
         break;
     }
@@ -185,19 +191,21 @@ class _OutputBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 320),
-      decoration: BoxDecoration(
-        color: c.codeBg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: output.isError ? c.danger.withValues(alpha: 0.4) : c.border),
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
+    final lines = output.text.trimRight().split('\n');
+    return LineClamp(
+      lines: lines.length,
+      maxLines: 16,
+      builder: (limit) => Container(
+        decoration: BoxDecoration(
+          color: c.codeBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: output.isError ? c.danger.withValues(alpha: 0.4) : c.border),
+        ),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.all(12),
           child: SelectableText(
-            output.text,
+            (limit == null ? lines : lines.take(limit)).join('\n'),
             style: monoStyle(context, size: 12, color: output.isError ? c.danger : c.muted),
           ),
         ),
@@ -215,17 +223,18 @@ class DiffView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final lines = const LineSplitter().convert(diff).where((l) => !l.startsWith('+++') && !l.startsWith('---')).toList();
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 360),
-      decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
+    return LineClamp(
+      lines: lines.length,
+      maxLines: 24,
+      builder: (limit) => Container(
+        decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+        clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final l in lines)
+              for (final l in limit == null ? lines : lines.take(limit))
                 Container(
                   color: l.startsWith('+')
                       ? c.diffAdd

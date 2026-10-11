@@ -11,6 +11,7 @@ import '../../gen/tether/v1/tether.pb.dart' as pb;
 abstract interface class HubCache {
   Future<pb.TimelinePage?> readTimeline(String session);
   Future<void> writeTimeline(pb.TimelinePage page);
+  Future<void> removeTimeline(String session);
   Future<pb.Welcome?> readState();
   Future<void> writeState(pb.Welcome state);
   Future<void> clear();
@@ -54,6 +55,16 @@ class FileHubCache implements HubCache {
   Future<void> writeTimeline(pb.TimelinePage page) async {
     await _atomicWrite(await _timelineFile(page.session), page.writeToBuffer());
     await _prune();
+  }
+
+  @override
+  Future<void> removeTimeline(String session) async {
+    try {
+      final f = await _timelineFile(session);
+      if (await f.exists()) await f.delete();
+    } on FileSystemException {
+      // Already gone or being replaced; nothing to keep either way.
+    }
   }
 
   @override

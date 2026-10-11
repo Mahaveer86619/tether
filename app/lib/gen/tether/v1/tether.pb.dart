@@ -39,6 +39,7 @@ enum Frame_Body {
   timeline,
   approvalRequested,
   approvalResolved,
+  sessionRemoved,
   agentHello,
   sessionIndex,
   rawEvents,
@@ -69,6 +70,7 @@ class Frame extends $pb.GeneratedMessage {
     TimelineUpdate? timeline,
     ApprovalRequest? approvalRequested,
     ApprovalResolved? approvalResolved,
+    SessionRemoved? sessionRemoved,
     AgentHello? agentHello,
     SessionIndex? sessionIndex,
     RawEvents? rawEvents,
@@ -95,6 +97,7 @@ class Frame extends $pb.GeneratedMessage {
     if (timeline != null) result.timeline = timeline;
     if (approvalRequested != null) result.approvalRequested = approvalRequested;
     if (approvalResolved != null) result.approvalResolved = approvalResolved;
+    if (sessionRemoved != null) result.sessionRemoved = sessionRemoved;
     if (agentHello != null) result.agentHello = agentHello;
     if (sessionIndex != null) result.sessionIndex = sessionIndex;
     if (rawEvents != null) result.rawEvents = rawEvents;
@@ -128,6 +131,7 @@ class Frame extends $pb.GeneratedMessage {
     35: Frame_Body.timeline,
     36: Frame_Body.approvalRequested,
     37: Frame_Body.approvalResolved,
+    38: Frame_Body.sessionRemoved,
     50: Frame_Body.agentHello,
     51: Frame_Body.sessionIndex,
     52: Frame_Body.rawEvents,
@@ -155,6 +159,7 @@ class Frame extends $pb.GeneratedMessage {
       35,
       36,
       37,
+      38,
       50,
       51,
       52,
@@ -197,6 +202,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: ApprovalRequest.$_createMessage)
     ..aOM<ApprovalResolved>(37, _omitFieldNames ? '' : 'approvalResolved',
         subBuilder: ApprovalResolved.$_createMessage)
+    ..aOM<SessionRemoved>(38, _omitFieldNames ? '' : 'sessionRemoved',
+        subBuilder: SessionRemoved.$_createMessage)
     ..aOM<AgentHello>(50, _omitFieldNames ? '' : 'agentHello',
         subBuilder: AgentHello.$_createMessage)
     ..aOM<SessionIndex>(51, _omitFieldNames ? '' : 'sessionIndex',
@@ -243,6 +250,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(35)
   @$pb.TagNumber(36)
   @$pb.TagNumber(37)
+  @$pb.TagNumber(38)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -264,6 +272,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(35)
   @$pb.TagNumber(36)
   @$pb.TagNumber(37)
+  @$pb.TagNumber(38)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -486,51 +495,62 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(37)
   ApprovalResolved ensureApprovalResolved() => $_ensure(19);
 
+  @$pb.TagNumber(38)
+  SessionRemoved get sessionRemoved => $_getN(20);
+  @$pb.TagNumber(38)
+  set sessionRemoved(SessionRemoved value) => $_setField(38, value);
+  @$pb.TagNumber(38)
+  $core.bool hasSessionRemoved() => $_has(20);
+  @$pb.TagNumber(38)
+  void clearSessionRemoved() => $_clearField(38);
+  @$pb.TagNumber(38)
+  SessionRemoved ensureSessionRemoved() => $_ensure(20);
+
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(20);
+  AgentHello get agentHello => $_getN(21);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(20);
+  $core.bool hasAgentHello() => $_has(21);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(20);
+  AgentHello ensureAgentHello() => $_ensure(21);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(21);
+  SessionIndex get sessionIndex => $_getN(22);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(21);
+  $core.bool hasSessionIndex() => $_has(22);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(21);
+  SessionIndex ensureSessionIndex() => $_ensure(22);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(22);
+  RawEvents get rawEvents => $_getN(23);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(22);
+  $core.bool hasRawEvents() => $_has(23);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(22);
+  RawEvents ensureRawEvents() => $_ensure(23);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(23);
+  AgentCommand get agentCommand => $_getN(24);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(23);
+  $core.bool hasAgentCommand() => $_has(24);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(23);
+  AgentCommand ensureAgentCommand() => $_ensure(24);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -692,6 +712,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     SessionHost? host,
     $core.String? attachCommand,
     $core.bool? terminalInput,
+    $core.bool? archived,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -712,6 +733,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (host != null) result.host = host;
     if (attachCommand != null) result.attachCommand = attachCommand;
     if (terminalInput != null) result.terminalInput = terminalInput;
+    if (archived != null) result.archived = archived;
     return result;
   }
 
@@ -749,6 +771,7 @@ class SessionInfo extends $pb.GeneratedMessage {
         enumValues: SessionHost.values)
     ..aOS(17, _omitFieldNames ? '' : 'attachCommand')
     ..aOB(18, _omitFieldNames ? '' : 'terminalInput')
+    ..aOB(19, _omitFieldNames ? '' : 'archived')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -931,6 +954,75 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasTerminalInput() => $_has(17);
   @$pb.TagNumber(18)
   void clearTerminalInput() => $_clearField(18);
+
+  /// Set by the user ("mark as done"); kept by the hub across agent updates
+  /// and cleared when the session starts working again.
+  @$pb.TagNumber(19)
+  $core.bool get archived => $_getBF(18);
+  @$pb.TagNumber(19)
+  set archived($core.bool value) => $_setBool(18, value);
+  @$pb.TagNumber(19)
+  $core.bool hasArchived() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearArchived() => $_clearField(19);
+}
+
+/// A session no longer exists on its node (its transcript was deleted).
+class SessionRemoved extends $pb.GeneratedMessage {
+  factory SessionRemoved({
+    $core.String? session,
+  }) {
+    final result = SessionRemoved._();
+    if (session != null) result.session = session;
+    return result;
+  }
+
+  SessionRemoved._();
+
+  factory SessionRemoved.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SessionRemoved()..mergeFromBuffer(data, registry);
+  factory SessionRemoved.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SessionRemoved()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SessionRemoved',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: SessionRemoved.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SessionRemoved clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SessionRemoved copyWith(void Function(SessionRemoved) updates) =>
+      super.copyWith((message) => updates(message as SessionRemoved))
+          as SessionRemoved;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SessionRemoved() / SessionRemoved.new instead')
+  static SessionRemoved create() => SessionRemoved._();
+  static $pb.GeneratedMessage $_createMessage() => SessionRemoved._();
+  @$core.override
+  SessionRemoved createEmptyInstance() => SessionRemoved._();
+  @$core.pragma('dart2js:noInline')
+  static SessionRemoved getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SessionRemoved>(
+          SessionRemoved.$_createMessage);
+  static SessionRemoved? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
 }
 
 class TimelineUpdate extends $pb.GeneratedMessage {
@@ -1738,6 +1830,64 @@ class CreateSession extends $pb.GeneratedMessage {
   void clearName() => $_clearField(6);
 }
 
+/// REST body for POST /api/v1/sessions/{id}/archive.
+class ArchiveSession extends $pb.GeneratedMessage {
+  factory ArchiveSession({
+    $core.bool? archived,
+  }) {
+    final result = ArchiveSession._();
+    if (archived != null) result.archived = archived;
+    return result;
+  }
+
+  ArchiveSession._();
+
+  factory ArchiveSession.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ArchiveSession()..mergeFromBuffer(data, registry);
+  factory ArchiveSession.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ArchiveSession()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ArchiveSession',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ArchiveSession.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'archived')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ArchiveSession clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ArchiveSession copyWith(void Function(ArchiveSession) updates) =>
+      super.copyWith((message) => updates(message as ArchiveSession))
+          as ArchiveSession;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ArchiveSession() / ArchiveSession.new instead')
+  static ArchiveSession create() => ArchiveSession._();
+  static $pb.GeneratedMessage $_createMessage() => ArchiveSession._();
+  @$core.override
+  ArchiveSession createEmptyInstance() => ArchiveSession._();
+  @$core.pragma('dart2js:noInline')
+  static ArchiveSession getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ArchiveSession>(
+          ArchiveSession.$_createMessage);
+  static ArchiveSession? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get archived => $_getBF(0);
+  @$pb.TagNumber(1)
+  set archived($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasArchived() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearArchived() => $_clearField(1);
+}
+
 class SendMessage extends $pb.GeneratedMessage {
   factory SendMessage({
     $core.String? session,
@@ -2261,7 +2411,8 @@ class SessionIndex extends $pb.GeneratedMessage {
           SessionIndex.$_createMessage);
   static SessionIndex? _defaultInstance;
 
-  /// True when sessions is the node's complete list.
+  /// True when sessions is the node's complete list; the hub forgets the
+  /// node's other sessions.
   @$pb.TagNumber(1)
   $core.bool get full => $_getBF(0);
   @$pb.TagNumber(1)
