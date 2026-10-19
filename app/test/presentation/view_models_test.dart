@@ -8,6 +8,7 @@ import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 import 'package:tether/presentation/hub/hub_cubit.dart';
 import 'package:tether/presentation/new_session/new_session_cubit.dart';
 import 'package:tether/presentation/session/session_bloc.dart';
+import 'package:tether/presentation/settings/settings_cubit.dart';
 
 import '../helpers/fakes.dart';
 
@@ -18,6 +19,9 @@ SessionBloc sessionBloc(FakeHubRepository repo, String id) => SessionBloc(
       sendMessage: SendMessage(repo),
       interrupt: InterruptSession(repo),
       endSession: EndSession(repo),
+      drafts: Drafts(FakeSettingsRepository()),
+      setGlobal: SetSessionGlobal(repo),
+      continueOnHub: ContinueOnHub(repo),
     );
 
 void main() {
@@ -95,6 +99,34 @@ void main() {
     );
 
     blocTest<SessionBloc, SessionViewState>(
+      'files go with the message, even with no text',
+      build: () => sessionBloc(repo, 's1'),
+      act: (b) async {
+        b.add(const SessionOpened());
+        await Future<void>.delayed(Duration.zero);
+        b.add(const MessageSubmitted('', attachments: ['a1', 'a2']));
+      },
+      wait: const Duration(milliseconds: 20),
+      verify: (_) {
+        expect(repo.attachmentsSent.single, ['a1', 'a2']);
+        expect(repo.sent.single.$2, isNotEmpty);
+      },
+    );
+
+    blocTest<SessionBloc, SessionViewState>(
+      'keeping a copy on the hub, then continuing there',
+      build: () => sessionBloc(repo, 's1'),
+      act: (b) => b
+        ..add(const GlobalToggled(true))
+        ..add(const ContinueOnHubRequested('carry on')),
+      wait: const Duration(milliseconds: 20),
+      verify: (b) {
+        expect(repo.globalCalls.single, ('s1', true));
+        expect(b.state.forkedTo, 'continued-s1');
+      },
+    );
+
+    blocTest<SessionBloc, SessionViewState>(
       'hub failures surface as failures, not crashes',
       build: () {
         repo.onSend = (_, _) => const Err(NodeOfflineFailure());
@@ -147,6 +179,55 @@ void main() {
     expect(hub.projects(includeArchived: true).length, 3);
   });
 
+  test('a draft comes back when the session reopens, and goes once sent', () async {
+    final repo = FakeHubRepository(snapshotWith([session('s1')]));
+    final settings = FakeSettingsRepository()..drafts['s1'] = 'half-written';
+    SessionBloc open() => SessionBloc(
+          sessionId: 's1',
+          watchHub: WatchHub(repo),
+          watchTimeline: WatchTimeline(repo),
+          sendMessage: SendMessage(repo),
+          interrupt: InterruptSession(repo),
+          endSession: EndSession(repo),
+          drafts: Drafts(settings),
+          setGlobal: SetSessionGlobal(repo),
+          continueOnHub: ContinueOnHub(repo),
+        );
+    final bloc = open()..add(const SessionOpened());
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(bloc.state.draft, 'half-written');
+    bloc.add(const DraftChanged('half-written, now longer'));
+    await bloc.close();
+    expect(settings.drafts['s1'], 'half-written, now longer', reason: 'closing writes the pending draft');
+
+    final again = open()..add(const SessionOpened());
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    again.add(const MessageSubmitted('half-written, now longer'));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(settings.drafts.containsKey('s1'), isFalse);
+    await again.close();
+  });
+
+  test('settings from another device apply here without being shared back', () async {
+    final hub = FakeHubRepository(snapshotWith([]));
+    final settings = FakeSettingsRepository();
+    final cubit = SettingsCubit(
+      load: LoadConnection(settings),
+      save: SaveConnection(settings, hub),
+      pair: PairThisDevice(SaveConnection(settings, hub), hub, name: 'x', platform: 'android'),
+      theme: ThemeSettings(settings),
+      share: SharePreferences(hub),
+      viaTailnet: ConnectOverTailnet(settings, hub),
+    );
+    await cubit.applyShared(const Appearance(palette: 'forest'));
+    expect(cubit.state.appearance.palette, 'forest');
+    expect(settings.appearance.palette, 'forest');
+    expect(hub.sharedPreferences, isEmpty);
+    await cubit.setPalette('rose');
+    expect(hub.sharedPreferences.single.palette, 'rose');
+    await cubit.close();
+  });
+
   group('HubCubit', () {
     test('tracks approvals being answered and reports failures', () async {
       final repo = FakeHubRepository(snapshotWith([session('s1')], approvals: [
@@ -171,17 +252,40 @@ void main() {
   group('NewSessionCubit', () {
     test('defaults to the preferred online node and its latest folder', () {
       final hub = snapshotWith([session('s1', cwd: '/srv/old'), session('s2', node: 'laptop', cwd: r'C:\code\app')]);
-      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(FakeHubRepository(hub)), preferredNode: 'laptop');
+      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(FakeHubRepository(hub)), drafts: Drafts(FakeSettingsRepository()), loadWorkspaces: LoadWorkspaces(FakeHubRepository(hub)), setRoot: SetWorkspaceRoot(FakeHubRepository(hub)), preferredNode: 'laptop');
       expect(cubit.state.node, 'laptop');
       expect(cubit.state.cwd, r'C:\code\app');
       cubit.selectNode('minipc');
       expect(cubit.state.cwd, '/srv/old');
     });
 
+    test('a new project is created in a workspace root, and a suggested root is remembered', () async {
+      final hub = snapshotWith([session('s2', node: 'laptop', cwd: r'C:\code\app')]);
+      final repo = FakeHubRepository(hub)..roots = [];
+      final cubit = NewSessionCubit(
+        hub: hub,
+        createSession: CreateSession(repo),
+        drafts: Drafts(FakeSettingsRepository()),
+        loadWorkspaces: LoadWorkspaces(repo),
+        setRoot: SetWorkspaceRoot(repo),
+        preferredNode: 'laptop',
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.suggestedRoots, [r'C:\code']);
+      cubit
+        ..setNewProject(true)
+        ..setProjectName('new-app');
+      expect(cubit.newProjectPath, r'C:\code\new-app');
+      await cubit.submit('scaffold it');
+      final req = repo.created.single;
+      expect((req.cwd, req.createCwd), (r'C:\code\new-app', true));
+      expect(repo.roots, [const WorkspaceRoot(node: 'laptop', path: r'C:\code')]);
+    });
+
     test('validation failures stay in the form', () async {
       final hub = snapshotWith([]);
       final repo = FakeHubRepository(hub);
-      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(repo));
+      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(repo), drafts: Drafts(FakeSettingsRepository()), loadWorkspaces: LoadWorkspaces(repo), setRoot: SetWorkspaceRoot(repo));
       await cubit.submit('   ');
       expect(cubit.state.failure, isA<ValidationFailure>());
       expect(cubit.state.createdId, isNull);

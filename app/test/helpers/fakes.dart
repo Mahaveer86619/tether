@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:tether/core/error/failures.dart';
 import 'package:tether/core/result.dart';
 import 'package:tether/data/datasources/hub_cache.dart';
 import 'package:tether/data/datasources/hub_endpoint.dart';
@@ -23,7 +23,14 @@ class FakeHubRepository implements HubRepository {
   final decided = <(String, bool)>[];
   final interrupted = <String>[];
   final archivedCalls = <(String, bool)>[];
+  final globalCalls = <(String, bool)>[];
+  final attachmentsSent = <List<String>>[];
+  final paired = <(String, String, String)>[];
+  final sharedPreferences = <Appearance>[];
+  var devices = <PairedDevice>[const PairedDevice(id: 'd1', kind: 'client', name: 'Pixel', platform: 'android')];
   final ended = <String>[];
+  final answered = <Map<String, String>>[];
+  var disconnected = false;
 
   Result<String> Function(String session, bool fork)? onSend;
   Result<String>? createResult;
@@ -42,6 +49,12 @@ class FakeHubRepository implements HubRepository {
 
   @override
   void connect(HubConnection connection) {}
+
+  @override
+  Future<void> disconnect() async {
+    disconnected = true;
+    emitHub(const HubSnapshot());
+  }
 
   @override
   void retryNow() {}
@@ -66,8 +79,9 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false}) async {
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) async {
     sent.add((sessionId, text, fork));
+    attachmentsSent.add(attachments);
     return onSend?.call(sessionId, fork) ?? Ok(fork ? 'fork-of-$sessionId' : sessionId);
   }
 
@@ -84,14 +98,120 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
+  Future<Result<void>> savePreferences(Appearance appearance) async {
+    sharedPreferences.add(appearance);
+    return const Ok(null);
+  }
+
+  UsageSummary usageSummary = const UsageSummary(
+    nodes: [
+      NodeUsage(
+        node: 'minipc',
+        window: UsageTotals(input: 1000, output: 500, messages: 3),
+        plan: PlanUsage(limits: [PlanLimit(label: 'session', percent: 9, resets: 'Oct 12, 3:20am'), PlanLimit(label: 'week (all models)', percent: 10)]),
+      ),
+      NodeUsage(
+        node: 'laptop',
+        plan: PlanUsage(limits: [PlanLimit(label: 'session', percent: 9, resets: 'Oct 12, 3:19am'), PlanLimit(label: 'week (all models)', percent: 10)]),
+      ),
+    ],
+    sessions: [SessionUsage(session: 's1', total: UsageTotals(input: 1000, output: 500, messages: 3))],
+  );
+
+  var roots = <WorkspaceRoot>[const WorkspaceRoot(node: 'minipc', path: '/srv')];
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> workspaces() async => Ok(roots);
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> setWorkspaceRoot(WorkspaceRoot root, {required bool remove}) async {
+    roots = [...roots.where((r) => r != root), if (!remove) root];
+    return Ok(roots);
+  }
+
+  @override
+  Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
+
+  @override
+  Future<Result<List<TailnetDevice>>> tailnet() async => const Ok([
+        TailnetDevice(name: 'minipc', os: 'linux', online: true, isHub: true, node: 'minipc'),
+        TailnetDevice(name: 'mobile', os: 'android', online: true, clients: ['Pixel']),
+        TailnetDevice(name: 'old-laptop', os: 'windows'),
+      ]);
+
+  @override
+  Future<Result<PairingInvite>> createPairingInvite() async =>
+      Ok(PairingInvite(code: 'ABCDE-FGHJK', expires: DateTime(2030), hubUrl: 'ws://100.64.0.1:7420/ws'));
+
+  @override
+  Future<Result<List<PairedDevice>>> listDevices() async => Ok(devices);
+
+  var hostedPages = <HostedPage>[];
+  var codebaseList = <Codebase>[];
+  final snapshotted = <String>[];
+
+  @override
+  Future<Result<List<Codebase>>> codebases() async => Ok(codebaseList);
+
+  @override
+  Future<Result<void>> snapshotCodebase(String id) async {
+    snapshotted.add(id);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<List<HostedPage>>> pages({String session = ''}) async =>
+      Ok([for (final p in hostedPages) if (session.isEmpty || p.session == session) p]);
+
+  @override
+  Future<Result<void>> revokeDevice(String id) async {
+    devices = devices.where((d) => d.id != id).toList();
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String>> pair({
+    required String url,
+    required String code,
+    required String fingerprint,
+    required String name,
+    required String platform,
+  }) async {
+    paired.add((url, code, fingerprint));
+    return code == 'ABCDE-FGHJK' ? const Ok('device-token') : const Err(UnauthorizedFailure());
+  }
+
+  @override
+  Future<Result<void>> setGlobal(String sessionId, {required bool global}) async {
+    globalCalls.add((sessionId, global));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String>> continueOnHub(String sessionId, String text) async {
+    sent.add((sessionId, text, true));
+    return Ok('continued-$sessionId');
+  }
+
+  @override
+  Future<Result<List<int>>> artifactBytes(String id) async => const Ok([]);
+
+  @override
+  Future<Result<String>> artifactLink(String id) async => Ok('http://hub/link/$id');
+
+  @override
+  Future<Result<void>> deleteArtifact(String id) async => const Ok(null);
+
+  @override
   Future<Result<void>> setArchived(String sessionId, {required bool archived}) async {
     archivedCalls.add((sessionId, archived));
     return const Ok(null);
   }
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
     decided.add((approvalId, allow));
+    answered.add(answers);
     return decideResult ?? const Ok(null);
   }
 
@@ -101,7 +221,7 @@ class FakeHubRepository implements HubRepository {
 
 class FakeSettingsRepository implements SettingsRepository {
   HubConnection saved = const HubConnection(url: '', token: '');
-  ThemeMode theme = ThemeMode.system;
+  Appearance appearance = const Appearance();
 
   @override
   Future<Result<HubConnection>> loadConnection() async => Ok(saved);
@@ -113,11 +233,25 @@ class FakeSettingsRepository implements SettingsRepository {
   }
 
   @override
-  Future<ThemeMode> loadThemeMode() async => theme;
+  Future<Result<void>> clearConnection() async {
+    saved = const HubConnection(url: '', token: '');
+    return const Ok(null);
+  }
+
+  final drafts = <String, String>{};
 
   @override
-  Future<Result<void>> saveThemeMode(ThemeMode mode) async {
-    theme = mode;
+  Future<String> loadDraft(String key) async => drafts[key] ?? '';
+
+  @override
+  Future<void> saveDraft(String key, String text) async => text.trim().isEmpty ? drafts.remove(key) : drafts[key] = text;
+
+  @override
+  Future<Appearance> loadAppearance() async => appearance;
+
+  @override
+  Future<Result<void>> saveAppearance(Appearance a) async {
+    appearance = a;
     return const Ok(null);
   }
 }
@@ -136,6 +270,9 @@ class FakeHubSocket implements HubSocket {
 
   @override
   void connect(HubEndpoint endpoint) => this.endpoint = endpoint;
+
+  @override
+  void disconnect() => endpoint = null;
 
   @override
   void retryNow() {}
@@ -164,6 +301,65 @@ HubSnapshot snapshotWith(List<Session> sessions, {List<Approval> approvals = con
       sessions: {for (final s in sessions) s.id: s},
       approvals: {for (final a in approvals) a.id: a},
     );
+
+/// Transfers that finish at once; the test reads what was asked for.
+class FakeTransferRepository implements TransferRepository {
+  final _changes = StreamController<Map<String, Transfer>>.broadcast();
+  Map<String, Transfer> _now = const {};
+  final uploads = <(LocalFile, String, String, bool)>[];
+  final downloads = <Artifact>[];
+
+  void emit(Transfer t) {
+    _now = {..._now, t.id: t};
+    _changes.add(_now);
+  }
+
+  @override
+  Map<String, Transfer> get current => _now;
+
+  @override
+  Stream<Map<String, Transfer>> watch() async* {
+    yield _now;
+    yield* _changes.stream;
+  }
+
+  @override
+  Future<Result<void>> download(Artifact artifact) async {
+    downloads.add(artifact);
+    emit(Transfer(id: artifact.id, kind: TransferKind.download, name: artifact.name, total: artifact.size, state: TransferState.running));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> pause(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.paused));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> resume(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.running));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> cancel(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.canceled));
+    return const Ok(null);
+  }
+
+  @override
+  void dismiss(String id) {
+    _now = {..._now}..remove(id);
+    _changes.add(_now);
+  }
+
+  @override
+  Future<Result<Artifact>> upload(LocalFile file, {String session = '', String note = '', bool deliver = false}) async {
+    uploads.add((file, session, note, deliver));
+    return Ok(Artifact(id: 'art-${uploads.length}', name: file.name, size: file.size, session: session, note: note));
+  }
+}
 
 /// An on-device cache that lives in memory.
 class MemoryHubCache implements HubCache {

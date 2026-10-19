@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart' show ThemeMode;
 
 import '../../core/result.dart';
 import '../entities/entities.dart';
@@ -7,6 +6,9 @@ import '../entities/entities.dart';
 abstract interface class HubRepository {
   /// Points the repository at a hub and (re)connects.
   void connect(HubConnection connection);
+
+  /// Leaves the hub: closes the connection and drops everything cached from it.
+  Future<void> disconnect();
 
   void retryNow();
 
@@ -24,7 +26,27 @@ abstract interface class HubRepository {
 
   /// Returns the session that received the message: the same one, or the
   /// new fork when [fork] is set.
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false});
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []});
+
+  /// Has the hub keep a copy of the session's transcript, or stop.
+  Future<Result<void>> setGlobal(String sessionId, {required bool global});
+
+  /// Continues a global session on the hub's machine; returns the new id.
+  Future<Result<String>> continueOnHub(String sessionId, String text);
+
+  Future<Result<List<int>>> artifactBytes(String id);
+
+  /// A link that works without a token for an hour.
+  Future<Result<String>> artifactLink(String id);
+  Future<Result<void>> deleteArtifact(String id);
+
+  Future<Result<List<Codebase>>> codebases();
+
+  /// Asks the codebase's device to send the hub a fresh copy.
+  Future<Result<void>> snapshotCodebase(String id);
+
+  /// Pages sessions made, newest first; [session] empty means all of them.
+  Future<Result<List<HostedPage>>> pages({String session = ''});
 
   /// Stops Claude's current turn; the session stays open.
   Future<Result<void>> interrupt(String sessionId);
@@ -32,17 +54,82 @@ abstract interface class HubRepository {
   /// Ends a session the agent hosts (tmux or headless).
   Future<Result<void>> endSession(String sessionId);
 
+  /// Shares app settings with every connected client.
+  Future<Result<void>> savePreferences(Appearance appearance);
+
+  /// Folders on each machine that new projects are created in.
+  Future<Result<List<WorkspaceRoot>>> workspaces();
+
+  /// Adds or removes a workspace root; returns them all.
+  Future<Result<List<WorkspaceRoot>>> setWorkspaceRoot(WorkspaceRoot root, {required bool remove});
+
+  /// Token usage per machine and session.
+  Future<Result<UsageSummary>> usage();
+
+  /// The machines on the hub's tailnet, and which run Tether.
+  Future<Result<List<TailnetDevice>>> tailnet();
+
+  /// A one-time code another device can pair with.
+  Future<Result<PairingInvite>> createPairingInvite();
+
+  Future<Result<List<PairedDevice>>> listDevices();
+
+  /// Revokes a paired device; its token stops working at once.
+  Future<Result<void>> revokeDevice(String id);
+
+  /// Trades a pairing code for this device's own token.
+  Future<Result<String>> pair({
+    required String url,
+    required String code,
+    required String fingerprint,
+    required String name,
+    required String platform,
+  });
+
   /// Marks a session done (or not) on the hub, for every client.
   Future<Result<void>> setArchived(String sessionId, {required bool archived});
 
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''});
+  /// [answers] answer a question: each question's text to the chosen labels or the user's own words.
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}});
 
   Future<void> dispose();
+}
+
+/// Files moving between this device and the hub's artifact store, with
+/// progress. Files are streamed from and to disk, never held in memory.
+abstract interface class TransferRepository {
+  /// Emits the current transfers immediately, then every change.
+  Stream<Map<String, Transfer>> watch();
+
+  Map<String, Transfer> get current;
+
+  /// Downloads the artifact and saves it where the user can find it,
+  /// after checking its sha256.
+  Future<Result<void>> download(Artifact artifact);
+
+  Future<Result<void>> pause(String id);
+  Future<Result<void>> resume(String id);
+  Future<Result<void>> cancel(String id);
+
+  /// Forgets a finished transfer.
+  void dismiss(String id);
+
+  /// Uploads [file], resuming after dropped connections. With a [session]
+  /// it's attached to that session; [deliver] also puts it in the session's
+  /// folder now rather than with the next message.
+  Future<Result<Artifact>> upload(LocalFile file, {String session = '', String note = '', bool deliver = false});
 }
 
 abstract interface class SettingsRepository {
   Future<Result<HubConnection>> loadConnection();
   Future<Result<void>> saveConnection(HubConnection connection);
-  Future<ThemeMode> loadThemeMode();
-  Future<Result<void>> saveThemeMode(ThemeMode mode);
+
+  /// Forgets the hub address and token.
+  Future<Result<void>> clearConnection();
+  /// Unsent text from a message box; empty when there is none.
+  Future<String> loadDraft(String key);
+  Future<void> saveDraft(String key, String text);
+
+  Future<Appearance> loadAppearance();
+  Future<Result<void>> saveAppearance(Appearance appearance);
 }

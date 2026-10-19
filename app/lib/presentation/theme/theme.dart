@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'palettes.dart';
+import 'syntax.dart';
+
 /// Colours beyond what ColorScheme covers, kept together so light and dark
 /// stay in step.
 @immutable
@@ -24,11 +27,13 @@ class TetherColors extends ThemeExtension<TetherColors> {
     required this.userBubble,
     required this.diffAdd,
     required this.diffRemove,
+    required this.syntax,
   });
 
   final Color canvas, sidebar, surface, raised, border, text, muted, faint;
   final Color accent, success, warning, danger, info;
   final Color codeBg, userBubble, diffAdd, diffRemove;
+  final SyntaxColors syntax;
 
   static const light = TetherColors(
     canvas: Color(0xFFFAF9F5),
@@ -48,6 +53,16 @@ class TetherColors extends ThemeExtension<TetherColors> {
     userBubble: Color(0xFFEFECE3),
     diffAdd: Color(0x2E3E7D52),
     diffRemove: Color(0x2EB4443A),
+    syntax: SyntaxColors(
+      keyword: Color(0xFFB4543A),
+      string: Color(0xFF3E7D52),
+      number: Color(0xFF9A6A12),
+      comment: Color(0xFF9C978C),
+      function: Color(0xFF3F6CA8),
+      type: Color(0xFF7B4FA6),
+      variable: Color(0xFF2F7F86),
+      meta: Color(0xFF8A6E5A),
+    ),
   );
 
   static const dark = TetherColors(
@@ -68,10 +83,53 @@ class TetherColors extends ThemeExtension<TetherColors> {
     userBubble: Color(0xFF3A3936),
     diffAdd: Color(0x336DB384),
     diffRemove: Color(0x33E07A6E),
+    syntax: SyntaxColors(
+      keyword: Color(0xFFE08A6A),
+      string: Color(0xFF8CC79F),
+      number: Color(0xFFE0B460),
+      comment: Color(0xFF79756C),
+      function: Color(0xFF8DB4E8),
+      type: Color(0xFFC29BE8),
+      variable: Color(0xFF6CC4C8),
+      meta: Color(0xFFB8A28E),
+    ),
   );
 
   @override
-  TetherColors copyWith() => this;
+  TetherColors copyWith({
+    Color? canvas,
+    Color? sidebar,
+    Color? surface,
+    Color? raised,
+    Color? border,
+    Color? text,
+    Color? muted,
+    Color? faint,
+    Color? accent,
+    Color? codeBg,
+    Color? userBubble,
+    SyntaxColors? syntax,
+  }) =>
+      TetherColors(
+        canvas: canvas ?? this.canvas,
+        sidebar: sidebar ?? this.sidebar,
+        surface: surface ?? this.surface,
+        raised: raised ?? this.raised,
+        border: border ?? this.border,
+        text: text ?? this.text,
+        muted: muted ?? this.muted,
+        faint: faint ?? this.faint,
+        accent: accent ?? this.accent,
+        success: success,
+        warning: warning,
+        danger: danger,
+        info: info,
+        codeBg: codeBg ?? this.codeBg,
+        userBubble: userBubble ?? this.userBubble,
+        diffAdd: diffAdd,
+        diffRemove: diffRemove,
+        syntax: syntax ?? this.syntax,
+      );
 
   @override
   TetherColors lerp(TetherColors? other, double t) => t < 0.5 ? this : (other ?? this);
@@ -92,8 +150,10 @@ TextStyle monoStyle(BuildContext context, {double size = 13, Color? color}) => T
       color: color ?? context.colors.text,
     );
 
-ThemeData buildTheme(Brightness brightness) {
-  final c = brightness == Brightness.light ? TetherColors.light : TetherColors.dark;
+/// The app's theme from a [palette], with the accent optionally swapped.
+ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
+  final colors = (palette ?? palettes.first).of(brightness);
+  final c = accent == null ? colors : colors.copyWith(accent: accent);
   final scheme = ColorScheme.fromSeed(seedColor: c.accent, brightness: brightness).copyWith(
     primary: c.accent,
     onPrimary: Colors.white,

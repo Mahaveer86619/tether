@@ -28,6 +28,9 @@ type transcript struct {
 	mod  time.Time
 	off  int64
 	meta meta
+	// Token usage per message id, and the ones the hub hasn't been told yet.
+	usage  map[string]*v1.UsageEntry
+	unsent map[string]bool
 }
 
 type meta struct {
@@ -50,8 +53,15 @@ type metaLine struct {
 	CustomTitle string `json:"customTitle"`
 	LastPrompt  string `json:"lastPrompt"`
 	Message     struct {
+		ID      string          `json:"id"`
 		Model   string          `json:"model"`
 		Content json.RawMessage `json:"content"`
+		Usage   *struct {
+			Input      int64 `json:"input_tokens"`
+			Output     int64 `json:"output_tokens"`
+			CacheWrite int64 `json:"cache_creation_input_tokens"`
+			CacheRead  int64 `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 	} `json:"message"`
 }
 
@@ -120,14 +130,23 @@ func (t *transcript) read() error {
 			return nil
 		}
 		t.off += int64(len(line))
-		t.meta.add(line)
+		if u := t.meta.add(line); u != nil {
+			if t.usage == nil {
+				t.usage, t.unsent = map[string]*v1.UsageEntry{}, map[string]bool{}
+			}
+			// A message spans several lines; the later ones carry the final counts.
+			t.usage[u.MessageId] = u
+			t.unsent[u.MessageId] = true
+		}
 	}
 }
 
-func (m *meta) add(line []byte) {
+// add folds one transcript line into the metadata, and returns the token
+// usage it carries, if it's an assistant message.
+func (m *meta) add(line []byte) *v1.UsageEntry {
 	var l metaLine
 	if json.Unmarshal(line, &l) != nil {
-		return
+		return nil
 	}
 	if m.created == 0 {
 		if ts, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
@@ -153,26 +172,39 @@ func (m *meta) add(line []byte) {
 	case "last-prompt":
 		m.lastPrompt = l.LastPrompt
 	case "assistant":
+		var usage *v1.UsageEntry
+		// Sub-agents' usage counts too, though their messages don't.
+		if u := l.Message.Usage; u != nil && l.Message.ID != "" && l.Message.Model != "<synthetic>" {
+			usage = &v1.UsageEntry{
+				MessageId: l.Message.ID, Model: l.Message.Model,
+				Input: u.Input, Output: u.Output, CacheWrite: u.CacheWrite, CacheRead: u.CacheRead,
+			}
+			if ts, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+				usage.TsMs = ts.UnixMilli()
+			}
+		}
 		if l.IsSidechain {
-			return
+			return usage
 		}
 		m.count++
 		if l.Message.Model != "" && l.Message.Model != "<synthetic>" {
 			m.model = l.Message.Model
 		}
+		return usage
 	case "user":
 		if l.IsSidechain || l.IsMeta {
-			return
+			return nil
 		}
 		var s string
 		if json.Unmarshal(l.Message.Content, &s) != nil {
-			return
+			return nil
 		}
 		m.count++
 		if m.firstPrompt == "" && !strings.HasPrefix(strings.TrimSpace(s), "<") {
 			m.firstPrompt = s
 		}
 	}
+	return nil
 }
 
 // Path returns the transcript file for a session, if known.
@@ -255,4 +287,22 @@ func firstNonEmpty(ss ...string) string {
 		}
 	}
 	return ""
+}
+
+// TakeUsage returns the token usage not handed over yet, or all of it
+// (for a fresh hub connection, which may have missed earlier reports).
+func (ix *Index) TakeUsage(all bool) []*v1.UsageEntry {
+	ix.mu.Lock()
+	defer ix.mu.Unlock()
+	var out []*v1.UsageEntry
+	for id, t := range ix.files {
+		for msg, u := range t.usage {
+			if all || t.unsent[msg] {
+				u.Session = id
+				out = append(out, u)
+			}
+		}
+		clear(t.unsent)
+	}
+	return out
 }

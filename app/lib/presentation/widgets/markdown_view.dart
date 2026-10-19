@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
+import '../theme/syntax.dart';
 import '../theme/theme.dart';
 import 'common.dart';
 
@@ -225,11 +226,16 @@ class CodeBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final lines = code.split('\n');
-    Widget text(int? limit) => SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-          child: SelectableText(limit == null ? code : lines.take(limit).join('\n'), style: monoStyle(context, size: 12.5)),
-        );
+    Widget text(int? limit) {
+      final shown = limit == null ? code : lines.take(limit).join('\n');
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+        child: SelectableText.rich(
+          TextSpan(style: monoStyle(context, size: 12.5), children: highlightCode(shown, lang, c.syntax) ?? [TextSpan(text: shown)]),
+        ),
+      );
+    }
     return Container(
       decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.border)),
       child: Column(

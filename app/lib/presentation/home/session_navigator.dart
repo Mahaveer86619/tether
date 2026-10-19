@@ -29,6 +29,10 @@ class SessionNavigator extends StatefulWidget {
 
 class _SessionNavigatorState extends State<SessionNavigator> {
   final _collapsed = <String>{};
+
+  /// Projects the user opened or closed; the rest start closed, unless they
+  /// hold the open session or a search is on.
+  final _projectOpen = <String, bool>{};
   final _expanded = <String>{};
   String _query = '';
   bool _byProject = true;
@@ -108,16 +112,14 @@ class _SessionNavigatorState extends State<SessionNavigator> {
     final c = context.colors;
     final done = hub.sessions.values.where((s) => s.archived && !s.isLive && _matches(s)).toList()..sort(compareSessions);
     return [
-      for (final p in hub.projects()) ...[
-        if (p.sessions.any(_matches)) ...[
-          _ProjectRow(
-            project: p,
-            collapsed: _collapsed.contains(p.key),
-            onToggle: () => setState(() => _collapsed.contains(p.key) ? _collapsed.remove(p.key) : _collapsed.add(p.key)),
-          ),
-          if (!_collapsed.contains(p.key)) ..._sessions(p.sessions, p.key, shown: 4),
-        ],
-      ],
+      for (final p in hub.projects())
+        if (p.sessions.any(_matches)) ...() {
+          final open = _projectOpen[p.key] ?? (_query.isNotEmpty || p.sessions.any((s) => s.id == widget.selectedSession));
+          return [
+            _ProjectRow(project: p, collapsed: !open, onToggle: () => setState(() => _projectOpen[p.key] = !open)),
+            if (open) ..._sessions(p.sessions, p.key, shown: 4),
+          ];
+        }(),
       if (done.isNotEmpty) ...[
         const SizedBox(height: 8),
         InkWell(
@@ -274,7 +276,10 @@ class SessionTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(padding: const EdgeInsets.only(top: 6), child: StateDot(state: s.state, size: 7)),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: s.isFork ? Icon(Icons.call_split_rounded, size: 11, color: stateColor(context, s.state)) : StateDot(state: s.state, size: 7),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(

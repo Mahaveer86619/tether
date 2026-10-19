@@ -6,6 +6,8 @@ option go_package = "github.com/Mahaveer86619/tether/server/gen/tether/v1;tether
 
 // One entry in a session's timeline. Clients key items by item_id, replace
 // them on every upsert, and order them by ord.
+// An item sent again with no kind has been removed (e.g. a queued message
+// that was taken back).
 message TimelineItem {
   string item_id = 1;
   uint64 ord = 2;
@@ -25,6 +27,15 @@ message TimelineItem {
 
 message UserText {
   string text = 1;
+  // Sent while Claude was busy and not taken in yet. Clients keep it at the
+  // end of the timeline until it is replaced by the real message.
+  bool queued = 2;
+  // Where it came from, set by the hub: the name of the app or tool that
+  // sent it, or "terminal" when it was typed in the session's terminal.
+  string source = 3;
+  // Set when the message went to the session as a file because it was long;
+  // text then holds the whole message, set by the hub.
+  string attachment_id = 4;
 }
 
 message Markdown {

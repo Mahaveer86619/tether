@@ -5,6 +5,10 @@ import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
+import 'appearance_picker.dart';
+import 'pairing_widgets.dart';
+import 'codebases_section.dart';
+import 'workspaces_section.dart';
 import 'settings_cubit.dart';
 
 /// Hub connection and appearance. Also the first-run screen.
@@ -53,63 +57,28 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('Hub', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text('The machine running tether-hub, reachable over Tailscale. The token is TETHER_TOKEN from that machine.',
-                      style: TextStyle(color: c.muted, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  TextField(
-                    key: const Key('hub-url'),
-                    controller: _url,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    style: monoStyle(context, size: 13.5),
-                    decoration: const InputDecoration(labelText: 'Hub address', hintText: '100.x.y.z or ws://100.x.y.z:7420/ws'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const Key('hub-token'),
-                    controller: _token,
-                    obscureText: !_showToken,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    style: monoStyle(context, size: 13.5),
-                    decoration: InputDecoration(
-                      labelText: 'Token',
-                      suffixIcon: IconButton(
-                        icon: Icon(_showToken ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
-                        onPressed: () => setState(() => _showToken = !_showToken),
+                  if (!s.connection.isComplete) ...[
+                    const PairForm(),
+                    const SizedBox(height: 16),
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 8),
+                        title: Text('Use the hub token instead', style: TextStyle(fontSize: 14, color: c.muted)),
+                        children: [_hubForm(context, s, hub)],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(child: ConnectionLine(status: hub.status)),
-                            if (hub.version.isNotEmpty)
-                              Flexible(
-                                child: Text('  · hub ${hub.version}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: 12, color: c.faint)),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        key: const Key('save-connection'),
-                        onPressed: s.saving ? null : () => context.read<SettingsCubit>().save(_url.text, _token.text),
-                        child: const Text('Save and connect'),
-                      ),
-                    ],
-                  ),
-                  if (hub.error != null && hub.status != ConnectionStatus.connected)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(hub.error!, style: TextStyle(color: c.danger, fontSize: 12)),
-                    ),
+                  ] else
+                    _hubForm(context, s, hub),
+                  if (s.connection.isComplete && hub.status == ConnectionStatus.connected) ...[
+                    const SizedBox(height: 32),
+                    const DevicesSection(),
+                    const SizedBox(height: 32),
+                    const WorkspacesSection(),
+                    const SizedBox(height: 32),
+                    const CodebasesSection(),
+                  ],
                   const SizedBox(height: 32),
                   const Text('Appearance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
@@ -119,15 +88,83 @@ class _SettingsPageState extends State<SettingsPage> {
                       ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
                       ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
                     ],
-                    selected: {s.themeMode},
+                    selected: {s.appearance.mode},
                     onSelectionChanged: (m) => context.read<SettingsCubit>().setThemeMode(m.first),
                   ),
+                  const SizedBox(height: 20),
+                  AppearancePicker(appearance: s.appearance),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _hubForm(BuildContext context, SettingsState s, ({ConnectionStatus status, String version, String? error}) hub) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('Hub', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text('The machine running tether-hub, reachable over Tailscale. The token is TETHER_TOKEN from that machine.',
+            style: TextStyle(color: c.muted, fontSize: 13)),
+        const SizedBox(height: 16),
+        TextField(
+          key: const Key('hub-url'),
+          controller: _url,
+          keyboardType: TextInputType.url,
+          autocorrect: false,
+          style: monoStyle(context, size: 13.5),
+          decoration: const InputDecoration(labelText: 'Hub address', hintText: '100.x.y.z or ws://100.x.y.z:7420/ws'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('hub-token'),
+          controller: _token,
+          obscureText: !_showToken,
+          autocorrect: false,
+          enableSuggestions: false,
+          style: monoStyle(context, size: 13.5),
+          decoration: InputDecoration(
+            labelText: 'Token',
+            suffixIcon: IconButton(
+              icon: Icon(_showToken ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+              onPressed: () => setState(() => _showToken = !_showToken),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(child: ConnectionLine(status: hub.status)),
+                  if (hub.version.isNotEmpty)
+                    Flexible(
+                      child: Text('  · hub ${hub.version}', maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 12, color: c.faint)),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(
+              key: const Key('save-connection'),
+              onPressed: s.saving ? null : () => context.read<SettingsCubit>().save(_url.text, _token.text),
+              child: const Text('Save and connect'),
+            ),
+          ],
+        ),
+        if (hub.error != null && hub.status != ConnectionStatus.connected)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(hub.error!, style: TextStyle(color: c.danger, fontSize: 12)),
+          ),
+      ],
     );
   }
 }

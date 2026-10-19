@@ -13,6 +13,13 @@ String ago(DateTime? time) {
   return '${d.inDays ~/ 30}mo';
 }
 
+/// A token count, short: 950, 12.4k, 3.1M.
+String tokens(int n) {
+  if (n < 1000) return '$n';
+  if (n < 1000000) return '${(n / 1000).toStringAsFixed(n < 10000 ? 1 : 0)}k';
+  return '${(n / 1000000).toStringAsFixed(n < 10000000 ? 1 : 0)}M';
+}
+
 String baseName(String path) {
   final parts = path.split(RegExp(r'[\\/]')).where((p) => p.isNotEmpty).toList();
   return parts.isEmpty ? path : parts.last;
@@ -58,4 +65,23 @@ String shortModel(String model) {
   if (m == null) return model;
   final name = m.group(1)!;
   return '${name[0].toUpperCase()}${name.substring(1)} ${m.group(2)}.${m.group(3)}';
+}
+
+const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/// "Today", "Yesterday", a weekday within the week, else "Oct 3, 2026".
+String dayLabel(DateTime t, {DateTime? now}) {
+  final n = now ?? DateTime.now();
+  final diff = DateTime(n.year, n.month, n.day).difference(DateTime(t.year, t.month, t.day)).inDays;
+  if (diff == 0) return 'Today';
+  if (diff == 1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return _dayNames[t.weekday - 1];
+  return '${_monthNames[t.month - 1]} ${t.day}, ${t.year}';
+}
+
+/// "3:20pm".
+String clockTime(DateTime t) {
+  final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+  return '$h:${t.minute.toString().padLeft(2, '0')}${t.hour < 12 ? 'am' : 'pm'}';
 }

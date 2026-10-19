@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:fixnum/fixnum.dart';
 
 import '../../domain/entities/entities.dart';
@@ -16,6 +17,7 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       agentVersion: n.agentVersion,
       lastSeen: _time(n.lastSeenMs),
       runningSessions: n.runningSessions,
+      ip: n.ip,
     );
 
 SessionState _state(pbe.SessionState s) => switch (s) {
@@ -64,13 +66,113 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       error: s.error,
       terminalInput: s.terminalInput,
       archived: s.archived,
+      parent: s.parent,
+      forkPoint: s.forkPoint,
+      lineage: s.lineage,
+      scratch: s.scratch,
+      global: s.global,
     );
+
+Appearance appearanceFromPb(pb.Preferences p) => Appearance(
+      mode: ThemeMode.values.asNameMap()[p.themeMode] ?? ThemeMode.system,
+      palette: p.palette.isEmpty ? 'claude' : p.palette,
+      accent: p.hasAccent() ? p.accent : null,
+    );
+
+pb.Preferences appearanceToPb(Appearance a) =>
+    pb.Preferences(themeMode: a.mode.name, palette: a.palette, accent: a.accent);
+
+TailnetDevice tailnetDeviceFromPb(pb.TailnetDevice d) => TailnetDevice(
+      name: d.name,
+      hostname: d.hostname,
+      os: d.os,
+      online: d.online,
+      ips: d.ips,
+      isHub: d.self,
+      node: d.node,
+      clients: d.clients,
+      lastSeen: _time(d.lastSeenMs),
+    );
+
+Artifact artifactFromPb(pb.Artifact a) => Artifact(
+      id: a.id,
+      name: a.name,
+      mime: a.mime,
+      size: a.size.toInt(),
+      session: a.session,
+      node: a.node,
+      origin: a.origin,
+      path: a.path,
+      ref: a.toolUseId,
+      created: _time(a.createdMs),
+      sha256: a.sha256,
+      note: a.note,
+    );
+
+UsageTotals _totals(pb.UsageTotals t) => UsageTotals(
+      input: t.input.toInt(),
+      output: t.output.toInt(),
+      cacheWrite: t.cacheWrite.toInt(),
+      cacheRead: t.cacheRead.toInt(),
+      messages: t.messages.toInt(),
+    );
+
+UsageSummary usageFromPb(pb.UsageSummary s) => UsageSummary(
+      nodes: [
+        for (final n in s.nodes)
+          NodeUsage(
+            node: n.node,
+            window: _totals(n.window),
+            today: _totals(n.today),
+            week: _totals(n.week),
+            plan: n.hasPlan()
+                ? PlanUsage(
+                    limits: [for (final l in n.plan.limits) PlanLimit(label: l.label, percent: l.percent, resets: l.resets)],
+                    raw: n.plan.raw,
+                    checked: _time(n.plan.checkedMs),
+                    error: n.plan.error,
+                  )
+                : null,
+          ),
+      ],
+      sessions: [for (final u in s.sessions) SessionUsage(session: u.session, total: _totals(u.total), last: _time(u.lastMs))],
+    );
+
+PairedDevice deviceFromPb(pb.Device d) => PairedDevice(
+      id: d.id,
+      kind: d.kind,
+      name: d.name,
+      platform: d.platform,
+      created: _time(d.createdMs),
+      lastSeen: _time(d.lastSeenMs),
+    );
+
+Codebase codebaseFromPb(pb.Codebase c) => Codebase(
+      id: c.id,
+      node: c.node,
+      path: c.path,
+      name: c.name,
+      gitRemote: c.gitRemote,
+      gitBranch: c.gitBranch,
+      lastSnapshot: _time(c.snapshotMs),
+      files: c.files,
+      bytes: c.bytes.toInt(),
+      env: [for (final e in c.env) EnvFileInfo(path: e.path, keys: [for (final k in e.keys) k.name])],
+      error: c.error,
+    );
+
+HostedPage pageFromPb(pb.Page p) =>
+    HostedPage(session: p.session, name: p.name, files: p.files, size: p.size.toInt(), updated: _time(p.updatedMs), url: p.url);
 
 Approval approvalFromPb(pb.ApprovalRequest a) => Approval(
       id: a.approvalId,
       session: a.session,
       node: a.node,
-      kind: a.kind == pbe.ApprovalRequest_Kind.KIND_FOLDER_TRUST ? ApprovalKind.folderTrust : ApprovalKind.tool,
+      kind: switch (a.kind) {
+        pbe.ApprovalRequest_Kind.KIND_FOLDER_TRUST => ApprovalKind.folderTrust,
+        pbe.ApprovalRequest_Kind.KIND_QUESTION => ApprovalKind.question,
+        _ => ApprovalKind.tool,
+      },
       toolName: a.toolName,
       inputJson: a.inputJson,
       description: a.description,

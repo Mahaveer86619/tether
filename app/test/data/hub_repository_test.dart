@@ -119,7 +119,7 @@ void main() {
     final snapshots = <TimelineSnapshot>[];
     final sub = repo.watchTimeline('s1').listen(snapshots.add);
     await eventually(() => expect(snapshots.last.items.map((i) => i.itemId), ['a', 'b']));
-    expect(requests.single.url.path, '/api/v1/sessions/s1/timeline');
+    expect(requests.where((r) => r.url.path.contains('/timeline')).single.url.path, '/api/v1/sessions/s1/timeline');
     expect(socket.subscribed.single, ('s1', Int64(2)));
 
     // A live update replaces "b" and adds "c"; the end-of-replay marker ends loading.
@@ -174,7 +174,7 @@ void main() {
     final offline = await repo2.watchTimeline('s1').firstWhere((t) => t.items.length == 2).timeout(const Duration(seconds: 2));
     expect(offline.items.first.user.text, 'first');
     socket2.push(SocketFrame(welcome()));
-    await eventually(() => expect(requests2.single.url.queryParameters['after'], '2'));
+    await eventually(() => expect(requests2.where((r) => r.url.path.contains('/timeline')).single.url.queryParameters['after'], '2'));
     await repo2.dispose();
   });
 

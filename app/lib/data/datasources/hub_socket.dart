@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 
@@ -36,16 +37,19 @@ abstract interface class HubSocket {
   Stream<SocketEvent> get events;
   void connect(HubEndpoint endpoint);
   void retryNow();
+
+  /// Closes the connection and stops reconnecting until [connect] is called again.
+  void disconnect();
   void subscribe(String session, Int64 afterSeq);
   void unsubscribe(String session);
   Future<void> close();
 }
 
 class WebSocketHubSocket implements HubSocket {
-  WebSocketHubSocket({required this.clientName, required this.platform, ChannelFactory? channelFactory})
+  WebSocketHubSocket({required this.clientName, required this.platform, HttpClient? httpClient, ChannelFactory? channelFactory})
       : _factory = channelFactory ??
             ((uri) => IOWebSocketChannel.connect(uri,
-                pingInterval: const Duration(seconds: 20), connectTimeout: const Duration(seconds: 10)));
+                pingInterval: const Duration(seconds: 20), connectTimeout: const Duration(seconds: 10), customClient: httpClient));
 
   final String clientName, platform;
   final ChannelFactory _factory;
@@ -71,6 +75,12 @@ class WebSocketHubSocket implements HubSocket {
     _backoff = const Duration(seconds: 1);
     _teardown();
     _open();
+  }
+
+  @override
+  void disconnect() {
+    _endpoint = null;
+    _teardown();
   }
 
   @override

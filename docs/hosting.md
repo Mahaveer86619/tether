@@ -71,6 +71,8 @@ A `PermissionRequest` hook is held open while the request goes to the app. Claud
 
 If the agent isn't running, the hook request fails, Claude Code treats that as a non-blocking error, and the terminal prompt works as usual. Headless sessions answer prompts through the stdio control protocol instead, and the hook steps aside for them.
 
+Claude's questions (`AskUserQuestion`) arrive the same way, as a permission request for that tool, and are sent to the app as `kind: QUESTION`. The answer goes back as `allow` with `updatedInput`: the original questions plus `answers`. Claude Code then carries on as if they had been picked in its own picker.
+
 ## Without hooks
 
 Sessions that started before the hooks were installed, or on a machine running with `-hooks=false`, fall back to a heuristic. A transcript written in the last 90 seconds by something other than the agent is shown as `terminal_active`, and the app can only mirror or fork it.

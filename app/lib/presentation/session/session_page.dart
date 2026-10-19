@@ -4,13 +4,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
+import '../artifacts/attachments.dart';
+import '../artifacts/files_page.dart';
+import '../artifacts/pages_view.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
+import 'question_card.dart';
 import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
@@ -60,7 +65,7 @@ class _SessionBody extends StatelessWidget {
           }
           return Column(
             children: [
-              SessionHeader(session: session, leading: leading),
+              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession),
               Expanded(child: _Timeline(state: s)),
               Center(
                 child: ConstrainedBox(
@@ -94,16 +99,20 @@ class _SessionBody extends StatelessWidget {
 }
 
 class SessionHeader extends StatelessWidget {
-  const SessionHeader({super.key, required this.session, this.leading});
+  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession});
 
   final Session session;
   final Widget? leading;
+  final ValueChanged<String>? onOpenSession;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final bloc = context.read<SessionBloc>();
     final narrow = MediaQuery.sizeOf(context).width < 600;
+    final (parent, forks) = context.select<HubCubit, (Session?, List<Session>)>(
+      (h) => (h.state.hub.sessions[session.parent], h.state.hub.childrenOf(session.id)),
+    );
     final details = [
       session.node,
       if (session.cwd.isNotEmpty) baseName(session.cwd),
@@ -135,9 +144,56 @@ class SessionHeader extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (session.isFork)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: InkWell(
+                      key: const Key('forked-from'),
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: parent == null || onOpenSession == null ? null : () => onOpenSession!(parent.id),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.call_split_rounded, size: 13, color: c.accent),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Forked from ${parent?.displayTitle ?? 'a session no longer here'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: c.accent),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+          if (forks.isNotEmpty && onOpenSession != null)
+            PopupMenuButton<String>(
+              key: const Key('forks'),
+              tooltip: 'Forks of this session',
+              onSelected: onOpenSession,
+              itemBuilder: (_) => [
+                for (final f in forks)
+                  PopupMenuItem(
+                    value: f.id,
+                    child: Row(
+                      children: [
+                        StateDot(state: f.state, size: 7),
+                        const SizedBox(width: 10),
+                        Flexible(child: Text(f.displayTitle, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Pill('${forks.length} ${forks.length == 1 ? 'fork' : 'forks'}', color: c.accent),
+              ),
+            ),
           if (session.canInterrupt)
             IconButton(
               key: const Key('interrupt'),
@@ -166,6 +222,29 @@ class SessionHeader extends StatelessWidget {
                 case 'end':
                   if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
                   return;
+                case 'global':
+                  bloc.add(GlobalToggled(!session.global));
+                  showToast(context, session.global ? 'The hub stops keeping a copy' : 'The hub keeps a copy after every turn',
+                      icon: Icons.cloud_done_outlined);
+                  return;
+                case 'continue':
+                  final text = await showDialog<String>(context: context, builder: (_) => const _ContinueDialog());
+                  if (text != null && text.trim().isNotEmpty) bloc.add(ContinueOnHubRequested(text.trim()));
+                  return;
+                case 'pages':
+                  await showSessionPages(context, session.id);
+                  return;
+                case 'attach-files':
+                  await attachToSession(context, session.id);
+                  return;
+                case 'files':
+                  await Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: Text('Files · ${session.displayTitle}', overflow: TextOverflow.ellipsis)),
+                      body: FilesPage(session: session.id),
+                    ),
+                  ));
+                  return;
               }
               final text = switch (v) {
                 'attach' => session.attachCommand,
@@ -179,6 +258,12 @@ class SessionHeader extends StatelessWidget {
               if (narrow) _menuItem('fork', Icons.call_split_rounded, 'Fork into a new session'),
               _menuItem('archive', session.archived ? Icons.unarchive_outlined : Icons.done_all_rounded,
                   session.archived ? 'Move back to "Pick up"' : 'Mark as done'),
+              _menuItem('global', session.global ? Icons.cloud_off_outlined : Icons.cloud_upload_outlined,
+                  session.global ? 'Stop keeping a copy on the hub' : 'Keep a copy on the hub'),
+              if (session.global) _menuItem('continue', Icons.cloud_sync_outlined, 'Continue on the hub'),
+              _menuItem('attach-files', Icons.attach_file_rounded, 'Attach files to this session'),
+              _menuItem('files', Icons.folder_open_rounded, "This session's files"),
+              _menuItem('pages', Icons.web_rounded, 'Pages this session made'),
               const PopupMenuDivider(),
               if (session.attachCommand.isNotEmpty) _menuItem('attach', Icons.terminal_rounded, 'Copy tmux attach command'),
               _menuItem('resume', Icons.content_copy_rounded, 'Copy "claude --resume" command'),
@@ -316,6 +401,7 @@ List<_Entry> _entries(List<TimelineItem> items) {
 class _TimelineState extends State<_Timeline> {
   final _scroll = ScrollController();
   bool _awayFromLatest = false;
+  String _selected = '';
 
   /// Rows present when the history finished loading; only rows arriving
   /// after that animate in.
@@ -339,14 +425,18 @@ class _TimelineState extends State<_Timeline> {
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
-    final items = s.items;
+    // Items sent again without a kind were removed; queued messages stay at
+    // the end, as in the terminal, until Claude takes them in.
+    final shown = s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet);
+    final queued = shown.where((i) => i.whichKind() == TimelineItem_Kind.user && i.user.queued).toList();
+    final items = shown.where((i) => !(i.whichKind() == TimelineItem_Kind.user && i.user.queued)).toList();
     final busy = s.session?.isBusy ?? false;
     final approval = s.session?.state == SessionState.awaitingApproval;
-    final entries = _entries(items);
+    final entries = [..._entries(items), for (final q in queued) _Entry([q])];
     if (_initial == null && (!s.loading || items.isNotEmpty)) {
       _initial = {for (final e in entries) e.key};
     }
-    if (items.isEmpty) {
+    if (entries.isEmpty) {
       if (busy) {
         return Align(
           alignment: Alignment.bottomCenter,
@@ -360,16 +450,33 @@ class _TimelineState extends State<_Timeline> {
           ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
           : const EmptyState(icon: Icons.forum_outlined, title: 'No messages yet', body: 'History appears here as the session runs.');
     }
-    final last = items.last;
-    final streaming = last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
+    final last = items.lastOrNull;
+    final streaming = last != null && last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
     final working = busy && !streaming;
     final keyIndex = {for (var i = 0; i < entries.length; i++) entries[i].key: entries.length - i};
     final side = MediaQuery.sizeOf(context).width < 600 ? 14.0 : 16.0;
     return Stack(
       children: [
-        // Reversed so the view stays pinned to the newest row. Rows are keyed
-        // so a new message doesn't shift every row's state down by one.
-        ListView.builder(
+        SelectionArea(
+          onSelectionChanged: (content) => _selected = content?.plainText ?? '',
+          contextMenuBuilder: (context, area) => AdaptiveTextSelectionToolbar.buttonItems(
+            anchors: area.contextMenuAnchors,
+            buttonItems: [
+              ...area.contextMenuButtonItems,
+              if (s.canType)
+                ContextMenuButtonItem(
+                  label: 'Quote',
+                  onPressed: () {
+                    context.read<SessionBloc>().add(QuoteRequested(_selected));
+                    area.clearSelection();
+                    ContextMenuController.removeAny();
+                  },
+                ),
+            ],
+          ),
+          // Reversed so the view stays pinned to the newest row. Rows are keyed
+          // so a new message doesn't shift every row's state down by one.
+          child: ListView.builder(
           controller: _scroll,
           reverse: true,
           padding: EdgeInsets.fromLTRB(side, 8, side, 12),
@@ -389,9 +496,18 @@ class _TimelineState extends State<_Timeline> {
             } else {
               final e = entries[entries.length - i];
               key = ValueKey(e.key);
+              final splitHere = s.session?.forkPoint.isNotEmpty == true && e.items.any((i) => i.itemId == s.session!.forkPoint);
               child = _Appear(
                 animate: !(_initial?.contains(e.key) ?? true),
-                child: e.isGroup
+                child: splitHere
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          e.isGroup ? ActivityGroup(items: e.items) : TimelineItemView(item: e.items.first),
+                          const _ForkMarker(),
+                        ],
+                      )
+                    : e.isGroup
                     ? Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: ActivityGroup(items: e.items, active: working && i == 1),
@@ -404,6 +520,7 @@ class _TimelineState extends State<_Timeline> {
               child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child)),
             );
           },
+          ),
         ),
         Positioned(
           right: 16,
@@ -419,6 +536,36 @@ class _TimelineState extends State<_Timeline> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Where a fork split off: history above it is shared with the parent.
+class _ForkMarker extends StatelessWidget {
+  const _ForkMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 4),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: c.accent.withValues(alpha: 0.4))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.call_split_rounded, size: 14, color: c.accent),
+                const SizedBox(width: 6),
+                Text('Forked here · above is shared with the original', style: TextStyle(fontSize: 12, color: c.accent)),
+              ],
+            ),
+          ),
+          Expanded(child: Divider(color: c.accent.withValues(alpha: 0.4))),
+        ],
+      ),
     );
   }
 }
@@ -664,29 +811,70 @@ class Composer extends StatefulWidget {
 
 class _ComposerState extends State<Composer> {
   final _text = TextEditingController();
+  final _focus = FocusNode();
+  final _files = <Artifact>[];
+  int _uploading = 0;
+
+  Future<void> _attach() async {
+    final added = await pickAndUpload(context,
+        session: widget.state.sessionId, forMessage: true, onUploading: (n) => mounted ? setState(() => _uploading = n) : null);
+    if (mounted && added.isNotEmpty) setState(() => _files.addAll(added));
+  }
 
   @override
   void initState() {
     super.initState();
-    _text.addListener(() => setState(() {}));
+    _restore(widget.state.draft);
+    _text.addListener(() {
+      setState(() {});
+      if (_text.text != _lastReported) {
+        _lastReported = _text.text;
+        context.read<SessionBloc>().add(DraftChanged(_text.text));
+      }
+    });
+  }
+
+  String _lastReported = '';
+
+  void _restore(String? draft) {
+    if (draft == null || draft.isEmpty || _text.text.isNotEmpty) return;
+    _lastReported = draft;
+    _text.text = draft;
   }
 
   @override
   void didUpdateWidget(Composer old) {
     super.didUpdateWidget(old);
-    if (old.state.sentId != widget.state.sentId) _text.clear();
+    if (old.state.draft == null) _restore(widget.state.draft);
+    // After the frame: the full editor may still be listening while it closes.
+    if (old.state.sentId != widget.state.sentId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _text.clear();
+        if (mounted) setState(_files.clear);
+      });
+    }
+    if (old.state.quoteId != widget.state.quoteId) _insertQuote(widget.state.quote);
+  }
+
+  void _insertQuote(String quote) {
+    final quoted = quote.split('\n').map((l) => l.isEmpty ? '>' : '> $l').join('\n');
+    final before = _text.text.trimRight();
+    _text.text = '${before.isEmpty ? '' : '$before\n\n'}$quoted\n\n';
+    _text.selection = TextSelection.collapsed(offset: _text.text.length);
+    _focus.requestFocus();
   }
 
   @override
   void dispose() {
     _text.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   void _submit() {
     final s = widget.state;
-    if (!s.canType || s.sending || _text.text.trim().isEmpty) return;
-    context.read<SessionBloc>().add(MessageSubmitted(_text.text));
+    if (!s.canType || s.sending || _uploading > 0 || (_text.text.trim().isEmpty && _files.isEmpty)) return;
+    context.read<SessionBloc>().add(MessageSubmitted(_text.text, attachments: [for (final f in _files) f.id]));
   }
 
   @override
@@ -697,69 +885,52 @@ class _ComposerState extends State<Composer> {
     final hint = !s.nodeOnline
         ? '${s.session?.node ?? 'Device'} is offline'
         : (s.forking ? 'First message of the new fork…' : 'Reply to Claude…');
-    final canSubmit = s.canType && !s.sending && _text.text.trim().isNotEmpty;
-    final compact = !isDesktop;
-    final stop = (s.session?.canInterrupt ?? false)
-        ? IconButton.outlined(
-            tooltip: 'Stop',
-            onPressed: () => bloc.add(const InterruptRequested()),
-            icon: const Icon(Icons.stop_rounded, size: 18),
-            style: IconButton.styleFrom(side: BorderSide(color: c.border)),
-          )
-        : null;
-    final send = IconButton.filled(
-      key: const Key('send'),
-      tooltip: 'Send',
-      onPressed: canSubmit ? _submit : null,
-      style: IconButton.styleFrom(
-        backgroundColor: c.accent,
-        disabledBackgroundColor: c.raised,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      icon: s.sending
-          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : const Icon(Icons.arrow_upward_rounded, size: 20),
-    );
-    final field = CallbackShortcuts(
-      bindings: {
-        if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit,
-        if (s.session?.canInterrupt ?? false) const SingleActivator(LogicalKeyboardKey.escape): () => bloc.add(const InterruptRequested()),
-      },
-      child: TextField(
-        key: const Key('composer'),
-        controller: _text,
-        enabled: s.canType,
-        autofocus: s.forking,
-        minLines: 1,
-        maxLines: compact ? 6 : 8,
-        textInputAction: TextInputAction.newline,
-        style: Theme.of(context).textTheme.bodyLarge,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: false,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: compact ? 10 : 8),
+    final canSubmit = s.canType && !s.sending && _uploading == 0 && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
+    final canStop = s.session?.canInterrupt ?? false;
+    return PromptBox(
+      controller: _text,
+      focusNode: _focus,
+      fieldKey: const Key('composer'),
+      hint: hint,
+      enabled: s.canType,
+      canSubmit: s.canType && !s.sending,
+      autofocus: s.forking,
+      highlight: s.forking,
+      onSubmit: _submit,
+      onEscape: canStop ? () => bloc.add(const InterruptRequested()) : null,
+      header: s.forking || _files.isNotEmpty || _uploading > 0
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (s.forking) _forkBanner(c, bloc),
+                if (_files.isNotEmpty || _uploading > 0)
+                  AttachmentChips(files: _files, uploading: _uploading, onRemove: (f) => setState(() => _files.remove(f))),
+              ],
+            )
+          : null,
+      actions: [
+        PromptButton(
+          key: const Key('attach'),
+          tooltip: 'Attach files',
+          icon: Icons.attach_file_rounded,
+          plain: true,
+          onPressed: s.canType ? _attach : null,
         ),
-      ),
+        if (canStop) PromptButton(tooltip: 'Stop', icon: Icons.stop_rounded, onPressed: () => bloc.add(const InterruptRequested())),
+        PromptButton(key: const Key('send'), tooltip: 'Send', icon: Icons.arrow_upward_rounded, filled: true, busy: s.sending, onPressed: canSubmit ? _submit : null),
+      ],
+      footer: isDesktop
+          ? Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('Enter to send · Shift+Enter for a new line', style: TextStyle(fontSize: 11, color: c.faint)),
+            )
+          : null,
     );
-    return Container(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(compact ? 22 : 18),
-        border: Border.all(color: s.forking ? c.accent.withValues(alpha: 0.6) : c.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
-      ),
-      padding: compact ? const EdgeInsets.fromLTRB(16, 4, 5, 4) : const EdgeInsets.fromLTRB(14, 8, 8, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (s.forking)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 2),
+  }
+
+  Widget _forkBanner(TetherColors c, SessionBloc bloc) => Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 2, right: 4),
               child: Row(
                 children: [
                   Icon(Icons.call_split_rounded, size: 14, color: c.accent),
@@ -774,33 +945,47 @@ class _ComposerState extends State<Composer> {
                   ),
                 ],
               ),
-            ),
-          if (compact)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(child: field),
-                if (stop != null) Padding(padding: const EdgeInsets.only(bottom: 2), child: stop),
-                Padding(padding: const EdgeInsets.only(left: 4, bottom: 2), child: send),
-              ],
-            )
-          else ...[
-            field,
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Enter to send · Shift+Enter for a new line', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: c.faint)),
-                ),
-                if (stop != null) Padding(padding: const EdgeInsets.only(right: 6), child: stop),
-                send,
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+            );
+}
+
+class _ContinueDialog extends StatefulWidget {
+  const _ContinueDialog();
+
+  @override
+  State<_ContinueDialog> createState() => _ContinueDialogState();
+}
+
+class _ContinueDialogState extends State<_ContinueDialog> {
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Continue on the hub'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            key: const Key('continue-text'),
+            controller: _text,
+            autofocus: true,
+            minLines: 2,
+            maxLines: 6,
+            decoration: const InputDecoration(
+              labelText: 'First message',
+              helperText: 'Starts a new session on the hub with this conversation',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(key: const Key('continue-go'), onPressed: () => Navigator.pop(context, _text.text), child: const Text('Continue')),
+        ],
+      );
 }
 
 /// A pending permission prompt or folder-trust question, answered through
@@ -815,6 +1000,7 @@ class ApprovalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = approval;
+    if (a.kind == ApprovalKind.question) return QuestionCard(approval: a, sessionTitle: sessionTitle);
     final trust = a.kind == ApprovalKind.folderTrust;
     final busy = context.select<HubCubit, bool>((cubit) => cubit.state.deciding.contains(a.id));
     void decide(bool allow) => context.read<HubCubit>().decide(a.id, allow: allow);

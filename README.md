@@ -54,7 +54,7 @@ server/                 Go module
   internal/store/       SQLite
   cmd/tetherctl/        terminal client for testing
 app/                    Flutter app (android, windows), not started
-deploy/                 systemd user units, Windows logon task
+deploy/                 systemd user units, Windows agent task
 docs/                   design docs
 ```
 

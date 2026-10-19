@@ -4,7 +4,6 @@ package hub
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -30,14 +29,27 @@ const (
 )
 
 type Config struct {
+	// The admin token; paired devices have their own.
 	Token   string
 	Version string
 	Log     *slog.Logger
+	// SHA-256 of the hub's self-signed certificate, handed out with pairing
+	// codes so clients can pin it. Empty without TLS or with a CA-issued one.
+	CertFingerprint string
+	// Reads `tailscale status --json`; defaults to running the CLI.
+	TailscaleStatus func(context.Context) ([]byte, error)
+	// Accept apps and agents without a token when they connect from a
+	// machine owned by the hub machine's own Tailscale user.
+	TrustTailnet bool
+	// Where the hub keeps files: the artifact store lives under it.
+	DataDir string
 }
 
 type client struct {
-	conn *wire.Conn
-	name string
+	conn   *wire.Conn
+	name   string
+	device string
+	ip     string
 }
 
 // pendingItems holds coalesced partial-text updates in arrival order.
@@ -61,6 +73,26 @@ type Hub struct {
 	pending   map[string]*pendingItems
 	approvals map[string]*v1.ApprovalRequest
 	mirroring map[string]bool
+
+	devices      map[string]*v1.Device // by token hash
+	agentDevices map[string]string     // node -> device id of its connection
+	agentIPs     map[string]string     // node -> address it connects from
+	codes        map[string]time.Time  // pairing code -> expiry
+	fails        map[string][]time.Time
+	prefs        *v1.Preferences
+	plans        map[string]*v1.PlanUsage // node -> its latest /usage report
+	keyOnce      sync.Once
+	linkKey      []byte
+
+	tsMu     sync.Mutex
+	tsStatus *tsStatus
+	tsAt     time.Time
+
+	sent        map[string][]sentMsg         // session -> messages sent through the hub
+	keptSources map[string]map[string]string // session -> item -> source, across a rebuild
+
+	uploadMu  sync.Mutex
+	uploading map[string]bool // upload id -> a request is writing it
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -77,6 +109,27 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		pending:   map[string]*pendingItems{},
 		approvals: map[string]*v1.ApprovalRequest{},
 		mirroring: map[string]bool{},
+
+		agentDevices: map[string]string{},
+		agentIPs:     map[string]string{},
+		sent:         map[string][]sentMsg{},
+		plans:        map[string]*v1.PlanUsage{},
+		keptSources:  map[string]map[string]string{},
+		codes:        map[string]time.Time{},
+		fails:        map[string][]time.Time{},
+	}
+	devices, err := st.Devices()
+	if err != nil {
+		return nil, err
+	}
+	h.devices = devices
+	if b, err := st.Get(prefsKey); err != nil {
+		return nil, err
+	} else if b != nil {
+		h.prefs = &v1.Preferences{}
+		if err := proto.Unmarshal(b, h.prefs); err != nil {
+			return nil, err
+		}
 	}
 	nodes, err := st.Nodes()
 	if err != nil {
@@ -122,6 +175,7 @@ func (h *Hub) Handler() http.Handler {
 
 // Run flushes coalesced streaming updates until ctx ends.
 func (h *Hub) Run(ctx context.Context) {
+	go h.retentionLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -150,30 +204,37 @@ func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request) {
 		conn.Close(err)
 		return
 	}
+	ip := remoteIP(r)
+	if h.limited(ip) {
+		_ = conn.WriteNow(r.Context(), errFrame("", errRateLimited.Code, errRateLimited.Message))
+		conn.Close(errors.New("rate limited"))
+		return
+	}
 	switch b := f.Body.(type) {
 	case *v1.Frame_ClientHello:
-		if !h.authorized(b.ClientHello.Token) {
+		id, ok := h.identifyFrom(b.ClientHello.Token, ip)
+		if !ok || id.kind == kindNode {
 			h.reject(conn, r)
 			return
 		}
-		h.serveClient(conn, b.ClientHello)
+		h.serveClient(conn, b.ClientHello, id.deviceID(), ip)
 	case *v1.Frame_AgentHello:
-		if !h.authorized(b.AgentHello.Token) || b.AgentHello.Status.GetNode() == "" {
+		node := b.AgentHello.Status.GetNode()
+		id, ok := h.identifyFrom(b.AgentHello.Token, ip)
+		// A node token only ever connects as the node it was paired for.
+		if !ok || node == "" || id.kind == kindClient || id.kind == kindNode && id.device.Name != node {
 			h.reject(conn, r)
 			return
 		}
-		h.serveAgent(conn, b.AgentHello.Status)
+		h.serveAgent(conn, b.AgentHello.Status, id.deviceID(), ip)
 	default:
 		conn.Close(errors.New("expected hello"))
 	}
 }
 
-func (h *Hub) authorized(token string) bool {
-	return h.cfg.Token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(h.cfg.Token)) == 1
-}
-
 func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 	h.log.Warn("rejected connection", "remote", r.RemoteAddr)
+	h.fail(remoteIP(r))
 	// The write queue only runs once a connection is accepted, so write directly.
 	_ = conn.WriteNow(r.Context(), errFrame("", errUnauthorized.Code, errUnauthorized.Message))
 	conn.Close(errors.New("unauthorized"))
@@ -181,11 +242,11 @@ func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 
 // ---- clients ----
 
-func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello) {
-	c := &client{conn: conn, name: hello.ClientName}
+func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip string) {
+	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
-	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome()}})
+	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(device, ip)}})
 	h.mu.Unlock()
 	h.log.Info("client connected", "name", c.name, "platform", hello.Platform)
 
@@ -203,8 +264,10 @@ func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello) {
 	h.log.Info("client disconnected", "name", c.name, "err", err)
 }
 
-func (h *Hub) welcome() *v1.Welcome {
-	w := &v1.Welcome{HubVersion: h.cfg.Version}
+// welcome is the full state for a client connecting with a paired device id
+// (or "") from ip.
+func (h *Hub) welcome(device, ip string) *v1.Welcome {
+	w := &v1.Welcome{HubVersion: h.cfg.Version, DeviceId: device, ClientIp: ip}
 	for _, n := range h.nodes {
 		w.Nodes = append(w.Nodes, proto.Clone(n).(*v1.NodeStatus))
 	}
@@ -216,6 +279,10 @@ func (h *Hub) welcome() *v1.Welcome {
 	for _, a := range h.approvals {
 		w.PendingApprovals = append(w.PendingApprovals, proto.Clone(a).(*v1.ApprovalRequest))
 	}
+	if h.prefs != nil {
+		w.Preferences = proto.Clone(h.prefs).(*v1.Preferences)
+	}
+	w.HubNode = h.hubNode()
 	return w
 }
 
@@ -234,9 +301,9 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 			h.maybeStopMirror(b.Unsubscribe.Session)
 		}
 	case *v1.Frame_CreateSession:
-		session, err = h.createSession(b.CreateSession)
+		session, err = h.createSession(b.CreateSession, c.name)
 	case *v1.Frame_SendMessage:
-		session, err = h.sendMessage(b.SendMessage)
+		session, err = h.sendMessage(b.SendMessage, c.name)
 	case *v1.Frame_InterruptSession:
 		session, err = h.interrupt(b.InterruptSession.Session)
 	case *v1.Frame_StopSession:
@@ -283,7 +350,13 @@ func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
 // The operations below are shared by the WebSocket and REST APIs. They
 // expect h.mu to be held and return the affected session id.
 
-func (h *Hub) createSession(cs *v1.CreateSession) (string, *opError) {
+func (h *Hub) createSession(cs *v1.CreateSession, from string) (string, *opError) {
+	if cs.Scratch {
+		cs.Node, cs.Cwd = h.hubNode(), ""
+		if cs.Node == "" {
+			return "", &opError{"node_offline", "no agent is running on the hub's machine", http.StatusServiceUnavailable}
+		}
+	}
 	agent := h.agents[cs.Node]
 	if agent == nil {
 		return "", errNodeOffline
@@ -295,15 +368,29 @@ func (h *Hub) createSession(cs *v1.CreateSession) (string, *opError) {
 	info := &v1.SessionInfo{
 		Id: uuid.NewString(), Node: cs.Node, Cwd: cs.Cwd, Title: firstNonEmpty(cs.Name, clip(cs.Prompt, 80)),
 		State: v1.SessionState_SESSION_STATE_RUNNING, CreatedMs: now, UpdatedMs: now, LastPrompt: cs.Prompt, Model: cs.Model,
+		Scratch: cs.Scratch,
+	}
+	attachments, aerr := h.attachments(cs.Attachments)
+	if aerr != nil {
+		return "", aerr
+	}
+	prompt, long, aerr := h.fileLongText(info.Id, cs.Prompt)
+	if aerr != nil {
+		return "", aerr
+	}
+	if long != nil {
+		attachments = append(attachments, long)
 	}
 	h.putSession(info)
+	h.noteSent(info.Id, prompt, from)
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
-		Session: info.Id, Cwd: cs.Cwd, Prompt: cs.Prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name,
+		Session: info.Id, Cwd: cs.Cwd, Prompt: prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name, CreateCwd: cs.CreateCwd,
+		Attachments: attachments, Scratch: cs.Scratch,
 	}}}))
 	return info.Id, nil
 }
 
-func (h *Hub) sendMessage(m *v1.SendMessage) (string, *opError) {
+func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	info, agent, err := h.target(m.Session)
 	if err != nil {
 		return "", err
@@ -313,11 +400,21 @@ func (h *Hub) sendMessage(m *v1.SendMessage) (string, *opError) {
 	}
 	if m.Fork {
 		now := time.Now().UnixMilli()
+		point, perr := h.store.LastItemID(info.Id)
+		if perr != nil {
+			h.log.Error("fork point", "session", info.Id, "err", perr)
+		}
 		fork := &v1.SessionInfo{
 			Id: uuid.NewString(), Node: info.Node, Cwd: info.Cwd, Title: "Fork: " + info.Title, GitBranch: info.GitBranch,
 			State: v1.SessionState_SESSION_STATE_RUNNING, CreatedMs: now, UpdatedMs: now, LastPrompt: m.Text, Model: info.Model,
+			Parent: info.Id, ForkPoint: point, Lineage: "fork",
+			// Every fork is kept on the hub: its transcript and its codebase.
+			Global: true,
 		}
 		h.putSession(fork)
+		h.snapshotSession(fork)
+		h.recordLineage(&v1.LineageEvent{Session: fork.Id, Parent: info.Id, Kind: "fork", ForkPoint: point, By: from, AtMs: now})
+		h.noteSent(fork.Id, m.Text, from)
 		agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true,
 		}}}))
@@ -327,7 +424,19 @@ func (h *Hub) sendMessage(m *v1.SendMessage) (string, *opError) {
 		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE && !info.TerminalInput {
 		return "", errTerminalActive
 	}
-	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: m.Text}}}))
+	attachments, aerr := h.attachments(m.Attachments)
+	if aerr != nil {
+		return "", aerr
+	}
+	text, long, aerr := h.fileLongText(info.Id, m.Text)
+	if aerr != nil {
+		return "", aerr
+	}
+	if long != nil {
+		attachments = append(attachments, long)
+	}
+	h.noteSent(info.Id, text, from)
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments}}}))
 	return info.Id, nil
 }
 
@@ -379,6 +488,7 @@ func (h *Hub) rebuild(session string) (string, *opError) {
 	if info.Host == v1.SessionHost_SESSION_HOST_HEADLESS && live(info.State) {
 		return "", &opError{"busy", "a headless run is live; rebuild it once it ends", http.StatusConflict}
 	}
+	h.keepSources(session)
 	if err := h.store.ResetTimeline(session); err != nil {
 		return "", &opError{"internal", err.Error(), http.StatusInternalServerError}
 	}
@@ -425,15 +535,18 @@ func (h *Hub) decide(by string, d *v1.ApprovalDecision) (string, *opError) {
 
 // ---- agents ----
 
-func (h *Hub) serveAgent(conn *wire.Conn, st *v1.NodeStatus) {
+func (h *Hub) serveAgent(conn *wire.Conn, st *v1.NodeStatus, device, ip string) {
 	node := st.Node
 	h.mu.Lock()
 	if old := h.agents[node]; old != nil {
 		old.Close(errors.New("replaced by a new connection"))
 	}
 	h.agents[node] = conn
+	h.agentDevices[node] = device
+	h.agentIPs[node] = ip
 	st.Online, st.LastSeenMs = true, time.Now().UnixMilli()
 	h.putNode(st)
+	h.scanRoots(node)
 	for s, set := range h.subs {
 		if info := h.sessions[s]; info != nil && info.Node == node && len(set) > 0 {
 			delete(h.mirroring, s)
@@ -506,6 +619,12 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		}
 	case *v1.Frame_RawEvents:
 		h.ingest(node, b.RawEvents)
+	case *v1.Frame_PlanUsage:
+		h.setPlan(node, b.PlanUsage)
+	case *v1.Frame_UsageReport:
+		if err := h.store.PutUsage(node, b.UsageReport.Entries); err != nil {
+			h.log.Error("store usage", "node", node, "err", err)
+		}
 	case *v1.Frame_ApprovalRequested:
 		a := b.ApprovalRequested
 		a.Node, a.CreatedMs = node, time.Now().UnixMilli()
@@ -541,6 +660,12 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.LastPrompt = firstNonEmpty(in.LastPrompt, cur.LastPrompt)
 		in.ClaudeVersion = firstNonEmpty(in.ClaudeVersion, cur.ClaudeVersion)
 		in.Archived = cur.Archived && !busy(in.State)
+		in.Parent, in.ForkPoint, in.Lineage = cur.Parent, cur.ForkPoint, cur.Lineage
+		in.Scratch, in.Global = cur.Scratch, cur.Global
+		// A global session's copy is refreshed whenever a turn ends.
+		if in.Global && busy(cur.State) && !busy(in.State) {
+			defer h.uploadTranscript(in)
+		}
 		if in.CreatedMs == 0 {
 			in.CreatedMs = cur.CreatedMs
 		}
@@ -576,6 +701,7 @@ func (h *Hub) ingest(node string, ev *v1.RawEvents) {
 			items = append(items, out.Items...)
 		}
 		mergePatch(&patch, out.Patch)
+		h.keepImages(s, node, out.Images)
 	}
 	h.commit(s, items)
 	if ev.Source == v1.RawEvents_SOURCE_TRANSCRIPT && ev.EndOffset > 0 {
@@ -683,6 +809,8 @@ func (h *Hub) commit(s string, items []*v1.TimelineItem) {
 	if len(items) == 0 {
 		return
 	}
+	h.tagSources(s, items)
+	h.expandLongText(s, items)
 	stored, seq, err := h.store.PutItems(s, items)
 	if err != nil {
 		h.log.Error("store items", "session", s, "err", err)
@@ -775,6 +903,12 @@ func (h *Hub) putSession(info *v1.SessionInfo) {
 }
 
 func (h *Hub) putNode(st *v1.NodeStatus) {
+	// Kept while offline, so an app can still tell its own machine's node.
+	if ip := h.agentIPs[st.Node]; ip != "" {
+		st.Ip = ip
+	} else if old := h.nodes[st.Node]; old != nil {
+		st.Ip = old.Ip
+	}
 	h.nodes[st.Node] = st
 	if err := h.store.PutNode(st); err != nil {
 		h.log.Error("store node", "node", st.Node, "err", err)

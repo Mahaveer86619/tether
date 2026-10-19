@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
 
+import '../../core/error/exceptions.dart';
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../../domain/entities/entities.dart';
@@ -54,11 +55,22 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   void connect(HubConnection connection) {
-    final endpoint = HubEndpoint(connection.url, connection.token);
+    final endpoint = HubEndpoint(connection.url, connection.token, fingerprint: connection.fingerprint);
     _api.endpoint = endpoint;
     _emit(_snap.copyWith(status: ConnectionStatus.connecting, endpoint: connection.url, lastError: () => null));
     if (_snap.sessions.isEmpty) _restoreState();
     _socket.connect(endpoint);
+  }
+
+  @override
+  Future<void> disconnect() async {
+    _saveState?.cancel();
+    _socket.disconnect();
+    _api.endpoint = null;
+    _wireNodes.clear();
+    _wireSessions.clear();
+    _emit(const HubSnapshot());
+    await _cache.clear().catchError((Object _) {});
   }
 
   /// Shows the last known devices and sessions until the hub answers.
@@ -74,13 +86,17 @@ class HubRepositoryImpl implements HubRepository {
     _emit(_snap.copyWith(
       nodes: {for (final n in _wireNodes.values) n.node: nodeFromPb(n)},
       sessions: {for (final s in _wireSessions.values) s.id: sessionFromPb(s)},
+      deviceId: cached.deviceId,
+      clientIp: cached.clientIp,
     ));
   }
 
   void _scheduleStateSave() {
     _saveState?.cancel();
     _saveState = Timer(const Duration(seconds: 2), () {
-      _cache.writeState(pb.Welcome(nodes: _wireNodes.values, sessions: _wireSessions.values)).catchError((Object _) {});
+      _cache
+          .writeState(pb.Welcome(nodes: _wireNodes.values, sessions: _wireSessions.values, deviceId: _snap.deviceId, clientIp: _snap.clientIp))
+          .catchError((Object _) {});
     });
   }
 
@@ -132,16 +148,26 @@ class HubRepositoryImpl implements HubRepository {
         _emit(_snap.copyWith(
           status: ConnectionStatus.connected,
           hubVersion: w.hubVersion,
+          hubNode: w.hubNode,
+          deviceId: w.deviceId,
+          clientIp: w.clientIp,
           nodes: {for (final n in w.nodes) n.node: nodeFromPb(n)},
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
+          preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
         ));
         _scheduleStateSave();
+        _loadArtifacts();
         for (final t in _timelines.values) {
           if (t.refs > 0) t.started ? _subscribe(t) : _start(t);
         }
         _syncBackground();
+      case pb.Frame_Body.artifactAdded:
+        final a = artifactFromPb(f.artifactAdded);
+        _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
+      case pb.Frame_Body.preferences:
+        _emit(_snap.copyWith(preferences: () => appearanceFromPb(f.preferences)));
       case pb.Frame_Body.nodeStatus:
         _wireNodes[f.nodeStatus.node] = f.nodeStatus;
         _emit(_snap.copyWith(nodes: {..._snap.nodes, f.nodeStatus.node: nodeFromPb(f.nodeStatus)}));
@@ -277,11 +303,51 @@ class HubRepositoryImpl implements HubRepository {
         prompt: r.prompt,
         model: r.model,
         permissionMode: r.permissionMode,
+        createCwd: r.createCwd,
+        scratch: r.scratch,
+        attachments: r.attachments,
       )));
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false}) =>
-      _command(() => _api.sendMessage(sessionId, text, fork: fork));
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) =>
+      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments));
+
+  @override
+  Future<Result<void>> setGlobal(String sessionId, {required bool global}) => _command(() => _api.setGlobal(sessionId, global: global));
+
+  @override
+  Future<Result<String>> continueOnHub(String sessionId, String text) => _command(() => _api.continueOnHub(sessionId, text));
+
+  @override
+  Future<Result<List<int>>> artifactBytes(String id) => _command(() => _api.artifactBytes(id));
+
+  @override
+  Future<Result<String>> artifactLink(String id) => _command(() => _api.artifactLink(id));
+
+  @override
+  Future<Result<List<Codebase>>> codebases() => _command(() async => [for (final c in (await _api.codebases()).codebases) codebaseFromPb(c)]);
+
+  @override
+  Future<Result<void>> snapshotCodebase(String id) => _command(() => _api.snapshotCodebase(id));
+
+  @override
+  Future<Result<List<HostedPage>>> pages({String session = ''}) => _command(() async => [for (final p in await _api.pages(session: session)) pageFromPb(p)]);
+
+  @override
+  Future<Result<void>> deleteArtifact(String id) => _command(() async {
+        await _api.deleteArtifact(id);
+        _emit(_snap.copyWith(artifacts: {..._snap.artifacts}..remove(id)));
+      });
+
+  /// Loads recent artifacts after (re)connecting; new ones arrive as frames.
+  Future<void> _loadArtifacts() async {
+    try {
+      final list = await _api.artifacts();
+      _emit(_snap.copyWith(artifacts: {for (final a in list.artifacts) a.id: artifactFromPb(a)}));
+    } on Exception {
+      // Not worth a toast: tool cards just show no thumbnails.
+    }
+  }
 
   @override
   Future<Result<void>> interrupt(String sessionId) => _command(() => _api.interrupt(sessionId));
@@ -290,12 +356,63 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<void>> endSession(String sessionId) => _command(() => _api.stop(sessionId));
 
   @override
+  Future<Result<void>> savePreferences(Appearance appearance) => _command(() => _api.savePreferences(appearanceToPb(appearance)));
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> workspaces() =>
+      _command(() async => [for (final r in (await _api.workspaces()).roots) WorkspaceRoot(node: r.node, path: r.path)]);
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> setWorkspaceRoot(WorkspaceRoot root, {required bool remove}) => _command(() async => [
+        for (final r in (await _api.setWorkspaceRoot(pb.WorkspaceRoot(node: root.node, path: root.path), remove: remove)).roots)
+          WorkspaceRoot(node: r.node, path: r.path),
+      ]);
+
+  @override
+  Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
+
+  @override
+  Future<Result<List<TailnetDevice>>> tailnet() => _command(() async {
+        final t = await _api.tailnet();
+        if (t.error.isNotEmpty && t.devices.isEmpty) throw ApiException(statusCode: 500, code: 'tailscale', message: t.error);
+        return [for (final d in t.devices) tailnetDeviceFromPb(d)];
+      });
+
+  @override
+  Future<Result<PairingInvite>> createPairingInvite() => _command(() async {
+        final code = await _api.createPairingCode();
+        return PairingInvite(
+          code: code.code,
+          expires: DateTime.fromMillisecondsSinceEpoch(code.expiresMs.toInt()),
+          hubUrl: _api.endpoint!.ws.toString(),
+          fingerprint: code.certFingerprint.isNotEmpty ? code.certFingerprint : _api.endpoint!.fingerprint,
+        );
+      });
+
+  @override
+  Future<Result<List<PairedDevice>>> listDevices() =>
+      _command(() async => [for (final d in (await _api.devices()).devices) deviceFromPb(d)]);
+
+  @override
+  Future<Result<void>> revokeDevice(String id) => _command(() => _api.revokeDevice(id));
+
+  @override
+  Future<Result<String>> pair({
+    required String url,
+    required String code,
+    required String fingerprint,
+    required String name,
+    required String platform,
+  }) =>
+      guard(() async => (await _api.pair(url, fingerprint, pb.PairRequest(code: code, kind: 'client', name: name, platform: platform))).token);
+
+  @override
   Future<Result<void>> setArchived(String sessionId, {required bool archived}) =>
       _command(() => _api.archive(sessionId, archived: archived));
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {
-    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message));
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
+    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers));
     // Optimistic: the hub broadcasts the resolution, but don't wait for it.
     if (r.isOk) _emit(_snap.copyWith(approvals: {..._snap.approvals}..remove(approvalId)));
     return r;
