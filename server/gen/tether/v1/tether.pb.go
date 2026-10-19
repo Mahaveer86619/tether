@@ -1995,7 +1995,10 @@ type SendMessage struct {
 	// Continue in a new session id, leaving the original untouched.
 	Fork bool `protobuf:"varint,3,opt,name=fork,proto3" json:"fork,omitempty"`
 	// Artifact ids to put in the session's folder and mention in the message.
-	Attachments   []string `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	Attachments []string `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	// Made by the client, once per message: the hub sends a repeat only once,
+	// and stamps it on the user item the message becomes.
+	ClientId      string `protobuf:"bytes,5,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2056,6 +2059,13 @@ func (x *SendMessage) GetAttachments() []string {
 		return x.Attachments
 	}
 	return nil
+}
+
+func (x *SendMessage) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
 }
 
 // Stops the current turn; the session stays open.
@@ -6362,12 +6372,13 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x0eArchiveSession\x12\x1a\n" +
 	"\barchived\x18\x01 \x01(\bR\barchived\"#\n" +
 	"\tSetGlobal\x12\x16\n" +
-	"\x06global\x18\x01 \x01(\bR\x06global\"q\n" +
+	"\x06global\x18\x01 \x01(\bR\x06global\"\x8e\x01\n" +
 	"\vSendMessage\x12\x18\n" +
 	"\asession\x18\x01 \x01(\tR\asession\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x12\n" +
 	"\x04fork\x18\x03 \x01(\bR\x04fork\x12 \n" +
-	"\vattachments\x18\x04 \x03(\tR\vattachments\",\n" +
+	"\vattachments\x18\x04 \x03(\tR\vattachments\x12\x1b\n" +
+	"\tclient_id\x18\x05 \x01(\tR\bclientId\",\n" +
 	"\x10InterruptSession\x12\x18\n" +
 	"\asession\x18\x01 \x01(\tR\asession\"'\n" +
 	"\vStopSession\x12\x18\n" +

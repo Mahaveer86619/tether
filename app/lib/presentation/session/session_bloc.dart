@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/error/failures.dart';
+import '../../core/result.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 
@@ -79,6 +81,22 @@ class EndRequested extends SessionEvent {
   const EndRequested();
 }
 
+/// Sends an outbox message again; the hub passes a repeat on only once.
+class OutboxRetried extends SessionEvent {
+  const OutboxRetried(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
+/// Drops an outbox message without sending it.
+class OutboxDiscarded extends SessionEvent {
+  const OutboxDiscarded(this.id);
+  final String id;
+  @override
+  List<Object?> get props => [id];
+}
+
 // ---- state ----
 
 class SessionViewState extends Equatable {
@@ -97,9 +115,13 @@ class SessionViewState extends Equatable {
     this.draft,
     this.failure,
     this.failureId = 0,
+    this.outbox = const [],
   });
 
   final String sessionId;
+
+  /// Messages from this device the timeline doesn't show yet.
+  final List<OutboxEntry> outbox;
   final Session? session;
   final bool nodeOnline;
   final TimelineSnapshot? timeline;
@@ -139,6 +161,7 @@ class SessionViewState extends Equatable {
     String? Function()? forkedTo,
     Failure? failure,
     int? failureId,
+    List<OutboxEntry>? outbox,
   }) =>
       SessionViewState(
         sessionId: sessionId,
@@ -155,11 +178,12 @@ class SessionViewState extends Equatable {
         forkedTo: forkedTo != null ? forkedTo() : this.forkedTo,
         failure: failure ?? this.failure,
         failureId: failureId ?? this.failureId,
+        outbox: outbox ?? this.outbox,
       );
 
   @override
   List<Object?> get props =>
-      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, quote, quoteId, forkedTo, draft, failure, failureId];
+      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, quote, quoteId, forkedTo, draft, failure, failureId, outbox];
 }
 
 // ---- bloc ----
@@ -176,6 +200,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     required this._drafts,
     required this._setGlobal,
     required this._continueOnHub,
+    required this._outbox,
   })  : _send = sendMessage,
         super(SessionViewState(sessionId: sessionId)) {
     on<SessionOpened>(_onOpened);
@@ -190,6 +215,40 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     on<EndRequested>(_onEnd);
     on<GlobalToggled>(_onGlobal);
     on<ContinueOnHubRequested>(_onContinue);
+    on<OutboxRetried>(_onRetry);
+    on<OutboxDiscarded>((e, emit) => _setOutbox(emit, [for (final o in state.outbox) if (o.id != e.id) o]));
+  }
+
+  final Outbox _outbox;
+  static final _rand = Random.secure();
+
+  static String _newId() => List.generate(16, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+
+  void _setOutbox(Emitter<SessionViewState> emit, List<OutboxEntry> entries) {
+    emit(state.copyWith(outbox: entries));
+    unawaited(_outbox.save(state.sessionId, entries));
+  }
+
+  void _updateEntry(Emitter<SessionViewState> emit, String id, OutboxEntry Function(OutboxEntry) change) =>
+      _setOutbox(emit, [for (final o in state.outbox) o.id == id ? change(o) : o]);
+
+  /// Sends an outbox entry, recording how it went on the entry itself.
+  Future<void> _deliver(OutboxEntry entry, Emitter<SessionViewState> emit) async {
+    final result = await _send(state.sessionId, entry.text, attachments: entry.attachments, clientId: entry.id);
+    switch (result) {
+      case Ok():
+        _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sent, sentAt: DateTime.now(), error: ''));
+      case Err(:final failure):
+        _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.failed, error: failure.userMessage));
+        emit(state.copyWith(failure: failure, failureId: state.failureId + 1));
+    }
+  }
+
+  Future<void> _onRetry(OutboxRetried e, Emitter<SessionViewState> emit) async {
+    final entry = state.outbox.where((o) => o.id == e.id).firstOrNull;
+    if (entry == null || entry.state == OutboxState.sending) return;
+    _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sending, error: ''));
+    await _deliver(entry, emit);
   }
 
   final SetSessionGlobal _setGlobal;
@@ -220,6 +279,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
 
   Future<void> _onOpened(SessionOpened e, Emitter<SessionViewState> emit) async {
     emit(state.copyWith(draft: await _drafts.load(state.sessionId)));
+    final saved = await _outbox.load(state.sessionId);
+    if (saved.isNotEmpty) _setOutbox(emit, saved);
     await Future.wait([
       emit.forEach<HubSnapshot>(_watchHub(), onData: (hub) {
         final session = hub.sessions[state.sessionId];
@@ -229,12 +290,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
           approvals: hub.approvalsFor(state.sessionId),
         );
       }),
-      emit.forEach<TimelineSnapshot>(_watchTimeline(state.sessionId), onData: (t) => state.copyWith(timeline: t)),
+      emit.forEach<TimelineSnapshot>(_watchTimeline(state.sessionId), onData: (t) {
+        final pending = Outbox.pending(state.outbox, t.items);
+        if (pending.length == state.outbox.length) return state.copyWith(timeline: t);
+        unawaited(_outbox.save(state.sessionId, pending));
+        return state.copyWith(timeline: t, outbox: pending);
+      }),
     ]);
   }
 
   Future<void> _onSubmitted(MessageSubmitted e, Emitter<SessionViewState> emit) async {
     if (state.sending) return;
+    if (!state.forking) return _queue(e, emit);
     emit(state.copyWith(sending: true));
     final fork = state.forking;
     final result = await _send(state.sessionId, e.text, fork: fork, attachments: e.attachments);
@@ -252,6 +319,23 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
         ));
       },
     );
+  }
+
+  /// A message to this session goes into the outbox first, and the
+  /// composer clears at once: the text is safe there whatever happens next.
+  Future<void> _queue(MessageSubmitted e, Emitter<SessionViewState> emit) async {
+    if (_send.check(state.sessionId, e.text, attachments: e.attachments) case final f?) {
+      emit(state.copyWith(failure: f, failureId: state.failureId + 1));
+      return;
+    }
+    final entry = OutboxEntry(id: _newId(), session: state.sessionId, text: e.text.trim(), attachments: e.attachments, created: DateTime.now());
+    _draftSave?.cancel();
+    _pendingDraft = null;
+    unawaited(_drafts.save(state.sessionId, ''));
+    emit(state.copyWith(sending: true, sentId: state.sentId + 1));
+    _setOutbox(emit, [...state.outbox, entry]);
+    await _deliver(entry, emit);
+    emit(state.copyWith(sending: false));
   }
 
   // Written a moment after typing stops, not on every key.

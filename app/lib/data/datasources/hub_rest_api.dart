@@ -36,9 +36,9 @@ class HubRestApi {
 
   Future<String> createSession(pb.CreateSession body) async => (await _post('/sessions', body, pb.Ack())).session;
 
-  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const []}) async => (await _post(
+  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) async => (await _post(
         '/sessions/${Uri.encodeComponent(session)}/messages',
-        pb.SendMessage(text: text, fork: fork, attachments: attachments),
+        pb.SendMessage(text: text, fork: fork, attachments: attachments, clientId: clientId.isEmpty ? null : clientId),
         pb.Ack(),
       ))
           .session;

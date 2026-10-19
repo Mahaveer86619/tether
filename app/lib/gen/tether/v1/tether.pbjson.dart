@@ -728,6 +728,7 @@ const SendMessage$json = {
     {'1': 'text', '3': 2, '4': 1, '5': 9, '10': 'text'},
     {'1': 'fork', '3': 3, '4': 1, '5': 8, '10': 'fork'},
     {'1': 'attachments', '3': 4, '4': 3, '5': 9, '10': 'attachments'},
+    {'1': 'client_id', '3': 5, '4': 1, '5': 9, '10': 'clientId'},
   ],
 };
 
@@ -735,7 +736,7 @@ const SendMessage$json = {
 final $typed_data.Uint8List sendMessageDescriptor = $convert.base64Decode(
     'CgtTZW5kTWVzc2FnZRIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBHRleHQYAiABKAlSBH'
     'RleHQSEgoEZm9yaxgDIAEoCFIEZm9yaxIgCgthdHRhY2htZW50cxgEIAMoCVILYXR0YWNobWVu'
-    'dHM=');
+    'dHMSGwoJY2xpZW50X2lkGAUgASgJUghjbGllbnRJZA==');
 
 @$core.Deprecated('Use interruptSessionDescriptor instead')
 const InterruptSession$json = {

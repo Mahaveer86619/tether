@@ -31,6 +31,7 @@ class FakeHubRepository implements HubRepository {
   final ended = <String>[];
   final answered = <Map<String, String>>[];
   final options = <int>[];
+  final clientIds = <String>[];
   final keysSent = <(String, List<String>, String)>[];
   var screenText = '';
   var disconnected = false;
@@ -82,8 +83,10 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) async {
+  Future<Result<String>> sendMessage(String sessionId, String text,
+      {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
     sent.add((sessionId, text, fork));
+    clientIds.add(clientId);
     attachmentsSent.add(attachments);
     return onSend?.call(sessionId, fork) ?? Ok(fork ? 'fork-of-$sessionId' : sessionId);
   }
@@ -235,6 +238,14 @@ class FakeHubRepository implements HubRepository {
 }
 
 class FakeSettingsRepository implements SettingsRepository {
+  final outboxes = <String, List<OutboxEntry>>{};
+
+  @override
+  Future<List<OutboxEntry>> loadOutbox(String session) async => outboxes[session] ?? const [];
+
+  @override
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries) async => outboxes[session] = entries;
+
   HubConnection saved = const HubConnection(url: '', token: '');
   Appearance appearance = const Appearance();
 

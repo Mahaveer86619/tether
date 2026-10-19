@@ -273,6 +273,9 @@ message SendMessage {
   bool fork = 3;
   // Artifact ids to put in the session's folder and mention in the message.
   repeated string attachments = 4;
+  // Made by the client, once per message: the hub sends a repeat only once,
+  // and stamps it on the user item the message becomes.
+  string client_id = 5;
 }
 
 // Stops the current turn; the session stays open.

@@ -94,6 +94,7 @@ type Hub struct {
 	uploadMu  sync.Mutex
 	uploading map[string]bool // upload id -> a request is writing it
 
+	queuedItems   map[string]map[string]string         // session -> its "queued" placeholders' text, by item
 	screens       map[string]*v1.ScreenSnapshot       // session -> its last terminal screen
 	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
 }
@@ -110,6 +111,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		subs:      map[string]map[*client]struct{}{},
 		builders:  map[string]*render.Builder{},
 		screens:       map[string]*v1.ScreenSnapshot{},
+		queuedItems:   map[string]map[string]string{},
 		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
 		pending:   map[string]*pendingItems{},
 		approvals: map[string]*v1.ApprovalRequest{},
@@ -403,6 +405,9 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	if strings.TrimSpace(m.Text) == "" {
 		return "", invalid("message is empty")
 	}
+	if !m.Fork && h.alreadySent(info.Id, m.ClientId) {
+		return info.Id, nil
+	}
 	if m.Fork {
 		now := time.Now().UnixMilli()
 		point, perr := h.store.LastItemID(info.Id)
@@ -440,7 +445,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	if long != nil {
 		attachments = append(attachments, long)
 	}
-	h.noteSent(info.Id, text, from)
+	h.noteSentAs(info.Id, text, from, m.ClientId)
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments}}}))
 	return info.Id, nil
 }
@@ -499,6 +504,7 @@ func (h *Hub) rebuild(session string) (string, *opError) {
 	}
 	delete(h.builders, session)
 	delete(h.pending, session)
+	delete(h.queuedItems, session)
 	if h.mirroring[session] {
 		if agent := h.agents[info.Node]; agent != nil {
 			agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_StopMirror_{StopMirror: &v1.AgentCommand_StopMirror{Session: session}}}))
@@ -818,6 +824,7 @@ func (h *Hub) commit(s string, items []*v1.TimelineItem) {
 	}
 	h.tagSources(s, items)
 	h.expandLongText(s, items)
+	items = h.dropStaleQueued(s, items)
 	stored, seq, err := h.store.PutItems(s, items)
 	if err != nil {
 		h.log.Error("store items", "session", s, "err", err)

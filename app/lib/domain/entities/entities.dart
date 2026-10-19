@@ -815,3 +815,45 @@ class ScreenSnapshot extends Equatable {
   @override
   List<Object?> get props => [session, text, captured, error];
 }
+
+enum OutboxState { sending, sent, failed }
+
+/// A message from this device that the session's timeline doesn't show yet.
+/// It's kept on the device until it does, so a restart, a dropped send or a
+/// message Claude Code holds in its queue can't lose it.
+class OutboxEntry extends Equatable {
+  const OutboxEntry({
+    required this.id,
+    required this.session,
+    required this.text,
+    required this.created,
+    this.attachments = const [],
+    this.state = OutboxState.sending,
+    this.sentAt,
+    this.error = '',
+  });
+
+  /// Also the message's client id on the hub, which sends a repeat once.
+  final String id, session, text, error;
+  final List<String> attachments;
+  final DateTime created;
+  final OutboxState state;
+  final DateTime? sentAt;
+
+  /// Sent a while ago and still not in the timeline.
+  bool unconfirmed(DateTime now) => state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > const Duration(minutes: 10);
+
+  OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error}) => OutboxEntry(
+        id: id,
+        session: session,
+        text: text,
+        created: created,
+        attachments: attachments,
+        state: state ?? this.state,
+        sentAt: sentAt ?? this.sentAt,
+        error: error ?? this.error,
+      );
+
+  @override
+  List<Object?> get props => [id, session, text, attachments, created, state, sentAt, error];
+}

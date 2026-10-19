@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../artifacts/attachments.dart';
 import '../artifacts/files_page.dart';
@@ -441,10 +442,15 @@ class _TimelineState extends State<_Timeline> {
     final busy = s.session?.isBusy ?? false;
     final approval = s.session?.state == SessionState.awaitingApproval;
     final entries = [..._entries(items), for (final q in queued) _Entry([q])];
+    // The hub's own "queued" item stands for a message once it has one.
+    final outbox = [
+      for (final o in s.outbox)
+        if (o.state != OutboxState.sent || !Outbox.queuedOnHub(o, s.items)) o,
+    ];
     if (_initial == null && (!s.loading || items.isNotEmpty)) {
       _initial = {for (final e in entries) e.key};
     }
-    if (entries.isEmpty) {
+    if (entries.isEmpty && outbox.isEmpty) {
       if (busy) {
         return Align(
           alignment: Alignment.bottomCenter,
@@ -499,7 +505,13 @@ class _TimelineState extends State<_Timeline> {
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
                 alignment: Alignment.topCenter,
-                child: working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final o in outbox) _OutboxBubble(key: ValueKey('outbox-${o.id}'), entry: o),
+                    working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+                  ],
+                ),
               );
             } else {
               final e = entries[entries.length - i];
@@ -544,6 +556,76 @@ class _TimelineState extends State<_Timeline> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A message from this device the timeline doesn't show yet: on its way,
+/// waiting in Claude Code's queue, or not sent, with Retry.
+class _OutboxBubble extends StatelessWidget {
+  const _OutboxBubble({super.key, required this.entry});
+
+  final OutboxEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final e = entry;
+    final bloc = context.read<SessionBloc>();
+    final unconfirmed = e.unconfirmed(DateTime.now());
+    final failed = e.state == OutboxState.failed;
+    final (IconData icon, String status) = switch (e.state) {
+      OutboxState.sending => (Icons.upload_rounded, 'Sending…'),
+      OutboxState.failed => (Icons.error_outline_rounded, e.error.isEmpty ? 'Not sent' : 'Not sent · ${e.error}'),
+      OutboxState.sent when unconfirmed => (Icons.help_outline_rounded, 'Sent, but not in the session yet'),
+      OutboxState.sent => (Icons.schedule_rounded, 'Queued · Claude reads it at its next step'),
+    };
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10, left: 48),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: c.userBubble.withValues(alpha: failed ? 0.5 : 0.8),
+                borderRadius: BorderRadius.circular(16),
+                border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
+              ),
+              child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 13, color: failed ? c.danger : c.faint),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: failed ? c.danger : c.faint)),
+                  ),
+                  if (failed || unconfirmed) ...[
+                    TextButton(
+                      key: Key('outbox-retry-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxRetried(e.id)),
+                      child: Text(failed ? 'Retry' : 'Resend'),
+                    ),
+                    TextButton(
+                      key: Key('outbox-discard-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxDiscarded(e.id)),
+                      child: const Text('Discard'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

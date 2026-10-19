@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart' show ThemeMode;
 
 import '../../core/result.dart';
@@ -26,6 +28,44 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
   @override
   Future<String> loadDraft(String key) => _local.readDraft(key);
+
+  @override
+  Future<List<OutboxEntry>> loadOutbox(String session) async {
+    final raw = await _local.readOutbox(session);
+    if (raw.isEmpty) return const [];
+    try {
+      return [for (final m in jsonDecode(raw) as List<dynamic>) _entryFrom(m as Map<String, dynamic>, session)];
+    } on FormatException {
+      return const [];
+    } on TypeError {
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries) =>
+      _local.writeOutbox(session, entries.isEmpty ? '' : jsonEncode([for (final e in entries) _entryTo(e)]));
+
+  static Map<String, dynamic> _entryTo(OutboxEntry e) => {
+        'id': e.id,
+        'text': e.text,
+        'attachments': e.attachments,
+        'created': e.created.millisecondsSinceEpoch,
+        'state': e.state.name,
+        if (e.sentAt != null) 'sentAt': e.sentAt!.millisecondsSinceEpoch,
+        if (e.error.isNotEmpty) 'error': e.error,
+      };
+
+  static OutboxEntry _entryFrom(Map<String, dynamic> m, String session) => OutboxEntry(
+        id: m['id'] as String,
+        session: session,
+        text: m['text'] as String? ?? '',
+        attachments: [for (final a in m['attachments'] as List<dynamic>? ?? const []) a as String],
+        created: DateTime.fromMillisecondsSinceEpoch(m['created'] as int? ?? 0),
+        state: OutboxState.values.asNameMap()[m['state']] ?? OutboxState.failed,
+        sentAt: m['sentAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(m['sentAt'] as int),
+        error: m['error'] as String? ?? '',
+      );
 
   @override
   Future<void> saveDraft(String key, String text) => _local.writeDraft(key, text);

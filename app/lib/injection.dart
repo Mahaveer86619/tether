@@ -76,6 +76,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => SharePreferences(sl()))
     ..registerLazySingleton(() => ConnectOverTailnet(sl(), sl()))
     ..registerLazySingleton(() => Drafts(sl()))
+    ..registerLazySingleton(() => Outbox(sl()))
     ..registerLazySingleton(() => LoadTailnet(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
@@ -111,6 +112,7 @@ void configureDependencies({bool withData = true}) {
         drafts: sl(),
         setGlobal: sl(),
         continueOnHub: sl(),
+        outbox: sl(),
       ),
     )
     ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(

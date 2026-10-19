@@ -252,12 +252,14 @@ class UserText extends $pb.GeneratedMessage {
     $core.bool? queued,
     $core.String? source,
     $core.String? attachmentId,
+    $core.String? clientId,
   }) {
     final result = UserText._();
     if (text != null) result.text = text;
     if (queued != null) result.queued = queued;
     if (source != null) result.source = source;
     if (attachmentId != null) result.attachmentId = attachmentId;
+    if (clientId != null) result.clientId = clientId;
     return result;
   }
 
@@ -278,6 +280,7 @@ class UserText extends $pb.GeneratedMessage {
     ..aOB(2, _omitFieldNames ? '' : 'queued')
     ..aOS(3, _omitFieldNames ? '' : 'source')
     ..aOS(4, _omitFieldNames ? '' : 'attachmentId')
+    ..aOS(5, _omitFieldNames ? '' : 'clientId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -341,6 +344,16 @@ class UserText extends $pb.GeneratedMessage {
   $core.bool hasAttachmentId() => $_has(3);
   @$pb.TagNumber(4)
   void clearAttachmentId() => $_clearField(4);
+
+  /// SendMessage.client_id of the message this is, when the hub sent it.
+  @$pb.TagNumber(5)
+  $core.String get clientId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set clientId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClientId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClientId() => $_clearField(5);
 }
 
 class Markdown extends $pb.GeneratedMessage {

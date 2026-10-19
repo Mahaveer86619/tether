@@ -165,7 +165,17 @@ void main() {
       await tester.tap(find.byKey(const Key('send')));
       await settle(tester);
       expect(repo.sent.single, ('s1', 'next step', false));
-      expect(find.text('next step'), findsNothing, reason: 'composer clears after sending');
+      expect(tester.widget<TextField>(find.byKey(const Key('composer'))).controller!.text, isEmpty, reason: 'composer clears after sending');
+      expect(find.text('Queued · Claude reads it at its next step'), findsOneWidget, reason: 'the message waits in the outbox');
+
+      // It reaches the timeline, stamped with its client id: shown once.
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'earlier prompt')),
+        rpb.TimelineItem(itemId: 'u2', ord: Int64(2), user: rpb.UserText(text: 'next step', clientId: repo.clientIds.single)),
+      ]);
+      await settle(tester);
+      expect(find.text('next step'), findsOneWidget);
+      expect(find.text('Queued · Claude reads it at its next step'), findsNothing);
     });
 
     testWidgets('desktop: a terminal session offers fork instead of typing', (tester) async {

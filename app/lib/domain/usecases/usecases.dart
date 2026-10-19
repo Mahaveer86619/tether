@@ -100,14 +100,79 @@ class SendMessage {
 
   /// Sends [text] to the session, or with [fork] to a new fork of it.
   /// Returns the id of the session that got the message.
-  Future<Result<String>> call(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) async {
-    var t = text.trim();
-    if (t.isEmpty && attachments.isEmpty) return const Err(ValidationFailure('Message is empty.'));
-    if (t.isEmpty) t = 'Have a look at the attached files.';
+  Future<Result<String>> call(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
+    if (check(sessionId, text, fork: fork, attachments: attachments) case final f?) return Err(f);
+    return _hub.sendMessage(sessionId, wording(text), fork: fork, attachments: attachments, clientId: clientId);
+  }
+
+  /// Why the message can't go, before anything is sent.
+  Failure? check(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) {
+    if (text.trim().isEmpty && attachments.isEmpty) return const ValidationFailure('Message is empty.');
     final session = _hub.current.sessions[sessionId];
-    if (session == null) return Err(NotFoundFailure('session $sessionId'));
-    if (!fork && !session.acceptsInput) return const Err(TerminalActiveFailure());
-    return _hub.sendMessage(sessionId, t, fork: fork, attachments: attachments);
+    if (session == null) return NotFoundFailure('session $sessionId');
+    if (!fork && !session.acceptsInput) return const TerminalActiveFailure();
+    return null;
+  }
+
+  /// The text as sent: files alone still need a sentence.
+  static String wording(String text) => text.trim().isEmpty ? 'Have a look at the attached files.' : text.trim();
+}
+
+/// Messages from this device on their way into a session, kept on the
+/// device until the timeline shows them (see [OutboxEntry]).
+class Outbox {
+  const Outbox(this._settings);
+  final SettingsRepository _settings;
+
+  /// A send the app was in the middle of when it closed may or may not have
+  /// gone: it's offered for a retry, which the hub sends at most once.
+  Future<List<OutboxEntry>> load(String session) async => [
+        for (final e in await _settings.loadOutbox(session))
+          e.state == OutboxState.sending ? e.copyWith(state: OutboxState.failed, error: 'The app closed while sending it.') : e,
+      ];
+
+  Future<void> save(String session, List<OutboxEntry> entries) => _settings.saveOutbox(session, entries);
+
+  /// The entries the timeline doesn't show yet. A message counts as shown
+  /// once a user item carries its client id or, from a hub that doesn't
+  /// stamp ids, has its text among the latest messages.
+  static List<OutboxEntry> pending(List<OutboxEntry> entries, List<TimelineItem> items) {
+    final users = [
+      for (final i in items)
+        if (i.whichKind() == TimelineItem_Kind.user && !i.user.queued) i,
+    ];
+    final recent = users.length > 10 ? users.sublist(users.length - 10) : users;
+    final claimed = <String>{};
+    bool shown(OutboxEntry e) {
+      if (e.state != OutboxState.sent) return false;
+      for (final u in users) {
+        if (u.user.clientId == e.id) return true;
+      }
+      for (final u in recent) {
+        if (u.user.clientId.isEmpty && !claimed.contains(u.itemId) && sameMessage(SendMessage.wording(e.text), u.user.text)) {
+          claimed.add(u.itemId);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    return [for (final e in entries) if (!shown(e)) e];
+  }
+
+  /// Whether the hub already shows the entry as queued, so it needn't be
+  /// shown twice.
+  static bool queuedOnHub(OutboxEntry e, List<TimelineItem> items) => items.any((i) =>
+      i.whichKind() == TimelineItem_Kind.user &&
+      i.user.queued &&
+      (i.user.clientId == e.id || sameMessage(SendMessage.wording(e.text), i.user.text)));
+
+  /// The same message as sent and as the transcript has it: the agent adds
+  /// the list of attached files, and Windows line endings.
+  static bool sameMessage(String sent, String got) {
+    String norm(String s) => s.replaceAll('\r\n', '\n').trim();
+    final a = norm(sent), b = norm(got);
+    return a == b || b.startsWith('$a\n\nAttached files');
   }
 }
 

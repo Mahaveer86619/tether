@@ -26,7 +26,7 @@ abstract interface class HubRepository {
 
   /// Returns the session that received the message: the same one, or the
   /// new fork when [fork] is set.
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []});
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''});
 
   /// Has the hub keep a copy of the session's transcript, or stop.
   Future<Result<void>> setGlobal(String sessionId, {required bool global});
@@ -137,6 +137,10 @@ abstract interface class SettingsRepository {
   /// Unsent text from a message box; empty when there is none.
   Future<String> loadDraft(String key);
   Future<void> saveDraft(String key, String text);
+
+  /// Messages not yet seen in a session's timeline; see [OutboxEntry].
+  Future<List<OutboxEntry>> loadOutbox(String session);
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries);
 
   Future<Appearance> loadAppearance();
   Future<Result<void>> saveAppearance(Appearance appearance);

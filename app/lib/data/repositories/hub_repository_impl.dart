@@ -309,8 +309,8 @@ class HubRepositoryImpl implements HubRepository {
       )));
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) =>
-      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments));
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) =>
+      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments, clientId: clientId));
 
   @override
   Future<Result<void>> setGlobal(String sessionId, {required bool global}) => _command(() => _api.setGlobal(sessionId, global: global));

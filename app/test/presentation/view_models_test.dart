@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/core/error/failures.dart';
@@ -23,6 +25,7 @@ SessionBloc sessionBloc(FakeHubRepository repo, String id) => SessionBloc(
       drafts: Drafts(FakeSettingsRepository()),
       setGlobal: SetSessionGlobal(repo),
       continueOnHub: ContinueOnHub(repo),
+      outbox: Outbox(FakeSettingsRepository()),
     );
 
 void main() {
@@ -193,6 +196,7 @@ void main() {
           drafts: Drafts(settings),
           setGlobal: SetSessionGlobal(repo),
           continueOnHub: ContinueOnHub(repo),
+          outbox: Outbox(settings),
         );
     final bloc = open()..add(const SessionOpened());
     await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -227,6 +231,81 @@ void main() {
     await cubit.setPalette('rose');
     expect(hub.sharedPreferences.single.palette, 'rose');
     await cubit.close();
+  });
+
+  group('SessionBloc outbox', () {
+    late FakeHubRepository repo;
+    late FakeSettingsRepository settings;
+    setUp(() {
+      repo = FakeHubRepository(snapshotWith([session('s1')]));
+      settings = FakeSettingsRepository();
+    });
+    SessionBloc open() => SessionBloc(
+          sessionId: 's1',
+          watchHub: WatchHub(repo),
+          watchTimeline: WatchTimeline(repo),
+          sendMessage: SendMessage(repo),
+          interrupt: InterruptSession(repo),
+          endSession: EndSession(repo),
+          drafts: Drafts(settings),
+          setGlobal: SetSessionGlobal(repo),
+          continueOnHub: ContinueOnHub(repo),
+          outbox: Outbox(settings),
+        );
+
+    test('a failed send stays in the outbox, saved, and Retry sends it with the same client id', () async {
+      var fail = true;
+      repo.onSend = (_, _) => fail ? const Err(NodeOfflineFailure()) : const Ok('s1');
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(const MessageSubmitted('deploy it'));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(b.state.outbox.single.state, OutboxState.failed);
+      expect(b.state.failure, isA<NodeOfflineFailure>());
+      expect(settings.outboxes['s1']!.single.text, 'deploy it', reason: 'kept on the device');
+      expect(b.state.sentId, 1, reason: 'the composer still clears: the text is safe in the outbox');
+
+      fail = false;
+      b.add(OutboxRetried(b.state.outbox.single.id));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(b.state.outbox.single.state, OutboxState.sent);
+      expect(repo.clientIds, hasLength(2));
+      expect(repo.clientIds.toSet(), hasLength(1), reason: 'a retry is the same message to the hub');
+      await b.close();
+    });
+
+    test('the outbox survives a restart and empties when the timeline shows the message', () async {
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(const MessageSubmitted('one more thing'));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      final id = b.state.outbox.single.id;
+      await b.close();
+
+      repo.timelines['s1'] ??= StreamController<TimelineSnapshot>.broadcast();
+      final again = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(again.state.outbox.single.id, id, reason: 'read back from the device');
+      repo.emitTimeline('s1', [TimelineItem(itemId: 'u1', user: rpb.UserText(text: 'one more thing', clientId: id))]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(again.state.outbox, isEmpty);
+      expect(settings.outboxes['s1'], isEmpty);
+      await again.close();
+    });
+
+    test('discarding drops a message without sending it', () async {
+      repo.onSend = (_, _) => const Err(NodeOfflineFailure());
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(const MessageSubmitted('never mind'));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(OutboxDiscarded(b.state.outbox.single.id));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(b.state.outbox, isEmpty);
+      expect(repo.sent, hasLength(1));
+      await b.close();
+    });
+
   });
 
   group('TerminalCubit', () {

@@ -2252,12 +2252,14 @@ class SendMessage extends $pb.GeneratedMessage {
     $core.String? text,
     $core.bool? fork,
     $core.Iterable<$core.String>? attachments,
+    $core.String? clientId,
   }) {
     final result = SendMessage._();
     if (session != null) result.session = session;
     if (text != null) result.text = text;
     if (fork != null) result.fork = fork;
     if (attachments != null) result.attachments.addAll(attachments);
+    if (clientId != null) result.clientId = clientId;
     return result;
   }
 
@@ -2278,6 +2280,7 @@ class SendMessage extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'text')
     ..aOB(3, _omitFieldNames ? '' : 'fork')
     ..pPS(4, _omitFieldNames ? '' : 'attachments')
+    ..aOS(5, _omitFieldNames ? '' : 'clientId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2333,6 +2336,17 @@ class SendMessage extends $pb.GeneratedMessage {
   /// Artifact ids to put in the session's folder and mention in the message.
   @$pb.TagNumber(4)
   $pb.PbList<$core.String> get attachments => $_getList(3);
+
+  /// Made by the client, once per message: the hub sends a repeat only once,
+  /// and stamps it on the user item the message becomes.
+  @$pb.TagNumber(5)
+  $core.String get clientId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set clientId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClientId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClientId() => $_clearField(5);
 }
 
 /// Stops the current turn; the session stays open.
