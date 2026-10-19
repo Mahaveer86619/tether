@@ -49,6 +49,8 @@ message Frame {
     UsageReport usage_report = 53;
     // The node's plan limits, from `claude -p /usage`.
     PlanUsage plan_usage = 54;
+    // A session's terminal screen (agent -> hub, and hub -> subscribers).
+    ScreenSnapshot screen_snapshot = 55;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -173,6 +175,9 @@ message ApprovalRequest {
     // Claude asks the user questions (AskUserQuestion); input_json holds
     // them, and the decision carries the answers.
     KIND_QUESTION = 3;
+    // A dialog read off Claude Code's screen (a survey, a menu, a picker)
+    // that no hook reported; options holds its choices.
+    KIND_PROMPT = 4;
   }
   string approval_id = 1;
   string session = 2;
@@ -184,6 +189,11 @@ message ApprovalRequest {
   // The tool rendered as a card, for the approval sheet.
   ToolCard preview = 8;
   Kind kind = 9;
+  // KIND_PROMPT: the dialog's choices in screen order, which one the cursor
+  // is on (0-based), and the screen it was read from.
+  repeated string options = 10;
+  int32 selected = 11;
+  string screen = 12;
 }
 
 enum Decision {
@@ -200,6 +210,9 @@ message ApprovalDecision {
   // For a question: each question's text to the chosen option labels, joined
   // with ", ", or the user's own words.
   map<string, string> answers = 4;
+  // For a prompt: the chosen option, 1-based. 0 with ALLOW takes the one the
+  // cursor is on; DENY presses Esc.
+  int32 option = 5;
 }
 
 message ApprovalResolved {
@@ -349,6 +362,11 @@ message AgentCommand {
     ScanCodebases scan = 10;
     // Download a file attached to a session into its folder.
     FetchAttachment fetch = 11;
+    // Press keys in the session's terminal: the way out of anything Tether
+    // can't parse.
+    SendKeys keys = 12;
+    // Read the session's terminal screen; answered with a ScreenSnapshot.
+    CaptureScreen capture = 13;
   }
 
   message StartRun {
@@ -416,6 +434,10 @@ message AgentCommand {
 
   message ScanCodebases {
     repeated string roots = 1;
+  }
+
+  message CaptureScreen {
+    string session = 1;
   }
 
   // Into <cwd>/.tether/attachments/<name>, checked against its sha256.
@@ -728,6 +750,24 @@ message Artifact {
   int64 created_ms = 11;
   // Written by whoever attached it.
   string note = 12;
+}
+
+// POST /api/v1/sessions/{id}/keys. keys are pressed in order: Enter,
+// Escape, Up, Down, Left, Right, Tab, BTab (Shift+Tab), Space, Backspace,
+// or a single character; text, if set, is typed after them.
+message SendKeys {
+  string session = 1;
+  repeated string keys = 2;
+  string text = 3;
+}
+
+// GET /api/v1/sessions/{id}/screen.
+message ScreenSnapshot {
+  string session = 1;
+  string text = 2;
+  int64 captured_ms = 3;
+  // Why there's no screen: a headless run has no terminal, say.
+  string error = 4;
 }
 
 message ArtifactList {

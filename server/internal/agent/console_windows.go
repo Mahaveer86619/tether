@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,6 +18,8 @@ var (
 	procFreeConsole        = kernel32.NewProc("FreeConsole")
 	procAttachConsole      = kernel32.NewProc("AttachConsole")
 	procWriteConsoleInputW = kernel32.NewProc("WriteConsoleInputW")
+	procGetConsoleSBInfo   = kernel32.NewProc("GetConsoleScreenBufferInfo")
+	procReadConsoleOutChar = kernel32.NewProc("ReadConsoleOutputCharacterW")
 	iphlpapi               = syscall.NewLazyDLL("iphlpapi.dll")
 	procGetExtendedTcpTbl  = iphlpapi.NewProc("GetExtendedTcpTable")
 
@@ -99,6 +102,116 @@ func pasteSettle(n int) time.Duration {
 // pressEscape interrupts Claude Code's current turn in that console.
 func pressEscape(pid uint32) error {
 	return writeConsole(pid, keyPair(0x1B, 0x01, 0x1B))
+}
+
+const shiftPressed = 0x0010
+
+// consoleKeys are SendKeys names as virtual keys and scan codes.
+var consoleKeys = map[string][2]uint16{
+	"Enter": {vkReturn, 0x1C}, "Escape": {0x1B, 0x01}, "Up": {0x26, 0x48}, "Down": {0x28, 0x50},
+	"Left": {0x25, 0x4B}, "Right": {0x27, 0x4D}, "Tab": {0x09, 0x0F}, "BTab": {0x09, 0x0F},
+	"Space": {0x20, 0x39}, "Backspace": {0x08, 0x0E},
+}
+
+// pressConsoleKeys presses named keys one at a time, then types text.
+func pressConsoleKeys(pid uint32, keys []string, text string) error {
+	for _, k := range keys {
+		var recs []inputRecord
+		if vk, ok := consoleKeys[k]; ok {
+			var ch uint16
+			switch k {
+			case "Enter":
+				ch = '\r'
+			case "Escape":
+				ch = 0x1B
+			case "Tab", "BTab":
+				ch = '\t'
+			case "Space":
+				ch = ' '
+			case "Backspace":
+				ch = 0x08
+			}
+			recs = keyPair(vk[0], vk[1], ch)
+			if k == "BTab" {
+				for i := range recs {
+					recs[i].Event.ControlKeyState = shiftPressed
+				}
+			}
+		} else {
+			r := []rune(k)
+			if len(r) != 1 {
+				return fmt.Errorf("unknown key %s", k)
+			}
+			for _, u := range utf16.Encode(r) {
+				recs = append(recs, keyPair(0, 0, u)...)
+			}
+		}
+		if err := writeConsole(pid, recs); err != nil {
+			return err
+		}
+		time.Sleep(80 * time.Millisecond)
+	}
+	if text == "" {
+		return nil
+	}
+	var recs []inputRecord
+	for _, r := range text {
+		for _, u := range utf16.Encode([]rune{r}) {
+			recs = append(recs, keyPair(0, 0, u)...)
+		}
+	}
+	return writeConsole(pid, recs)
+}
+
+type coord struct{ X, Y int16 }
+
+type smallRect struct{ Left, Top, Right, Bottom int16 }
+
+type screenBufferInfo struct {
+	Size              coord
+	CursorPosition    coord
+	Attributes        uint16
+	Window            smallRect
+	MaximumWindowSize coord
+}
+
+// readConsole returns the visible window of process pid's console as text.
+func readConsole(pid uint32) (string, error) {
+	conout, err := syscall.UTF16PtrFromString("CONOUT$")
+	if err != nil {
+		return "", err
+	}
+	consoleMu.Lock()
+	defer consoleMu.Unlock()
+	procFreeConsole.Call()
+	if ok, _, err := procAttachConsole.Call(uintptr(pid)); ok == 0 {
+		return "", fmt.Errorf("attach to the terminal of process %d: %w", pid, err)
+	}
+	defer procFreeConsole.Call()
+	h, err := syscall.CreateFile(conout,
+		syscall.GENERIC_READ|syscall.GENERIC_WRITE, syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE,
+		nil, syscall.OPEN_EXISTING, 0, 0)
+	if err != nil {
+		return "", fmt.Errorf("open terminal output: %w", err)
+	}
+	defer syscall.CloseHandle(h)
+	var info screenBufferInfo
+	if ok, _, err := procGetConsoleSBInfo.Call(uintptr(h), uintptr(unsafe.Pointer(&info))); ok == 0 {
+		return "", fmt.Errorf("read terminal size: %w", err)
+	}
+	width := int(info.Window.Right-info.Window.Left) + 1
+	var b strings.Builder
+	buf := make([]uint16, width)
+	for y := info.Window.Top; y <= info.Window.Bottom; y++ {
+		var read uint32
+		at := uintptr(uint32(uint16(info.Window.Left)) | uint32(uint16(y))<<16)
+		if ok, _, err := procReadConsoleOutChar.Call(uintptr(h), uintptr(unsafe.Pointer(&buf[0])), uintptr(width), at, uintptr(unsafe.Pointer(&read))); ok == 0 {
+			return "", fmt.Errorf("read terminal: %w", err)
+		}
+		b.WriteString(strings.TrimRight(string(utf16.Decode(buf[:read])), " "))
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
 }
 
 func writeConsole(pid uint32, recs []inputRecord) error {

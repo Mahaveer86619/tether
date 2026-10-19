@@ -90,7 +90,15 @@ abstract interface class HubRepository {
   Future<Result<void>> setArchived(String sessionId, {required bool archived});
 
   /// [answers] answer a question: each question's text to the chosen labels or the user's own words.
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}});
+  /// [option] picks a prompt's choice (1-based); 0 takes the one selected.
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0});
+
+  /// Reads the session's terminal on its machine.
+  Future<Result<ScreenSnapshot>> screen(String sessionId);
+
+  /// Presses keys (Enter, Escape, Up, Down, Left, Right, Tab, BTab, Space,
+  /// Backspace or one character) in the session's terminal, then types [text].
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''});
 
   Future<void> dispose();
 }

@@ -411,8 +411,14 @@ class HubRepositoryImpl implements HubRepository {
       _command(() => _api.archive(sessionId, archived: archived));
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
-    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers));
+  Future<Result<ScreenSnapshot>> screen(String sessionId) => _command(() async => screenFromPb(await _api.screen(sessionId)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) => _command(() => _api.sendKeys(sessionId, keys, text: text));
+
+  @override
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
+    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers, option: option));
     // Optimistic: the hub broadcasts the resolution, but don't wait for it.
     if (r.isOk) _emit(_snap.copyWith(approvals: {..._snap.approvals}..remove(approvalId)));
     return r;

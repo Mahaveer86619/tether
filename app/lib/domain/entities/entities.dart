@@ -138,6 +138,9 @@ class Session extends Equatable {
   /// Claude can be interrupted wherever it runs, Windows terminals included.
   bool get canInterrupt => isBusy && (host != SessionHost.terminal || terminalInput);
 
+  /// Has a terminal Tether can read and press keys in.
+  bool get hasScreen => isLive && (host == SessionHost.tmux || (host == SessionHost.terminal && terminalInput));
+
   int get todosDone => todos.where((t) => t.status == TodoStatus.completed).length;
   TodoItem? get currentTodo => todos.where((t) => t.status == TodoStatus.inProgress).firstOrNull;
 
@@ -148,7 +151,7 @@ class Session extends Equatable {
       ];
 }
 
-enum ApprovalKind { tool, folderTrust, question }
+enum ApprovalKind { tool, folderTrust, question, prompt }
 
 /// One of the questions Claude asks with AskUserQuestion.
 class Question extends Equatable {
@@ -182,12 +185,21 @@ class Approval extends Equatable {
     this.description = '',
     this.created,
     this.preview,
+    this.options = const [],
+    this.selected = -1,
+    this.screen = '',
   });
 
   final String id, session, node;
   final ApprovalKind kind;
   final String toolName, inputJson, description;
   final DateTime? created;
+
+  /// A prompt's choices as on screen, the one the cursor is on, and the
+  /// screen they were read from.
+  final List<String> options;
+  final int selected;
+  final String screen;
 
   /// The tool call rendered as a card, for tool approvals.
   final render.ToolCard? preview;
@@ -215,7 +227,7 @@ class Approval extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created];
+  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created, options, selected, screen];
 }
 
 /// Everything the dashboard shows, as of now.
@@ -791,4 +803,15 @@ class WorkspaceRoot extends Equatable {
 
   @override
   List<Object?> get props => [node, path];
+}
+
+/// A session's terminal as text, read on its machine.
+class ScreenSnapshot extends Equatable {
+  const ScreenSnapshot({required this.session, this.text = '', this.captured, this.error = ''});
+
+  final String session, text, error;
+  final DateTime? captured;
+
+  @override
+  List<Object?> get props => [session, text, captured, error];
 }

@@ -15,7 +15,9 @@ import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
+import 'prompt_card.dart';
 import 'question_card.dart';
+import 'terminal_sheet.dart';
 import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
@@ -77,6 +79,8 @@ class _SessionBody extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a)),
+                        if (session.state == SessionState.awaitingApproval && s.approvals.isEmpty && session.hasScreen)
+                          StuckBanner(sessionId: session.id),
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
                         if (!session.acceptsInput && !s.forking)
                           _TerminalNotice(session: session)
@@ -237,6 +241,9 @@ class SessionHeader extends StatelessWidget {
                 case 'attach-files':
                   await attachToSession(context, session.id);
                   return;
+                case 'terminal':
+                  await showTerminalSheet(context, session.id);
+                  return;
                 case 'files':
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
@@ -261,6 +268,7 @@ class SessionHeader extends StatelessWidget {
               _menuItem('global', session.global ? Icons.cloud_off_outlined : Icons.cloud_upload_outlined,
                   session.global ? 'Stop keeping a copy on the hub' : 'Keep a copy on the hub'),
               if (session.global) _menuItem('continue', Icons.cloud_sync_outlined, 'Continue on the hub'),
+              if (session.hasScreen) _menuItem('terminal', Icons.terminal_rounded, 'Screen & keys'),
               _menuItem('attach-files', Icons.attach_file_rounded, 'Attach files to this session'),
               _menuItem('files', Icons.folder_open_rounded, "This session's files"),
               _menuItem('pages', Icons.web_rounded, 'Pages this session made'),
@@ -1001,6 +1009,7 @@ class ApprovalCard extends StatelessWidget {
     final c = context.colors;
     final a = approval;
     if (a.kind == ApprovalKind.question) return QuestionCard(approval: a, sessionTitle: sessionTitle);
+    if (a.kind == ApprovalKind.prompt) return PromptCard(approval: a, sessionTitle: sessionTitle);
     final trust = a.kind == ApprovalKind.folderTrust;
     final busy = context.select<HubCubit, bool>((cubit) => cubit.state.deciding.contains(a.id));
     void decide(bool allow) => context.read<HubCubit>().decide(a.id, allow: allow);

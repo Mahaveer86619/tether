@@ -93,6 +93,9 @@ type Hub struct {
 
 	uploadMu  sync.Mutex
 	uploading map[string]bool // upload id -> a request is writing it
+
+	screens       map[string]*v1.ScreenSnapshot       // session -> its last terminal screen
+	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -106,6 +109,8 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		sessions:  map[string]*v1.SessionInfo{},
 		subs:      map[string]map[*client]struct{}{},
 		builders:  map[string]*render.Builder{},
+		screens:       map[string]*v1.ScreenSnapshot{},
+		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
 		pending:   map[string]*pendingItems{},
 		approvals: map[string]*v1.ApprovalRequest{},
 		mirroring: map[string]bool{},
@@ -628,7 +633,7 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 	case *v1.Frame_ApprovalRequested:
 		a := b.ApprovalRequested
 		a.Node, a.CreatedMs = node, time.Now().UnixMilli()
-		if a.Kind != v1.ApprovalRequest_KIND_FOLDER_TRUST {
+		if a.Kind != v1.ApprovalRequest_KIND_FOLDER_TRUST && a.Kind != v1.ApprovalRequest_KIND_PROMPT {
 			a.Preview = render.ToolCard(a.ApprovalId, a.ToolName, json.RawMessage(a.InputJson))
 		}
 		h.approvals[a.ApprovalId] = a
@@ -640,6 +645,8 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 			delete(h.approvals, r.ApprovalId)
 			h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalResolved{ApprovalResolved: r}})
 		}
+	case *v1.Frame_ScreenSnapshot:
+		h.noteScreen(node, b.ScreenSnapshot)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()

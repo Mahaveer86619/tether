@@ -137,6 +137,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)
+	h.screenRoutes(mux)
 	h.codebaseRoutes(mux)
 	mux.HandleFunc("GET /api/v1/pages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.pages(r.URL.Query().Get("session"))

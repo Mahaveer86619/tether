@@ -8,6 +8,7 @@ import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 import 'package:tether/presentation/hub/hub_cubit.dart';
 import 'package:tether/presentation/new_session/new_session_cubit.dart';
 import 'package:tether/presentation/session/session_bloc.dart';
+import 'package:tether/presentation/session/terminal_cubit.dart';
 import 'package:tether/presentation/settings/settings_cubit.dart';
 
 import '../helpers/fakes.dart';
@@ -226,6 +227,23 @@ void main() {
     await cubit.setPalette('rose');
     expect(hub.sharedPreferences.single.palette, 'rose');
     await cubit.close();
+  });
+
+  group('TerminalCubit', () {
+    test('reads the screen, and reads it again after pressing keys', () async {
+      final repo = FakeHubRepository(snapshotWith([session('s1')]))..screenText = '❯ 1. Yes';
+      final cubit = TerminalCubit(sessionId: 's1', terminal: TerminalControl(repo));
+      await cubit.refresh();
+      expect(cubit.state.screen!.text, '❯ 1. Yes');
+      repo.screenText = 'done';
+      await cubit.press(['Enter']);
+      expect(repo.keysSent.single.$2, ['Enter']);
+      expect(cubit.state.screen!.text, 'done');
+      expect(cubit.state.sending, isFalse);
+      await cubit.press(const []);
+      expect(cubit.state.failure, isA<ValidationFailure>(), reason: 'nothing to press');
+      await cubit.close();
+    });
   });
 
   group('HubCubit', () {

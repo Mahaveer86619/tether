@@ -71,6 +71,8 @@ type Agent struct {
 	runs          map[string]*run
 	panes         map[string]string
 	trust         map[string]string
+	trustUntil    map[string]time.Time     // session -> while watchTrust owns its folder dialog
+	prompts       map[string]*screenPrompt // session -> the dialog shown as a card
 	hooks         map[string]*hookSession
 	hookApprovals map[string]*hookApproval
 	uploaded      map[string]bool    // files already sent to the artifact store
@@ -90,6 +92,8 @@ func New(cfg Config) (*Agent, error) {
 		runs:          map[string]*run{},
 		panes:         map[string]string{},
 		trust:         map[string]string{},
+		trustUntil:    map[string]time.Time{},
+		prompts:       map[string]*screenPrompt{},
 		hooks:         map[string]*hookSession{},
 		hookApprovals: map[string]*hookApproval{},
 		uploaded:      map[string]bool{},
@@ -136,6 +140,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir, "host", host)
 	go a.scanLoop(ctx)
+	go a.watchScreens(ctx)
 	go a.planLoop(ctx)
 	if a.cfg.MCP {
 		go a.registerMCP()
@@ -234,6 +239,10 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.scanCodebases(op.Scan.Roots)
 		case *v1.AgentCommand_Fetch:
 			go a.fetchAttachment(op.Fetch)
+		case *v1.AgentCommand_Keys:
+			go a.sendKeys(op.Keys)
+		case *v1.AgentCommand_Capture:
+			go a.capture(op.Capture.Session)
 		case *v1.AgentCommand_Send:
 			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments)
 		case *v1.AgentCommand_Interrupt_:
@@ -271,6 +280,9 @@ func (a *Agent) decide(d *v1.ApprovalDecision) {
 
 	if isTrust {
 		go a.answerTrust(d.ApprovalId, pane, d.Decision == v1.Decision_DECISION_ALLOW)
+		return
+	}
+	if a.answerPrompt(d.ApprovalId, d) {
 		return
 	}
 	if a.answerHook(d) {
@@ -388,6 +400,9 @@ func (a *Agent) startTmux(o startOpts) {
 	a.mu.Unlock()
 	a.sendStatus()
 	a.report(o.session)
+	a.mu.Lock()
+	a.trustUntil[o.session] = time.Now().Add(trustWatch)
+	a.mu.Unlock()
 	go a.watchTrust(o.session, o.cwd, pane, o.createCwd)
 }
 

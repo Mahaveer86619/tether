@@ -300,6 +300,50 @@ void main() {
       expect(find.text('Pixel'), findsNothing);
     });
 
+    testWidgets('a dialog on screen comes as a card with its options, Esc, and the terminal', (tester) async {
+      repo.screenText = '● How is Claude doing this session?\n  1: Bad  2: Fine  3: Good  0: Dismiss';
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)], approvals: [
+        Approval(
+          id: 'p1',
+          session: 's1',
+          node: 'minipc',
+          kind: ApprovalKind.prompt,
+          description: 'How is Claude doing this session?',
+          options: const ['Bad', 'Fine', 'Good', 'Dismiss'],
+          created: DateTime(2026),
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Claude Code is asking'), findsWidgets);
+      expect(find.byKey(const Key('stuck-banner')), findsNothing, reason: 'the card says what it waits on');
+      await tester.tap(find.byKey(const Key('prompt-option-3')).last);
+      await settle(tester);
+      expect(repo.decided.last, ('p1', true));
+      expect(repo.options.last, 3);
+    });
+
+    testWidgets('a session waiting on something with no card offers its screen and keys', (tester) async {
+      repo.screenText = 'Some dialog Tether cannot read\n  [y/N]';
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.byKey(const Key('stuck-banner')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('stuck-open-terminal')));
+      await settle(tester);
+      expect(find.textContaining('Some dialog Tether cannot read'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('key-Down')));
+      await settle(tester);
+      expect([repo.keysSent.last.$1, ...repo.keysSent.last.$2, repo.keysSent.last.$3], ['s1', 'Down', '']);
+      await tester.enterText(find.byKey(const Key('terminal-text')), 'y');
+      await tester.tap(find.byKey(const Key('terminal-type-enter')));
+      await settle(tester);
+      final typed = repo.keysSent.sublist(repo.keysSent.length - 2);
+      expect([for (final k in typed) '${k.$2.join('+')}|${k.$3}'], ['|y', 'Enter|'], reason: 'the text, then Enter on its own');
+    });
+
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
       const input = '{"questions":['
           '{"question":"Which DB?","header":"DB","multiSelect":false,"options":[{"label":"Postgres","description":"server"},{"label":"SQLite"}]},'

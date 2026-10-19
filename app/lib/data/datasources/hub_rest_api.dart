@@ -191,9 +191,17 @@ class HubRestApi {
   Future<void> archive(String session, {required bool archived}) =>
       _post('/sessions/${Uri.encodeComponent(session)}/archive', pb.ArchiveSession(archived: archived), pb.Ack());
 
-  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) => _post(
+  Future<pb.ScreenSnapshot> screen(String session) =>
+      _send(() => _client.get(_endpoint.api('/sessions/${Uri.encodeComponent(session)}/screen'), headers: _headers), pb.ScreenSnapshot(),
+          timeout: const Duration(seconds: 20));
+
+  Future<void> sendKeys(String session, List<String> keys, {String text = ''}) =>
+      _post('/sessions/${Uri.encodeComponent(session)}/keys', pb.SendKeys(keys: keys, text: text), pb.Ack());
+
+  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) => _post(
         '/approvals/${Uri.encodeComponent(approvalId)}',
-        pb.ApprovalDecision(decision: allow ? pbe.Decision.DECISION_ALLOW : pbe.Decision.DECISION_DENY, message: message, answers: answers.entries),
+        pb.ApprovalDecision(
+            decision: allow ? pbe.Decision.DECISION_ALLOW : pbe.Decision.DECISION_DENY, message: message, answers: answers.entries, option: option),
         pb.Ack(),
       );
 

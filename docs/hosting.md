@@ -23,6 +23,18 @@ Messages are delivered as one bracketed paste followed by Enter, so multi-line t
 
 Interactive Claude Code asks "Do you trust this folder?" the first time it opens a directory (headless mode doesn't). The agent watches new tmux windows for that dialog and turns it into an approval of kind `FOLDER_TRUST`. When answered, it moves the selection and confirms while watching the screen. Keys sent while the TUI is still starting are dropped, so a blind keypress isn't reliable.
 
+### Dialogs on screen
+
+Some of Claude Code's dialogs fire no hook: feedback surveys (like the auto-mode survey), pickers, and menus. Unanswered, they leave a session waiting with nothing in the app to act on, and a message typed then lands in the dialog. To catch them, the agent reads the screen of every interactive session it can reach every 2 seconds: tmux panes with `capture-pane`, and Windows consoles with `AttachConsole` plus `ReadConsoleOutputCharacter`.
+
+- **Parsing** (`agent/prompt.go`):
+  - It strips box borders, then looks at the last 24 lines for one of two shapes. The first is a vertical menu with the `❯` cursor on one option, numbered or not. Description lines may sit between numbered options, and a `✔` mark is dropped. The second is a one-line survey like `1: Bad  2: Fine  3: Good  0: Dismiss`.
+  - The title is the nearest text above the options.
+  - Lists without a cursor, such as a numbered list in Claude's answer, aren't dialogs.
+- **Cards:** a dialog becomes an approval of kind `PROMPT`, with its options, the cursor's option and the screen. It is withdrawn when the dialog leaves the screen, and replaced when a different one appears. Dialogs a hook already reported (tool permissions) aren't asked twice. The folder-trust watcher keeps its first 20 seconds.
+- **Answers:** an option is picked by moving the cursor (re-reading the screen after each key, since the TUI drops keys while redrawing) and pressing Enter. A survey option is picked by pressing its key. Deny presses Esc. `ApprovalDecision.option` is 1-based, and 0 takes the option under the cursor, so an older app's Allow picks the highlighted option.
+- **The way out:** for anything the parser misses, `GET /api/v1/sessions/{id}/screen` returns the current screen. The hub asks the node and waits up to 4 seconds. `POST /api/v1/sessions/{id}/keys` presses keys (Enter, Escape, arrows, Tab, Shift+Tab, Space, Backspace, digits) and types text. The app has "Screen & keys" in the session menu and on every prompt card, and a banner when a session waits for approval with no card. Headless runs have no terminal; their questions come through the control protocol.
+
 ## Typing into your own terminal (Windows)
 
 On Windows the agent finds the Claude Code process behind each hook request (the hook's loopback connection → `GetExtendedTcpTable` → owning PID). It can then type into that process's console with `AttachConsole` + `WriteConsoleInput`, exactly as if you had typed there. Such sessions report `terminalInput: true`, and the app's composer works for them.

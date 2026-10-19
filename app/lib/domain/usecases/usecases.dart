@@ -139,8 +139,22 @@ class SetSessionArchived {
 class DecideApproval {
   const DecideApproval(this._hub);
   final HubRepository _hub;
-  Future<Result<void>> call(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) =>
-      _hub.decideApproval(approvalId, allow: allow, message: message, answers: answers);
+  Future<Result<void>> call(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) =>
+      _hub.decideApproval(approvalId, allow: allow, message: message, answers: answers, option: option);
+}
+
+/// A session's terminal: its screen and key presses, for dialogs Tether
+/// can't turn into a card.
+class TerminalControl {
+  const TerminalControl(this._hub);
+  final HubRepository _hub;
+
+  Future<Result<ScreenSnapshot>> screen(String sessionId) => _hub.screen(sessionId);
+
+  Future<Result<void>> press(String sessionId, List<String> keys, {String text = ''}) {
+    if (keys.isEmpty && text.isEmpty) return Future.value(const Err(ValidationFailure('Nothing to send.')));
+    return _hub.sendKeys(sessionId, keys, text: text);
+  }
 }
 
 class LoadConnection {

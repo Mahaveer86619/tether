@@ -48,10 +48,10 @@ class HubCubit extends Cubit<HubState> {
   final RetryConnection _retry;
   late final StreamSubscription<HubSnapshot> _sub;
 
-  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
+  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
     if (state.deciding.contains(approvalId)) return;
     emit(state.copyWith(deciding: {...state.deciding, approvalId}));
-    final result = await _decide(approvalId, allow: allow, message: message, answers: answers);
+    final result = await _decide(approvalId, allow: allow, message: message, answers: answers, option: option);
     final deciding = {...state.deciding}..remove(approvalId);
     result.fold(
       (f) => emit(state.copyWith(deciding: deciding, failure: f, failureId: state.failureId + 1)),

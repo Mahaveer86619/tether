@@ -171,11 +171,17 @@ Approval approvalFromPb(pb.ApprovalRequest a) => Approval(
       kind: switch (a.kind) {
         pbe.ApprovalRequest_Kind.KIND_FOLDER_TRUST => ApprovalKind.folderTrust,
         pbe.ApprovalRequest_Kind.KIND_QUESTION => ApprovalKind.question,
+        pbe.ApprovalRequest_Kind.KIND_PROMPT => ApprovalKind.prompt,
         _ => ApprovalKind.tool,
       },
+      options: a.options,
+      selected: a.kind == pbe.ApprovalRequest_Kind.KIND_PROMPT ? a.selected : -1,
+      screen: a.screen,
       toolName: a.toolName,
       inputJson: a.inputJson,
       description: a.description,
       created: _time(a.createdMs),
       preview: a.hasPreview() ? a.preview : null,
     );
+
+ScreenSnapshot screenFromPb(pb.ScreenSnapshot s) => ScreenSnapshot(session: s.session, text: s.text, captured: _time(s.capturedMs), error: s.error);

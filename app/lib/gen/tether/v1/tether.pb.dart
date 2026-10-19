@@ -47,6 +47,7 @@ enum Frame_Body {
   rawEvents,
   usageReport,
   planUsage,
+  screenSnapshot,
   agentCommand,
   notSet
 }
@@ -82,6 +83,7 @@ class Frame extends $pb.GeneratedMessage {
     RawEvents? rawEvents,
     UsageReport? usageReport,
     PlanUsage? planUsage,
+    ScreenSnapshot? screenSnapshot,
     AgentCommand? agentCommand,
   }) {
     final result = Frame._();
@@ -113,6 +115,7 @@ class Frame extends $pb.GeneratedMessage {
     if (rawEvents != null) result.rawEvents = rawEvents;
     if (usageReport != null) result.usageReport = usageReport;
     if (planUsage != null) result.planUsage = planUsage;
+    if (screenSnapshot != null) result.screenSnapshot = screenSnapshot;
     if (agentCommand != null) result.agentCommand = agentCommand;
     return result;
   }
@@ -151,6 +154,7 @@ class Frame extends $pb.GeneratedMessage {
     52: Frame_Body.rawEvents,
     53: Frame_Body.usageReport,
     54: Frame_Body.planUsage,
+    55: Frame_Body.screenSnapshot,
     60: Frame_Body.agentCommand,
     0: Frame_Body.notSet
   };
@@ -183,6 +187,7 @@ class Frame extends $pb.GeneratedMessage {
       52,
       53,
       54,
+      55,
       60
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
@@ -238,6 +243,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: UsageReport.$_createMessage)
     ..aOM<PlanUsage>(54, _omitFieldNames ? '' : 'planUsage',
         subBuilder: PlanUsage.$_createMessage)
+    ..aOM<ScreenSnapshot>(55, _omitFieldNames ? '' : 'screenSnapshot',
+        subBuilder: ScreenSnapshot.$_createMessage)
     ..aOM<AgentCommand>(60, _omitFieldNames ? '' : 'agentCommand',
         subBuilder: AgentCommand.$_createMessage)
     ..hasRequiredFields = false;
@@ -286,6 +293,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(52)
   @$pb.TagNumber(53)
   @$pb.TagNumber(54)
+  @$pb.TagNumber(55)
   @$pb.TagNumber(60)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
@@ -312,6 +320,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(52)
   @$pb.TagNumber(53)
   @$pb.TagNumber(54)
+  @$pb.TagNumber(55)
   @$pb.TagNumber(60)
   void clearBody() => $_clearField($_whichOneof(0));
 
@@ -624,17 +633,29 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(54)
   PlanUsage ensurePlanUsage() => $_ensure(27);
 
+  /// A session's terminal screen (agent -> hub, and hub -> subscribers).
+  @$pb.TagNumber(55)
+  ScreenSnapshot get screenSnapshot => $_getN(28);
+  @$pb.TagNumber(55)
+  set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
+  @$pb.TagNumber(55)
+  $core.bool hasScreenSnapshot() => $_has(28);
+  @$pb.TagNumber(55)
+  void clearScreenSnapshot() => $_clearField(55);
+  @$pb.TagNumber(55)
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(28);
+
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(28);
+  AgentCommand get agentCommand => $_getN(29);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(28);
+  $core.bool hasAgentCommand() => $_has(29);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(28);
+  AgentCommand ensureAgentCommand() => $_ensure(29);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -1370,6 +1391,9 @@ class ApprovalRequest extends $pb.GeneratedMessage {
     $fixnum.Int64? createdMs,
     $0.ToolCard? preview,
     ApprovalRequest_Kind? kind,
+    $core.Iterable<$core.String>? options,
+    $core.int? selected,
+    $core.String? screen,
   }) {
     final result = ApprovalRequest._();
     if (approvalId != null) result.approvalId = approvalId;
@@ -1381,6 +1405,9 @@ class ApprovalRequest extends $pb.GeneratedMessage {
     if (createdMs != null) result.createdMs = createdMs;
     if (preview != null) result.preview = preview;
     if (kind != null) result.kind = kind;
+    if (options != null) result.options.addAll(options);
+    if (selected != null) result.selected = selected;
+    if (screen != null) result.screen = screen;
     return result;
   }
 
@@ -1408,6 +1435,9 @@ class ApprovalRequest extends $pb.GeneratedMessage {
         subBuilder: $0.ToolCard.$_createMessage)
     ..aE<ApprovalRequest_Kind>(9, _omitFieldNames ? '' : 'kind',
         enumValues: ApprovalRequest_Kind.values)
+    ..pPS(10, _omitFieldNames ? '' : 'options')
+    ..aI(11, _omitFieldNames ? '' : 'selected')
+    ..aOS(12, _omitFieldNames ? '' : 'screen')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1515,6 +1545,29 @@ class ApprovalRequest extends $pb.GeneratedMessage {
   $core.bool hasKind() => $_has(8);
   @$pb.TagNumber(9)
   void clearKind() => $_clearField(9);
+
+  /// KIND_PROMPT: the dialog's choices in screen order, which one the cursor
+  /// is on (0-based), and the screen it was read from.
+  @$pb.TagNumber(10)
+  $pb.PbList<$core.String> get options => $_getList(9);
+
+  @$pb.TagNumber(11)
+  $core.int get selected => $_getIZ(10);
+  @$pb.TagNumber(11)
+  set selected($core.int value) => $_setSignedInt32(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasSelected() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearSelected() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get screen => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set screen($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasScreen() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearScreen() => $_clearField(12);
 }
 
 class ApprovalDecision extends $pb.GeneratedMessage {
@@ -1523,12 +1576,14 @@ class ApprovalDecision extends $pb.GeneratedMessage {
     Decision? decision,
     $core.String? message,
     $core.Iterable<$core.MapEntry<$core.String, $core.String>>? answers,
+    $core.int? option,
   }) {
     final result = ApprovalDecision._();
     if (approvalId != null) result.approvalId = approvalId;
     if (decision != null) result.decision = decision;
     if (message != null) result.message = message;
     if (answers != null) result.answers.addEntries(answers);
+    if (option != null) result.option = option;
     return result;
   }
 
@@ -1554,6 +1609,7 @@ class ApprovalDecision extends $pb.GeneratedMessage {
         keyFieldType: $pb.PbFieldType.OS,
         valueFieldType: $pb.PbFieldType.OS,
         packageName: const $pb.PackageName('tether.v1'))
+    ..aI(5, _omitFieldNames ? '' : 'option')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1610,6 +1666,17 @@ class ApprovalDecision extends $pb.GeneratedMessage {
   /// with ", ", or the user's own words.
   @$pb.TagNumber(4)
   $pb.PbMap<$core.String, $core.String> get answers => $_getMap(3);
+
+  /// For a prompt: the chosen option, 1-based. 0 with ALLOW takes the one the
+  /// cursor is on; DENY presses Esc.
+  @$pb.TagNumber(5)
+  $core.int get option => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set option($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOption() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOption() => $_clearField(5);
 }
 
 class ApprovalResolved extends $pb.GeneratedMessage {
@@ -3668,6 +3735,68 @@ class AgentCommand_ScanCodebases extends $pb.GeneratedMessage {
   $pb.PbList<$core.String> get roots => $_getList(0);
 }
 
+class AgentCommand_CaptureScreen extends $pb.GeneratedMessage {
+  factory AgentCommand_CaptureScreen({
+    $core.String? session,
+  }) {
+    final result = AgentCommand_CaptureScreen._();
+    if (session != null) result.session = session;
+    return result;
+  }
+
+  AgentCommand_CaptureScreen._();
+
+  factory AgentCommand_CaptureScreen.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_CaptureScreen()..mergeFromBuffer(data, registry);
+  factory AgentCommand_CaptureScreen.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_CaptureScreen()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.CaptureScreen',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_CaptureScreen.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_CaptureScreen clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_CaptureScreen copyWith(
+          void Function(AgentCommand_CaptureScreen) updates) =>
+      super.copyWith(
+              (message) => updates(message as AgentCommand_CaptureScreen))
+          as AgentCommand_CaptureScreen;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_CaptureScreen() / AgentCommand_CaptureScreen.new instead')
+  static AgentCommand_CaptureScreen create() => AgentCommand_CaptureScreen._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AgentCommand_CaptureScreen._();
+  @$core.override
+  AgentCommand_CaptureScreen createEmptyInstance() =>
+      AgentCommand_CaptureScreen._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_CaptureScreen getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_CaptureScreen>(
+          AgentCommand_CaptureScreen.$_createMessage);
+  static AgentCommand_CaptureScreen? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+}
+
 /// Into <cwd>/.tether/attachments/<name>, checked against its sha256.
 class AgentCommand_FetchAttachment extends $pb.GeneratedMessage {
   factory AgentCommand_FetchAttachment({
@@ -3771,6 +3900,8 @@ enum AgentCommand_Op {
   snapshot,
   scan,
   fetch,
+  keys,
+  capture,
   notSet
 }
 
@@ -3787,6 +3918,8 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_SnapshotCodebase? snapshot,
     AgentCommand_ScanCodebases? scan,
     AgentCommand_FetchAttachment? fetch,
+    SendKeys? keys,
+    AgentCommand_CaptureScreen? capture,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -3800,6 +3933,8 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (snapshot != null) result.snapshot = snapshot;
     if (scan != null) result.scan = scan;
     if (fetch != null) result.fetch = fetch;
+    if (keys != null) result.keys = keys;
+    if (capture != null) result.capture = capture;
     return result;
   }
 
@@ -3824,13 +3959,15 @@ class AgentCommand extends $pb.GeneratedMessage {
     9: AgentCommand_Op.snapshot,
     10: AgentCommand_Op.scan,
     11: AgentCommand_Op.fetch,
+    12: AgentCommand_Op.keys,
+    13: AgentCommand_Op.capture,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -3854,6 +3991,10 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_ScanCodebases.$_createMessage)
     ..aOM<AgentCommand_FetchAttachment>(11, _omitFieldNames ? '' : 'fetch',
         subBuilder: AgentCommand_FetchAttachment.$_createMessage)
+    ..aOM<SendKeys>(12, _omitFieldNames ? '' : 'keys',
+        subBuilder: SendKeys.$_createMessage)
+    ..aOM<AgentCommand_CaptureScreen>(13, _omitFieldNames ? '' : 'capture',
+        subBuilder: AgentCommand_CaptureScreen.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3889,6 +4030,8 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(9)
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -3901,6 +4044,8 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(9)
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
+  @$pb.TagNumber(12)
+  @$pb.TagNumber(13)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4029,6 +4174,31 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearFetch() => $_clearField(11);
   @$pb.TagNumber(11)
   AgentCommand_FetchAttachment ensureFetch() => $_ensure(10);
+
+  /// Press keys in the session's terminal: the way out of anything Tether
+  /// can't parse.
+  @$pb.TagNumber(12)
+  SendKeys get keys => $_getN(11);
+  @$pb.TagNumber(12)
+  set keys(SendKeys value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasKeys() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearKeys() => $_clearField(12);
+  @$pb.TagNumber(12)
+  SendKeys ensureKeys() => $_ensure(11);
+
+  /// Read the session's terminal screen; answered with a ScreenSnapshot.
+  @$pb.TagNumber(13)
+  AgentCommand_CaptureScreen get capture => $_getN(12);
+  @$pb.TagNumber(13)
+  set capture(AgentCommand_CaptureScreen value) => $_setField(13, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCapture() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCapture() => $_clearField(13);
+  @$pb.TagNumber(13)
+  AgentCommand_CaptureScreen ensureCapture() => $_ensure(12);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -7005,6 +7175,177 @@ class Artifact extends $pb.GeneratedMessage {
   $core.bool hasNote() => $_has(11);
   @$pb.TagNumber(12)
   void clearNote() => $_clearField(12);
+}
+
+/// POST /api/v1/sessions/{id}/keys. keys are pressed in order: Enter,
+/// Escape, Up, Down, Left, Right, Tab, BTab (Shift+Tab), Space, Backspace,
+/// or a single character; text, if set, is typed after them.
+class SendKeys extends $pb.GeneratedMessage {
+  factory SendKeys({
+    $core.String? session,
+    $core.Iterable<$core.String>? keys,
+    $core.String? text,
+  }) {
+    final result = SendKeys._();
+    if (session != null) result.session = session;
+    if (keys != null) result.keys.addAll(keys);
+    if (text != null) result.text = text;
+    return result;
+  }
+
+  SendKeys._();
+
+  factory SendKeys.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SendKeys()..mergeFromBuffer(data, registry);
+  factory SendKeys.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SendKeys()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SendKeys',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: SendKeys.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..pPS(2, _omitFieldNames ? '' : 'keys')
+    ..aOS(3, _omitFieldNames ? '' : 'text')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendKeys clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SendKeys copyWith(void Function(SendKeys) updates) =>
+      super.copyWith((message) => updates(message as SendKeys)) as SendKeys;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SendKeys() / SendKeys.new instead')
+  static SendKeys create() => SendKeys._();
+  static $pb.GeneratedMessage $_createMessage() => SendKeys._();
+  @$core.override
+  SendKeys createEmptyInstance() => SendKeys._();
+  @$core.pragma('dart2js:noInline')
+  static SendKeys getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SendKeys>(SendKeys.$_createMessage);
+  static SendKeys? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get keys => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get text => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set text($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasText() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearText() => $_clearField(3);
+}
+
+/// GET /api/v1/sessions/{id}/screen.
+class ScreenSnapshot extends $pb.GeneratedMessage {
+  factory ScreenSnapshot({
+    $core.String? session,
+    $core.String? text,
+    $fixnum.Int64? capturedMs,
+    $core.String? error,
+  }) {
+    final result = ScreenSnapshot._();
+    if (session != null) result.session = session;
+    if (text != null) result.text = text;
+    if (capturedMs != null) result.capturedMs = capturedMs;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  ScreenSnapshot._();
+
+  factory ScreenSnapshot.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ScreenSnapshot()..mergeFromBuffer(data, registry);
+  factory ScreenSnapshot.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ScreenSnapshot()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ScreenSnapshot',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ScreenSnapshot.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'text')
+    ..aInt64(3, _omitFieldNames ? '' : 'capturedMs')
+    ..aOS(4, _omitFieldNames ? '' : 'error')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScreenSnapshot clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScreenSnapshot copyWith(void Function(ScreenSnapshot) updates) =>
+      super.copyWith((message) => updates(message as ScreenSnapshot))
+          as ScreenSnapshot;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ScreenSnapshot() / ScreenSnapshot.new instead')
+  static ScreenSnapshot create() => ScreenSnapshot._();
+  static $pb.GeneratedMessage $_createMessage() => ScreenSnapshot._();
+  @$core.override
+  ScreenSnapshot createEmptyInstance() => ScreenSnapshot._();
+  @$core.pragma('dart2js:noInline')
+  static ScreenSnapshot getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ScreenSnapshot>(
+          ScreenSnapshot.$_createMessage);
+  static ScreenSnapshot? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get text => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set text($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasText() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearText() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get capturedMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set capturedMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCapturedMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCapturedMs() => $_clearField(3);
+
+  /// Why there's no screen: a headless run has no terminal, say.
+  @$pb.TagNumber(4)
+  $core.String get error => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set error($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasError() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearError() => $_clearField(4);
 }
 
 class ArtifactList extends $pb.GeneratedMessage {

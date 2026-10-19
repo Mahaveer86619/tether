@@ -294,6 +294,15 @@ const Frame$json = {
       '10': 'planUsage'
     },
     {
+      '1': 'screen_snapshot',
+      '3': 55,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.ScreenSnapshot',
+      '9': 0,
+      '10': 'screenSnapshot'
+    },
+    {
       '1': 'agent_command',
       '3': 60,
       '4': 1,
@@ -337,9 +346,10 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'aGVyLnYxLlNlc3Npb25JbmRleEgAUgxzZXNzaW9uSW5kZXgSNQoKcmF3X2V2ZW50cxg0IAEoCz'
     'IULnRldGhlci52MS5SYXdFdmVudHNIAFIJcmF3RXZlbnRzEjsKDHVzYWdlX3JlcG9ydBg1IAEo'
     'CzIWLnRldGhlci52MS5Vc2FnZVJlcG9ydEgAUgt1c2FnZVJlcG9ydBI1CgpwbGFuX3VzYWdlGD'
-    'YgASgLMhQudGV0aGVyLnYxLlBsYW5Vc2FnZUgAUglwbGFuVXNhZ2USPgoNYWdlbnRfY29tbWFu'
-    'ZBg8IAEoCzIXLnRldGhlci52MS5BZ2VudENvbW1hbmRIAFIMYWdlbnRDb21tYW5kQgYKBGJvZH'
-    'k=');
+    'YgASgLMhQudGV0aGVyLnYxLlBsYW5Vc2FnZUgAUglwbGFuVXNhZ2USRAoPc2NyZWVuX3NuYXBz'
+    'aG90GDcgASgLMhkudGV0aGVyLnYxLlNjcmVlblNuYXBzaG90SABSDnNjcmVlblNuYXBzaG90Ej'
+    '4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZXRoZXIudjEuQWdlbnRDb21tYW5kSABSDGFnZW50'
+    'Q29tbWFuZEIGCgRib2R5');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -519,6 +529,9 @@ const ApprovalRequest$json = {
       '6': '.tether.v1.ApprovalRequest.Kind',
       '10': 'kind'
     },
+    {'1': 'options', '3': 10, '4': 3, '5': 9, '10': 'options'},
+    {'1': 'selected', '3': 11, '4': 1, '5': 5, '10': 'selected'},
+    {'1': 'screen', '3': 12, '4': 1, '5': 9, '10': 'screen'},
   ],
   '4': [ApprovalRequest_Kind$json],
 };
@@ -531,6 +544,7 @@ const ApprovalRequest_Kind$json = {
     {'1': 'KIND_TOOL', '2': 1},
     {'1': 'KIND_FOLDER_TRUST', '2': 2},
     {'1': 'KIND_QUESTION', '2': 3},
+    {'1': 'KIND_PROMPT', '2': 4},
   ],
 };
 
@@ -541,9 +555,11 @@ final $typed_data.Uint8List approvalRequestDescriptor = $convert.base64Decode(
     'IAEoCVIIdG9vbE5hbWUSHQoKaW5wdXRfanNvbhgFIAEoCVIJaW5wdXRKc29uEiAKC2Rlc2NyaX'
     'B0aW9uGAYgASgJUgtkZXNjcmlwdGlvbhIdCgpjcmVhdGVkX21zGAcgASgDUgljcmVhdGVkTXMS'
     'LQoHcHJldmlldxgIIAEoCzITLnRldGhlci52MS5Ub29sQ2FyZFIHcHJldmlldxIzCgRraW5kGA'
-    'kgASgOMh8udGV0aGVyLnYxLkFwcHJvdmFsUmVxdWVzdC5LaW5kUgRraW5kIlUKBEtpbmQSFAoQ'
-    'S0lORF9VTlNQRUNJRklFRBAAEg0KCUtJTkRfVE9PTBABEhUKEUtJTkRfRk9MREVSX1RSVVNUEA'
-    'ISEQoNS0lORF9RVUVTVElPThAD');
+    'kgASgOMh8udGV0aGVyLnYxLkFwcHJvdmFsUmVxdWVzdC5LaW5kUgRraW5kEhgKB29wdGlvbnMY'
+    'CiADKAlSB29wdGlvbnMSGgoIc2VsZWN0ZWQYCyABKAVSCHNlbGVjdGVkEhYKBnNjcmVlbhgMIA'
+    'EoCVIGc2NyZWVuImYKBEtpbmQSFAoQS0lORF9VTlNQRUNJRklFRBAAEg0KCUtJTkRfVE9PTBAB'
+    'EhUKEUtJTkRfRk9MREVSX1RSVVNUEAISEQoNS0lORF9RVUVTVElPThADEg8KC0tJTkRfUFJPTV'
+    'BUEAQ=');
 
 @$core.Deprecated('Use approvalDecisionDescriptor instead')
 const ApprovalDecision$json = {
@@ -567,6 +583,7 @@ const ApprovalDecision$json = {
       '6': '.tether.v1.ApprovalDecision.AnswersEntry',
       '10': 'answers'
     },
+    {'1': 'option', '3': 5, '4': 1, '5': 5, '10': 'option'},
   ],
   '3': [ApprovalDecision_AnswersEntry$json],
 };
@@ -586,8 +603,9 @@ final $typed_data.Uint8List approvalDecisionDescriptor = $convert.base64Decode(
     'ChBBcHByb3ZhbERlY2lzaW9uEh8KC2FwcHJvdmFsX2lkGAEgASgJUgphcHByb3ZhbElkEi8KCG'
     'RlY2lzaW9uGAIgASgOMhMudGV0aGVyLnYxLkRlY2lzaW9uUghkZWNpc2lvbhIYCgdtZXNzYWdl'
     'GAMgASgJUgdtZXNzYWdlEkIKB2Fuc3dlcnMYBCADKAsyKC50ZXRoZXIudjEuQXBwcm92YWxEZW'
-    'Npc2lvbi5BbnN3ZXJzRW50cnlSB2Fuc3dlcnMaOgoMQW5zd2Vyc0VudHJ5EhAKA2tleRgBIAEo'
-    'CVIDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAE=');
+    'Npc2lvbi5BbnN3ZXJzRW50cnlSB2Fuc3dlcnMSFgoGb3B0aW9uGAUgASgFUgZvcHRpb24aOgoM'
+    'QW5zd2Vyc0VudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOA'
+    'E=');
 
 @$core.Deprecated('Use approvalResolvedDescriptor instead')
 const ApprovalResolved$json = {
@@ -1004,6 +1022,24 @@ const AgentCommand$json = {
       '9': 0,
       '10': 'fetch'
     },
+    {
+      '1': 'keys',
+      '3': 12,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.SendKeys',
+      '9': 0,
+      '10': 'keys'
+    },
+    {
+      '1': 'capture',
+      '3': 13,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.AgentCommand.CaptureScreen',
+      '9': 0,
+      '10': 'capture'
+    },
   ],
   '3': [
     AgentCommand_StartRun$json,
@@ -1016,6 +1052,7 @@ const AgentCommand$json = {
     AgentCommand_UploadTranscript$json,
     AgentCommand_SnapshotCodebase$json,
     AgentCommand_ScanCodebases$json,
+    AgentCommand_CaptureScreen$json,
     AgentCommand_FetchAttachment$json
   ],
   '8': [
@@ -1148,6 +1185,14 @@ const AgentCommand_ScanCodebases$json = {
 };
 
 @$core.Deprecated('Use agentCommandDescriptor instead')
+const AgentCommand_CaptureScreen$json = {
+  '1': 'CaptureScreen',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+  ],
+};
+
+@$core.Deprecated('Use agentCommandDescriptor instead')
 const AgentCommand_FetchAttachment$json = {
   '1': 'FetchAttachment',
   '2': [
@@ -1179,26 +1224,29 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'QWdlbnRDb21tYW5kLlNuYXBzaG90Q29kZWJhc2VIAFIIc25hcHNob3QSOwoEc2NhbhgKIAEoCz'
     'IlLnRldGhlci52MS5BZ2VudENvbW1hbmQuU2NhbkNvZGViYXNlc0gAUgRzY2FuEj8KBWZldGNo'
     'GAsgASgLMicudGV0aGVyLnYxLkFnZW50Q29tbWFuZC5GZXRjaEF0dGFjaG1lbnRIAFIFZmV0Y2'
-    'gawgMKCFN0YXJ0UnVuEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEAoDY3dkGAIgASgJUgNj'
-    'd2QSFgoGcHJvbXB0GAMgASgJUgZwcm9tcHQSFAoFbW9kZWwYBCABKAlSBW1vZGVsEicKD3Blcm'
-    '1pc3Npb25fbW9kZRgFIAEoCVIOcGVybWlzc2lvbk1vZGUSEgoEbmFtZRgGIAEoCVIEbmFtZRIW'
-    'CgZyZXN1bWUYByABKAlSBnJlc3VtZRISCgRmb3JrGAggASgIUgRmb3JrEh0KCmNyZWF0ZV9jd2'
-    'QYCSABKAhSCWNyZWF0ZUN3ZBI1CgthdHRhY2htZW50cxgKIAMoCzITLnRldGhlci52MS5BcnRp'
-    'ZmFjdFILYXR0YWNobWVudHMSGAoHc2NyYXRjaBgLIAEoCFIHc2NyYXRjaBItChJyZXN0b3JlX3'
-    'RyYW5zY3JpcHQYDCABKAlSEXJlc3RvcmVUcmFuc2NyaXB0EikKEHJlc3RvcmVfY29kZWJhc2UY'
-    'DSABKAlSD3Jlc3RvcmVDb2RlYmFzZRIpChByZXN0b3JlX3NuYXBzaG90GA4gASgJUg9yZXN0b3'
-    'JlU25hcHNob3QacAoJU2VuZElucHV0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEgoEdGV4'
-    'dBgCIAEoCVIEdGV4dBI1CgthdHRhY2htZW50cxgDIAMoCzITLnRldGhlci52MS5BcnRpZmFjdF'
-    'ILYXR0YWNobWVudHMaJQoJSW50ZXJydXB0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aQwoG'
-    'TWlycm9yEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SHwoLZnJvbV9vZmZzZXQYAiABKANSCm'
-    'Zyb21PZmZzZXQaJgoKU3RvcE1pcnJvchIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiAKBFN0'
-    'b3ASGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhoiCgZGb3JnZXQSGAoHc2Vzc2lvbhgBIAEoCV'
-    'IHc2Vzc2lvbhosChBVcGxvYWRUcmFuc2NyaXB0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24a'
-    'XQoQU25hcHNob3RDb2RlYmFzZRIvCghjb2RlYmFzZRgBIAEoCzITLnRldGhlci52MS5Db2RlYm'
-    'FzZVIIY29kZWJhc2USGAoHc2Vzc2lvbhgCIAEoCVIHc2Vzc2lvbholCg1TY2FuQ29kZWJhc2Vz'
-    'EhQKBXJvb3RzGAEgAygJUgVyb290cxpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIA'
-    'EoCVIHc2Vzc2lvbhIQCgNjd2QYAiABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhl'
-    'ci52MS5BcnRpZmFjdFIIYXJ0aWZhY3RCBAoCb3A=');
+    'gSKQoEa2V5cxgMIAEoCzITLnRldGhlci52MS5TZW5kS2V5c0gAUgRrZXlzEkEKB2NhcHR1cmUY'
+    'DSABKAsyJS50ZXRoZXIudjEuQWdlbnRDb21tYW5kLkNhcHR1cmVTY3JlZW5IAFIHY2FwdHVyZR'
+    'rCAwoIU3RhcnRSdW4SGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQCgNjd2QYAiABKAlSA2N3'
+    'ZBIWCgZwcm9tcHQYAyABKAlSBnByb21wdBIUCgVtb2RlbBgEIAEoCVIFbW9kZWwSJwoPcGVybW'
+    'lzc2lvbl9tb2RlGAUgASgJUg5wZXJtaXNzaW9uTW9kZRISCgRuYW1lGAYgASgJUgRuYW1lEhYK'
+    'BnJlc3VtZRgHIAEoCVIGcmVzdW1lEhIKBGZvcmsYCCABKAhSBGZvcmsSHQoKY3JlYXRlX2N3ZB'
+    'gJIAEoCFIJY3JlYXRlQ3dkEjUKC2F0dGFjaG1lbnRzGAogAygLMhMudGV0aGVyLnYxLkFydGlm'
+    'YWN0UgthdHRhY2htZW50cxIYCgdzY3JhdGNoGAsgASgIUgdzY3JhdGNoEi0KEnJlc3RvcmVfdH'
+    'JhbnNjcmlwdBgMIAEoCVIRcmVzdG9yZVRyYW5zY3JpcHQSKQoQcmVzdG9yZV9jb2RlYmFzZRgN'
+    'IAEoCVIPcmVzdG9yZUNvZGViYXNlEikKEHJlc3RvcmVfc25hcHNob3QYDiABKAlSD3Jlc3Rvcm'
+    'VTbmFwc2hvdBpwCglTZW5kSW5wdXQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCgR0ZXh0'
+    'GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG1lbnRzGAMgAygLMhMudGV0aGVyLnYxLkFydGlmYWN0Ug'
+    'thdHRhY2htZW50cxolCglJbnRlcnJ1cHQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpDCgZN'
+    'aXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIfCgtmcm9tX29mZnNldBgCIAEoA1IKZn'
+    'JvbU9mZnNldBomCgpTdG9wTWlycm9yEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aIAoEU3Rv'
+    'cBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiIKBkZvcmdldBIYCgdzZXNzaW9uGAEgASgJUg'
+    'dzZXNzaW9uGiwKEFVwbG9hZFRyYW5zY3JpcHQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpd'
+    'ChBTbmFwc2hvdENvZGViYXNlEi8KCGNvZGViYXNlGAEgASgLMhMudGV0aGVyLnYxLkNvZGViYX'
+    'NlUghjb2RlYmFzZRIYCgdzZXNzaW9uGAIgASgJUgdzZXNzaW9uGiUKDVNjYW5Db2RlYmFzZXMS'
+    'FAoFcm9vdHMYASADKAlSBXJvb3RzGikKDUNhcHR1cmVTY3JlZW4SGAoHc2Vzc2lvbhgBIAEoCV'
+    'IHc2Vzc2lvbhpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQ'
+    'CgNjd2QYAiABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhlci52MS5BcnRpZmFjdF'
+    'IIYXJ0aWZhY3RCBAoCb3A=');
 
 @$core.Deprecated('Use codebaseDescriptor instead')
 const Codebase$json = {
@@ -1900,6 +1948,38 @@ final $typed_data.Uint8List artifactDescriptor = $convert.base64Decode(
     'gIIAEoCVIGb3JpZ2luEhIKBHBhdGgYCSABKAlSBHBhdGgSHgoLdG9vbF91c2VfaWQYCiABKAlS'
     'CXRvb2xVc2VJZBIdCgpjcmVhdGVkX21zGAsgASgDUgljcmVhdGVkTXMSEgoEbm90ZRgMIAEoCV'
     'IEbm90ZQ==');
+
+@$core.Deprecated('Use sendKeysDescriptor instead')
+const SendKeys$json = {
+  '1': 'SendKeys',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'keys', '3': 2, '4': 3, '5': 9, '10': 'keys'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+  ],
+};
+
+/// Descriptor for `SendKeys`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sendKeysDescriptor = $convert.base64Decode(
+    'CghTZW5kS2V5cxIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBGtleXMYAiADKAlSBGtleX'
+    'MSEgoEdGV4dBgDIAEoCVIEdGV4dA==');
+
+@$core.Deprecated('Use screenSnapshotDescriptor instead')
+const ScreenSnapshot$json = {
+  '1': 'ScreenSnapshot',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'text', '3': 2, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'captured_ms', '3': 3, '4': 1, '5': 3, '10': 'capturedMs'},
+    {'1': 'error', '3': 4, '4': 1, '5': 9, '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ScreenSnapshot`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List screenSnapshotDescriptor = $convert.base64Decode(
+    'Cg5TY3JlZW5TbmFwc2hvdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBHRleHQYAiABKA'
+    'lSBHRleHQSHwoLY2FwdHVyZWRfbXMYAyABKANSCmNhcHR1cmVkTXMSFAoFZXJyb3IYBCABKAlS'
+    'BWVycm9y');
 
 @$core.Deprecated('Use artifactListDescriptor instead')
 const ArtifactList$json = {

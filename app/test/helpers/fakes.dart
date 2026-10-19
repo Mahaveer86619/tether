@@ -30,6 +30,9 @@ class FakeHubRepository implements HubRepository {
   var devices = <PairedDevice>[const PairedDevice(id: 'd1', kind: 'client', name: 'Pixel', platform: 'android')];
   final ended = <String>[];
   final answered = <Map<String, String>>[];
+  final options = <int>[];
+  final keysSent = <(String, List<String>, String)>[];
+  var screenText = '';
   var disconnected = false;
 
   Result<String> Function(String session, bool fork)? onSend;
@@ -209,10 +212,22 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
+  Future<Result<void>> decideApproval(String approvalId,
+      {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
     decided.add((approvalId, allow));
     answered.add(answers);
+    options.add(option);
     return decideResult ?? const Ok(null);
+  }
+
+  @override
+  Future<Result<ScreenSnapshot>> screen(String sessionId) async =>
+      Ok(ScreenSnapshot(session: sessionId, text: screenText, captured: DateTime(2026)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) async {
+    keysSent.add((sessionId, keys, text));
+    return const Ok(null);
   }
 
   @override

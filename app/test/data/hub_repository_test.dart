@@ -105,6 +105,26 @@ void main() {
     expect(repo.current.approvals, isEmpty);
   });
 
+  test('a dialog read off the screen arrives as a prompt with its options', () async {
+    socket.push(SocketFrame(welcome()));
+    socket.push(SocketFrame(pb.Frame(
+      approvalRequested: pb.ApprovalRequest(
+        approvalId: 'p1',
+        session: 's1',
+        kind: pbe.ApprovalRequest_Kind.KIND_PROMPT,
+        description: 'How is Claude doing?',
+        options: ['Bad', 'Fine', 'Good'],
+        selected: 1,
+        screen: '1: Bad  2: Fine  3: Good',
+      ),
+    )));
+    final a = repo.current.approvalsFor('s1').single;
+    expect(a.kind, ApprovalKind.prompt);
+    expect(a.options, ['Bad', 'Fine', 'Good']);
+    expect(a.selected, 1);
+    expect(a.screen, contains('2: Fine'));
+  });
+
   test('losing the socket marks everything offline, unauthorized stops', () async {
     socket.push(SocketFrame(welcome()));
     socket.push(const SocketClosed(error: 'reset'));

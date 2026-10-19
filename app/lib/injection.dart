@@ -22,6 +22,7 @@ import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
 import 'presentation/new_session/new_session_cubit.dart';
 import 'presentation/session/session_bloc.dart';
+import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
@@ -82,6 +83,8 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => ContinueOnHub(sl()))
     ..registerLazySingleton(() => Artifacts(sl()))
     ..registerLazySingleton(() => Transfers(sl()))
+    ..registerLazySingleton(() => TerminalControl(sl()))
+    ..registerFactoryParam<TerminalCubit, String, void>((sessionId, _) => TerminalCubit(sessionId: sessionId, terminal: sl()))
     ..registerLazySingleton(() => SetWorkspaceRoot(sl()))
     ..registerLazySingleton(() => ListDevices(sl()))
     ..registerLazySingleton(() => RevokeDevice(sl()))
