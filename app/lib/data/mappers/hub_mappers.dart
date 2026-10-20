@@ -188,3 +188,12 @@ Approval approvalFromPb(pb.ApprovalRequest a) => Approval(
     );
 
 ScreenSnapshot screenFromPb(pb.ScreenSnapshot s) => ScreenSnapshot(session: s.session, text: s.text, captured: _time(s.capturedMs), error: s.error);
+
+ConnectedClient clientFromPb(pb.ConnectedClient c) => ConnectedClient(
+      name: c.name,
+      platform: c.platform,
+      appVersion: c.appVersion,
+      deviceId: c.deviceId,
+      ip: c.ip,
+      connected: _time(c.connectedMs),
+    );

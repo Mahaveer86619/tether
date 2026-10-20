@@ -663,13 +663,55 @@ const ClientHello$json = {
     {'1': 'token', '3': 1, '4': 1, '5': 9, '10': 'token'},
     {'1': 'client_name', '3': 2, '4': 1, '5': 9, '10': 'clientName'},
     {'1': 'platform', '3': 3, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'app_version', '3': 4, '4': 1, '5': 9, '10': 'appVersion'},
   ],
 };
 
 /// Descriptor for `ClientHello`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List clientHelloDescriptor = $convert.base64Decode(
     'CgtDbGllbnRIZWxsbxIUCgV0b2tlbhgBIAEoCVIFdG9rZW4SHwoLY2xpZW50X25hbWUYAiABKA'
-    'lSCmNsaWVudE5hbWUSGgoIcGxhdGZvcm0YAyABKAlSCHBsYXRmb3Jt');
+    'lSCmNsaWVudE5hbWUSGgoIcGxhdGZvcm0YAyABKAlSCHBsYXRmb3JtEh8KC2FwcF92ZXJzaW9u'
+    'GAQgASgJUgphcHBWZXJzaW9u');
+
+@$core.Deprecated('Use connectedClientDescriptor instead')
+const ConnectedClient$json = {
+  '1': 'ConnectedClient',
+  '2': [
+    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'platform', '3': 2, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'app_version', '3': 3, '4': 1, '5': 9, '10': 'appVersion'},
+    {'1': 'device_id', '3': 4, '4': 1, '5': 9, '10': 'deviceId'},
+    {'1': 'ip', '3': 5, '4': 1, '5': 9, '10': 'ip'},
+    {'1': 'connected_ms', '3': 6, '4': 1, '5': 3, '10': 'connectedMs'},
+  ],
+};
+
+/// Descriptor for `ConnectedClient`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List connectedClientDescriptor = $convert.base64Decode(
+    'Cg9Db25uZWN0ZWRDbGllbnQSEgoEbmFtZRgBIAEoCVIEbmFtZRIaCghwbGF0Zm9ybRgCIAEoCV'
+    'IIcGxhdGZvcm0SHwoLYXBwX3ZlcnNpb24YAyABKAlSCmFwcFZlcnNpb24SGwoJZGV2aWNlX2lk'
+    'GAQgASgJUghkZXZpY2VJZBIOCgJpcBgFIAEoCVICaXASIQoMY29ubmVjdGVkX21zGAYgASgDUg'
+    'tjb25uZWN0ZWRNcw==');
+
+@$core.Deprecated('Use clientListDescriptor instead')
+const ClientList$json = {
+  '1': 'ClientList',
+  '2': [
+    {
+      '1': 'clients',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ConnectedClient',
+      '10': 'clients'
+    },
+  ],
+};
+
+/// Descriptor for `ClientList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clientListDescriptor = $convert.base64Decode(
+    'CgpDbGllbnRMaXN0EjQKB2NsaWVudHMYASADKAsyGi50ZXRoZXIudjEuQ29ubmVjdGVkQ2xpZW'
+    '50UgdjbGllbnRz');
 
 @$core.Deprecated('Use subscribeDescriptor instead')
 const Subscribe$json = {

@@ -7,6 +7,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../core/version.dart';
 import '../../gen/tether/v1/tether.pb.dart' as pb;
 import 'hub_endpoint.dart';
 
@@ -109,7 +110,7 @@ class WebSocketHubSocket implements HubSocket {
         onDone: () => _onClosed(gen, null),
         onError: (Object e) => _onClosed(gen, e.toString()),
       );
-      _write(pb.Frame(clientHello: pb.ClientHello(token: endpoint.token, clientName: clientName, platform: platform)));
+      _write(pb.Frame(clientHello: pb.ClientHello(token: endpoint.token, clientName: clientName, platform: platform, appVersion: appVersion)));
     } catch (e) {
       if (gen == _generation) _onClosed(gen, _describe(e));
     }

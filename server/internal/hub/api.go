@@ -139,6 +139,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	h.uploadRoutes(mux)
 	h.screenRoutes(mux)
 	h.modeRoutes(mux)
+	mux.HandleFunc("GET /api/v1/clients", h.api(func(r *http.Request) (proto.Message, *opError) { return h.clientList(), nil }))
 	h.codebaseRoutes(mux)
 	mux.HandleFunc("GET /api/v1/pages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.pages(r.URL.Query().Get("session"))

@@ -46,10 +46,13 @@ type Config struct {
 }
 
 type client struct {
-	conn   *wire.Conn
-	name   string
-	device string
-	ip     string
+	conn     *wire.Conn
+	name     string
+	device   string
+	ip       string
+	platform string
+	version  string
+	since    time.Time
 }
 
 // pendingItems holds coalesced partial-text updates in arrival order.
@@ -96,28 +99,28 @@ type Hub struct {
 
 	queuedItems   map[string]map[string]string         // session -> its "queued" placeholders' text, by item
 	modeBefore    map[string]modeSwitch                // session -> a switch the node hasn't confirmed
-	screens       map[string]*v1.ScreenSnapshot       // session -> its last terminal screen
+	screens       map[string]*v1.ScreenSnapshot        // session -> its last terminal screen
 	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
 	h := &Hub{
-		cfg:       cfg,
-		store:     st,
-		log:       cfg.Log,
-		agents:    map[string]*wire.Conn{},
-		clients:   map[*client]struct{}{},
-		nodes:     map[string]*v1.NodeStatus{},
-		sessions:  map[string]*v1.SessionInfo{},
-		subs:      map[string]map[*client]struct{}{},
-		builders:  map[string]*render.Builder{},
+		cfg:           cfg,
+		store:         st,
+		log:           cfg.Log,
+		agents:        map[string]*wire.Conn{},
+		clients:       map[*client]struct{}{},
+		nodes:         map[string]*v1.NodeStatus{},
+		sessions:      map[string]*v1.SessionInfo{},
+		subs:          map[string]map[*client]struct{}{},
+		builders:      map[string]*render.Builder{},
 		screens:       map[string]*v1.ScreenSnapshot{},
 		queuedItems:   map[string]map[string]string{},
 		modeBefore:    map[string]modeSwitch{},
 		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
-		pending:   map[string]*pendingItems{},
-		approvals: map[string]*v1.ApprovalRequest{},
-		mirroring: map[string]bool{},
+		pending:       map[string]*pendingItems{},
+		approvals:     map[string]*v1.ApprovalRequest{},
+		mirroring:     map[string]bool{},
 
 		agentDevices: map[string]string{},
 		agentIPs:     map[string]string{},
@@ -253,7 +256,7 @@ func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 // ---- clients ----
 
 func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip string) {
-	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip}
+	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now()}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
 	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(device, ip)}})

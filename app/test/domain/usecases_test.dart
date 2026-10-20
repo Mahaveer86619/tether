@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/core/error/failures.dart';
 import 'package:tether/core/result.dart';
+import 'package:tether/core/version.dart';
 import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/usecases/usecases.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
@@ -15,6 +16,16 @@ void main() {
     expect(untilLabel(now.add(const Duration(seconds: 30)), now: now), 'now');
     expect(untilLabel(now.add(const Duration(minutes: 14, seconds: 59)), now: now), '14m left');
     expect(untilLabel(now.add(const Duration(hours: 1, minutes: 5)), now: now), '1h 5m left');
+  });
+
+  test('versions compare by their numbers, and builds without one are never flagged', () {
+    expect(isOlderVersion('0.14.0', '0.15.0'), isTrue);
+    expect(isOlderVersion('0.9.9', '0.10.0'), isTrue, reason: 'numbers, not text');
+    expect(isOlderVersion('0.15.0', '0.15.0'), isFalse);
+    expect(isOlderVersion('1.0.0', '0.15.0'), isFalse);
+    expect(isOlderVersion('dev', '0.15.0'), isFalse);
+    expect(isOlderVersion('0.13.0', ''), isFalse);
+    expect(isOlderVersion('v0.14.2-rc1', '0.14.3'), isTrue);
   });
 
   group('Outbox', () {

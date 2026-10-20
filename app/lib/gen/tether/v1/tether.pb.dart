@@ -1860,11 +1860,13 @@ class ClientHello extends $pb.GeneratedMessage {
     $core.String? token,
     $core.String? clientName,
     $core.String? platform,
+    $core.String? appVersion,
   }) {
     final result = ClientHello._();
     if (token != null) result.token = token;
     if (clientName != null) result.clientName = clientName;
     if (platform != null) result.platform = platform;
+    if (appVersion != null) result.appVersion = appVersion;
     return result;
   }
 
@@ -1884,6 +1886,7 @@ class ClientHello extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'token')
     ..aOS(2, _omitFieldNames ? '' : 'clientName')
     ..aOS(3, _omitFieldNames ? '' : 'platform')
+    ..aOS(4, _omitFieldNames ? '' : 'appVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1934,6 +1937,185 @@ class ClientHello extends $pb.GeneratedMessage {
   $core.bool hasPlatform() => $_has(2);
   @$pb.TagNumber(3)
   void clearPlatform() => $_clearField(3);
+
+  /// The app's version, for the devices screen's update check.
+  @$pb.TagNumber(4)
+  $core.String get appVersion => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set appVersion($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAppVersion() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAppVersion() => $_clearField(4);
+}
+
+/// An app connected to the hub right now. GET /api/v1/clients.
+class ConnectedClient extends $pb.GeneratedMessage {
+  factory ConnectedClient({
+    $core.String? name,
+    $core.String? platform,
+    $core.String? appVersion,
+    $core.String? deviceId,
+    $core.String? ip,
+    $fixnum.Int64? connectedMs,
+  }) {
+    final result = ConnectedClient._();
+    if (name != null) result.name = name;
+    if (platform != null) result.platform = platform;
+    if (appVersion != null) result.appVersion = appVersion;
+    if (deviceId != null) result.deviceId = deviceId;
+    if (ip != null) result.ip = ip;
+    if (connectedMs != null) result.connectedMs = connectedMs;
+    return result;
+  }
+
+  ConnectedClient._();
+
+  factory ConnectedClient.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConnectedClient()..mergeFromBuffer(data, registry);
+  factory ConnectedClient.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ConnectedClient()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ConnectedClient',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ConnectedClient.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'platform')
+    ..aOS(3, _omitFieldNames ? '' : 'appVersion')
+    ..aOS(4, _omitFieldNames ? '' : 'deviceId')
+    ..aOS(5, _omitFieldNames ? '' : 'ip')
+    ..aInt64(6, _omitFieldNames ? '' : 'connectedMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConnectedClient clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ConnectedClient copyWith(void Function(ConnectedClient) updates) =>
+      super.copyWith((message) => updates(message as ConnectedClient))
+          as ConnectedClient;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ConnectedClient() / ConnectedClient.new instead')
+  static ConnectedClient create() => ConnectedClient._();
+  static $pb.GeneratedMessage $_createMessage() => ConnectedClient._();
+  @$core.override
+  ConnectedClient createEmptyInstance() => ConnectedClient._();
+  @$core.pragma('dart2js:noInline')
+  static ConnectedClient getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ConnectedClient>(
+          ConnectedClient.$_createMessage);
+  static ConnectedClient? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get platform => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set platform($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPlatform() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPlatform() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get appVersion => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set appVersion($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAppVersion() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAppVersion() => $_clearField(3);
+
+  /// Its paired device id; empty for the admin token or a trusted tailnet.
+  @$pb.TagNumber(4)
+  $core.String get deviceId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set deviceId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDeviceId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDeviceId() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get ip => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set ip($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasIp() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearIp() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get connectedMs => $_getI64(5);
+  @$pb.TagNumber(6)
+  set connectedMs($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasConnectedMs() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearConnectedMs() => $_clearField(6);
+}
+
+class ClientList extends $pb.GeneratedMessage {
+  factory ClientList({
+    $core.Iterable<ConnectedClient>? clients,
+  }) {
+    final result = ClientList._();
+    if (clients != null) result.clients.addAll(clients);
+    return result;
+  }
+
+  ClientList._();
+
+  factory ClientList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClientList()..mergeFromBuffer(data, registry);
+  factory ClientList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClientList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ClientList.$_createMessage)
+    ..pPM<ConnectedClient>(1, _omitFieldNames ? '' : 'clients',
+        subBuilder: ConnectedClient.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientList copyWith(void Function(ClientList) updates) =>
+      super.copyWith((message) => updates(message as ClientList)) as ClientList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClientList() / ClientList.new instead')
+  static ClientList create() => ClientList._();
+  static $pb.GeneratedMessage $_createMessage() => ClientList._();
+  @$core.override
+  ClientList createEmptyInstance() => ClientList._();
+  @$core.pragma('dart2js:noInline')
+  static ClientList getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClientList>(ClientList.$_createMessage);
+  static ClientList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ConnectedClient> get clients => $_getList(0);
 }
 
 class Subscribe extends $pb.GeneratedMessage {

@@ -106,9 +106,9 @@ type rawLine struct {
 	Model          string `json:"model"`
 	Cwd            string `json:"cwd"`
 	PermissionMode string `json:"permissionMode"`
-	Version     string `json:"claude_code_version"`
-	AITitle     string `json:"aiTitle"`
-	CustomTitle string `json:"customTitle"`
+	Version        string `json:"claude_code_version"`
+	AITitle        string `json:"aiTitle"`
+	CustomTitle    string `json:"customTitle"`
 
 	IsError    bool    `json:"is_error"`
 	NumTurns   int32   `json:"num_turns"`

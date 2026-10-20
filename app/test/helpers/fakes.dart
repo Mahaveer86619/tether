@@ -139,6 +139,13 @@ class FakeHubRepository implements HubRepository {
   @override
   Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
 
+  List<ConnectedClient>? clientList = const [
+    ConnectedClient(name: 'Pixel (android)', platform: 'android', appVersion: '0.14.0', deviceId: 'd1'),
+  ];
+
+  @override
+  Future<Result<List<ConnectedClient>>> clients() async => clientList == null ? const Err(NotFoundFailure('clients')) : Ok(clientList!);
+
   @override
   Future<Result<List<TailnetDevice>>> tailnet() async => const Ok([
         TailnetDevice(name: 'minipc', os: 'linux', online: true, isHub: true, node: 'minipc'),

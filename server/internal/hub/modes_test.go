@@ -7,6 +7,8 @@ import (
 	"time"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/Mahaveer86619/tether/server/internal/render"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
 )
@@ -156,4 +158,31 @@ func TestACommandTheNodeCouldNotCarryOutShowsOnTheSession(t *testing.T) {
 	if e := h.sessions["s1"].Error; e != "Claude Code is still working" {
 		t.Fatalf("session error: %q", e)
 	}
+}
+
+func TestConnectedAppsAreListedWithTheirVersions(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	app, err := wire.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close(nil)
+	_ = app.WriteNow(ctx, &v1.Frame{Body: &v1.Frame_ClientHello{ClientHello: &v1.ClientHello{Token: "secret", ClientName: "Pixel (android)", Platform: "android", AppVersion: "0.15.0"}}})
+	if _, err := app.Read(ctx); err != nil { // the welcome
+		t.Fatal(err)
+	}
+	_, body := call(t, srv, "GET", "/api/v1/clients", "secret", "")
+	list := &v1.ClientList{}
+	if err := protojson.Unmarshal([]byte(body), list); err != nil || len(list.Clients) != 1 {
+		t.Fatalf("clients: %s", body)
+	}
+	if c := list.Clients[0]; c.Name != "Pixel (android)" || c.Platform != "android" || c.AppVersion != "0.15.0" || c.ConnectedMs == 0 {
+		t.Fatalf("client: %v", c)
+	}
+	if status, _ := call(t, srv, "GET", "/api/v1/clients", "", ""); status != 401 {
+		t.Fatalf("listing apps needs a token, got %d", status)
+	}
+	_ = h
 }

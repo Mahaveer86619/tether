@@ -78,6 +78,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => Drafts(sl()))
     ..registerLazySingleton(() => Outbox(sl()))
     ..registerLazySingleton(() => LoadTailnet(sl()))
+    ..registerLazySingleton(() => ListClients(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
@@ -100,7 +101,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => Codebases(sl()))
     ..registerFactory(() => CodebasesCubit(codebases: sl()))
     ..registerFactory(() => WorkspacesCubit(load: sl(), set: sl()))
-    ..registerFactory(() => DevicesCubit(list: sl(), invite: sl(), revoke: sl(), tailnet: sl(), disconnect: sl()))
+    ..registerFactory(() => DevicesCubit(list: sl(), invite: sl(), revoke: sl(), tailnet: sl(), disconnect: sl(), clients: sl()))
     ..registerFactoryParam<SessionBloc, String, void>(
       (sessionId, _) =>
           SessionBloc(

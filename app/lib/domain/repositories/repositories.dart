@@ -66,6 +66,9 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  /// The apps connected to the hub now. A hub from before 0.15 has no list.
+  Future<Result<List<ConnectedClient>>> clients();
+
   /// The machines on the hub's tailnet, and which run Tether.
   Future<Result<List<TailnetDevice>>> tailnet();
 

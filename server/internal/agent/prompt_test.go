@@ -45,8 +45,8 @@ func TestParseDialog(t *testing.T) {
  ❯ 2. Yes, and don't ask again for rm commands in /home/me/project
    3. No, and tell Claude what to do differently (esc)
 `,
-			title:   "Do you want to proceed?",
-			options: []string{"Yes", "Yes, and don't ask again for rm commands in /home/me/project", "No, and tell Claude what to do differently (esc)"},
+			title:    "Do you want to proceed?",
+			options:  []string{"Yes", "Yes, and don't ask again for rm commands in /home/me/project", "No, and tell Claude what to do differently (esc)"},
 			selected: 1,
 		},
 		{
@@ -171,9 +171,9 @@ func TestAnswerPromptOnlyClaimsItsOwnCards(t *testing.T) {
 func TestScreenMode(t *testing.T) {
 	for screen, want := range map[string]string{
 		"╭──╮\n│ > │\n╰──╯\n  ⏵⏵ accept edits on (shift+tab to cycle)": "acceptEdits",
-		"│ > │\n  ⏸ plan mode on (shift+tab to cycle)":                         "plan",
-		"│ > │\n  ⏵⏵ auto mode on (shift+tab to cycle)":                        "auto",
-		"│ > │\n  ? for shortcuts":                                            "default",
+		"│ > │\n  ⏸ plan mode on (shift+tab to cycle)":                 "plan",
+		"│ > │\n  ⏵⏵ auto mode on (shift+tab to cycle)":                "auto",
+		"│ > │\n  ? for shortcuts":                                     "default",
 		// Only the bottom lines count: the words in Claude's answer don't.
 		"⏺ I turned plan mode on earlier.\n\n\n\n\n\n\n│ > │\n  ? for shortcuts": "default",
 	} {

@@ -372,6 +372,9 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<List<ConnectedClient>>> clients() => _command(() async => [for (final c in (await _api.clients()).clients) clientFromPb(c)]);
+
+  @override
   Future<Result<List<TailnetDevice>>> tailnet() => _command(() async {
         final t = await _api.tailnet();
         if (t.error.isNotEmpty && t.devices.isEmpty) throw ApiException(statusCode: 500, code: 'tailscale', message: t.error);

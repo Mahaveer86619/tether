@@ -267,3 +267,16 @@ func (h *Hub) pairHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, res)
 }
+
+// clientList is every app connected now, longest-connected first. Caller
+// holds h.mu.
+func (h *Hub) clientList() *v1.ClientList {
+	out := &v1.ClientList{}
+	for c := range h.clients {
+		out.Clients = append(out.Clients, &v1.ConnectedClient{
+			Name: c.name, Platform: c.platform, AppVersion: c.version, DeviceId: c.device, Ip: c.ip, ConnectedMs: c.since.UnixMilli(),
+		})
+	}
+	sort.Slice(out.Clients, func(i, j int) bool { return out.Clients[i].ConnectedMs < out.Clients[j].ConnectedMs })
+	return out
+}

@@ -422,6 +422,34 @@ void main() {
       expect(find.byKey(const Key('still-working')), findsNothing);
     });
 
+    testWidgets('devices: hub, agents and apps in install order, older ones flagged for an update', (tester) async {
+      repo.emitHub(snapshotWith([session('s1')], nodes: const [
+        Node(name: 'minipc', online: true, os: 'linux', agentVersion: '0.15.0'),
+        Node(name: 'laptop', online: true, os: 'windows', agentVersion: '0.13.0'),
+      ]).copyWith(hubVersion: '0.15.0', hubNode: 'minipc'));
+      await pumpApp(tester, const Size(1400, 1400));
+      await tester.tap(find.text('Devices').first);
+      await settle(tester);
+      expect(find.byKey(const Key('hub-card')), findsOneWidget);
+      expect(find.textContaining('Hub 0.15.0'), findsOneWidget);
+      expect(find.byKey(const Key('update-laptop')), findsOneWidget, reason: 'its agent is older than the hub');
+      expect(find.byKey(const Key('update-minipc')), findsNothing);
+      final app = find.byKey(const Key('app-Pixel (android)'));
+      expect(app, findsOneWidget);
+      expect(find.descendant(of: app, matching: find.text('update')), findsOneWidget, reason: 'app 0.14.0 on a 0.15.0 hub');
+      await tester.ensureVisible(find.byKey(const Key('setup-guide')));
+      await tester.tap(find.byKey(const Key('setup-guide')));
+      await settle(tester);
+      expect(find.textContaining('Update it first'), findsOneWidget);
+
+      repo.clientList = null;
+      await tester.tap(find.text('Sessions').first);
+      await settle(tester);
+      await tester.tap(find.text('Devices').first);
+      await settle(tester);
+      expect(find.textContaining('too old to list its apps'), findsOneWidget);
+    });
+
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
       const input = '{"questions":['
           '{"question":"Which DB?","header":"DB","multiSelect":false,"options":[{"label":"Postgres","description":"server"},{"label":"SQLite"}]},'
@@ -601,7 +629,9 @@ void main() {
 
       await tester.tap(find.text('Devices').first);
       await settle(tester);
-      expect(find.text('RUNNING TETHER'), findsOneWidget);
+      expect(find.text('1 · HUB'), findsOneWidget);
+      expect(find.text('2 · DEVICES RUNNING THE AGENT'), findsOneWidget);
+      expect(find.text('3 · APPS'), findsOneWidget);
 
       await tester.tap(find.text('Activity').first);
       await settle(tester);

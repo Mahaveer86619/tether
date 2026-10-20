@@ -239,6 +239,23 @@ message ClientHello {
   string token = 1;
   string client_name = 2;
   string platform = 3;
+  // The app's version, for the devices screen's update check.
+  string app_version = 4;
+}
+
+// An app connected to the hub right now. GET /api/v1/clients.
+message ConnectedClient {
+  string name = 1;
+  string platform = 2;
+  string app_version = 3;
+  // Its paired device id; empty for the admin token or a trusted tailnet.
+  string device_id = 4;
+  string ip = 5;
+  int64 connected_ms = 6;
+}
+
+message ClientList {
+  repeated ConnectedClient clients = 1;
 }
 
 message Subscribe {

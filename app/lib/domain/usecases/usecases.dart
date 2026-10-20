@@ -340,6 +340,12 @@ class LoadUsage {
   Future<Result<UsageSummary>> call() => _hub.usage();
 }
 
+class ListClients {
+  const ListClients(this._hub);
+  final HubRepository _hub;
+  Future<Result<List<ConnectedClient>>> call() => _hub.clients();
+}
+
 class LoadTailnet {
   const LoadTailnet(this._hub);
   final HubRepository _hub;

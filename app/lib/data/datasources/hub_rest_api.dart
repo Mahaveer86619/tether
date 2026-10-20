@@ -149,6 +149,8 @@ class HubRestApi {
 
   Future<pb.Tailnet> tailnet() => _get('/tailnet', pb.Tailnet());
 
+  Future<pb.ClientList> clients() => _get('/clients', pb.ClientList());
+
   Future<pb.CodebaseList> codebases() => _get('/codebases', pb.CodebaseList());
 
   Future<void> snapshotCodebase(String id) => _post('/codebases/${Uri.encodeComponent(id)}/snapshot', null, pb.Ack());

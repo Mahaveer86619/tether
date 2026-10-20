@@ -880,3 +880,14 @@ class OutboxEntry extends Equatable {
   @override
   List<Object?> get props => [id, session, text, attachments, created, state, sentAt, error];
 }
+
+/// An app connected to the hub right now.
+class ConnectedClient extends Equatable {
+  const ConnectedClient({required this.name, this.platform = '', this.appVersion = '', this.deviceId = '', this.ip = '', this.connected});
+
+  final String name, platform, appVersion, deviceId, ip;
+  final DateTime? connected;
+
+  @override
+  List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
+}
