@@ -1,5 +1,15 @@
 # Building and running
 
+## Install order
+
+Tether has three parts, and they go in, and are updated, in this order:
+
+1. **The hub** (`tether-hub`) on an always-on machine on your tailnet. Everything connects to it, so it goes first. It's also updated first: agents and apps are made to work with a hub at least as new as they are, and the hub accepts older ones.
+2. **The agent** (`tether-agent`) on every machine whose Claude Code sessions you want in Tether, the hub's own machine included. Pair it with a code from the app's "Add a device" or `tetherctl pair`.
+3. **The apps** (Android, Windows). Pair one by scanning the QR code another paired app shows, or connect over Tailscale.
+
+The app's Devices screen follows the same order: the hub, then the devices running the agent, then the connected apps. Each shows its version and is flagged "update" when it's older than the hub. Apps from 0.15 send their version (`ClientHello.app_version`), and hubs from 0.15 list connected apps (`GET /api/v1/clients`).
+
 ## Build
 
 Requires Go 1.24+. From `server/`:

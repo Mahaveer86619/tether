@@ -133,10 +133,13 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 		}
-		return &v1.ArtifactList{Artifacts: list}, nil
+		return &v1.ArtifactList{Artifacts: hideBackups(r, list)}, nil
 	}))
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)
+	h.screenRoutes(mux)
+	h.modeRoutes(mux)
+	mux.HandleFunc("GET /api/v1/clients", h.api(func(r *http.Request) (proto.Message, *opError) { return h.clientList(), nil }))
 	h.codebaseRoutes(mux)
 	mux.HandleFunc("GET /api/v1/pages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.pages(r.URL.Query().Get("session"))

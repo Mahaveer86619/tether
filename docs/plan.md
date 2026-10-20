@@ -133,6 +133,14 @@ Files of several GB have to work, over a phone's connection too. Nothing on the 
 - **Auto-capture.** Files a tool call reads or writes are kept up to 1 GB. Bigger ones are skipped and logged.
 - **App.** Downloads use `background_downloader`. On Android that means a foreground service whose notification shows progress and has pause and cancel. Downloads resume across dropped connections and app restarts, check free space first (keeping 200 MB spare), are checked against the sha256 when done, and are then moved to Downloads/Tether (through MediaStore on Android). Uploads are read from disk in chunks; on Android the picker's copy in the app cache is cleared afterwards. A hub with a pinned self-signed certificate can't use background downloads, since only the app's own client knows the pin.
 
+### Session backups
+
+While an app is in use somewhere, the hub keeps a copy of every session, not just global ones, so a machine that goes away doesn't take its history with it.
+- **When:** apps send `ClientPresence{active}` from their lifecycle. A desktop window that's only unfocused still counts as in use; minimized or backgrounded doesn't. Apps from before presence count as active while connected. While any app is active, the hub sends each online node `AgentCommand.backup` every 10 minutes, and at once when an app comes back after a longer gap.
+- **What:** the request says how many bytes of each session's transcript the hub already has. The agent uploads the sessions whose transcript size differs, newest first, one run at a time. Each one gets its details (`meta.json`), its subagents' transcripts (`<session>/subagents/*.jsonl`) and the transcript, as artifacts with origin `backup` and paths `meta.json`, `subagents/<file>` and `transcript`. Files over 1 GB are skipped.
+- **Dedupe:** the hub keeps one row per session and path. The same content again adds nothing; new content replaces the row, and the old blob goes if nothing else uses it. Backups aren't announced to apps and are left out of `GET /api/v1/artifacts` unless `origin=backup` is asked for. The transcript's backup sets `SessionInfo.backed_up_ms` and `backed_up_bytes`. Apps show "backed up 5m ago", and that is what the next request compares against, so an interrupted run catches up next time.
+- **Restore:** "Continue on the hub" uses the newest copy, whether a global session's transcript or a backup.
+
 ## Usage tracking
 
 Every node runs Claude Code under its own login, and every session uses only that login's usage. The hub never moves work to another account to save usage. It only reports what each node uses:

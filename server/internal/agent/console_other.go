@@ -16,6 +16,14 @@ func pressEscape(uint32) error {
 	return errors.New("typing into a terminal is only supported on Windows")
 }
 
+func pressConsoleKeys(uint32, []string, string) error {
+	return errors.New("typing into a terminal is only supported on Windows")
+}
+
+func readConsole(uint32) (string, error) {
+	return "", errors.New("reading a terminal is only supported on Windows")
+}
+
 func pidOfLocalPeer(string, int) (uint32, error) {
 	return 0, errors.New("not supported")
 }

@@ -626,6 +626,16 @@ func (s *Store) PageFile(session, path string) (*v1.Artifact, error) {
 	return a, err
 }
 
+// BackupFile returns a session's backed-up file at path, or nil.
+func (s *Store) BackupFile(session, path string) (*v1.Artifact, error) {
+	a, err := scanArtifact(s.db.QueryRow(`SELECT `+artifactCols+` FROM artifacts
+		WHERE origin = 'backup' AND session = ? AND path = ? ORDER BY created_ms DESC LIMIT 1`, session, path))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return a, err
+}
+
 // PageFiles lists the newest version of every page file, newest first;
 // session "" means all sessions.
 func (s *Store) PageFiles(session string) ([]*v1.Artifact, error) {

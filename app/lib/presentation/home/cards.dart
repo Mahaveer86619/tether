@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
@@ -146,9 +147,20 @@ class SessionCard extends StatelessWidget {
 }
 
 class DeviceCard extends StatelessWidget {
-  const DeviceCard({super.key, required this.node, required this.sessions, required this.onTap, this.isHub = false, this.isSelf = false});
+  const DeviceCard({
+    super.key,
+    required this.node,
+    required this.sessions,
+    required this.onTap,
+    this.isHub = false,
+    this.isSelf = false,
+    this.hubVersion = '',
+  });
 
   final Node node;
+
+  /// The hub's version; an older agent is flagged for an update.
+  final String hubVersion;
   final int sessions;
   final VoidCallback onTap;
   final bool isHub;
@@ -181,12 +193,17 @@ class DeviceCard extends StatelessWidget {
                     OnlineDot(online: node.online),
                     if (isHub) ...[const SizedBox(width: 8), Pill('hub', color: c.accent)],
                     if (isSelf) ...[const SizedBox(width: 8), const Pill('this device')],
+                    if (isOlderVersion(node.agentVersion, hubVersion)) ...[
+                      const SizedBox(width: 8),
+                      Pill('update', key: Key('update-${node.name}'), color: c.warning),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 3),
                 Text(
                   [
                     node.online ? 'Online' : 'Offline${node.lastSeen != null ? ' · ${ago(node.lastSeen)}' : ''}',
+                    if (node.agentVersion.isNotEmpty) 'agent ${node.agentVersion}',
                     if (node.claudeVersion.isNotEmpty) 'Claude Code ${node.claudeVersion}',
                   ].join(' · '),
                   style: TextStyle(fontSize: 12, color: c.muted),

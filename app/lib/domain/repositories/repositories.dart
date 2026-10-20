@@ -12,6 +12,9 @@ abstract interface class HubRepository {
 
   void retryNow();
 
+  /// Whether the app is in the foreground; see [HubSocket.setPresence].
+  void setActive({required bool active});
+
   /// Emits the current snapshot immediately, then every change.
   Stream<HubSnapshot> watchHub();
 
@@ -26,7 +29,7 @@ abstract interface class HubRepository {
 
   /// Returns the session that received the message: the same one, or the
   /// new fork when [fork] is set.
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []});
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''});
 
   /// Has the hub keep a copy of the session's transcript, or stop.
   Future<Result<void>> setGlobal(String sessionId, {required bool global});
@@ -66,6 +69,9 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  /// The apps connected to the hub now. A hub from before 0.15 has no list.
+  Future<Result<List<ConnectedClient>>> clients();
+
   /// The machines on the hub's tailnet, and which run Tether.
   Future<Result<List<TailnetDevice>>> tailnet();
 
@@ -90,7 +96,19 @@ abstract interface class HubRepository {
   Future<Result<void>> setArchived(String sessionId, {required bool archived});
 
   /// [answers] answer a question: each question's text to the chosen labels or the user's own words.
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}});
+  /// [option] picks a prompt's choice (1-based); 0 takes the one selected.
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0});
+
+  /// Switches the session's permission mode; with [revertAfter], the hub
+  /// puts the current one back after that long.
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter});
+
+  /// Reads the session's terminal on its machine.
+  Future<Result<ScreenSnapshot>> screen(String sessionId);
+
+  /// Presses keys (Enter, Escape, Up, Down, Left, Right, Tab, BTab, Space,
+  /// Backspace or one character) in the session's terminal, then types [text].
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''});
 
   Future<void> dispose();
 }
@@ -129,6 +147,10 @@ abstract interface class SettingsRepository {
   /// Unsent text from a message box; empty when there is none.
   Future<String> loadDraft(String key);
   Future<void> saveDraft(String key, String text);
+
+  /// Messages not yet seen in a session's timeline; see [OutboxEntry].
+  Future<List<OutboxEntry>> loadOutbox(String session);
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries);
 
   Future<Appearance> loadAppearance();
   Future<Result<void>> saveAppearance(Appearance appearance);

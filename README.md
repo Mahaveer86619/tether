@@ -32,6 +32,8 @@ The Claude Code TUI is great at one session in one terminal. Tether is for when 
 
 Details: [docs/architecture.md](docs/architecture.md).
 
+**Setting up:** the hub first, then the agent on each machine, then the apps; updates go in the same order. See [docs/running.md](docs/running.md#install-order).
+
 ## Tech
 
 | Part | Stack |

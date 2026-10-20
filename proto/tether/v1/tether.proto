@@ -25,6 +25,8 @@ message Frame {
     InterruptSession interrupt_session = 15;
     ApprovalDecision approval_decision = 16;
     StopSession stop_session = 17;
+    // The app is in the foreground (or not); backups run while one is.
+    ClientPresence client_presence = 18;
 
     // Hub -> client
     Welcome welcome = 30;
@@ -49,6 +51,13 @@ message Frame {
     UsageReport usage_report = 53;
     // The node's plan limits, from `claude -p /usage`.
     PlanUsage plan_usage = 54;
+    // A session's terminal screen (agent -> hub, and hub -> subscribers).
+    ScreenSnapshot screen_snapshot = 55;
+    // How a SetMode went.
+    ModeResult mode_result = 56;
+    // A command the node couldn't carry out, e.g. an interrupt that didn't
+    // land; the hub shows it on the session.
+    CommandResult command_result = 57;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -142,6 +151,15 @@ message SessionInfo {
   // for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
   string codebase = 25;
   string snapshot = 26;
+  // Claude Code's permission mode: default, acceptEdits, plan or auto. From
+  // the transcript, or set from an app; empty when not known yet.
+  string permission_mode = 27;
+  // A mode set for a while: when the hub puts mode_revert_to back.
+  int64 mode_revert_ms = 28;
+  string mode_revert_to = 29;
+  // The hub's latest backup of the transcript: when, and how big.
+  int64 backed_up_ms = 30;
+  int64 backed_up_bytes = 31;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -173,6 +191,9 @@ message ApprovalRequest {
     // Claude asks the user questions (AskUserQuestion); input_json holds
     // them, and the decision carries the answers.
     KIND_QUESTION = 3;
+    // A dialog read off Claude Code's screen (a survey, a menu, a picker)
+    // that no hook reported; options holds its choices.
+    KIND_PROMPT = 4;
   }
   string approval_id = 1;
   string session = 2;
@@ -184,6 +205,11 @@ message ApprovalRequest {
   // The tool rendered as a card, for the approval sheet.
   ToolCard preview = 8;
   Kind kind = 9;
+  // KIND_PROMPT: the dialog's choices in screen order, which one the cursor
+  // is on (0-based), and the screen it was read from.
+  repeated string options = 10;
+  int32 selected = 11;
+  string screen = 12;
 }
 
 enum Decision {
@@ -200,6 +226,9 @@ message ApprovalDecision {
   // For a question: each question's text to the chosen option labels, joined
   // with ", ", or the user's own words.
   map<string, string> answers = 4;
+  // For a prompt: the chosen option, 1-based. 0 with ALLOW takes the one the
+  // cursor is on; DENY presses Esc.
+  int32 option = 5;
 }
 
 message ApprovalResolved {
@@ -211,10 +240,31 @@ message ApprovalResolved {
 
 // ---- Client -> hub ----
 
+message ClientPresence {
+  bool active = 1;
+}
+
 message ClientHello {
   string token = 1;
   string client_name = 2;
   string platform = 3;
+  // The app's version, for the devices screen's update check.
+  string app_version = 4;
+}
+
+// An app connected to the hub right now. GET /api/v1/clients.
+message ConnectedClient {
+  string name = 1;
+  string platform = 2;
+  string app_version = 3;
+  // Its paired device id; empty for the admin token or a trusted tailnet.
+  string device_id = 4;
+  string ip = 5;
+  int64 connected_ms = 6;
+}
+
+message ClientList {
+  repeated ConnectedClient clients = 1;
 }
 
 message Subscribe {
@@ -260,6 +310,9 @@ message SendMessage {
   bool fork = 3;
   // Artifact ids to put in the session's folder and mention in the message.
   repeated string attachments = 4;
+  // Made by the client, once per message: the hub sends a repeat only once,
+  // and stamps it on the user item the message becomes.
+  string client_id = 5;
 }
 
 // Stops the current turn; the session stays open.
@@ -349,6 +402,15 @@ message AgentCommand {
     ScanCodebases scan = 10;
     // Download a file attached to a session into its folder.
     FetchAttachment fetch = 11;
+    // Press keys in the session's terminal: the way out of anything Tether
+    // can't parse.
+    SendKeys keys = 12;
+    // Read the session's terminal screen; answered with a ScreenSnapshot.
+    CaptureScreen capture = 13;
+    // Switch a live session's permission mode; answered with a ModeResult.
+    SetMode set_mode = 14;
+    // Upload the transcripts that changed since the hub's copy.
+    BackupSessions backup = 15;
   }
 
   message StartRun {
@@ -381,6 +443,13 @@ message AgentCommand {
     string text = 2;
     // Fetched into the session's folder first; the text then lists them.
     repeated Artifact attachments = 3;
+    // For a resume, when no process is live: the mode to start in.
+    string permission_mode = 4;
+  }
+
+  message SetMode {
+    string session = 1;
+    string mode = 2;
   }
 
   message Interrupt {
@@ -416,6 +485,15 @@ message AgentCommand {
 
   message ScanCodebases {
     repeated string roots = 1;
+  }
+
+  message CaptureScreen {
+    string session = 1;
+  }
+
+  message BackupSessions {
+    // Session -> bytes of its transcript the hub has; unchanged ones are skipped.
+    map<string, int64> stored = 1;
   }
 
   // Into <cwd>/.tether/attachments/<name>, checked against its sha256.
@@ -728,6 +806,45 @@ message Artifact {
   int64 created_ms = 11;
   // Written by whoever attached it.
   string note = 12;
+}
+
+// POST /api/v1/sessions/{id}/keys. keys are pressed in order: Enter,
+// Escape, Up, Down, Left, Right, Tab, BTab (Shift+Tab), Space, Backspace,
+// or a single character; text, if set, is typed after them.
+message SendKeys {
+  string session = 1;
+  repeated string keys = 2;
+  string text = 3;
+}
+
+// POST /api/v1/sessions/{id}/mode. With revert_after_ms the hub puts the
+// current mode back after that long.
+message SetPermissionMode {
+  string session = 1;
+  string mode = 2;
+  int64 revert_after_ms = 3;
+}
+
+message CommandResult {
+  string session = 1;
+  // "interrupt".
+  string command = 2;
+  string error = 3;
+}
+
+message ModeResult {
+  string session = 1;
+  string mode = 2;
+  string error = 3;
+}
+
+// GET /api/v1/sessions/{id}/screen.
+message ScreenSnapshot {
+  string session = 1;
+  string text = 2;
+  int64 captured_ms = 3;
+  // Why there's no screen: a headless run has no terminal, say.
+  string error = 4;
 }
 
 message ArtifactList {

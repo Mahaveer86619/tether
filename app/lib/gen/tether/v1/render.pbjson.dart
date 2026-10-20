@@ -108,6 +108,7 @@ const UserText$json = {
     {'1': 'queued', '3': 2, '4': 1, '5': 8, '10': 'queued'},
     {'1': 'source', '3': 3, '4': 1, '5': 9, '10': 'source'},
     {'1': 'attachment_id', '3': 4, '4': 1, '5': 9, '10': 'attachmentId'},
+    {'1': 'client_id', '3': 5, '4': 1, '5': 9, '10': 'clientId'},
   ],
 };
 
@@ -115,7 +116,7 @@ const UserText$json = {
 final $typed_data.Uint8List userTextDescriptor = $convert.base64Decode(
     'CghVc2VyVGV4dBISCgR0ZXh0GAEgASgJUgR0ZXh0EhYKBnF1ZXVlZBgCIAEoCFIGcXVldWVkEh'
     'YKBnNvdXJjZRgDIAEoCVIGc291cmNlEiMKDWF0dGFjaG1lbnRfaWQYBCABKAlSDGF0dGFjaG1l'
-    'bnRJZA==');
+    'bnRJZBIbCgljbGllbnRfaWQYBSABKAlSCGNsaWVudElk');
 
 @$core.Deprecated('Use markdownDescriptor instead')
 const Markdown$json = {

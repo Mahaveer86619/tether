@@ -1,12 +1,77 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/core/error/failures.dart';
 import 'package:tether/core/result.dart';
+import 'package:tether/core/version.dart';
 import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/usecases/usecases.dart';
+import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
+
+import 'package:tether/presentation/session/mode_picker.dart';
 
 import '../helpers/fakes.dart';
 
 void main() {
+  test('time left on a timed mode reads plainly', () {
+    final now = DateTime(2026, 10, 20, 12);
+    expect(untilLabel(now.add(const Duration(seconds: 30)), now: now), 'now');
+    expect(untilLabel(now.add(const Duration(minutes: 14, seconds: 59)), now: now), '14m left');
+    expect(untilLabel(now.add(const Duration(hours: 1, minutes: 5)), now: now), '1h 5m left');
+  });
+
+  test('versions compare by their numbers, and builds without one are never flagged', () {
+    expect(isOlderVersion('0.14.0', '0.15.0'), isTrue);
+    expect(isOlderVersion('0.9.9', '0.10.0'), isTrue, reason: 'numbers, not text');
+    expect(isOlderVersion('0.15.0', '0.15.0'), isFalse);
+    expect(isOlderVersion('1.0.0', '0.15.0'), isFalse);
+    expect(isOlderVersion('dev', '0.15.0'), isFalse);
+    expect(isOlderVersion('0.13.0', ''), isFalse);
+    expect(isOlderVersion('v0.14.2-rc1', '0.14.3'), isTrue);
+  });
+
+  group('Outbox', () {
+    OutboxEntry entry(String id, String text, {OutboxState state = OutboxState.sent}) =>
+        OutboxEntry(id: id, session: 's1', text: text, created: DateTime(2026), state: state, sentAt: DateTime(2026));
+    TimelineItem user(String id, String text, {String clientId = '', bool queued = false}) =>
+        TimelineItem(itemId: id, user: rpb.UserText(text: text, clientId: clientId, queued: queued));
+
+    test('a message leaves the outbox once the timeline shows it, by client id', () {
+      final pending = Outbox.pending(
+        [entry('c1', 'run the tests'), entry('c2', 'then lint')],
+        [user('u1', 'run the tests', clientId: 'c1'), user('q2', 'then lint', queued: true)],
+      );
+      expect(pending.map((e) => e.id), ['c2'], reason: 'a queued placeholder is not the message yet');
+    });
+
+    test('from a hub that stamps no ids, the latest messages are matched by text, once each', () {
+      final pending = Outbox.pending(
+        [entry('c1', 'again'), entry('c2', 'again'), entry('c3', 'with files', state: OutboxState.sent)],
+        [user('u1', 'again'), user('u2', 'with files\r\n\r\nAttached files (in this folder):\r\n- a.png')],
+      );
+      expect(pending.map((e) => e.id), ['c2'], reason: 'one "again" arrived, so one is still to come');
+    });
+
+    test('unsent and failed messages stay whatever the timeline shows', () {
+      final pending = Outbox.pending(
+        [entry('c1', 'x', state: OutboxState.failed), entry('c2', 'y', state: OutboxState.sending)],
+        [user('u1', 'x'), user('u2', 'y')],
+      );
+      expect(pending, hasLength(2));
+    });
+
+    test('a hub queued item stands for its message', () {
+      final e = entry('c1', 'later');
+      expect(Outbox.queuedOnHub(e, [user('q', 'later', queued: true)]), isTrue);
+      expect(Outbox.queuedOnHub(e, [user('q', 'other', queued: true)]), isFalse);
+    });
+
+    test('a send cut short by the app closing comes back as failed, for a retry', () async {
+      final settings = FakeSettingsRepository()..outboxes['s1'] = [entry('c1', 'x', state: OutboxState.sending)];
+      final loaded = await Outbox(settings).load('s1');
+      expect(loaded.single.state, OutboxState.failed);
+      expect(loaded.single.error, isNotEmpty);
+    });
+  });
+
   group('SendMessage', () {
     test('rejects empty text without calling the hub', () async {
       final repo = FakeHubRepository(snapshotWith([session('s1')]));

@@ -48,21 +48,6 @@ func (h *Hub) uploadTranscript(info *v1.SessionInfo) {
 	}
 }
 
-// latestTranscript is the newest uploaded copy of a session's transcript.
-// Caller holds h.mu.
-func (h *Hub) latestTranscript(session string) *v1.Artifact {
-	list, err := h.store.Artifacts(session, 100)
-	if err != nil {
-		return nil
-	}
-	for _, a := range list {
-		if a.Origin == "transcript" {
-			return a
-		}
-	}
-	return nil
-}
-
 // continueOnHub starts a new session on the hub's machine from a global
 // session's latest transcript copy, with text as its first message. Caller
 // holds h.mu.
@@ -77,7 +62,7 @@ func (h *Hub) continueOnHub(session, text, from string) (string, *opError) {
 	if strings.TrimSpace(text) == "" {
 		return "", invalid("message is empty")
 	}
-	copy := h.latestTranscript(session)
+	copy := h.latestCopy(session)
 	if copy == nil {
 		return "", &opError{"not_found", "the hub has no copy of this session yet; its machine uploads one when a turn ends", http.StatusNotFound}
 	}

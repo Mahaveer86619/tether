@@ -22,6 +22,7 @@ import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
 import 'presentation/new_session/new_session_cubit.dart';
 import 'presentation/session/session_bloc.dart';
+import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
@@ -75,19 +76,25 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => SharePreferences(sl()))
     ..registerLazySingleton(() => ConnectOverTailnet(sl(), sl()))
     ..registerLazySingleton(() => Drafts(sl()))
+    ..registerLazySingleton(() => Outbox(sl()))
     ..registerLazySingleton(() => LoadTailnet(sl()))
+    ..registerLazySingleton(() => ListClients(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))
     ..registerLazySingleton(() => Artifacts(sl()))
     ..registerLazySingleton(() => Transfers(sl()))
+    ..registerLazySingleton(() => TerminalControl(sl()))
+    ..registerLazySingleton(() => SetPermissionMode(sl()))
+    ..registerLazySingleton(() => ReportPresence(sl()))
+    ..registerFactoryParam<TerminalCubit, String, void>((sessionId, _) => TerminalCubit(sessionId: sessionId, terminal: sl()))
     ..registerLazySingleton(() => SetWorkspaceRoot(sl()))
     ..registerLazySingleton(() => ListDevices(sl()))
     ..registerLazySingleton(() => RevokeDevice(sl()))
     ..registerLazySingleton(() => DisconnectThisDevice(sl(), sl()))
     // View models
-    ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl()))
+    ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
     ..registerFactory(() => ArtifactsCubit(artifacts: sl(), transfers: sl()))
@@ -95,7 +102,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => Codebases(sl()))
     ..registerFactory(() => CodebasesCubit(codebases: sl()))
     ..registerFactory(() => WorkspacesCubit(load: sl(), set: sl()))
-    ..registerFactory(() => DevicesCubit(list: sl(), invite: sl(), revoke: sl(), tailnet: sl(), disconnect: sl()))
+    ..registerFactory(() => DevicesCubit(list: sl(), invite: sl(), revoke: sl(), tailnet: sl(), disconnect: sl(), clients: sl()))
     ..registerFactoryParam<SessionBloc, String, void>(
       (sessionId, _) =>
           SessionBloc(
@@ -108,6 +115,7 @@ void configureDependencies({bool withData = true}) {
         drafts: sl(),
         setGlobal: sl(),
         continueOnHub: sl(),
+        outbox: sl(),
       ),
     )
     ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(

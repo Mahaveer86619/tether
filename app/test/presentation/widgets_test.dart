@@ -165,7 +165,17 @@ void main() {
       await tester.tap(find.byKey(const Key('send')));
       await settle(tester);
       expect(repo.sent.single, ('s1', 'next step', false));
-      expect(find.text('next step'), findsNothing, reason: 'composer clears after sending');
+      expect(tester.widget<TextField>(find.byKey(const Key('composer'))).controller!.text, isEmpty, reason: 'composer clears after sending');
+      expect(find.text('Queued · Claude reads it at its next step'), findsOneWidget, reason: 'the message waits in the outbox');
+
+      // It reaches the timeline, stamped with its client id: shown once.
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'earlier prompt')),
+        rpb.TimelineItem(itemId: 'u2', ord: Int64(2), user: rpb.UserText(text: 'next step', clientId: repo.clientIds.single)),
+      ]);
+      await settle(tester);
+      expect(find.text('next step'), findsOneWidget);
+      expect(find.text('Queued · Claude reads it at its next step'), findsNothing);
     });
 
     testWidgets('desktop: a terminal session offers fork instead of typing', (tester) async {
@@ -298,6 +308,177 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Revoke'));
       await settle(tester);
       expect(find.text('Pixel'), findsNothing);
+    });
+
+    testWidgets('a dialog on screen comes as a card with its options, Esc, and the terminal', (tester) async {
+      repo.screenText = '● How is Claude doing this session?\n  1: Bad  2: Fine  3: Good  0: Dismiss';
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)], approvals: [
+        Approval(
+          id: 'p1',
+          session: 's1',
+          node: 'minipc',
+          kind: ApprovalKind.prompt,
+          description: 'How is Claude doing this session?',
+          options: const ['Bad', 'Fine', 'Good', 'Dismiss'],
+          created: DateTime(2026),
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Claude Code is asking'), findsWidgets);
+      expect(find.byKey(const Key('stuck-banner')), findsNothing, reason: 'the card says what it waits on');
+      await tester.tap(find.byKey(const Key('prompt-option-3')).last);
+      await settle(tester);
+      expect(repo.decided.last, ('p1', true));
+      expect(repo.options.last, 3);
+    });
+
+    testWidgets('a session waiting on something with no card offers its screen and keys', (tester) async {
+      repo.screenText = 'Some dialog Tether cannot read\n  [y/N]';
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.byKey(const Key('stuck-banner')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('stuck-open-terminal')));
+      await settle(tester);
+      expect(find.textContaining('Some dialog Tether cannot read'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('key-Down')));
+      await settle(tester);
+      expect([repo.keysSent.last.$1, ...repo.keysSent.last.$2, repo.keysSent.last.$3], ['s1', 'Down', '']);
+      await tester.enterText(find.byKey(const Key('terminal-text')), 'y');
+      await tester.tap(find.byKey(const Key('terminal-type-enter')));
+      await settle(tester);
+      final typed = repo.keysSent.sublist(repo.keysSent.length - 2);
+      expect([for (final k in typed) '${k.$2.join('+')}|${k.$3}'], ['|y', 'Enter|'], reason: 'the text, then Enter on its own');
+    });
+
+    testWidgets('the permission mode shows in the header and can be switched for a while', (tester) async {
+      repo.emitHub(snapshotWith([
+        Session(
+          id: 's1',
+          node: 'minipc',
+          title: 'Session s1',
+          state: SessionState.ready,
+          host: SessionHost.tmux,
+          updated: DateTime(2026, 10, 11),
+          permissionMode: 'plan',
+          modeRevert: DateTime.now().add(const Duration(minutes: 12, seconds: 30)),
+          modeRevertTo: 'default',
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Plan · 12m left'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('mode-chip')));
+      await settle(tester);
+      expect(find.textContaining('Goes back to Ask first'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('mode-for-60')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('mode-acceptEdits')));
+      await settle(tester);
+      expect(repo.modes.single, ('s1', PermissionMode.acceptEdits, const Duration(hours: 1)));
+    });
+
+    testWidgets('approving a plan can also let its edits go ahead', (tester) async {
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)], approvals: [
+        Approval(id: 'pl', session: 's1', node: 'minipc', kind: ApprovalKind.tool, toolName: 'ExitPlanMode', inputJson: '{"plan":"1. do it"}', created: DateTime(2026)),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Approve plan'), findsWidgets);
+      await tester.tap(find.byKey(const Key('allow-accept-edits-pl')).last);
+      await settle(tester);
+      expect(repo.decided.last, ('pl', true));
+      expect(repo.modes.single.$2, PermissionMode.acceptEdits);
+    });
+
+    testWidgets('an interrupt shows it is stopping, and offers more if Claude keeps going', (tester) async {
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.running)]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('interrupt')));
+      await settle(tester);
+      expect(repo.interrupted.single, 's1');
+      expect(find.text('Stopping…'), findsOneWidget);
+      expect(find.byKey(const Key('still-working')), findsNothing);
+
+      await tester.pump(const Duration(seconds: 9));
+      await settle(tester);
+      expect(find.byKey(const Key('still-working')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('interrupt-end')));
+      await settle(tester);
+      expect(find.text('End this session?'), findsOneWidget, reason: 'ending asks first');
+      await tester.tap(find.text('Cancel'));
+      await settle(tester);
+      expect(repo.ended, isEmpty);
+
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.ready)]));
+      await settle(tester);
+      expect(find.byKey(const Key('still-working')), findsNothing);
+    });
+
+    testWidgets('devices: hub, agents and apps in install order, older ones flagged for an update', (tester) async {
+      repo.emitHub(snapshotWith([session('s1')], nodes: const [
+        Node(name: 'minipc', online: true, os: 'linux', agentVersion: '0.15.0'),
+        Node(name: 'laptop', online: true, os: 'windows', agentVersion: '0.13.0'),
+      ]).copyWith(hubVersion: '0.15.0', hubNode: 'minipc'));
+      await pumpApp(tester, const Size(1400, 1400));
+      await tester.tap(find.text('Devices').first);
+      await settle(tester);
+      expect(find.byKey(const Key('hub-card')), findsOneWidget);
+      expect(find.textContaining('Hub 0.15.0'), findsOneWidget);
+      expect(find.byKey(const Key('update-laptop')), findsOneWidget, reason: 'its agent is older than the hub');
+      expect(find.byKey(const Key('update-minipc')), findsNothing);
+      final app = find.byKey(const Key('app-Pixel (android)'));
+      expect(app, findsOneWidget);
+      expect(find.descendant(of: app, matching: find.text('update')), findsOneWidget, reason: 'app 0.14.0 on a 0.15.0 hub');
+      await tester.ensureVisible(find.byKey(const Key('setup-guide')));
+      await tester.tap(find.byKey(const Key('setup-guide')));
+      await settle(tester);
+      expect(find.textContaining('Update it first'), findsOneWidget);
+
+      repo.clientList = null;
+      await tester.tap(find.text('Sessions').first);
+      await settle(tester);
+      await tester.tap(find.text('Devices').first);
+      await settle(tester);
+      expect(find.textContaining('too old to list its apps'), findsOneWidget);
+    });
+
+    testWidgets('the app tells the hub when it is in use, for backups, and sessions show their last backup', (tester) async {
+      repo.emitHub(snapshotWith([
+        Session(
+          id: 's1',
+          node: 'minipc',
+          title: 'Session s1',
+          state: SessionState.ready,
+          host: SessionHost.tmux,
+          updated: DateTime(2026, 10, 11),
+          backedUp: DateTime.now().subtract(const Duration(minutes: 5)),
+          backedUpBytes: 2048,
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await settle(tester);
+      expect(repo.activity.last, isFalse, reason: 'in the background');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(repo.activity.last, isTrue);
+      expect(repo.activity, contains(true), reason: 'an unfocused window still counts as in use');
+
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.textContaining('backed up 5m ago'), findsOneWidget);
     });
 
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
@@ -479,7 +660,9 @@ void main() {
 
       await tester.tap(find.text('Devices').first);
       await settle(tester);
-      expect(find.text('RUNNING TETHER'), findsOneWidget);
+      expect(find.text('1 · HUB'), findsOneWidget);
+      expect(find.text('2 · DEVICES RUNNING THE AGENT'), findsOneWidget);
+      expect(find.text('3 · APPS'), findsOneWidget);
 
       await tester.tap(find.text('Activity').first);
       await settle(tester);

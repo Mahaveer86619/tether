@@ -7,6 +7,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../../core/version.dart';
 import '../../gen/tether/v1/tether.pb.dart' as pb;
 import 'hub_endpoint.dart';
 
@@ -42,6 +43,10 @@ abstract interface class HubSocket {
   void disconnect();
   void subscribe(String session, Int64 afterSeq);
   void unsubscribe(String session);
+
+  /// Tells the hub whether the app is in the foreground, now and after
+  /// every reconnect; the hub backs sessions up while an app is.
+  void setPresence({required bool active});
   Future<void> close();
 }
 
@@ -109,7 +114,8 @@ class WebSocketHubSocket implements HubSocket {
         onDone: () => _onClosed(gen, null),
         onError: (Object e) => _onClosed(gen, e.toString()),
       );
-      _write(pb.Frame(clientHello: pb.ClientHello(token: endpoint.token, clientName: clientName, platform: platform)));
+      _write(pb.Frame(clientHello: pb.ClientHello(token: endpoint.token, clientName: clientName, platform: platform, appVersion: appVersion)));
+      _write(pb.Frame(clientPresence: pb.ClientPresence(active: _active)));
     } catch (e) {
       if (gen == _generation) _onClosed(gen, _describe(e));
     }
@@ -160,6 +166,14 @@ class WebSocketHubSocket implements HubSocket {
 
   @override
   void unsubscribe(String session) => _write(pb.Frame(id: _id(), unsubscribe: pb.Unsubscribe(session: session)));
+
+  bool _active = true;
+
+  @override
+  void setPresence({required bool active}) {
+    _active = active;
+    _write(pb.Frame(clientPresence: pb.ClientPresence(active: active)));
+  }
 
   @override
   Future<void> close() async {

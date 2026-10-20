@@ -30,6 +30,11 @@ class FakeHubRepository implements HubRepository {
   var devices = <PairedDevice>[const PairedDevice(id: 'd1', kind: 'client', name: 'Pixel', platform: 'android')];
   final ended = <String>[];
   final answered = <Map<String, String>>[];
+  final options = <int>[];
+  final clientIds = <String>[];
+  final modes = <(String, PermissionMode, Duration?)>[];
+  final keysSent = <(String, List<String>, String)>[];
+  var screenText = '';
   var disconnected = false;
 
   Result<String> Function(String session, bool fork)? onSend;
@@ -49,6 +54,11 @@ class FakeHubRepository implements HubRepository {
 
   @override
   void connect(HubConnection connection) {}
+
+  final activity = <bool>[];
+
+  @override
+  void setActive({required bool active}) => activity.add(active);
 
   @override
   Future<void> disconnect() async {
@@ -79,8 +89,10 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) async {
+  Future<Result<String>> sendMessage(String sessionId, String text,
+      {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
     sent.add((sessionId, text, fork));
+    clientIds.add(clientId);
     attachmentsSent.add(attachments);
     return onSend?.call(sessionId, fork) ?? Ok(fork ? 'fork-of-$sessionId' : sessionId);
   }
@@ -131,6 +143,13 @@ class FakeHubRepository implements HubRepository {
 
   @override
   Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
+
+  List<ConnectedClient>? clientList = const [
+    ConnectedClient(name: 'Pixel (android)', platform: 'android', appVersion: '0.14.0', deviceId: 'd1'),
+  ];
+
+  @override
+  Future<Result<List<ConnectedClient>>> clients() async => clientList == null ? const Err(NotFoundFailure('clients')) : Ok(clientList!);
 
   @override
   Future<Result<List<TailnetDevice>>> tailnet() async => const Ok([
@@ -209,10 +228,28 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
+  Future<Result<void>> decideApproval(String approvalId,
+      {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
     decided.add((approvalId, allow));
     answered.add(answers);
+    options.add(option);
     return decideResult ?? const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) async {
+    modes.add((sessionId, mode, revertAfter));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<ScreenSnapshot>> screen(String sessionId) async =>
+      Ok(ScreenSnapshot(session: sessionId, text: screenText, captured: DateTime(2026)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) async {
+    keysSent.add((sessionId, keys, text));
+    return const Ok(null);
   }
 
   @override
@@ -220,6 +257,14 @@ class FakeHubRepository implements HubRepository {
 }
 
 class FakeSettingsRepository implements SettingsRepository {
+  final outboxes = <String, List<OutboxEntry>>{};
+
+  @override
+  Future<List<OutboxEntry>> loadOutbox(String session) async => outboxes[session] ?? const [];
+
+  @override
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries) async => outboxes[session] = entries;
+
   HubConnection saved = const HubConnection(url: '', token: '');
   Appearance appearance = const Appearance();
 
@@ -279,6 +324,11 @@ class FakeHubSocket implements HubSocket {
 
   @override
   void subscribe(String session, Int64 afterSeq) => subscribed.add((session, afterSeq));
+
+  final presence = <bool>[];
+
+  @override
+  void setPresence({required bool active}) => presence.add(active);
 
   @override
   void unsubscribe(String session) => unsubscribed.add(session);

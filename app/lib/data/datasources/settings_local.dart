@@ -95,6 +95,24 @@ class SettingsLocalDataSource {
     }
   }
 
+  /// A session's outbox as JSON, kept across restarts.
+  Future<String> readOutbox(String session) async {
+    try {
+      return (await _prefs).getString('outbox:$session') ?? '';
+    } on Exception {
+      return '';
+    }
+  }
+
+  Future<void> writeOutbox(String session, String json) async {
+    try {
+      final prefs = await _prefs;
+      json.isEmpty ? await prefs.remove('outbox:$session') : await prefs.setString('outbox:$session', json);
+    } on Exception {
+      // The next write tries again; the message is also still on screen.
+    }
+  }
+
   Future<void> writeAppearance(String mode, String palette, int? accent) async {
     try {
       final prefs = await _prefs;

@@ -86,9 +86,23 @@ class Session extends Equatable {
     this.lineage = '',
     this.scratch = false,
     this.global = false,
+    this.permissionMode = '',
+    this.modeRevert,
+    this.modeRevertTo = '',
+    this.backedUp,
+    this.backedUpBytes = 0,
   });
 
+  /// The hub's latest background backup of the transcript.
+  final DateTime? backedUp;
+  final int backedUpBytes;
+
   final String id, node, title, cwd, gitBranch;
+
+  /// Claude Code's permission mode (default, acceptEdits, plan, auto); empty
+  /// until known. Set for a while, it goes back to [modeRevertTo] at [modeRevert].
+  final String permissionMode, modeRevertTo;
+  final DateTime? modeRevert;
   final DateTime? created, updated;
   final int messageCount;
   final SessionState state;
@@ -138,6 +152,9 @@ class Session extends Equatable {
   /// Claude can be interrupted wherever it runs, Windows terminals included.
   bool get canInterrupt => isBusy && (host != SessionHost.terminal || terminalInput);
 
+  /// Has a terminal Tether can read and press keys in.
+  bool get hasScreen => isLive && (host == SessionHost.tmux || (host == SessionHost.terminal && terminalInput));
+
   int get todosDone => todos.where((t) => t.status == TodoStatus.completed).length;
   TodoItem? get currentTodo => todos.where((t) => t.status == TodoStatus.inProgress).firstOrNull;
 
@@ -145,10 +162,25 @@ class Session extends Equatable {
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
         lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived, parent, forkPoint, lineage, scratch, global,
+        permissionMode, modeRevert, modeRevertTo, backedUp, backedUpBytes,
       ];
 }
 
-enum ApprovalKind { tool, folderTrust, question }
+/// Claude Code's permission modes the app can switch between, as Shift+Tab
+/// cycles them.
+enum PermissionMode {
+  normal('default', 'Ask first', 'Claude asks before editing files or running commands.'),
+  acceptEdits('acceptEdits', 'Accept edits', 'File edits go ahead; commands still ask.'),
+  plan('plan', 'Plan', 'Claude reads and plans, and changes nothing until you approve.'),
+  auto('auto', 'Auto', 'Claude Code decides what needs asking.');
+
+  const PermissionMode(this.wire, this.label, this.blurb);
+  final String wire, label, blurb;
+
+  static PermissionMode? of(String wire) => values.where((m) => m.wire == wire).firstOrNull;
+}
+
+enum ApprovalKind { tool, folderTrust, question, prompt }
 
 /// One of the questions Claude asks with AskUserQuestion.
 class Question extends Equatable {
@@ -182,12 +214,21 @@ class Approval extends Equatable {
     this.description = '',
     this.created,
     this.preview,
+    this.options = const [],
+    this.selected = -1,
+    this.screen = '',
   });
 
   final String id, session, node;
   final ApprovalKind kind;
   final String toolName, inputJson, description;
   final DateTime? created;
+
+  /// A prompt's choices as on screen, the one the cursor is on, and the
+  /// screen they were read from.
+  final List<String> options;
+  final int selected;
+  final String screen;
 
   /// The tool call rendered as a card, for tool approvals.
   final render.ToolCard? preview;
@@ -215,7 +256,7 @@ class Approval extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created];
+  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created, options, selected, screen];
 }
 
 /// Everything the dashboard shows, as of now.
@@ -791,4 +832,68 @@ class WorkspaceRoot extends Equatable {
 
   @override
   List<Object?> get props => [node, path];
+}
+
+/// A session's terminal as text, read on its machine.
+class ScreenSnapshot extends Equatable {
+  const ScreenSnapshot({required this.session, this.text = '', this.captured, this.error = ''});
+
+  final String session, text, error;
+  final DateTime? captured;
+
+  @override
+  List<Object?> get props => [session, text, captured, error];
+}
+
+enum OutboxState { sending, sent, failed }
+
+/// A message from this device that the session's timeline doesn't show yet.
+/// It's kept on the device until it does, so a restart, a dropped send or a
+/// message Claude Code holds in its queue can't lose it.
+class OutboxEntry extends Equatable {
+  const OutboxEntry({
+    required this.id,
+    required this.session,
+    required this.text,
+    required this.created,
+    this.attachments = const [],
+    this.state = OutboxState.sending,
+    this.sentAt,
+    this.error = '',
+  });
+
+  /// Also the message's client id on the hub, which sends a repeat once.
+  final String id, session, text, error;
+  final List<String> attachments;
+  final DateTime created;
+  final OutboxState state;
+  final DateTime? sentAt;
+
+  /// Sent a while ago and still not in the timeline.
+  bool unconfirmed(DateTime now) => state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > const Duration(minutes: 10);
+
+  OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error}) => OutboxEntry(
+        id: id,
+        session: session,
+        text: text,
+        created: created,
+        attachments: attachments,
+        state: state ?? this.state,
+        sentAt: sentAt ?? this.sentAt,
+        error: error ?? this.error,
+      );
+
+  @override
+  List<Object?> get props => [id, session, text, attachments, created, state, sentAt, error];
+}
+
+/// An app connected to the hub right now.
+class ConnectedClient extends Equatable {
+  const ConnectedClient({required this.name, this.platform = '', this.appVersion = '', this.deviceId = '', this.ip = '', this.connected});
+
+  final String name, platform, appVersion, deviceId, ip;
+  final DateTime? connected;
+
+  @override
+  List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
 }

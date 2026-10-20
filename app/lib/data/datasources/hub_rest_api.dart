@@ -36,9 +36,9 @@ class HubRestApi {
 
   Future<String> createSession(pb.CreateSession body) async => (await _post('/sessions', body, pb.Ack())).session;
 
-  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const []}) async => (await _post(
+  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) async => (await _post(
         '/sessions/${Uri.encodeComponent(session)}/messages',
-        pb.SendMessage(text: text, fork: fork, attachments: attachments),
+        pb.SendMessage(text: text, fork: fork, attachments: attachments, clientId: clientId.isEmpty ? null : clientId),
         pb.Ack(),
       ))
           .session;
@@ -149,6 +149,8 @@ class HubRestApi {
 
   Future<pb.Tailnet> tailnet() => _get('/tailnet', pb.Tailnet());
 
+  Future<pb.ClientList> clients() => _get('/clients', pb.ClientList());
+
   Future<pb.CodebaseList> codebases() => _get('/codebases', pb.CodebaseList());
 
   Future<void> snapshotCodebase(String id) => _post('/codebases/${Uri.encodeComponent(id)}/snapshot', null, pb.Ack());
@@ -191,9 +193,23 @@ class HubRestApi {
   Future<void> archive(String session, {required bool archived}) =>
       _post('/sessions/${Uri.encodeComponent(session)}/archive', pb.ArchiveSession(archived: archived), pb.Ack());
 
-  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) => _post(
+  Future<void> setMode(String session, String mode, {Duration? revertAfter}) => _post(
+        '/sessions/${Uri.encodeComponent(session)}/mode',
+        pb.SetPermissionMode(mode: mode, revertAfterMs: revertAfter == null ? null : Int64(revertAfter.inMilliseconds)),
+        pb.Ack(),
+      );
+
+  Future<pb.ScreenSnapshot> screen(String session) =>
+      _send(() => _client.get(_endpoint.api('/sessions/${Uri.encodeComponent(session)}/screen'), headers: _headers), pb.ScreenSnapshot(),
+          timeout: const Duration(seconds: 20));
+
+  Future<void> sendKeys(String session, List<String> keys, {String text = ''}) =>
+      _post('/sessions/${Uri.encodeComponent(session)}/keys', pb.SendKeys(keys: keys, text: text), pb.Ack());
+
+  Future<void> decide(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) => _post(
         '/approvals/${Uri.encodeComponent(approvalId)}',
-        pb.ApprovalDecision(decision: allow ? pbe.Decision.DECISION_ALLOW : pbe.Decision.DECISION_DENY, message: message, answers: answers.entries),
+        pb.ApprovalDecision(
+            decision: allow ? pbe.Decision.DECISION_ALLOW : pbe.Decision.DECISION_DENY, message: message, answers: answers.entries, option: option),
         pb.Ack(),
       );
 

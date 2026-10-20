@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../artifacts/attachments.dart';
 import '../artifacts/files_page.dart';
@@ -15,7 +16,10 @@ import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
+import 'mode_picker.dart';
+import 'prompt_card.dart';
 import 'question_card.dart';
+import 'terminal_sheet.dart';
 import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
@@ -77,6 +81,8 @@ class _SessionBody extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a)),
+                        if (session.state == SessionState.awaitingApproval && s.approvals.isEmpty && session.hasScreen)
+                          StuckBanner(sessionId: session.id),
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
                         if (!session.acceptsInput && !s.forking)
                           _TerminalNotice(session: session)
@@ -118,6 +124,7 @@ class SessionHeader extends StatelessWidget {
       if (session.cwd.isNotEmpty) baseName(session.cwd),
       if (!narrow && session.gitBranch.isNotEmpty) session.gitBranch,
       if (!narrow && session.model.isNotEmpty) shortModel(session.model),
+      if (!narrow && session.backedUp != null) ago(session.backedUp) == 'now' ? 'backed up just now' : 'backed up ${ago(session.backedUp)} ago',
     ];
     return Container(
       padding: EdgeInsets.fromLTRB(leading == null ? 16 : 0, narrow ? 4 : 10, 4, narrow ? 4 : 10),
@@ -171,6 +178,7 @@ class SessionHeader extends StatelessWidget {
               ],
             ),
           ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
           if (forks.isNotEmpty && onOpenSession != null)
             PopupMenuButton<String>(
               key: const Key('forks'),
@@ -195,11 +203,16 @@ class SessionHeader extends StatelessWidget {
               ),
             ),
           if (session.canInterrupt)
-            IconButton(
-              key: const Key('interrupt'),
-              tooltip: 'Interrupt (Esc)',
-              icon: const Icon(Icons.stop_circle_outlined),
-              onPressed: () => bloc.add(const InterruptRequested()),
+            BlocSelector<SessionBloc, SessionViewState, bool>(
+              selector: (s) => s.interrupting,
+              builder: (context, interrupting) => IconButton(
+                key: const Key('interrupt'),
+                tooltip: interrupting ? 'Stopping…' : 'Interrupt (Esc)',
+                icon: interrupting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.stop_circle_outlined),
+                onPressed: interrupting ? null : () => bloc.add(const InterruptRequested()),
+              ),
             ),
           if (!narrow)
             IconButton(
@@ -237,6 +250,9 @@ class SessionHeader extends StatelessWidget {
                 case 'attach-files':
                   await attachToSession(context, session.id);
                   return;
+                case 'terminal':
+                  await showTerminalSheet(context, session.id);
+                  return;
                 case 'files':
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
@@ -261,6 +277,7 @@ class SessionHeader extends StatelessWidget {
               _menuItem('global', session.global ? Icons.cloud_off_outlined : Icons.cloud_upload_outlined,
                   session.global ? 'Stop keeping a copy on the hub' : 'Keep a copy on the hub'),
               if (session.global) _menuItem('continue', Icons.cloud_sync_outlined, 'Continue on the hub'),
+              if (session.hasScreen) _menuItem('terminal', Icons.terminal_rounded, 'Screen & keys'),
               _menuItem('attach-files', Icons.attach_file_rounded, 'Attach files to this session'),
               _menuItem('files', Icons.folder_open_rounded, "This session's files"),
               _menuItem('pages', Icons.web_rounded, 'Pages this session made'),
@@ -433,16 +450,27 @@ class _TimelineState extends State<_Timeline> {
     final busy = s.session?.isBusy ?? false;
     final approval = s.session?.state == SessionState.awaitingApproval;
     final entries = [..._entries(items), for (final q in queued) _Entry([q])];
+    // The hub's own "queued" item stands for a message once it has one.
+    final outbox = [
+      for (final o in s.outbox)
+        if (o.state != OutboxState.sent || !Outbox.queuedOnHub(o, s.items)) o,
+    ];
     if (_initial == null && (!s.loading || items.isNotEmpty)) {
       _initial = {for (final e in entries) e.key};
     }
-    if (entries.isEmpty) {
+    if (entries.isEmpty && outbox.isEmpty) {
       if (busy) {
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: _Working(waitingForApproval: approval)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: contentWidth),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _Working(waitingForApproval: approval, stopping: s.interrupting),
+                if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
+              ]),
+            ),
           ),
         );
       }
@@ -491,7 +519,14 @@ class _TimelineState extends State<_Timeline> {
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
                 alignment: Alignment.topCenter,
-                child: working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final o in outbox) _OutboxBubble(key: ValueKey('outbox-${o.id}'), entry: o),
+                    working ? _Working(waitingForApproval: approval, stopping: s.interrupting) : const SizedBox(width: double.infinity),
+                    if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
+                  ],
+                ),
               );
             } else {
               final e = entries[entries.length - i];
@@ -536,6 +571,76 @@ class _TimelineState extends State<_Timeline> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A message from this device the timeline doesn't show yet: on its way,
+/// waiting in Claude Code's queue, or not sent, with Retry.
+class _OutboxBubble extends StatelessWidget {
+  const _OutboxBubble({super.key, required this.entry});
+
+  final OutboxEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final e = entry;
+    final bloc = context.read<SessionBloc>();
+    final unconfirmed = e.unconfirmed(DateTime.now());
+    final failed = e.state == OutboxState.failed;
+    final (IconData icon, String status) = switch (e.state) {
+      OutboxState.sending => (Icons.upload_rounded, 'Sending…'),
+      OutboxState.failed => (Icons.error_outline_rounded, e.error.isEmpty ? 'Not sent' : 'Not sent · ${e.error}'),
+      OutboxState.sent when unconfirmed => (Icons.help_outline_rounded, 'Sent, but not in the session yet'),
+      OutboxState.sent => (Icons.schedule_rounded, 'Queued · Claude reads it at its next step'),
+    };
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10, left: 48),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: c.userBubble.withValues(alpha: failed ? 0.5 : 0.8),
+                borderRadius: BorderRadius.circular(16),
+                border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
+              ),
+              child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 13, color: failed ? c.danger : c.faint),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: failed ? c.danger : c.faint)),
+                  ),
+                  if (failed || unconfirmed) ...[
+                    TextButton(
+                      key: Key('outbox-retry-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxRetried(e.id)),
+                      child: Text(failed ? 'Retry' : 'Resend'),
+                    ),
+                    TextButton(
+                      key: Key('outbox-discard-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxDiscarded(e.id)),
+                      child: const Text('Discard'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -611,9 +716,9 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
 
 /// Shown at the end of the chat while Claude works between messages.
 class _Working extends StatefulWidget {
-  const _Working({required this.waitingForApproval});
+  const _Working({required this.waitingForApproval, this.stopping = false});
 
-  final bool waitingForApproval;
+  final bool waitingForApproval, stopping;
 
   @override
   State<_Working> createState() => _WorkingState();
@@ -654,7 +759,12 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
             ),
           ),
           const SizedBox(width: 6),
-          Text(widget.waitingForApproval ? 'Waiting for your approval' : 'Claude is working',
+          Text(
+              widget.stopping
+                  ? 'Stopping…'
+                  : widget.waitingForApproval
+                      ? 'Waiting for your approval'
+                      : 'Claude is working',
               style: TextStyle(fontSize: 12.5, color: c.muted)),
         ],
       ),
@@ -662,6 +772,45 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
   }
 
   static double _pulse(double t) => t < 0.5 ? t * 2 : (1 - t) * 2;
+}
+
+/// An interrupt that didn't stop the turn: press Esc again, look at the
+/// screen, or end the session.
+class _StillWorking extends StatelessWidget {
+  const _StillWorking({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bloc = context.read<SessionBloc>();
+    return Container(
+      key: const Key('still-working'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: [
+          Text(session.error.isNotEmpty ? session.error : "Claude hasn't stopped yet.", style: const TextStyle(fontSize: 13)),
+          TextButton(key: const Key('interrupt-again'), onPressed: () => bloc.add(const InterruptRequested()), child: const Text('Esc again')),
+          if (session.hasScreen)
+            TextButton(onPressed: () => showTerminalSheet(context, session.id), child: const Text('Show screen')),
+          if (session.canEnd)
+            TextButton(
+              key: const Key('interrupt-end'),
+              style: TextButton.styleFrom(foregroundColor: c.danger),
+              onPressed: () async {
+                if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
+              },
+              child: const Text('End session'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<bool> _confirmEnd(BuildContext context, Session session) async =>
@@ -917,7 +1066,12 @@ class _ComposerState extends State<Composer> {
           plain: true,
           onPressed: s.canType ? _attach : null,
         ),
-        if (canStop) PromptButton(tooltip: 'Stop', icon: Icons.stop_rounded, onPressed: () => bloc.add(const InterruptRequested())),
+        if (canStop)
+          PromptButton(
+            tooltip: s.interrupting ? 'Stopping…' : 'Stop',
+            icon: Icons.stop_rounded,
+            onPressed: s.interrupting ? null : () => bloc.add(const InterruptRequested()),
+          ),
         PromptButton(key: const Key('send'), tooltip: 'Send', icon: Icons.arrow_upward_rounded, filled: true, busy: s.sending, onPressed: canSubmit ? _submit : null),
       ],
       footer: isDesktop
@@ -1001,9 +1155,15 @@ class ApprovalCard extends StatelessWidget {
     final c = context.colors;
     final a = approval;
     if (a.kind == ApprovalKind.question) return QuestionCard(approval: a, sessionTitle: sessionTitle);
+    if (a.kind == ApprovalKind.prompt) return PromptCard(approval: a, sessionTitle: sessionTitle);
     final trust = a.kind == ApprovalKind.folderTrust;
     final busy = context.select<HubCubit, bool>((cubit) => cubit.state.deciding.contains(a.id));
-    void decide(bool allow) => context.read<HubCubit>().decide(a.id, allow: allow);
+    final hub = context.read<HubCubit>();
+    void decide(bool allow) => hub.decide(a.id, allow: allow);
+    final mode = context.select<HubCubit, String>((h) => h.state.hub.sessions[a.session]?.permissionMode ?? '');
+    final plan = a.toolName == 'ExitPlanMode';
+    // Edits asked one by one in the default mode: offer to stop asking.
+    final edit = !plan && mode != 'acceptEdits' && const {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}.contains(a.toolName);
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
@@ -1035,12 +1195,21 @@ class ApprovalCard extends StatelessWidget {
           else
             Text(a.description, style: TextStyle(fontSize: 13, color: c.muted)),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          // Wraps on narrow cards (dashboard, phone) rather than overflowing.
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : 'Deny')),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : 'Allow')),
+              if (plan || edit)
+                TextButton(
+                  key: Key('allow-accept-edits-${a.id}'),
+                  onPressed: busy ? null : () => hub.decideWithMode(a.id, a.session, PermissionMode.acceptEdits),
+                  child: Text(plan ? 'Approve, accept edits' : 'Allow, accept edits'),
+                ),
+              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : (plan ? 'Keep planning' : 'Deny'))),
+              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : (plan ? 'Approve plan' : 'Allow'))),
             ],
           ),
         ],

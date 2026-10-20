@@ -71,11 +71,14 @@ type Agent struct {
 	runs          map[string]*run
 	panes         map[string]string
 	trust         map[string]string
+	trustUntil    map[string]time.Time     // session -> while watchTrust owns its folder dialog
+	prompts       map[string]*screenPrompt // session -> the dialog shown as a card
 	hooks         map[string]*hookSession
 	hookApprovals map[string]*hookApproval
 	uploaded      map[string]bool    // files already sent to the artifact store
 	hashes        map[hashKey]string // file hashes for snapshots, while unchanged
 	snapMu        sync.Mutex         // one snapshot at a time
+	backupMu      sync.Mutex         // one backup run at a time
 	ended         map[string]*v1.SessionInfo
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
@@ -90,6 +93,8 @@ func New(cfg Config) (*Agent, error) {
 		runs:          map[string]*run{},
 		panes:         map[string]string{},
 		trust:         map[string]string{},
+		trustUntil:    map[string]time.Time{},
+		prompts:       map[string]*screenPrompt{},
 		hooks:         map[string]*hookSession{},
 		hookApprovals: map[string]*hookApproval{},
 		uploaded:      map[string]bool{},
@@ -136,6 +141,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir, "host", host)
 	go a.scanLoop(ctx)
+	go a.watchScreens(ctx)
 	go a.planLoop(ctx)
 	if a.cfg.MCP {
 		go a.registerMCP()
@@ -234,8 +240,16 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.scanCodebases(op.Scan.Roots)
 		case *v1.AgentCommand_Fetch:
 			go a.fetchAttachment(op.Fetch)
+		case *v1.AgentCommand_Keys:
+			go a.sendKeys(op.Keys)
+		case *v1.AgentCommand_Capture:
+			go a.capture(op.Capture.Session)
+		case *v1.AgentCommand_SetMode_:
+			go a.setMode(op.SetMode)
+		case *v1.AgentCommand_Backup:
+			go a.backup(op.Backup.Stored)
 		case *v1.AgentCommand_Send:
-			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments)
+			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode)
 		case *v1.AgentCommand_Interrupt_:
 			a.interrupt(op.Interrupt.Session)
 		case *v1.AgentCommand_Stop_:
@@ -273,6 +287,9 @@ func (a *Agent) decide(d *v1.ApprovalDecision) {
 		go a.answerTrust(d.ApprovalId, pane, d.Decision == v1.Decision_DECISION_ALLOW)
 		return
 	}
+	if a.answerPrompt(d.ApprovalId, d) {
+		return
+	}
 	if a.answerHook(d) {
 		return
 	}
@@ -297,7 +314,7 @@ func (a *Agent) pane(session string) string {
 
 func (a *Agent) start(o startOpts) {
 	if a.pane(o.session) != "" || a.run(o.session) != nil {
-		a.sendInput(o.session, o.prompt, o.attachments)
+		a.sendInput(o.session, o.prompt, o.attachments, o.permissionMode)
 		return
 	}
 	if o.resume != "" && o.cwd == "" {
@@ -388,6 +405,9 @@ func (a *Agent) startTmux(o startOpts) {
 	a.mu.Unlock()
 	a.sendStatus()
 	a.report(o.session)
+	a.mu.Lock()
+	a.trustUntil[o.session] = time.Now().Add(trustWatch)
+	a.mu.Unlock()
 	go a.watchTrust(o.session, o.cwd, pane, o.createCwd)
 }
 
@@ -469,7 +489,7 @@ func (a *Agent) answerTrust(id, pane string, allow bool) {
 	a.log.Warn("trust dialog did not close", "approval", id)
 }
 
-func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact) {
+func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode string) {
 	if len(attachments) > 0 {
 		cwd := a.index.Cwd(session)
 		if cwd == "" {
@@ -498,7 +518,7 @@ func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact) {
 		a.typeIntoTerminal(session, hs.pid, text)
 		return
 	}
-	a.start(startOpts{session: session, resume: session, prompt: text})
+	a.start(startOpts{session: session, resume: session, prompt: text, permissionMode: mode})
 }
 
 // typeIntoTerminal sends a message to a session open in the user's own
@@ -533,16 +553,42 @@ func (a *Agent) interrupt(session string) {
 	}
 	if err != nil {
 		a.log.Warn("interrupt", "session", session, "err", err)
+		a.commandFailed(session, "interrupt", "Couldn't interrupt: "+err.Error())
 		return
 	}
 	// Claude Code fires no Stop hook when a turn is interrupted, so nothing
 	// else would move an interactive session out of "running".
 	if interactive {
-		go func() {
-			time.Sleep(time.Second)
-			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
-		}()
+		go a.awaitInterrupt(session)
 	}
+}
+
+// awaitInterrupt watches the screen until Claude Code stops showing it's at
+// work, then marks the session ready; without a screen it waits a moment.
+func (a *Agent) awaitInterrupt(session string) {
+	t, err := a.screenTarget(session)
+	if err != nil {
+		time.Sleep(time.Second)
+		a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+		return
+	}
+	deadline := time.Now().Add(interruptWait)
+	for time.Now().Before(deadline) {
+		time.Sleep(300 * time.Millisecond)
+		screen, err := a.readScreen(t)
+		if err != nil {
+			continue
+		}
+		if !working(screen) {
+			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+			return
+		}
+	}
+	a.commandFailed(session, "interrupt", "Claude Code is still working; press Esc again, or end the session")
+}
+
+func (a *Agent) commandFailed(session, command, msg string) {
+	a.send(&v1.Frame{Body: &v1.Frame_CommandResult{CommandResult: &v1.CommandResult{Session: session, Command: command, Error: msg}}})
 }
 
 // stop ends a session the agent hosts: /exit for tmux, so Claude Code

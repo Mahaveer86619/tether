@@ -46,10 +46,16 @@ type Config struct {
 }
 
 type client struct {
-	conn   *wire.Conn
-	name   string
-	device string
-	ip     string
+	conn     *wire.Conn
+	name     string
+	device   string
+	ip       string
+	platform string
+	version  string
+	since    time.Time
+	// In the foreground, as the app last said; apps from before presence
+	// count as active while connected.
+	active bool
 }
 
 // pendingItems holds coalesced partial-text updates in arrival order.
@@ -93,22 +99,32 @@ type Hub struct {
 
 	uploadMu  sync.Mutex
 	uploading map[string]bool // upload id -> a request is writing it
+
+	queuedItems   map[string]map[string]string         // session -> its "queued" placeholders' text, by item
+	modeBefore    map[string]modeSwitch                // session -> a switch the node hasn't confirmed
+	screens       map[string]*v1.ScreenSnapshot        // session -> its last terminal screen
+	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
+	lastBackup    time.Time
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
 	h := &Hub{
-		cfg:       cfg,
-		store:     st,
-		log:       cfg.Log,
-		agents:    map[string]*wire.Conn{},
-		clients:   map[*client]struct{}{},
-		nodes:     map[string]*v1.NodeStatus{},
-		sessions:  map[string]*v1.SessionInfo{},
-		subs:      map[string]map[*client]struct{}{},
-		builders:  map[string]*render.Builder{},
-		pending:   map[string]*pendingItems{},
-		approvals: map[string]*v1.ApprovalRequest{},
-		mirroring: map[string]bool{},
+		cfg:           cfg,
+		store:         st,
+		log:           cfg.Log,
+		agents:        map[string]*wire.Conn{},
+		clients:       map[*client]struct{}{},
+		nodes:         map[string]*v1.NodeStatus{},
+		sessions:      map[string]*v1.SessionInfo{},
+		subs:          map[string]map[*client]struct{}{},
+		builders:      map[string]*render.Builder{},
+		screens:       map[string]*v1.ScreenSnapshot{},
+		queuedItems:   map[string]map[string]string{},
+		modeBefore:    map[string]modeSwitch{},
+		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
+		pending:       map[string]*pendingItems{},
+		approvals:     map[string]*v1.ApprovalRequest{},
+		mirroring:     map[string]bool{},
 
 		agentDevices: map[string]string{},
 		agentIPs:     map[string]string{},
@@ -176,6 +192,8 @@ func (h *Hub) Handler() http.Handler {
 // Run flushes coalesced streaming updates until ctx ends.
 func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
+	go h.modeLoop(ctx)
+	go h.backupLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -243,7 +261,7 @@ func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 // ---- clients ----
 
 func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip string) {
-	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip}
+	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now(), active: true}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
 	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(device, ip)}})
@@ -294,6 +312,9 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 	switch b := f.Body.(type) {
 	case *v1.Frame_Subscribe:
 		h.subscribe(c, f.Id, b.Subscribe)
+		return
+	case *v1.Frame_ClientPresence:
+		h.notePresence(c, b.ClientPresence.Active)
 		return
 	case *v1.Frame_Unsubscribe:
 		if set := h.subs[b.Unsubscribe.Session]; set != nil {
@@ -398,6 +419,9 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	if strings.TrimSpace(m.Text) == "" {
 		return "", invalid("message is empty")
 	}
+	if !m.Fork && h.alreadySent(info.Id, m.ClientId) {
+		return info.Id, nil
+	}
 	if m.Fork {
 		now := time.Now().UnixMilli()
 		point, perr := h.store.LastItemID(info.Id)
@@ -416,7 +440,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		h.recordLineage(&v1.LineageEvent{Session: fork.Id, Parent: info.Id, Kind: "fork", ForkPoint: point, By: from, AtMs: now})
 		h.noteSent(fork.Id, m.Text, from)
 		agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
-			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true,
+			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true, PermissionMode: modeArg(info.PermissionMode),
 		}}}))
 		return fork.Id, nil
 	}
@@ -435,8 +459,8 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	if long != nil {
 		attachments = append(attachments, long)
 	}
-	h.noteSent(info.Id, text, from)
-	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments}}}))
+	h.noteSentAs(info.Id, text, from, m.ClientId)
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode)}}}))
 	return info.Id, nil
 }
 
@@ -494,6 +518,7 @@ func (h *Hub) rebuild(session string) (string, *opError) {
 	}
 	delete(h.builders, session)
 	delete(h.pending, session)
+	delete(h.queuedItems, session)
 	if h.mirroring[session] {
 		if agent := h.agents[info.Node]; agent != nil {
 			agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_StopMirror_{StopMirror: &v1.AgentCommand_StopMirror{Session: session}}}))
@@ -628,7 +653,7 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 	case *v1.Frame_ApprovalRequested:
 		a := b.ApprovalRequested
 		a.Node, a.CreatedMs = node, time.Now().UnixMilli()
-		if a.Kind != v1.ApprovalRequest_KIND_FOLDER_TRUST {
+		if a.Kind != v1.ApprovalRequest_KIND_FOLDER_TRUST && a.Kind != v1.ApprovalRequest_KIND_PROMPT {
 			a.Preview = render.ToolCard(a.ApprovalId, a.ToolName, json.RawMessage(a.InputJson))
 		}
 		h.approvals[a.ApprovalId] = a
@@ -640,6 +665,12 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 			delete(h.approvals, r.ApprovalId)
 			h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalResolved{ApprovalResolved: r}})
 		}
+	case *v1.Frame_ScreenSnapshot:
+		h.noteScreen(node, b.ScreenSnapshot)
+	case *v1.Frame_ModeResult:
+		h.noteModeResult(node, b.ModeResult)
+	case *v1.Frame_CommandResult:
+		h.noteCommandResult(node, b.CommandResult)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()
@@ -662,6 +693,8 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.Archived = cur.Archived && !busy(in.State)
 		in.Parent, in.ForkPoint, in.Lineage = cur.Parent, cur.ForkPoint, cur.Lineage
 		in.Scratch, in.Global = cur.Scratch, cur.Global
+		in.PermissionMode, in.ModeRevertMs, in.ModeRevertTo = cur.PermissionMode, cur.ModeRevertMs, cur.ModeRevertTo
+		in.BackedUpMs, in.BackedUpBytes = cur.BackedUpMs, cur.BackedUpBytes
 		// A global session's copy is refreshed whenever a turn ends.
 		if in.Global && busy(cur.State) && !busy(in.State) {
 			defer h.uploadTranscript(in)
@@ -734,6 +767,10 @@ func (h *Hub) applyPatch(s string, p render.Patch) {
 	if p.Cost != nil {
 		n.LastCostUsd = *p.Cost
 	}
+	// A pending switch wins over transcript lines written before it landed.
+	if p.Mode != "" && !h.switchingMode(s) {
+		n.PermissionMode = p.Mode
+	}
 	if !proto.Equal(n, h.sessions[s]) {
 		h.putSession(n)
 	}
@@ -757,6 +794,9 @@ func mergePatch(dst *render.Patch, p render.Patch) {
 	}
 	if p.Cost != nil {
 		dst.Cost = p.Cost
+	}
+	if p.Mode != "" {
+		dst.Mode = p.Mode
 	}
 }
 
@@ -811,6 +851,7 @@ func (h *Hub) commit(s string, items []*v1.TimelineItem) {
 	}
 	h.tagSources(s, items)
 	h.expandLongText(s, items)
+	items = h.dropStaleQueued(s, items)
 	stored, seq, err := h.store.PutItems(s, items)
 	if err != nil {
 		h.log.Error("store items", "session", s, "err", err)

@@ -104,6 +104,9 @@ class HubRepositoryImpl implements HubRepository {
   void retryNow() => _socket.retryNow();
 
   @override
+  void setActive({required bool active}) => _socket.setPresence(active: active);
+
+  @override
   Stream<HubSnapshot> watchHub() async* {
     yield _snap;
     yield* _hub.stream;
@@ -309,8 +312,8 @@ class HubRepositoryImpl implements HubRepository {
       )));
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const []}) =>
-      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments));
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) =>
+      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments, clientId: clientId));
 
   @override
   Future<Result<void>> setGlobal(String sessionId, {required bool global}) => _command(() => _api.setGlobal(sessionId, global: global));
@@ -372,6 +375,9 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<List<ConnectedClient>>> clients() => _command(() async => [for (final c in (await _api.clients()).clients) clientFromPb(c)]);
+
+  @override
   Future<Result<List<TailnetDevice>>> tailnet() => _command(() async {
         final t = await _api.tailnet();
         if (t.error.isNotEmpty && t.devices.isEmpty) throw ApiException(statusCode: 500, code: 'tailscale', message: t.error);
@@ -411,8 +417,18 @@ class HubRepositoryImpl implements HubRepository {
       _command(() => _api.archive(sessionId, archived: archived));
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}}) async {
-    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers));
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) =>
+      _command(() => _api.setMode(sessionId, mode.wire, revertAfter: revertAfter));
+
+  @override
+  Future<Result<ScreenSnapshot>> screen(String sessionId) => _command(() async => screenFromPb(await _api.screen(sessionId)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) => _command(() => _api.sendKeys(sessionId, keys, text: text));
+
+  @override
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
+    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers, option: option));
     // Optimistic: the hub broadcasts the resolution, but don't wait for it.
     if (r.isOk) _emit(_snap.copyWith(approvals: {..._snap.approvals}..remove(approvalId)));
     return r;

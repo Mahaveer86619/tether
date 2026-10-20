@@ -36,6 +36,8 @@ message UserText {
   // Set when the message went to the session as a file because it was long;
   // text then holds the whole message, set by the hub.
   string attachment_id = 4;
+  // SendMessage.client_id of the message this is, when the hub sent it.
+  string client_id = 5;
 }
 
 message Markdown {
