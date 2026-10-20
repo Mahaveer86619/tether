@@ -38,6 +38,7 @@ class HubCubit extends Cubit<HubState> {
     required DecideApproval decideApproval,
     required this._setArchived,
     required this._retry,
+    required this._setMode,
   })  : _decide = decideApproval,
         super(const HubState()) {
     _sub = watchHub().listen((hub) => emit(state.copyWith(hub: hub)));
@@ -45,6 +46,7 @@ class HubCubit extends Cubit<HubState> {
 
   final DecideApproval _decide;
   final SetSessionArchived _setArchived;
+  final SetPermissionMode _setMode;
   final RetryConnection _retry;
   late final StreamSubscription<HubSnapshot> _sub;
 
@@ -62,6 +64,18 @@ class HubCubit extends Cubit<HubState> {
   Future<void> setArchived(String sessionId, {required bool archived}) async {
     final result = await _setArchived(sessionId, archived: archived);
     result.fold((f) => emit(state.copyWith(failure: f, failureId: state.failureId + 1)), (_) {});
+  }
+
+  Future<void> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) async {
+    final result = await _setMode(sessionId, mode, revertAfter: revertAfter);
+    result.fold((f) => emit(state.copyWith(failure: f, failureId: state.failureId + 1)), (_) {});
+  }
+
+  /// Allows a tool request and switches the session's mode with it, e.g.
+  /// approving a plan and letting the edits go ahead.
+  Future<void> decideWithMode(String approvalId, String sessionId, PermissionMode mode) async {
+    await decide(approvalId, allow: true);
+    await setMode(sessionId, mode);
   }
 
   void retry() => _retry();

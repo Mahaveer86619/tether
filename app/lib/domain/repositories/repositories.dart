@@ -93,6 +93,10 @@ abstract interface class HubRepository {
   /// [option] picks a prompt's choice (1-based); 0 takes the one selected.
   Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0});
 
+  /// Switches the session's permission mode; with [revertAfter], the hub
+  /// puts the current one back after that long.
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter});
+
   /// Reads the session's terminal on its machine.
   Future<Result<ScreenSnapshot>> screen(String sessionId);
 

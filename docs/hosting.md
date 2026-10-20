@@ -35,6 +35,18 @@ Some of Claude Code's dialogs fire no hook: feedback surveys (like the auto-mode
 - **Answers:** an option is picked by moving the cursor (re-reading the screen after each key, since the TUI drops keys while redrawing) and pressing Enter. A survey option is picked by pressing its key. Deny presses Esc. `ApprovalDecision.option` is 1-based, and 0 takes the option under the cursor, so an older app's Allow picks the highlighted option.
 - **The way out:** for anything the parser misses, `GET /api/v1/sessions/{id}/screen` returns the current screen. The hub asks the node and waits up to 4 seconds. `POST /api/v1/sessions/{id}/keys` presses keys (Enter, Escape, arrows, Tab, Shift+Tab, Space, Backspace, digits) and types text. The app has "Screen & keys" in the session menu and on every prompt card, and a banner when a session waits for approval with no card. Headless runs have no terminal; their questions come through the control protocol.
 
+### Permission modes
+
+Every session shows its permission mode: default ("Ask first"), acceptEdits, plan or auto.
+- **Where the mode comes from:** the transcript's `permissionMode` field (the init line and user lines, not subagents'), or the last switch made from an app. It's kept on `SessionInfo.permission_mode`, which agents' own reports don't touch.
+- **Switching:** `POST /api/v1/sessions/{id}/mode` with `{mode, revertAfterMs}`. The hub shows the new mode at once and sends the node `AgentCommand.set_mode`, then the node does one of three things:
+  - A headless run gets a `set_permission_mode` control request.
+  - An interactive session (tmux, or a Windows console the agent can attach to) gets Shift+Tab presses, Claude Code's own mode cycle. The agent presses until the mode line at the bottom of the screen shows the mode, up to 6 times. It refuses while a dialog is open.
+  - With no live process, nothing happens yet. The next resume (`SendInput.permission_mode`) and every fork start in the mode the session shows.
+- **When a switch fails:** the agent answers with `ModeResult`. On an error, the hub puts the old mode back and shows why on the session. While a switch is unanswered, older transcript lines can't put the old mode back. That lasts up to 30 seconds, because an agent from before modes never answers.
+- **For a while:** with `revertAfterMs`, the hub stores when to go back, and what to, on the session. It's kept with the session, so it survives a restart. Every 15 seconds the hub checks for modes that are due and switches them back. A node that's offline is tried again later.
+- **In the app:** a chip in the session header shows the mode, and "· 12m left" when it goes back. It opens a picker (Ask first, Accept edits, Plan, Auto; for good, 15 min or 1 hour). Edit approvals in the default mode offer "Allow, accept edits". A plan approval (`ExitPlanMode`) offers "Approve plan", "Approve, accept edits" and "Keep planning".
+
 ## Typing into your own terminal (Windows)
 
 On Windows the agent finds the Claude Code process behind each hook request (the hook's loopback connection → `GetExtendedTcpTable` → owning PID). It can then type into that process's console with `AttachConsole` + `WriteConsoleInput`, exactly as if you had typed there. Such sessions report `terminalInput: true`, and the app's composer works for them.

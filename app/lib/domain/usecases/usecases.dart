@@ -208,6 +208,18 @@ class DecideApproval {
       _hub.decideApproval(approvalId, allow: allow, message: message, answers: answers, option: option);
 }
 
+class SetPermissionMode {
+  const SetPermissionMode(this._hub);
+  final HubRepository _hub;
+
+  /// Switching to the mode a session is already in only clears a pending revert.
+  Future<Result<void>> call(String sessionId, PermissionMode mode, {Duration? revertAfter}) {
+    final session = _hub.current.sessions[sessionId];
+    if (session == null) return Future.value(Err(NotFoundFailure('session $sessionId')));
+    return _hub.setMode(sessionId, mode, revertAfter: revertAfter);
+  }
+}
+
 /// A session's terminal: its screen and key presses, for dialogs Tether
 /// can't turn into a card.
 class TerminalControl {

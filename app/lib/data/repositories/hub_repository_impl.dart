@@ -411,6 +411,10 @@ class HubRepositoryImpl implements HubRepository {
       _command(() => _api.archive(sessionId, archived: archived));
 
   @override
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) =>
+      _command(() => _api.setMode(sessionId, mode.wire, revertAfter: revertAfter));
+
+  @override
   Future<Result<ScreenSnapshot>> screen(String sessionId) => _command(() async => screenFromPb(await _api.screen(sessionId)));
 
   @override

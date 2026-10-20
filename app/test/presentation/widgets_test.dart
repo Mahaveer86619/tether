@@ -354,6 +354,48 @@ void main() {
       expect([for (final k in typed) '${k.$2.join('+')}|${k.$3}'], ['|y', 'Enter|'], reason: 'the text, then Enter on its own');
     });
 
+    testWidgets('the permission mode shows in the header and can be switched for a while', (tester) async {
+      repo.emitHub(snapshotWith([
+        Session(
+          id: 's1',
+          node: 'minipc',
+          title: 'Session s1',
+          state: SessionState.ready,
+          host: SessionHost.tmux,
+          updated: DateTime(2026, 10, 11),
+          permissionMode: 'plan',
+          modeRevert: DateTime.now().add(const Duration(minutes: 12, seconds: 30)),
+          modeRevertTo: 'default',
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Plan · 12m left'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('mode-chip')));
+      await settle(tester);
+      expect(find.textContaining('Goes back to Ask first'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('mode-for-60')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('mode-acceptEdits')));
+      await settle(tester);
+      expect(repo.modes.single, ('s1', PermissionMode.acceptEdits, const Duration(hours: 1)));
+    });
+
+    testWidgets('approving a plan can also let its edits go ahead', (tester) async {
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)], approvals: [
+        Approval(id: 'pl', session: 's1', node: 'minipc', kind: ApprovalKind.tool, toolName: 'ExitPlanMode', inputJson: '{"plan":"1. do it"}', created: DateTime(2026)),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Approve plan'), findsWidgets);
+      await tester.tap(find.byKey(const Key('allow-accept-edits-pl')).last);
+      await settle(tester);
+      expect(repo.decided.last, ('pl', true));
+      expect(repo.modes.single.$2, PermissionMode.acceptEdits);
+    });
+
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
       const input = '{"questions":['
           '{"question":"Which DB?","header":"DB","multiSelect":false,"options":[{"label":"Postgres","description":"server"},{"label":"SQLite"}]},'

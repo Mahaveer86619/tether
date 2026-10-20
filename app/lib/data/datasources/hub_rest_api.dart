@@ -191,6 +191,12 @@ class HubRestApi {
   Future<void> archive(String session, {required bool archived}) =>
       _post('/sessions/${Uri.encodeComponent(session)}/archive', pb.ArchiveSession(archived: archived), pb.Ack());
 
+  Future<void> setMode(String session, String mode, {Duration? revertAfter}) => _post(
+        '/sessions/${Uri.encodeComponent(session)}/mode',
+        pb.SetPermissionMode(mode: mode, revertAfterMs: revertAfter == null ? null : Int64(revertAfter.inMilliseconds)),
+        pb.Ack(),
+      );
+
   Future<pb.ScreenSnapshot> screen(String session) =>
       _send(() => _client.get(_endpoint.api('/sessions/${Uri.encodeComponent(session)}/screen'), headers: _headers), pb.ScreenSnapshot(),
           timeout: const Duration(seconds: 20));

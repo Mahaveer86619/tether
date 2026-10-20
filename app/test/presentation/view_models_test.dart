@@ -331,6 +331,7 @@ void main() {
         const Approval(id: 'ap', session: 's1', node: 'minipc', kind: ApprovalKind.tool, toolName: 'Bash'),
       ]));
       final cubit = HubCubit(
+        setMode: SetPermissionMode(repo),
           watchHub: WatchHub(repo), decideApproval: DecideApproval(repo), setArchived: SetSessionArchived(repo), retry: RetryConnection(repo));
       await Future<void>.delayed(Duration.zero);
       expect(cubit.state.hub.approvals, contains('ap'));

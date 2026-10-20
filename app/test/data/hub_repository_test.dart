@@ -125,6 +125,17 @@ void main() {
     expect(a.screen, contains('2: Fine'));
   });
 
+  test('a session carries its permission mode and when a timed mode goes back', () async {
+    socket.push(SocketFrame(welcome()));
+    socket.push(SocketFrame(pb.Frame(
+      sessionInfo: pb.SessionInfo(id: 's9', node: 'minipc', permissionMode: 'acceptEdits', modeRevertMs: Int64(1792400000000), modeRevertTo: 'default'),
+    )));
+    final s = repo.current.sessions['s9']!;
+    expect(PermissionMode.of(s.permissionMode), PermissionMode.acceptEdits);
+    expect(s.modeRevert, DateTime.fromMillisecondsSinceEpoch(1792400000000));
+    expect(s.modeRevertTo, 'default');
+  });
+
   test('losing the socket marks everything offline, unauthorized stops', () async {
     socket.push(SocketFrame(welcome()));
     socket.push(const SocketClosed(error: 'reset'));

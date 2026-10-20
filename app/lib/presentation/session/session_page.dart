@@ -16,6 +16,7 @@ import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
+import 'mode_picker.dart';
 import 'prompt_card.dart';
 import 'question_card.dart';
 import 'terminal_sheet.dart';
@@ -176,6 +177,7 @@ class SessionHeader extends StatelessWidget {
               ],
             ),
           ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
           if (forks.isNotEmpty && onOpenSession != null)
             PopupMenuButton<String>(
               key: const Key('forks'),
@@ -1094,7 +1096,12 @@ class ApprovalCard extends StatelessWidget {
     if (a.kind == ApprovalKind.prompt) return PromptCard(approval: a, sessionTitle: sessionTitle);
     final trust = a.kind == ApprovalKind.folderTrust;
     final busy = context.select<HubCubit, bool>((cubit) => cubit.state.deciding.contains(a.id));
-    void decide(bool allow) => context.read<HubCubit>().decide(a.id, allow: allow);
+    final hub = context.read<HubCubit>();
+    void decide(bool allow) => hub.decide(a.id, allow: allow);
+    final mode = context.select<HubCubit, String>((h) => h.state.hub.sessions[a.session]?.permissionMode ?? '');
+    final plan = a.toolName == 'ExitPlanMode';
+    // Edits asked one by one in the default mode: offer to stop asking.
+    final edit = !plan && mode != 'acceptEdits' && const {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}.contains(a.toolName);
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
@@ -1126,12 +1133,21 @@ class ApprovalCard extends StatelessWidget {
           else
             Text(a.description, style: TextStyle(fontSize: 13, color: c.muted)),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          // Wraps on narrow cards (dashboard, phone) rather than overflowing.
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : 'Deny')),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : 'Allow')),
+              if (plan || edit)
+                TextButton(
+                  key: Key('allow-accept-edits-${a.id}'),
+                  onPressed: busy ? null : () => hub.decideWithMode(a.id, a.session, PermissionMode.acceptEdits),
+                  child: Text(plan ? 'Approve, accept edits' : 'Allow, accept edits'),
+                ),
+              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : (plan ? 'Keep planning' : 'Deny'))),
+              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : (plan ? 'Approve plan' : 'Allow'))),
             ],
           ),
         ],

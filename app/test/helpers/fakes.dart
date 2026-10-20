@@ -32,6 +32,7 @@ class FakeHubRepository implements HubRepository {
   final answered = <Map<String, String>>[];
   final options = <int>[];
   final clientIds = <String>[];
+  final modes = <(String, PermissionMode, Duration?)>[];
   final keysSent = <(String, List<String>, String)>[];
   var screenText = '';
   var disconnected = false;
@@ -221,6 +222,12 @@ class FakeHubRepository implements HubRepository {
     answered.add(answers);
     options.add(option);
     return decideResult ?? const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) async {
+    modes.add((sessionId, mode, revertAfter));
+    return const Ok(null);
   }
 
   @override

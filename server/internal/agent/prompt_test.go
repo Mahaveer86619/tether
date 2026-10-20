@@ -167,3 +167,18 @@ func TestAnswerPromptOnlyClaimsItsOwnCards(t *testing.T) {
 		t.Fatal("an unknown approval isn't a prompt")
 	}
 }
+
+func TestScreenMode(t *testing.T) {
+	for screen, want := range map[string]string{
+		"╭──╮\n│ > │\n╰──╯\n  ⏵⏵ accept edits on (shift+tab to cycle)": "acceptEdits",
+		"│ > │\n  ⏸ plan mode on (shift+tab to cycle)":                         "plan",
+		"│ > │\n  ⏵⏵ auto mode on (shift+tab to cycle)":                        "auto",
+		"│ > │\n  ? for shortcuts":                                            "default",
+		// Only the bottom lines count: the words in Claude's answer don't.
+		"⏺ I turned plan mode on earlier.\n\n\n\n\n\n\n│ > │\n  ? for shortcuts": "default",
+	} {
+		if got := screenMode(screen); got != want {
+			t.Errorf("%q: got %s, want %s", screen, got, want)
+		}
+	}
+}

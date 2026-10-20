@@ -48,6 +48,7 @@ enum Frame_Body {
   usageReport,
   planUsage,
   screenSnapshot,
+  modeResult,
   agentCommand,
   notSet
 }
@@ -84,6 +85,7 @@ class Frame extends $pb.GeneratedMessage {
     UsageReport? usageReport,
     PlanUsage? planUsage,
     ScreenSnapshot? screenSnapshot,
+    ModeResult? modeResult,
     AgentCommand? agentCommand,
   }) {
     final result = Frame._();
@@ -116,6 +118,7 @@ class Frame extends $pb.GeneratedMessage {
     if (usageReport != null) result.usageReport = usageReport;
     if (planUsage != null) result.planUsage = planUsage;
     if (screenSnapshot != null) result.screenSnapshot = screenSnapshot;
+    if (modeResult != null) result.modeResult = modeResult;
     if (agentCommand != null) result.agentCommand = agentCommand;
     return result;
   }
@@ -155,6 +158,7 @@ class Frame extends $pb.GeneratedMessage {
     53: Frame_Body.usageReport,
     54: Frame_Body.planUsage,
     55: Frame_Body.screenSnapshot,
+    56: Frame_Body.modeResult,
     60: Frame_Body.agentCommand,
     0: Frame_Body.notSet
   };
@@ -188,6 +192,7 @@ class Frame extends $pb.GeneratedMessage {
       53,
       54,
       55,
+      56,
       60
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
@@ -245,6 +250,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: PlanUsage.$_createMessage)
     ..aOM<ScreenSnapshot>(55, _omitFieldNames ? '' : 'screenSnapshot',
         subBuilder: ScreenSnapshot.$_createMessage)
+    ..aOM<ModeResult>(56, _omitFieldNames ? '' : 'modeResult',
+        subBuilder: ModeResult.$_createMessage)
     ..aOM<AgentCommand>(60, _omitFieldNames ? '' : 'agentCommand',
         subBuilder: AgentCommand.$_createMessage)
     ..hasRequiredFields = false;
@@ -294,6 +301,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(53)
   @$pb.TagNumber(54)
   @$pb.TagNumber(55)
+  @$pb.TagNumber(56)
   @$pb.TagNumber(60)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
@@ -321,6 +329,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(53)
   @$pb.TagNumber(54)
   @$pb.TagNumber(55)
+  @$pb.TagNumber(56)
   @$pb.TagNumber(60)
   void clearBody() => $_clearField($_whichOneof(0));
 
@@ -645,17 +654,29 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(55)
   ScreenSnapshot ensureScreenSnapshot() => $_ensure(28);
 
+  /// How a SetMode went.
+  @$pb.TagNumber(56)
+  ModeResult get modeResult => $_getN(29);
+  @$pb.TagNumber(56)
+  set modeResult(ModeResult value) => $_setField(56, value);
+  @$pb.TagNumber(56)
+  $core.bool hasModeResult() => $_has(29);
+  @$pb.TagNumber(56)
+  void clearModeResult() => $_clearField(56);
+  @$pb.TagNumber(56)
+  ModeResult ensureModeResult() => $_ensure(29);
+
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(29);
+  AgentCommand get agentCommand => $_getN(30);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(29);
+  $core.bool hasAgentCommand() => $_has(30);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(29);
+  AgentCommand ensureAgentCommand() => $_ensure(30);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -838,6 +859,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     $core.bool? global,
     $core.String? codebase,
     $core.String? snapshot,
+    $core.String? permissionMode,
+    $fixnum.Int64? modeRevertMs,
+    $core.String? modeRevertTo,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -866,6 +890,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (global != null) result.global = global;
     if (codebase != null) result.codebase = codebase;
     if (snapshot != null) result.snapshot = snapshot;
+    if (permissionMode != null) result.permissionMode = permissionMode;
+    if (modeRevertMs != null) result.modeRevertMs = modeRevertMs;
+    if (modeRevertTo != null) result.modeRevertTo = modeRevertTo;
     return result;
   }
 
@@ -911,6 +938,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     ..aOB(24, _omitFieldNames ? '' : 'global')
     ..aOS(25, _omitFieldNames ? '' : 'codebase')
     ..aOS(26, _omitFieldNames ? '' : 'snapshot')
+    ..aOS(27, _omitFieldNames ? '' : 'permissionMode')
+    ..aInt64(28, _omitFieldNames ? '' : 'modeRevertMs')
+    ..aOS(29, _omitFieldNames ? '' : 'modeRevertTo')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1175,6 +1205,36 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasSnapshot() => $_has(25);
   @$pb.TagNumber(26)
   void clearSnapshot() => $_clearField(26);
+
+  /// Claude Code's permission mode: default, acceptEdits, plan or auto. From
+  /// the transcript, or set from an app; empty when not known yet.
+  @$pb.TagNumber(27)
+  $core.String get permissionMode => $_getSZ(26);
+  @$pb.TagNumber(27)
+  set permissionMode($core.String value) => $_setString(26, value);
+  @$pb.TagNumber(27)
+  $core.bool hasPermissionMode() => $_has(26);
+  @$pb.TagNumber(27)
+  void clearPermissionMode() => $_clearField(27);
+
+  /// A mode set for a while: when the hub puts mode_revert_to back.
+  @$pb.TagNumber(28)
+  $fixnum.Int64 get modeRevertMs => $_getI64(27);
+  @$pb.TagNumber(28)
+  set modeRevertMs($fixnum.Int64 value) => $_setInt64(27, value);
+  @$pb.TagNumber(28)
+  $core.bool hasModeRevertMs() => $_has(27);
+  @$pb.TagNumber(28)
+  void clearModeRevertMs() => $_clearField(28);
+
+  @$pb.TagNumber(29)
+  $core.String get modeRevertTo => $_getSZ(28);
+  @$pb.TagNumber(29)
+  set modeRevertTo($core.String value) => $_setString(28, value);
+  @$pb.TagNumber(29)
+  $core.bool hasModeRevertTo() => $_has(28);
+  @$pb.TagNumber(29)
+  void clearModeRevertTo() => $_clearField(29);
 }
 
 /// A session no longer exists on its node (its transcript was deleted).
@@ -3174,11 +3234,13 @@ class AgentCommand_SendInput extends $pb.GeneratedMessage {
     $core.String? session,
     $core.String? text,
     $core.Iterable<Artifact>? attachments,
+    $core.String? permissionMode,
   }) {
     final result = AgentCommand_SendInput._();
     if (session != null) result.session = session;
     if (text != null) result.text = text;
     if (attachments != null) result.attachments.addAll(attachments);
+    if (permissionMode != null) result.permissionMode = permissionMode;
     return result;
   }
 
@@ -3199,6 +3261,7 @@ class AgentCommand_SendInput extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'text')
     ..pPM<Artifact>(3, _omitFieldNames ? '' : 'attachments',
         subBuilder: Artifact.$_createMessage)
+    ..aOS(4, _omitFieldNames ? '' : 'permissionMode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3246,6 +3309,86 @@ class AgentCommand_SendInput extends $pb.GeneratedMessage {
   /// Fetched into the session's folder first; the text then lists them.
   @$pb.TagNumber(3)
   $pb.PbList<Artifact> get attachments => $_getList(2);
+
+  /// For a resume, when no process is live: the mode to start in.
+  @$pb.TagNumber(4)
+  $core.String get permissionMode => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set permissionMode($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasPermissionMode() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPermissionMode() => $_clearField(4);
+}
+
+class AgentCommand_SetMode extends $pb.GeneratedMessage {
+  factory AgentCommand_SetMode({
+    $core.String? session,
+    $core.String? mode,
+  }) {
+    final result = AgentCommand_SetMode._();
+    if (session != null) result.session = session;
+    if (mode != null) result.mode = mode;
+    return result;
+  }
+
+  AgentCommand_SetMode._();
+
+  factory AgentCommand_SetMode.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SetMode()..mergeFromBuffer(data, registry);
+  factory AgentCommand_SetMode.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SetMode()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.SetMode',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_SetMode.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'mode')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SetMode clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SetMode copyWith(void Function(AgentCommand_SetMode) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_SetMode))
+          as AgentCommand_SetMode;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_SetMode() / AgentCommand_SetMode.new instead')
+  static AgentCommand_SetMode create() => AgentCommand_SetMode._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_SetMode._();
+  @$core.override
+  AgentCommand_SetMode createEmptyInstance() => AgentCommand_SetMode._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_SetMode getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_SetMode>(
+          AgentCommand_SetMode.$_createMessage);
+  static AgentCommand_SetMode? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get mode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set mode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMode() => $_clearField(2);
 }
 
 class AgentCommand_Interrupt extends $pb.GeneratedMessage {
@@ -3916,6 +4059,7 @@ enum AgentCommand_Op {
   fetch,
   keys,
   capture,
+  setMode,
   notSet
 }
 
@@ -3934,6 +4078,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_FetchAttachment? fetch,
     SendKeys? keys,
     AgentCommand_CaptureScreen? capture,
+    AgentCommand_SetMode? setMode,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -3949,6 +4094,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (fetch != null) result.fetch = fetch;
     if (keys != null) result.keys = keys;
     if (capture != null) result.capture = capture;
+    if (setMode != null) result.setMode = setMode;
     return result;
   }
 
@@ -3975,13 +4121,14 @@ class AgentCommand extends $pb.GeneratedMessage {
     11: AgentCommand_Op.fetch,
     12: AgentCommand_Op.keys,
     13: AgentCommand_Op.capture,
+    14: AgentCommand_Op.setMode,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -4009,6 +4156,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: SendKeys.$_createMessage)
     ..aOM<AgentCommand_CaptureScreen>(13, _omitFieldNames ? '' : 'capture',
         subBuilder: AgentCommand_CaptureScreen.$_createMessage)
+    ..aOM<AgentCommand_SetMode>(14, _omitFieldNames ? '' : 'setMode',
+        subBuilder: AgentCommand_SetMode.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4046,6 +4195,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(11)
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -4060,6 +4210,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(11)
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4213,6 +4364,18 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearCapture() => $_clearField(13);
   @$pb.TagNumber(13)
   AgentCommand_CaptureScreen ensureCapture() => $_ensure(12);
+
+  /// Switch a live session's permission mode; answered with a ModeResult.
+  @$pb.TagNumber(14)
+  AgentCommand_SetMode get setMode => $_getN(13);
+  @$pb.TagNumber(14)
+  set setMode(AgentCommand_SetMode value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasSetMode() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearSetMode() => $_clearField(14);
+  @$pb.TagNumber(14)
+  AgentCommand_SetMode ensureSetMode() => $_ensure(13);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -7265,6 +7428,168 @@ class SendKeys extends $pb.GeneratedMessage {
   $core.bool hasText() => $_has(2);
   @$pb.TagNumber(3)
   void clearText() => $_clearField(3);
+}
+
+/// POST /api/v1/sessions/{id}/mode. With revert_after_ms the hub puts the
+/// current mode back after that long.
+class SetPermissionMode extends $pb.GeneratedMessage {
+  factory SetPermissionMode({
+    $core.String? session,
+    $core.String? mode,
+    $fixnum.Int64? revertAfterMs,
+  }) {
+    final result = SetPermissionMode._();
+    if (session != null) result.session = session;
+    if (mode != null) result.mode = mode;
+    if (revertAfterMs != null) result.revertAfterMs = revertAfterMs;
+    return result;
+  }
+
+  SetPermissionMode._();
+
+  factory SetPermissionMode.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetPermissionMode()..mergeFromBuffer(data, registry);
+  factory SetPermissionMode.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SetPermissionMode()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetPermissionMode',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: SetPermissionMode.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'mode')
+    ..aInt64(3, _omitFieldNames ? '' : 'revertAfterMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetPermissionMode clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetPermissionMode copyWith(void Function(SetPermissionMode) updates) =>
+      super.copyWith((message) => updates(message as SetPermissionMode))
+          as SetPermissionMode;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SetPermissionMode() / SetPermissionMode.new instead')
+  static SetPermissionMode create() => SetPermissionMode._();
+  static $pb.GeneratedMessage $_createMessage() => SetPermissionMode._();
+  @$core.override
+  SetPermissionMode createEmptyInstance() => SetPermissionMode._();
+  @$core.pragma('dart2js:noInline')
+  static SetPermissionMode getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SetPermissionMode>(
+          SetPermissionMode.$_createMessage);
+  static SetPermissionMode? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get mode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set mode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get revertAfterMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set revertAfterMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRevertAfterMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRevertAfterMs() => $_clearField(3);
+}
+
+class ModeResult extends $pb.GeneratedMessage {
+  factory ModeResult({
+    $core.String? session,
+    $core.String? mode,
+    $core.String? error,
+  }) {
+    final result = ModeResult._();
+    if (session != null) result.session = session;
+    if (mode != null) result.mode = mode;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  ModeResult._();
+
+  factory ModeResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ModeResult()..mergeFromBuffer(data, registry);
+  factory ModeResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ModeResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ModeResult',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ModeResult.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'mode')
+    ..aOS(3, _omitFieldNames ? '' : 'error')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ModeResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ModeResult copyWith(void Function(ModeResult) updates) =>
+      super.copyWith((message) => updates(message as ModeResult)) as ModeResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ModeResult() / ModeResult.new instead')
+  static ModeResult create() => ModeResult._();
+  static $pb.GeneratedMessage $_createMessage() => ModeResult._();
+  @$core.override
+  ModeResult createEmptyInstance() => ModeResult._();
+  @$core.pragma('dart2js:noInline')
+  static ModeResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ModeResult>(ModeResult.$_createMessage);
+  static ModeResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get mode => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set mode($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get error => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set error($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasError() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearError() => $_clearField(3);
 }
 
 /// GET /api/v1/sessions/{id}/screen.

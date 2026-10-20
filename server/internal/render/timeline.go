@@ -24,10 +24,12 @@ type Patch struct {
 	Todos    []*v1.Todo
 	TodosSet bool
 	Cost     *float64
+	// The permission mode the line was written in.
+	Mode string
 }
 
 func (p *Patch) Empty() bool {
-	return p.Title == "" && p.Model == "" && p.Cwd == "" && p.Version == "" && !p.TodosSet && p.Cost == nil
+	return p.Title == "" && p.Model == "" && p.Cwd == "" && p.Version == "" && !p.TodosSet && p.Cost == nil && p.Mode == ""
 }
 
 // Output is what one raw line produced.
@@ -101,8 +103,9 @@ type rawLine struct {
 		SourceUUID string `json:"source_uuid"`
 	} `json:"attachment"`
 
-	Model       string `json:"model"`
-	Cwd         string `json:"cwd"`
+	Model          string `json:"model"`
+	Cwd            string `json:"cwd"`
+	PermissionMode string `json:"permissionMode"`
 	Version     string `json:"claude_code_version"`
 	AITitle     string `json:"aiTitle"`
 	CustomTitle string `json:"customTitle"`
@@ -193,6 +196,9 @@ func (b *Builder) Feed(line []byte) Output {
 		out.Items = append(out.Items, it)
 	}
 
+	if l.PermissionMode != "" && !l.IsSidechain {
+		out.Patch.Mode = l.PermissionMode
+	}
 	switch l.Type {
 	case "system":
 		switch l.Subtype {

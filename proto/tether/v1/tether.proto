@@ -51,6 +51,8 @@ message Frame {
     PlanUsage plan_usage = 54;
     // A session's terminal screen (agent -> hub, and hub -> subscribers).
     ScreenSnapshot screen_snapshot = 55;
+    // How a SetMode went.
+    ModeResult mode_result = 56;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -144,6 +146,12 @@ message SessionInfo {
   // for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
   string codebase = 25;
   string snapshot = 26;
+  // Claude Code's permission mode: default, acceptEdits, plan or auto. From
+  // the transcript, or set from an app; empty when not known yet.
+  string permission_mode = 27;
+  // A mode set for a while: when the hub puts mode_revert_to back.
+  int64 mode_revert_ms = 28;
+  string mode_revert_to = 29;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -370,6 +378,8 @@ message AgentCommand {
     SendKeys keys = 12;
     // Read the session's terminal screen; answered with a ScreenSnapshot.
     CaptureScreen capture = 13;
+    // Switch a live session's permission mode; answered with a ModeResult.
+    SetMode set_mode = 14;
   }
 
   message StartRun {
@@ -402,6 +412,13 @@ message AgentCommand {
     string text = 2;
     // Fetched into the session's folder first; the text then lists them.
     repeated Artifact attachments = 3;
+    // For a resume, when no process is live: the mode to start in.
+    string permission_mode = 4;
+  }
+
+  message SetMode {
+    string session = 1;
+    string mode = 2;
   }
 
   message Interrupt {
@@ -762,6 +779,20 @@ message SendKeys {
   string session = 1;
   repeated string keys = 2;
   string text = 3;
+}
+
+// POST /api/v1/sessions/{id}/mode. With revert_after_ms the hub puts the
+// current mode back after that long.
+message SetPermissionMode {
+  string session = 1;
+  string mode = 2;
+  int64 revert_after_ms = 3;
+}
+
+message ModeResult {
+  string session = 1;
+  string mode = 2;
+  string error = 3;
 }
 
 // GET /api/v1/sessions/{id}/screen.

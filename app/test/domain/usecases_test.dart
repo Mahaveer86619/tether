@@ -5,9 +5,18 @@ import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/usecases/usecases.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 
+import 'package:tether/presentation/session/mode_picker.dart';
+
 import '../helpers/fakes.dart';
 
 void main() {
+  test('time left on a timed mode reads plainly', () {
+    final now = DateTime(2026, 10, 20, 12);
+    expect(untilLabel(now.add(const Duration(seconds: 30)), now: now), 'now');
+    expect(untilLabel(now.add(const Duration(minutes: 14, seconds: 59)), now: now), '14m left');
+    expect(untilLabel(now.add(const Duration(hours: 1, minutes: 5)), now: now), '1h 5m left');
+  });
+
   group('Outbox', () {
     OutboxEntry entry(String id, String text, {OutboxState state = OutboxState.sent}) =>
         OutboxEntry(id: id, session: 's1', text: text, created: DateTime(2026), state: state, sentAt: DateTime(2026));

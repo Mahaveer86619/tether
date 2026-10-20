@@ -86,9 +86,17 @@ class Session extends Equatable {
     this.lineage = '',
     this.scratch = false,
     this.global = false,
+    this.permissionMode = '',
+    this.modeRevert,
+    this.modeRevertTo = '',
   });
 
   final String id, node, title, cwd, gitBranch;
+
+  /// Claude Code's permission mode (default, acceptEdits, plan, auto); empty
+  /// until known. Set for a while, it goes back to [modeRevertTo] at [modeRevert].
+  final String permissionMode, modeRevertTo;
+  final DateTime? modeRevert;
   final DateTime? created, updated;
   final int messageCount;
   final SessionState state;
@@ -148,7 +156,22 @@ class Session extends Equatable {
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
         lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived, parent, forkPoint, lineage, scratch, global,
+        permissionMode, modeRevert, modeRevertTo,
       ];
+}
+
+/// Claude Code's permission modes the app can switch between, as Shift+Tab
+/// cycles them.
+enum PermissionMode {
+  normal('default', 'Ask first', 'Claude asks before editing files or running commands.'),
+  acceptEdits('acceptEdits', 'Accept edits', 'File edits go ahead; commands still ask.'),
+  plan('plan', 'Plan', 'Claude reads and plans, and changes nothing until you approve.'),
+  auto('auto', 'Auto', 'Claude Code decides what needs asking.');
+
+  const PermissionMode(this.wire, this.label, this.blurb);
+  final String wire, label, blurb;
+
+  static PermissionMode? of(String wire) => values.where((m) => m.wire == wire).firstOrNull;
 }
 
 enum ApprovalKind { tool, folderTrust, question, prompt }

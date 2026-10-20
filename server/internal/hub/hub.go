@@ -95,6 +95,7 @@ type Hub struct {
 	uploading map[string]bool // upload id -> a request is writing it
 
 	queuedItems   map[string]map[string]string         // session -> its "queued" placeholders' text, by item
+	modeBefore    map[string]modeSwitch                // session -> a switch the node hasn't confirmed
 	screens       map[string]*v1.ScreenSnapshot       // session -> its last terminal screen
 	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
 }
@@ -112,6 +113,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		builders:  map[string]*render.Builder{},
 		screens:       map[string]*v1.ScreenSnapshot{},
 		queuedItems:   map[string]map[string]string{},
+		modeBefore:    map[string]modeSwitch{},
 		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
 		pending:   map[string]*pendingItems{},
 		approvals: map[string]*v1.ApprovalRequest{},
@@ -183,6 +185,7 @@ func (h *Hub) Handler() http.Handler {
 // Run flushes coalesced streaming updates until ctx ends.
 func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
+	go h.modeLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -426,7 +429,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		h.recordLineage(&v1.LineageEvent{Session: fork.Id, Parent: info.Id, Kind: "fork", ForkPoint: point, By: from, AtMs: now})
 		h.noteSent(fork.Id, m.Text, from)
 		agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
-			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true,
+			Session: fork.Id, Cwd: info.Cwd, Prompt: m.Text, Resume: info.Id, Fork: true, PermissionMode: modeArg(info.PermissionMode),
 		}}}))
 		return fork.Id, nil
 	}
@@ -446,7 +449,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		attachments = append(attachments, long)
 	}
 	h.noteSentAs(info.Id, text, from, m.ClientId)
-	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments}}}))
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode)}}}))
 	return info.Id, nil
 }
 
@@ -653,6 +656,8 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		}
 	case *v1.Frame_ScreenSnapshot:
 		h.noteScreen(node, b.ScreenSnapshot)
+	case *v1.Frame_ModeResult:
+		h.noteModeResult(node, b.ModeResult)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()
@@ -675,6 +680,7 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.Archived = cur.Archived && !busy(in.State)
 		in.Parent, in.ForkPoint, in.Lineage = cur.Parent, cur.ForkPoint, cur.Lineage
 		in.Scratch, in.Global = cur.Scratch, cur.Global
+		in.PermissionMode, in.ModeRevertMs, in.ModeRevertTo = cur.PermissionMode, cur.ModeRevertMs, cur.ModeRevertTo
 		// A global session's copy is refreshed whenever a turn ends.
 		if in.Global && busy(cur.State) && !busy(in.State) {
 			defer h.uploadTranscript(in)
@@ -747,6 +753,10 @@ func (h *Hub) applyPatch(s string, p render.Patch) {
 	if p.Cost != nil {
 		n.LastCostUsd = *p.Cost
 	}
+	// A pending switch wins over transcript lines written before it landed.
+	if p.Mode != "" && !h.switchingMode(s) {
+		n.PermissionMode = p.Mode
+	}
 	if !proto.Equal(n, h.sessions[s]) {
 		h.putSession(n)
 	}
@@ -770,6 +780,9 @@ func mergePatch(dst *render.Patch, p render.Patch) {
 	}
 	if p.Cost != nil {
 		dst.Cost = p.Cost
+	}
+	if p.Mode != "" {
+		dst.Mode = p.Mode
 	}
 }
 

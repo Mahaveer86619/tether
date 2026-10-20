@@ -71,6 +71,9 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       lineage: s.lineage,
       scratch: s.scratch,
       global: s.global,
+      permissionMode: s.permissionMode,
+      modeRevert: _time(s.modeRevertMs),
+      modeRevertTo: s.modeRevertTo,
     );
 
 Appearance appearanceFromPb(pb.Preferences p) => Appearance(

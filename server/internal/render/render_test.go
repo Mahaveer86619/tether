@@ -278,3 +278,15 @@ func TestQueuedMessageWithAPicture(t *testing.T) {
 		t.Fatalf("the picture should be handed over with its message's id, got %v", out.Images)
 	}
 }
+
+func TestPermissionModeComesFromTheTranscript(t *testing.T) {
+	b := NewBuilder()
+	out := b.Feed([]byte(`{"type":"user","uuid":"u1","permissionMode":"plan","message":{"role":"user","content":"look first"}}`))
+	if out.Patch.Mode != "plan" {
+		t.Fatalf("mode: %q", out.Patch.Mode)
+	}
+	out = b.Feed([]byte(`{"type":"user","uuid":"u2","isSidechain":true,"permissionMode":"default","message":{"role":"user","content":"sub"}}`))
+	if out.Patch.Mode != "" {
+		t.Fatalf("a subagent's line shouldn't set the session's mode: %q", out.Patch.Mode)
+	}
+}

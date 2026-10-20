@@ -303,6 +303,15 @@ const Frame$json = {
       '10': 'screenSnapshot'
     },
     {
+      '1': 'mode_result',
+      '3': 56,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.ModeResult',
+      '9': 0,
+      '10': 'modeResult'
+    },
+    {
       '1': 'agent_command',
       '3': 60,
       '4': 1,
@@ -348,8 +357,9 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'CzIWLnRldGhlci52MS5Vc2FnZVJlcG9ydEgAUgt1c2FnZVJlcG9ydBI1CgpwbGFuX3VzYWdlGD'
     'YgASgLMhQudGV0aGVyLnYxLlBsYW5Vc2FnZUgAUglwbGFuVXNhZ2USRAoPc2NyZWVuX3NuYXBz'
     'aG90GDcgASgLMhkudGV0aGVyLnYxLlNjcmVlblNuYXBzaG90SABSDnNjcmVlblNuYXBzaG90Ej'
-    '4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZXRoZXIudjEuQWdlbnRDb21tYW5kSABSDGFnZW50'
-    'Q29tbWFuZEIGCgRib2R5');
+    'gKC21vZGVfcmVzdWx0GDggASgLMhUudGV0aGVyLnYxLk1vZGVSZXN1bHRIAFIKbW9kZVJlc3Vs'
+    'dBI+Cg1hZ2VudF9jb21tYW5kGDwgASgLMhcudGV0aGVyLnYxLkFnZW50Q29tbWFuZEgAUgxhZ2'
+    'VudENvbW1hbmRCBgoEYm9keQ==');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -426,6 +436,9 @@ const SessionInfo$json = {
     {'1': 'global', '3': 24, '4': 1, '5': 8, '10': 'global'},
     {'1': 'codebase', '3': 25, '4': 1, '5': 9, '10': 'codebase'},
     {'1': 'snapshot', '3': 26, '4': 1, '5': 9, '10': 'snapshot'},
+    {'1': 'permission_mode', '3': 27, '4': 1, '5': 9, '10': 'permissionMode'},
+    {'1': 'mode_revert_ms', '3': 28, '4': 1, '5': 3, '10': 'modeRevertMs'},
+    {'1': 'mode_revert_to', '3': 29, '4': 1, '5': 9, '10': 'modeRevertTo'},
   ],
 };
 
@@ -445,7 +458,9 @@ final $typed_data.Uint8List sessionInfoDescriptor = $convert.base64Decode(
     'ZwYXJlbnQYFCABKAlSBnBhcmVudBIdCgpmb3JrX3BvaW50GBUgASgJUglmb3JrUG9pbnQSGAoH'
     'bGluZWFnZRgWIAEoCVIHbGluZWFnZRIYCgdzY3JhdGNoGBcgASgIUgdzY3JhdGNoEhYKBmdsb2'
     'JhbBgYIAEoCFIGZ2xvYmFsEhoKCGNvZGViYXNlGBkgASgJUghjb2RlYmFzZRIaCghzbmFwc2hv'
-    'dBgaIAEoCVIIc25hcHNob3Q=');
+    'dBgaIAEoCVIIc25hcHNob3QSJwoPcGVybWlzc2lvbl9tb2RlGBsgASgJUg5wZXJtaXNzaW9uTW'
+    '9kZRIkCg5tb2RlX3JldmVydF9tcxgcIAEoA1IMbW9kZVJldmVydE1zEiQKDm1vZGVfcmV2ZXJ0'
+    'X3RvGB0gASgJUgxtb2RlUmV2ZXJ0VG8=');
 
 @$core.Deprecated('Use sessionRemovedDescriptor instead')
 const SessionRemoved$json = {
@@ -1041,10 +1056,20 @@ const AgentCommand$json = {
       '9': 0,
       '10': 'capture'
     },
+    {
+      '1': 'set_mode',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.AgentCommand.SetMode',
+      '9': 0,
+      '10': 'setMode'
+    },
   ],
   '3': [
     AgentCommand_StartRun$json,
     AgentCommand_SendInput$json,
+    AgentCommand_SetMode$json,
     AgentCommand_Interrupt$json,
     AgentCommand_Mirror$json,
     AgentCommand_StopMirror$json,
@@ -1109,6 +1134,16 @@ const AgentCommand_SendInput$json = {
       '6': '.tether.v1.Artifact',
       '10': 'attachments'
     },
+    {'1': 'permission_mode', '3': 4, '4': 1, '5': 9, '10': 'permissionMode'},
+  ],
+};
+
+@$core.Deprecated('Use agentCommandDescriptor instead')
+const AgentCommand_SetMode$json = {
+  '1': 'SetMode',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'mode', '3': 2, '4': 1, '5': 9, '10': 'mode'},
   ],
 };
 
@@ -1227,27 +1262,30 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'GAsgASgLMicudGV0aGVyLnYxLkFnZW50Q29tbWFuZC5GZXRjaEF0dGFjaG1lbnRIAFIFZmV0Y2'
     'gSKQoEa2V5cxgMIAEoCzITLnRldGhlci52MS5TZW5kS2V5c0gAUgRrZXlzEkEKB2NhcHR1cmUY'
     'DSABKAsyJS50ZXRoZXIudjEuQWdlbnRDb21tYW5kLkNhcHR1cmVTY3JlZW5IAFIHY2FwdHVyZR'
-    'rCAwoIU3RhcnRSdW4SGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQCgNjd2QYAiABKAlSA2N3'
-    'ZBIWCgZwcm9tcHQYAyABKAlSBnByb21wdBIUCgVtb2RlbBgEIAEoCVIFbW9kZWwSJwoPcGVybW'
-    'lzc2lvbl9tb2RlGAUgASgJUg5wZXJtaXNzaW9uTW9kZRISCgRuYW1lGAYgASgJUgRuYW1lEhYK'
-    'BnJlc3VtZRgHIAEoCVIGcmVzdW1lEhIKBGZvcmsYCCABKAhSBGZvcmsSHQoKY3JlYXRlX2N3ZB'
-    'gJIAEoCFIJY3JlYXRlQ3dkEjUKC2F0dGFjaG1lbnRzGAogAygLMhMudGV0aGVyLnYxLkFydGlm'
-    'YWN0UgthdHRhY2htZW50cxIYCgdzY3JhdGNoGAsgASgIUgdzY3JhdGNoEi0KEnJlc3RvcmVfdH'
-    'JhbnNjcmlwdBgMIAEoCVIRcmVzdG9yZVRyYW5zY3JpcHQSKQoQcmVzdG9yZV9jb2RlYmFzZRgN'
-    'IAEoCVIPcmVzdG9yZUNvZGViYXNlEikKEHJlc3RvcmVfc25hcHNob3QYDiABKAlSD3Jlc3Rvcm'
-    'VTbmFwc2hvdBpwCglTZW5kSW5wdXQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCgR0ZXh0'
-    'GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG1lbnRzGAMgAygLMhMudGV0aGVyLnYxLkFydGlmYWN0Ug'
-    'thdHRhY2htZW50cxolCglJbnRlcnJ1cHQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpDCgZN'
-    'aXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIfCgtmcm9tX29mZnNldBgCIAEoA1IKZn'
-    'JvbU9mZnNldBomCgpTdG9wTWlycm9yEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aIAoEU3Rv'
-    'cBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiIKBkZvcmdldBIYCgdzZXNzaW9uGAEgASgJUg'
-    'dzZXNzaW9uGiwKEFVwbG9hZFRyYW5zY3JpcHQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpd'
-    'ChBTbmFwc2hvdENvZGViYXNlEi8KCGNvZGViYXNlGAEgASgLMhMudGV0aGVyLnYxLkNvZGViYX'
-    'NlUghjb2RlYmFzZRIYCgdzZXNzaW9uGAIgASgJUgdzZXNzaW9uGiUKDVNjYW5Db2RlYmFzZXMS'
-    'FAoFcm9vdHMYASADKAlSBXJvb3RzGikKDUNhcHR1cmVTY3JlZW4SGAoHc2Vzc2lvbhgBIAEoCV'
-    'IHc2Vzc2lvbhpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQ'
-    'CgNjd2QYAiABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhlci52MS5BcnRpZmFjdF'
-    'IIYXJ0aWZhY3RCBAoCb3A=');
+    'I8CghzZXRfbW9kZRgOIAEoCzIfLnRldGhlci52MS5BZ2VudENvbW1hbmQuU2V0TW9kZUgAUgdz'
+    'ZXRNb2RlGsIDCghTdGFydFJ1bhIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhAKA2N3ZBgCIA'
+    'EoCVIDY3dkEhYKBnByb21wdBgDIAEoCVIGcHJvbXB0EhQKBW1vZGVsGAQgASgJUgVtb2RlbBIn'
+    'Cg9wZXJtaXNzaW9uX21vZGUYBSABKAlSDnBlcm1pc3Npb25Nb2RlEhIKBG5hbWUYBiABKAlSBG'
+    '5hbWUSFgoGcmVzdW1lGAcgASgJUgZyZXN1bWUSEgoEZm9yaxgIIAEoCFIEZm9yaxIdCgpjcmVh'
+    'dGVfY3dkGAkgASgIUgljcmVhdGVDd2QSNQoLYXR0YWNobWVudHMYCiADKAsyEy50ZXRoZXIudj'
+    'EuQXJ0aWZhY3RSC2F0dGFjaG1lbnRzEhgKB3NjcmF0Y2gYCyABKAhSB3NjcmF0Y2gSLQoScmVz'
+    'dG9yZV90cmFuc2NyaXB0GAwgASgJUhFyZXN0b3JlVHJhbnNjcmlwdBIpChByZXN0b3JlX2NvZG'
+    'ViYXNlGA0gASgJUg9yZXN0b3JlQ29kZWJhc2USKQoQcmVzdG9yZV9zbmFwc2hvdBgOIAEoCVIP'
+    'cmVzdG9yZVNuYXBzaG90GpkBCglTZW5kSW5wdXQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbh'
+    'ISCgR0ZXh0GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG1lbnRzGAMgAygLMhMudGV0aGVyLnYxLkFy'
+    'dGlmYWN0UgthdHRhY2htZW50cxInCg9wZXJtaXNzaW9uX21vZGUYBCABKAlSDnBlcm1pc3Npb2'
+    '5Nb2RlGjcKB1NldE1vZGUSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCgRtb2RlGAIgASgJ'
+    'UgRtb2RlGiUKCUludGVycnVwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGkMKBk1pcnJvch'
+    'IYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEh8KC2Zyb21fb2Zmc2V0GAIgASgDUgpmcm9tT2Zm'
+    'c2V0GiYKClN0b3BNaXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhogCgRTdG9wEhgKB3'
+    'Nlc3Npb24YASABKAlSB3Nlc3Npb24aIgoGRm9yZ2V0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Np'
+    'b24aLAoQVXBsb2FkVHJhbnNjcmlwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGl0KEFNuYX'
+    'BzaG90Q29kZWJhc2USLwoIY29kZWJhc2UYASABKAsyEy50ZXRoZXIudjEuQ29kZWJhc2VSCGNv'
+    'ZGViYXNlEhgKB3Nlc3Npb24YAiABKAlSB3Nlc3Npb24aJQoNU2NhbkNvZGViYXNlcxIUCgVyb2'
+    '90cxgBIAMoCVIFcm9vdHMaKQoNQ2FwdHVyZVNjcmVlbhIYCgdzZXNzaW9uGAEgASgJUgdzZXNz'
+    'aW9uGm4KD0ZldGNoQXR0YWNobWVudBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhAKA2N3ZB'
+    'gCIAEoCVIDY3dkEi8KCGFydGlmYWN0GAMgASgLMhMudGV0aGVyLnYxLkFydGlmYWN0UghhcnRp'
+    'ZmFjdEIECgJvcA==');
 
 @$core.Deprecated('Use codebaseDescriptor instead')
 const Codebase$json = {
@@ -1964,6 +2002,36 @@ const SendKeys$json = {
 final $typed_data.Uint8List sendKeysDescriptor = $convert.base64Decode(
     'CghTZW5kS2V5cxIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBGtleXMYAiADKAlSBGtleX'
     'MSEgoEdGV4dBgDIAEoCVIEdGV4dA==');
+
+@$core.Deprecated('Use setPermissionModeDescriptor instead')
+const SetPermissionMode$json = {
+  '1': 'SetPermissionMode',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'mode', '3': 2, '4': 1, '5': 9, '10': 'mode'},
+    {'1': 'revert_after_ms', '3': 3, '4': 1, '5': 3, '10': 'revertAfterMs'},
+  ],
+};
+
+/// Descriptor for `SetPermissionMode`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setPermissionModeDescriptor = $convert.base64Decode(
+    'ChFTZXRQZXJtaXNzaW9uTW9kZRIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBG1vZGUYAi'
+    'ABKAlSBG1vZGUSJgoPcmV2ZXJ0X2FmdGVyX21zGAMgASgDUg1yZXZlcnRBZnRlck1z');
+
+@$core.Deprecated('Use modeResultDescriptor instead')
+const ModeResult$json = {
+  '1': 'ModeResult',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'mode', '3': 2, '4': 1, '5': 9, '10': 'mode'},
+    {'1': 'error', '3': 3, '4': 1, '5': 9, '10': 'error'},
+  ],
+};
+
+/// Descriptor for `ModeResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List modeResultDescriptor = $convert.base64Decode(
+    'CgpNb2RlUmVzdWx0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEgoEbW9kZRgCIAEoCVIEbW'
+    '9kZRIUCgVlcnJvchgDIAEoCVIFZXJyb3I=');
 
 @$core.Deprecated('Use screenSnapshotDescriptor instead')
 const ScreenSnapshot$json = {
