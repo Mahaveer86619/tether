@@ -1,9 +1,13 @@
-# Installs tether-agent for the current Windows user and starts it at logon.
-# Usage: .\install-agent.ps1 -Binary .\tether-agent.exe -Hub ws://100.64.0.1:7420/ws [-Node laptop]
+# Installs tether-agent for the current Windows user as an on-demand task; the Tether app starts it.
+# Usage: .\install-agent.ps1 -Binary .\tether-agent.exe -Hub ws://100.64.0.1:7420/ws [-Node laptop] [-PairCode ABCDE-FGHJK] [-Fingerprint <sha256>]
+# -PairCode (from the app's "Add a device" or `tetherctl pair`) gives the node its own token;
+# without it the hub's admin token is asked for once. -Fingerprint pins a self-signed hub certificate.
 param(
     [Parameter(Mandatory)] [string] $Binary,
     [Parameter(Mandatory)] [string] $Hub,
-    [string] $Node = $env:COMPUTERNAME.ToLower()
+    [string] $Node = $env:COMPUTERNAME.ToLower(),
+    [string] $PairCode = '',
+    [string] $Fingerprint = ''
 )
 $ErrorActionPreference = 'Stop'
 
@@ -20,7 +24,11 @@ foreach ($try in 1..10) {
 Remove-Item (Join-Path $dir 'run-agent.ps1') -ErrorAction SilentlyContinue
 
 $tokenFile = Join-Path $dir 'token'
-if (-not (Test-Path $tokenFile)) {
+if ($PairCode) {
+    & $exe pair -hub $Hub -node $Node -token-file $tokenFile -fingerprint $Fingerprint $PairCode
+    if ($LASTEXITCODE -ne 0) { throw 'Pairing failed' }
+}
+elseif (-not (Test-Path $tokenFile)) {
     $token = Read-Host 'Hub token (TETHER_TOKEN from the hub machine)'
     Set-Content -Path $tokenFile -Value $token -NoNewline -Encoding ascii
 }
@@ -31,10 +39,10 @@ if (-not (Test-Path $tokenFile)) {
 # login and PATH.
 $log = Join-Path $dir 'agent.log'
 $agentArgs = "-hub `"$Hub`" -node `"$Node`" -token-file `"$tokenFile`" -log `"$log`""
+if ($Fingerprint) { $agentArgs += " -fingerprint $Fingerprint" }
 $action = New-ScheduledTaskAction -Execute $exe -Argument $agentArgs -WorkingDirectory $dir
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable `
     -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
-Register-ScheduledTask -TaskName 'Tether Agent' -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+Register-ScheduledTask -TaskName 'Tether Agent' -Action $action -Settings $settings -Force | Out-Null
 Start-ScheduledTask -TaskName 'Tether Agent'
 Write-Host "Tether agent installed as '$Node'. Logs: $log"

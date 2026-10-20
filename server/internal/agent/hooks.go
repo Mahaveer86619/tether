@@ -37,6 +37,7 @@ type hookInput struct {
 	Event            string          `json:"hook_event_name"`
 	ToolName         string          `json:"tool_name"`
 	ToolInput        json.RawMessage `json:"tool_input"`
+	ToolUseID        string          `json:"tool_use_id"`
 	NotificationType string          `json:"notification_type"`
 	Message          string          `json:"message"`
 	Error            string          `json:"error"`
@@ -82,6 +83,7 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.noteHook(in, pid)
+	a.noteToolFile(in)
 	if in.Event != "PermissionRequest" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -114,12 +116,15 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 	_ = json.Unmarshal(input, &desc)
 	a.send(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequest{
 		ApprovalId: id, Session: in.SessionID, ToolName: in.ToolName, InputJson: string(input),
-		Description: desc.Description, Kind: v1.ApprovalRequest_KIND_TOOL,
+		Description: desc.Description, Kind: approvalKind(in.ToolName),
 	}}})
 
 	select {
 	case d := <-ha.decision:
 		behavior := map[string]any{"behavior": "allow"}
+		if len(d.Answers) > 0 {
+			behavior["updatedInput"] = withAnswers(input, d.Answers)
+		}
 		if d.Decision != v1.Decision_DECISION_ALLOW {
 			behavior = map[string]any{"behavior": "deny", "message": firstNonEmpty(d.Message, "Denied from Tether")}
 		}

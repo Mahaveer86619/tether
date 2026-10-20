@@ -36,11 +36,19 @@ message Frame {
     ApprovalRequest approval_requested = 36;
     ApprovalResolved approval_resolved = 37;
     SessionRemoved session_removed = 38;
+    // The shared app settings changed (sent to every client).
+    Preferences preferences = 39;
+    // A file was added to the artifact store (sent to every client).
+    Artifact artifact_added = 40;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
     SessionIndex session_index = 51;
     RawEvents raw_events = 52;
+    // Token usage read from transcripts, per assistant message.
+    UsageReport usage_report = 53;
+    // The node's plan limits, from `claude -p /usage`.
+    PlanUsage plan_usage = 54;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -61,6 +69,8 @@ message NodeStatus {
   string agent_version = 6;
   int64 last_seen_ms = 7;
   int32 running_sessions = 8;
+  // The address the agent connects to the hub from, set by the hub.
+  string ip = 9;
 }
 
 enum SessionState {
@@ -117,6 +127,21 @@ message SessionInfo {
   // Set by the user ("mark as done"); kept by the hub across agent updates
   // and cleared when the session starts working again.
   bool archived = 19;
+  // Lineage, owned by the hub like archived: the session this one split off
+  // from, the parent's last timeline item at that moment, and how ("fork",
+  // later "branch").
+  string parent = 20;
+  string fork_point = 21;
+  string lineage = 22;
+  // Runs in its own scratch folder on the hub's machine (a hub session).
+  bool scratch = 23;
+  // The hub keeps a copy of its transcript, so it can be continued on the
+  // hub's machine when its own machine is closed or offline.
+  bool global = 24;
+  // The codebase its folder belongs to, and the snapshot the hub took of it
+  // for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
+  string codebase = 25;
+  string snapshot = 26;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -145,6 +170,9 @@ message ApprovalRequest {
     KIND_TOOL = 1;
     // Claude Code asks whether to trust a folder it hasn't opened before.
     KIND_FOLDER_TRUST = 2;
+    // Claude asks the user questions (AskUserQuestion); input_json holds
+    // them, and the decision carries the answers.
+    KIND_QUESTION = 3;
   }
   string approval_id = 1;
   string session = 2;
@@ -169,6 +197,9 @@ message ApprovalDecision {
   Decision decision = 2;
   // Shown to Claude when denying.
   string message = 3;
+  // For a question: each question's text to the chosen option labels, joined
+  // with ", ", or the user's own words.
+  map<string, string> answers = 4;
 }
 
 message ApprovalResolved {
@@ -203,6 +234,13 @@ message CreateSession {
   string model = 4;
   string permission_mode = 5;
   string name = 6;
+  // Create cwd first: a new project folder in a workspace.
+  bool create_cwd = 7;
+  // Artifact ids to put in the session's folder and mention in the prompt.
+  repeated string attachments = 8;
+  // A hub session: run on the hub's machine in a fresh scratch folder.
+  // node and cwd may be left empty.
+  bool scratch = 9;
 }
 
 // REST body for POST /api/v1/sessions/{id}/archive.
@@ -210,11 +248,18 @@ message ArchiveSession {
   bool archived = 1;
 }
 
+// REST body for POST /api/v1/sessions/{id}/global.
+message SetGlobal {
+  bool global = 1;
+}
+
 message SendMessage {
   string session = 1;
   string text = 2;
   // Continue in a new session id, leaving the original untouched.
   bool fork = 3;
+  // Artifact ids to put in the session's folder and mention in the message.
+  repeated string attachments = 4;
 }
 
 // Stops the current turn; the session stays open.
@@ -235,6 +280,15 @@ message Welcome {
   repeated NodeStatus nodes = 2;
   repeated SessionInfo sessions = 3;
   repeated ApprovalRequest pending_approvals = 4;
+  // Unset until some client has saved them.
+  Preferences preferences = 5;
+  // The node running on the hub's own machine, where hub sessions run.
+  string hub_node = 6;
+  // About the client receiving this: its paired device id (empty for the
+  // admin token or a trusted tailnet) and the address it connected from,
+  // which matches NodeStatus.ip for the node on its own machine.
+  string device_id = 7;
+  string client_ip = 8;
 }
 
 message Ack {
@@ -285,6 +339,16 @@ message AgentCommand {
     Mirror mirror = 4;
     StopMirror stop_mirror = 5;
     Stop stop = 6;
+    // Delete a scratch session's folder and transcript (retention).
+    Forget forget = 7;
+    // Upload the session's whole transcript to the artifact store.
+    UploadTranscript upload_transcript = 8;
+    // Snapshot a codebase into the hub, and its .env files into the vault.
+    SnapshotCodebase snapshot = 9;
+    // Report the codebases directly under these workspace roots.
+    ScanCodebases scan = 10;
+    // Download a file attached to a session into its folder.
+    FetchAttachment fetch = 11;
   }
 
   message StartRun {
@@ -298,11 +362,25 @@ message AgentCommand {
     // Resume this existing session instead of starting fresh.
     string resume = 7;
     bool fork = 8;
+    // Create cwd first (a new project folder).
+    bool create_cwd = 9;
+    repeated Artifact attachments = 10;
+    // Run in <scratch dir>/<session>, created now.
+    bool scratch = 11;
+    // Put this transcript (an artifact) where Claude Code looks for the
+    // resumed session first: continuing a global session elsewhere.
+    string restore_transcript = 12;
+    // Restore this codebase snapshot into <codebases dir>/<codebase> first,
+    // with its .env files; cwd is then relative to that folder.
+    string restore_codebase = 13;
+    string restore_snapshot = 14;
   }
 
   message SendInput {
     string session = 1;
     string text = 2;
+    // Fetched into the session's folder first; the text then lists them.
+    repeated Artifact attachments = 3;
   }
 
   message Interrupt {
@@ -321,4 +399,371 @@ message AgentCommand {
   message Stop {
     string session = 1;
   }
+
+  message Forget {
+    string session = 1;
+  }
+
+  message UploadTranscript {
+    string session = 1;
+  }
+
+  message SnapshotCodebase {
+    Codebase codebase = 1;
+    // The session it's taken for, if any.
+    string session = 2;
+  }
+
+  message ScanCodebases {
+    repeated string roots = 1;
+  }
+
+  // Into <cwd>/.tether/attachments/<name>, checked against its sha256.
+  message FetchAttachment {
+    string session = 1;
+    string cwd = 2;
+    Artifact artifact = 3;
+  }
+}
+
+// ---- Codebases (REST) ----
+
+// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
+message Codebase {
+  string id = 1;
+  string node = 2;
+  string path = 3;
+  string name = 4;
+  string git_remote = 5;
+  string git_branch = 6;
+  string git_head = 7;
+  int64 created_ms = 8;
+  // The latest snapshot.
+  string snapshot = 9;
+  int64 snapshot_ms = 10;
+  int32 files = 11;
+  int64 bytes = 12;
+  // .env files kept in the vault, by path in the codebase; values never
+  // leave the hub except to restore the codebase on the hub's machine.
+  repeated EnvFile env = 13;
+  // Why the last snapshot failed, if it did.
+  string error = 14;
+}
+
+message CodebaseList {
+  repeated Codebase codebases = 1;
+}
+
+message SnapshotFile {
+  // Relative to the codebase, with forward slashes.
+  string path = 1;
+  string sha256 = 2;
+  int64 size = 3;
+  bool executable = 4;
+}
+
+// POST /api/v1/codebases/{id}/manifest answers with the hashes the hub
+// lacks; the agent uploads those (PUT /api/v1/blobs/{sha}) and posts the
+// same manifest to /snapshots to record it.
+message SnapshotManifest {
+  string session = 1;
+  repeated SnapshotFile files = 2;
+  // Too big to copy, or unreadable.
+  repeated string skipped = 3;
+  string git_remote = 4;
+  string git_branch = 5;
+  string git_head = 6;
+}
+
+message MissingBlobs {
+  repeated string sha256 = 1;
+}
+
+message Snapshot {
+  string id = 1;
+  string codebase = 2;
+  string session = 3;
+  string parent = 4;
+  int64 created_ms = 5;
+  int32 files = 6;
+  int64 bytes = 7;
+  string git_head = 8;
+  int32 skipped = 9;
+  // The manifest, stored as a blob.
+  string manifest_sha256 = 10;
+}
+
+message SnapshotList {
+  repeated Snapshot snapshots = 1;
+}
+
+message EnvKey {
+  string name = 1;
+  // A short keyed hash of the value, so changes show without the value.
+  string fingerprint = 2;
+}
+
+message EnvFile {
+  // Relative to the codebase, e.g. "server/.env".
+  string path = 1;
+  repeated EnvKey keys = 2;
+  int64 updated_ms = 3;
+  // Only between agent and hub: the file as written, for the vault or to
+  // restore it. Never in API responses to apps.
+  string content = 4;
+}
+
+// PUT /api/v1/codebases/{id}/env (an agent storing), and what the hub's own
+// agent gets back when restoring.
+message EnvFiles {
+  repeated EnvFile files = 1;
+}
+
+// Codebases an agent found under its workspace roots:
+// POST /api/v1/codebases/found.
+message FoundCodebases {
+  string node = 1;
+  repeated Codebase codebases = 2;
+}
+
+// ---- Pairing (REST only) ----
+
+// An app or agent that paired with its own token. Revoking deletes it.
+message Device {
+  string id = 1;
+  // "client" (an app or tetherctl) or "node" (an agent).
+  string kind = 2;
+  // For a node, the node name its token is bound to.
+  string name = 3;
+  string platform = 4;
+  int64 created_ms = 5;
+  int64 last_seen_ms = 6;
+}
+
+message DeviceList {
+  repeated Device devices = 1;
+}
+
+// A one-time code another device can pair with until expires_ms.
+message PairingCode {
+  string code = 1;
+  int64 expires_ms = 2;
+  // SHA-256 of the hub's TLS certificate (hex), when it serves its own
+  // self-signed one; clients pin it.
+  string cert_fingerprint = 3;
+}
+
+message PairRequest {
+  string code = 1;
+  // "client" or "node".
+  string kind = 2;
+  string name = 3;
+  string platform = 4;
+}
+
+message PairResult {
+  Device device = 1;
+  // Shown once; the hub keeps only its hash.
+  string token = 2;
+}
+
+// ---- Shared app settings and the tailnet (REST, plus the preferences frame) ----
+
+// App settings every connected app shares. PUT /api/v1/preferences.
+message Preferences {
+  // "system", "light" or "dark".
+  string theme_mode = 1;
+  // A palette id, e.g. "claude" or "ocean".
+  string palette = 2;
+  // ARGB accent; unset keeps the palette's own.
+  optional uint32 accent = 3;
+}
+
+// A machine on the hub's tailnet, as `tailscale status` sees it, and what of
+// Tether runs there. GET /api/v1/tailnet.
+message TailnetDevice {
+  // The tailnet machine name (first label of its MagicDNS name).
+  string name = 1;
+  string hostname = 2;
+  string os = 3;
+  bool online = 4;
+  repeated string ips = 5;
+  // The hub's own machine.
+  bool self = 6;
+  // The Tether node connected from this machine, if any.
+  string node = 7;
+  // Names of apps connected from this machine.
+  repeated string clients = 8;
+  int64 last_seen_ms = 9;
+}
+
+message Tailnet {
+  repeated TailnetDevice devices = 1;
+  // Set when `tailscale status` couldn't be read (no Tailscale on the hub).
+  string error = 2;
+}
+
+// A fork, branch, merge or abandon, as the hub recorded it. GET
+// /api/v1/sessions/{id}/lineage returns the events a session is part of.
+message LineageEvent {
+  int64 id = 1;
+  string session = 2;
+  string parent = 3;
+  // "fork", "branch", "merge" or "abandon".
+  string kind = 4;
+  // The parent's timeline item it split at.
+  string fork_point = 5;
+  // The app or tool that asked, as for message sources.
+  string by = 6;
+  int64 at_ms = 7;
+  // For a merge: the summary sent to the parent.
+  string detail = 8;
+}
+
+message LineageEvents {
+  repeated LineageEvent events = 1;
+}
+
+// ---- Usage (REST, plus the agent's usage_report frame) ----
+
+// One assistant message's token usage. A message is written over several
+// transcript lines, so the hub keeps the largest value it has seen per field.
+message UsageEntry {
+  string session = 1;
+  string message_id = 2;
+  string model = 3;
+  int64 ts_ms = 4;
+  int64 input = 5;
+  int64 output = 6;
+  int64 cache_write = 7;
+  int64 cache_read = 8;
+}
+
+message UsageReport {
+  repeated UsageEntry entries = 1;
+}
+
+message UsageTotals {
+  int64 input = 1;
+  int64 output = 2;
+  int64 cache_write = 3;
+  int64 cache_read = 4;
+  int64 messages = 5;
+}
+
+message NodeUsage {
+  string node = 1;
+  // The last 5 hours (Claude's usage window), since local midnight, and the
+  // last 7 days.
+  UsageTotals window = 2;
+  UsageTotals today = 3;
+  UsageTotals week = 4;
+  reserved 5; // was window_budget, replaced by the plan's own limits
+  // The plan's limits as this node's Claude login reports them.
+  PlanUsage plan = 6;
+}
+
+// A plan limit from `/usage`, e.g. "session" 3% resetting "Oct 12, 3:19am".
+message PlanLimit {
+  string label = 1;
+  int32 percent = 2;
+  string resets = 3;
+}
+
+// What `claude -p /usage` says on a node. The text isn't a stable interface,
+// so the raw output is kept for when the limits can't be read from it.
+message PlanUsage {
+  string node = 1;
+  repeated PlanLimit limits = 2;
+  string raw = 3;
+  int64 checked_ms = 4;
+  string error = 5;
+}
+
+message SessionUsage {
+  string session = 1;
+  UsageTotals total = 2;
+  int64 last_ms = 3;
+}
+
+// GET /api/v1/usage
+message UsageSummary {
+  repeated NodeUsage nodes = 1;
+  // Sessions used in the last 7 days, most tokens first.
+  repeated SessionUsage sessions = 2;
+}
+
+// ---- Workspaces (REST) ----
+
+// A folder on a node that new projects are made in, e.g. ~/projects.
+message WorkspaceRoot {
+  string node = 1;
+  string path = 2;
+}
+
+// GET /api/v1/workspaces; PUT adds a root, DELETE (same body) removes it.
+message Workspaces {
+  repeated WorkspaceRoot roots = 1;
+}
+
+// ---- Artifact store (REST, plus the artifact_added frame) ----
+
+// A file in the hub's central store: something a session read or wrote,
+// or that someone attached. Content is stored once per SHA-256.
+message Artifact {
+  string id = 1;
+  string sha256 = 2;
+  string name = 3;
+  string mime = 4;
+  int64 size = 5;
+  string session = 6;
+  string node = 7;
+  // "read" or "write" (by a tool), "attachment" (sent with a message) or
+  // "upload".
+  string origin = 8;
+  // Where it was on the node, if it came from a tool call.
+  string path = 9;
+  // The tool call it belongs to, so the app can show it on that card.
+  string tool_use_id = 10;
+  int64 created_ms = 11;
+  // Written by whoever attached it.
+  string note = 12;
+}
+
+message ArtifactList {
+  repeated Artifact artifacts = 1;
+}
+
+// A resumable upload: POST /api/v1/uploads starts one, PATCH appends at
+// offset, and the last chunk turns it into the artifact.
+message Upload {
+  string id = 1;
+  int64 offset = 2;
+  int64 size = 3;
+  Artifact artifact = 4;
+}
+
+// A link that opens the file without a token until expires_ms. url is a
+// path; clients put their hub address in front.
+message ArtifactLink {
+  string url = 1;
+  int64 expires_ms = 2;
+}
+
+// A small site a session made under .tether/pages/<name>/. Its files are
+// artifacts with origin "page" and path "<name>/<file>".
+message Page {
+  string session = 1;
+  string name = 2;
+  int32 files = 3;
+  int64 size = 4;
+  int64 updated_ms = 5;
+  // A signed link to its index.html, as a path on the hub.
+  string url = 6;
+  int64 expires_ms = 7;
+}
+
+// GET /api/v1/pages?session=
+message PageList {
+  repeated Page pages = 1;
 }

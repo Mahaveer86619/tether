@@ -2,6 +2,7 @@ package render
 
 import (
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -35,6 +36,16 @@ type Output struct {
 	Patch Patch
 	// Delta marks partial-text updates the caller may coalesce.
 	Delta bool
+	// Images pasted into user messages, for the artifact store.
+	Images []Image
+}
+
+// Image is a picture in a user message: the message's item id, its type
+// and its bytes.
+type Image struct {
+	ItemID string
+	Mime   string
+	Data   []byte
 }
 
 // Builder turns Claude Code stream-json and transcript lines into timeline
@@ -47,9 +58,15 @@ type Builder struct {
 	blockIdx map[string]int
 	// Stream and transcript share line uuids; reuse the index a line got first.
 	lineIdx map[string]int
+	// Messages queued while Claude is busy, oldest first, until taken in.
+	queued []queuedMsg
 	// Lookup finds items the builder has not seen, e.g. after a hub restart.
 	Lookup func(itemID string) *v1.TimelineItem
 	now    func() time.Time
+}
+
+type queuedMsg struct {
+	id, text string
 }
 
 func NewBuilder() *Builder {
@@ -74,10 +91,14 @@ type rawLine struct {
 	Message         json.RawMessage `json:"message"`
 	Event           json.RawMessage `json:"event"`
 	Content         json.RawMessage `json:"content"`
+	Operation       string          `json:"operation"`
 	Attachment      struct {
-		Type        string `json:"type"`
-		Prompt      string `json:"prompt"`
-		CommandMode string `json:"commandMode"`
+		Type string `json:"type"`
+		// Text, or a list of parts when the message has pictures.
+		Prompt      json.RawMessage `json:"prompt"`
+		CommandMode string          `json:"commandMode"`
+		// The uuid a headless run's stdout replay of this message carries.
+		SourceUUID string `json:"source_uuid"`
 	} `json:"attachment"`
 
 	Model       string `json:"model"`
@@ -109,6 +130,35 @@ type contentBlock struct {
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
 	IsError   bool            `json:"is_error"`
+	Source    *struct {
+		Type      string `json:"type"`
+		MediaType string `json:"media_type"`
+		Data      string `json:"data"`
+	} `json:"source"`
+}
+
+// userContent reads a user message's content: plain text, or a list of
+// parts with text and pictures.
+func userContent(raw json.RawMessage) (texts []string, images []Image, blocks []contentBlock) {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return []string{s}, nil, nil
+	}
+	_ = json.Unmarshal(raw, &blocks)
+	for _, cb := range blocks {
+		switch cb.Type {
+		case "text":
+			texts = append(texts, cb.Text)
+		case "image":
+			texts = append(texts, "[image]")
+			if src := cb.Source; src != nil && src.Type == "base64" {
+				if data, err := base64.StdEncoding.DecodeString(src.Data); err == nil {
+					images = append(images, Image{Mime: src.MediaType, Data: data})
+				}
+			}
+		}
+	}
+	return texts, images, blocks
 }
 
 type streamEvent struct {
@@ -191,12 +241,24 @@ func (b *Builder) Feed(line []byte) Output {
 			break
 		}
 		b.userMessage(l, m, &out, emit)
+	case "queue-operation":
+		b.queueOperation(l, emit)
 	case "attachment":
 		// A message sent while Claude was busy, absorbed into the running turn.
 		a := l.Attachment
 		if a.Type == "queued_command" && (a.CommandMode == "" || a.CommandMode == "prompt") && !l.IsSidechain {
-			if text := strings.TrimSpace(a.Prompt); text != "" {
-				emit(&v1.TimelineItem{ItemId: itemID("user", l.UUID, []byte(text)), Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+			texts, images, _ := userContent(a.Prompt)
+			if text := strings.TrimSpace(strings.Join(texts, "\n")); text != "" {
+				uuid := l.UUID
+				if a.SourceUUID != "" {
+					uuid = a.SourceUUID
+				}
+				id := itemID("user", uuid, []byte(text))
+				emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+				for _, img := range images {
+					img.ItemID = id
+					out.Images = append(out.Images, img)
+				}
 			}
 		}
 	case "result":
@@ -303,39 +365,32 @@ var (
 )
 
 func (b *Builder) userMessage(l rawLine, m message, out *Output, emit func(*v1.TimelineItem)) {
-	var texts []string
-	var s string
-	if json.Unmarshal(m.Content, &s) == nil {
-		texts = append(texts, s)
-	} else {
-		var blocks []contentBlock
-		_ = json.Unmarshal(m.Content, &blocks)
-		for _, cb := range blocks {
-			switch cb.Type {
-			case "tool_result":
-				item := b.find(cb.ToolUseID)
-				var card *v1.ToolCard
-				if item != nil && item.GetTool() != nil {
-					card = proto.Clone(item.GetTool()).(*v1.ToolCard)
-				} else {
-					card = &v1.ToolCard{ToolUseId: cb.ToolUseID, Name: "Tool", Title: "Tool"}
-				}
-				ApplyResult(card, cb.Content, cb.IsError)
-				emit(&v1.TimelineItem{ItemId: cb.ToolUseID, Kind: &v1.TimelineItem_Tool{Tool: card}})
-			case "text":
-				texts = append(texts, cb.Text)
-			case "image":
-				texts = append(texts, "[image]")
-			}
+	texts, images, blocks := userContent(m.Content)
+	for _, cb := range blocks {
+		if cb.Type != "tool_result" {
+			continue
 		}
+		item := b.find(cb.ToolUseID)
+		var card *v1.ToolCard
+		if item != nil && item.GetTool() != nil {
+			card = proto.Clone(item.GetTool()).(*v1.ToolCard)
+		} else {
+			card = &v1.ToolCard{ToolUseId: cb.ToolUseID, Name: "Tool", Title: "Tool"}
+		}
+		ApplyResult(card, cb.Content, cb.IsError)
+		emit(&v1.TimelineItem{ItemId: cb.ToolUseID, Kind: &v1.TimelineItem_Tool{Tool: card}})
 	}
 	text := strings.TrimSpace(strings.Join(texts, "\n"))
 	if text == "" {
 		return
 	}
 	id := itemID("user", l.UUID, []byte(text))
+	for _, img := range images {
+		img.ItemID = id
+		out.Images = append(out.Images, img)
+	}
 	switch {
-	case strings.Contains(text, "<local-command-caveat>"), strings.HasPrefix(text, "<system-reminder>"):
+	case strings.Contains(text, "<local-command-caveat>"), strings.HasPrefix(text, "<system-reminder>"), strings.HasPrefix(text, "<task-notification>"):
 	case commandName.MatchString(text):
 		cmd := commandName.FindStringSubmatch(text)[1]
 		if a := commandArgs.FindStringSubmatch(text); a != nil && strings.TrimSpace(a[1]) != "" {
@@ -350,6 +405,43 @@ func (b *Builder) userMessage(l rawLine, m message, out *Output, emit func(*v1.T
 		emit(notice(id, v1.Notice_LEVEL_WARNING, "Interrupted"))
 	default:
 		emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+	}
+}
+
+// queueOperation shows a message as soon as it is queued, and removes that
+// placeholder once Claude takes it in (it then arrives as a queued_command
+// attachment or a user line) or it is pulled back into the input box.
+func (b *Builder) queueOperation(l rawLine, emit func(*v1.TimelineItem)) {
+	var text string
+	_ = json.Unmarshal(l.Content, &text)
+	text = strings.TrimSpace(text)
+	switch l.Operation {
+	case "enqueue":
+		if text == "" || strings.HasPrefix(text, "<") {
+			return // task notifications and other system input
+		}
+		q := queuedMsg{id: itemID("queued", l.Timestamp, []byte(text)), text: text}
+		b.queued = append(b.queued, q)
+		emit(&v1.TimelineItem{ItemId: q.id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text, Queued: true}}})
+	case "popAll":
+		for _, q := range b.queued {
+			emit(&v1.TimelineItem{ItemId: q.id})
+		}
+		b.queued = nil
+	default: // remove, dequeue
+		// Claude Code writes the dequeue of a prompt sent at idle without its text.
+		if text == "" && len(b.queued) > 0 {
+			emit(&v1.TimelineItem{ItemId: b.queued[0].id})
+			b.queued = b.queued[1:]
+			return
+		}
+		for i, q := range b.queued {
+			if q.text == text {
+				emit(&v1.TimelineItem{ItemId: q.id})
+				b.queued = append(b.queued[:i], b.queued[i+1:]...)
+				return
+			}
+		}
 	}
 }
 

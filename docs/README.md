@@ -11,4 +11,4 @@
 | [security.md](security.md) | Trust boundaries, auth, sandboxing, approvals |
 | [app.md](app.md) | The Flutter app: layers, error handling, caching, background sync, views |
 | [roadmap.md](roadmap.md) | Milestones and what "done" means for each |
-| [plan.md](plan.md) | Next steps beyond M4: fork/branch/merge, the second brain, hub sessions, usage pooling, users and roles |
+| [plan.md](plan.md) | Next steps beyond M4: device pairing (QR, Tailscale or a public VM), fork/branch/merge, the second brain, hub sessions, usage tracking, users and roles |

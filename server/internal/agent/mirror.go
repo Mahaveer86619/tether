@@ -13,7 +13,7 @@ import (
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
 
-var mirrorTypes = map[string]bool{"user": true, "assistant": true, "system": true, "ai-title": true, "custom-title": true}
+var mirrorTypes = map[string]bool{"user": true, "assistant": true, "system": true, "ai-title": true, "custom-title": true, "queue-operation": true}
 
 // mirrored reports whether the hub renders this transcript line. Of the
 // attachments, which can be large, only messages queued mid-turn are shown.

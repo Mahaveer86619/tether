@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
+import '../../domain/entities/entities.dart' show Artifact;
+import '../artifacts/artifact_widgets.dart';
 import 'common.dart';
 import 'markdown_view.dart';
 import '../theme/theme.dart';
@@ -20,7 +22,14 @@ class TimelineItemView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     Widget child = switch (item.whichKind()) {
-      pb.TimelineItem_Kind.user => _UserBubble(text: item.user.text),
+      pb.TimelineItem_Kind.user => _UserBubble(
+          text: item.user.text,
+          queued: item.user.queued,
+          source: item.user.source,
+          sentAsFile: item.user.attachmentId.isNotEmpty,
+          // A long message's own file is shown as the text itself.
+          files: [for (final a in linkedArtifacts(context, item.itemId)) if (a.id != item.user.attachmentId) a],
+        ),
       pb.TimelineItem_Kind.markdown => MarkdownView(blocks: item.markdown.blocks, streaming: item.markdown.streaming),
       pb.TimelineItem_Kind.tool => ToolCardView(card: item.tool),
       pb.TimelineItem_Kind.thinking => _Thinking(thinking: item.thinking),
@@ -156,22 +165,112 @@ class _ActivityGroupState extends State<ActivityGroup> {
   }
 }
 
-class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.text});
+class _UserBubble extends StatefulWidget {
+  const _UserBubble({required this.text, this.queued = false, this.source = '', this.files = const [], this.sentAsFile = false});
 
   final String text;
+  final bool queued;
+
+  /// Went to the session as a file because it was long.
+  final bool sentAsFile;
+
+  /// Pictures pasted into it and files attached to it.
+  final List<Artifact> files;
+
+  /// Who sent it, as the hub recorded: an app's name, or "terminal".
+  final String source;
+
+  static (IconData, String) _describe(String source) {
+    if (source == 'terminal') return (Icons.terminal_rounded, 'Typed in the terminal');
+    final name = source.replaceAll(RegExp(r' \((\w+)\)$'), '');
+    final icon = switch (RegExp(r'\((\w+)\)$').firstMatch(source)?.group(1)) {
+      'android' || 'ios' => Icons.phone_android_rounded,
+      'windows' || 'linux' || 'macos' => Icons.laptop_windows_outlined,
+      _ => source.startsWith('tetherctl') ? Icons.code_rounded : Icons.devices_outlined,
+    };
+    return (icon, name);
+  }
+
+  @override
+  State<_UserBubble> createState() => _UserBubbleState();
+}
+
+class _UserBubbleState extends State<_UserBubble> {
+  static const _collapsedLines = 10;
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final w = widget;
+    final text = w.text, queued = w.queued, source = w.source, files = w.files;
+    final long = w.sentAsFile || '\n'.allMatches(text).length >= _collapsedLines || text.length > 1500;
+    final style = Theme.of(context).textTheme.bodyLarge;
+    final bubble = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(
+        color: c.userBubble,
+        borderRadius: BorderRadius.circular(16),
+        border: queued ? Border.all(color: c.border) : null,
+      ),
+      // Plain text: the timeline's SelectionArea makes it selectable across messages.
+      child: !long
+          ? Text(text, style: style)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(text, style: style, maxLines: _open ? null : _collapsedLines, overflow: _open ? null : TextOverflow.fade),
+                const SizedBox(height: 6),
+                InkWell(
+                  key: const Key('expand-message'),
+                  onTap: () => setState(() => _open = !_open),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 16, color: c.muted),
+                      const SizedBox(width: 4),
+                      Text(_open ? 'Show less' : 'Show full message', style: TextStyle(fontSize: 12.5, color: c.muted, fontWeight: FontWeight.w600)),
+                      if (w.sentAsFile) Text('  ·  sent as a file', style: TextStyle(fontSize: 12, color: c.faint)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: contentWidth * 0.85),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          decoration: BoxDecoration(color: c.userBubble, borderRadius: BorderRadius.circular(16)),
-          child: SelectableText(text, style: Theme.of(context).textTheme.bodyLarge),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (queued) Opacity(opacity: 0.7, child: bubble) else bubble,
+            if (files.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: ArtifactStrip(artifacts: files, alignEnd: true)),
+            if (!queued && source.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_UserBubble._describe(source).$1, size: 12, color: c.faint),
+                    const SizedBox(width: 4),
+                    Text(_UserBubble._describe(source).$2, style: TextStyle(fontSize: 11.5, color: c.faint)),
+                  ],
+                ),
+              ),
+            if (queued)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 13, color: c.faint),
+                    const SizedBox(width: 4),
+                    Text('Queued · Claude reads it at its next step', style: TextStyle(fontSize: 11.5, color: c.faint)),
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );

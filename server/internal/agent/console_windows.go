@@ -44,6 +44,8 @@ type inputRecord struct {
 const (
 	keyEvent = 0x0001
 	vkReturn = 0x0D
+	// Key records per write: 256 keys down and up, so 128 characters.
+	typeChunk = 256
 )
 
 func keyPair(vk, scan, ch uint16) []inputRecord {
@@ -70,10 +72,19 @@ func typeIntoConsole(pid uint32, text string) error {
 			recs = append(recs, keyPair(0, 0, u)...)
 		}
 	}
-	if len(recs) > 0 {
-		if err := writeConsole(pid, recs); err != nil {
+	// A long message written in one go can overrun the console's input
+	// buffer and lose its start; write it in slices instead.
+	for len(recs) > 0 {
+		n := min(len(recs), typeChunk)
+		if err := writeConsole(pid, recs[:n]); err != nil {
 			return err
 		}
+		recs = recs[n:]
+		if len(recs) > 0 {
+			time.Sleep(15 * time.Millisecond)
+		}
+	}
+	if text != "" {
 		// The TUI reads a burst of keys as a paste, and an Enter inside a
 		// paste is only a newline; send it on its own once the paste lands.
 		time.Sleep(pasteSettle(len(text)))

@@ -236,9 +236,10 @@ class SectionLabel extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
         child: Row(
           children: [
-            Text(text.toUpperCase(),
-                style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: context.colors.faint)),
-            const Spacer(),
+            Expanded(
+              child: Text(text.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: context.colors.faint)),
+            ),
             ?trailing,
           ],
         ),

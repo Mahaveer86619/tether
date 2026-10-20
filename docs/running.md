@@ -37,6 +37,34 @@ loginctl enable-linger   # may need sudo
 journalctl --user -u tether-hub -u tether-agent -f
 ```
 
+## Pairing devices
+
+Instead of copying the admin token everywhere, give each app and agent its own token:
+
+- **App:** on a connected app, Settings → **Add a device** shows a QR code and a code. On the new phone, the setup screen's **Scan QR code** pairs it; on a desktop, type the hub address and code.
+- **Agent:** `tether-agent pair -hub <url> -token-file <path> [-node NAME] [-fingerprint SHA256] CODE`. On Windows, `install-agent.ps1 -PairCode CODE` does this for you.
+- **From the hub:** `tetherctl pair` prints a code and the QR link; `tetherctl devices` lists paired devices, and `tetherctl revoke <id>` revokes one.
+
+## Your own machines over Tailscale
+
+Add `-trust-tailnet` to the hub (`TETHER_HUB_FLAGS=-trust-tailnet` in `tether.env`). Apps and agents on machines owned by your own Tailscale account then connect without a token:
+
+- **App:** on the setup screen, enter the hub's machine name (for example `minipc`) and choose **Connect over Tailscale**.
+- **Agent:** start it without a token.
+
+Settings → Devices lists every machine on the tailnet and what of Tether runs on it.
+
+## A hub on a public address
+
+Over Tailscale, nothing more is needed. On a VM with a public `host:port`, the hub needs TLS, and it refuses to start without it:
+
+```sh
+TETHER_HUB_FLAGS=-tls          # in tether.env: a self-signed certificate next to the database
+journalctl --user -u tether-hub | grep sha256   # its fingerprint
+```
+
+Apps learn the fingerprint from the QR code. Agents and `tetherctl` take it from `-fingerprint` or `TETHER_HUB_FINGERPRINT`. The hub address becomes `wss://host:port/ws`. To use a CA certificate instead, pass `-tls-cert` and `-tls-key`.
+
 ## Agent on Windows
 
 From an ordinary (not admin) PowerShell:
@@ -45,7 +73,7 @@ From an ordinary (not admin) PowerShell:
 .\deploy\windows\install-agent.ps1 -Binary .\server\bin\tether-agent.exe -Hub ws://<hub tailscale ip>:7420/ws -Node laptop
 ```
 
-It asks for the token once and stores it in `%USERPROFILE%\.tether\token`. It then registers a "Tether Agent" task that starts at logon as your user, so it uses your Claude Code login. The task runs `tether-agent.exe` directly (`-token-file`, `-log`) and restarts it within a minute if it stops. Logs go to `%USERPROFILE%\.tether\agent.log`. Build the binary with `-H=windowsgui` so no console window opens; the agent also needs that to type into your terminals.
+It asks for the token once and stores it in `%USERPROFILE%\.tether\token`. It then registers a "Tether Agent" task that runs as your user, so it uses your Claude Code login. The task has no logon trigger: the Tether app starts it on launch (`schtasks /Run`), so nothing runs at boot until you open the app. The agent keeps running after you close the app, until you sign out or restart. The task runs `tether-agent.exe` directly (`-token-file`, `-log`) and restarts it within a minute if it stops. Logs go to `%USERPROFILE%\.tether\agent.log`. Build the binary with `-H=windowsgui` so no console window opens; the agent also needs that to type into your terminals.
 
 ## App on Windows
 
@@ -62,6 +90,8 @@ If the agent log shows `context deadline exceeded` when dialling the hub, check 
 
 - Adds HTTP hooks to `~/.claude/settings.json` (backup: `settings.json.tether-backup`). Undo with `tether-agent uninstall-hooks`, or run with `-hooks=false`.
 - On Linux with tmux, creates a tmux session named `tether` with one window per Claude session. Attach with `tmux attach -t tether`.
+- In each codebase it snapshots: `.tether/codebase.json`, a default `.tetherignore` if there's none, and `.tether/` in `.git/info/exclude`.
+- On the hub's machine, restores codebases into `~/.tether/codebases/<id>/` (next to the scratch folder) when a session is continued there.
 
 ## tetherctl
 
@@ -88,6 +118,8 @@ Tool calls that need permission prompt `allow? [y/N]` in the terminal; `-yes` ap
 On Windows Git Bash, set `MSYS_NO_PATHCONV=1` before passing Linux paths such as `-cwd /srv/project`, or Git Bash rewrites them into Windows paths.
 
 ## Requirements on each node
+
+- **Tailscale**, on the same tailnet as the hub. Tether is built around one tailnet: it's how the hub is reached, how it lists machines, and how it trusts your own devices (`-trust-tailnet`).
 
 - Claude Code installed and **logged in** for the user the agent runs as. Headless runs fail with "OAuth session expired" otherwise; fix it by running `claude` once on that machine and using `/login`.
 - The working directory you pass to `run` must exist on that node.

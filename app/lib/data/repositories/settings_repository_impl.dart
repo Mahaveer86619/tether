@@ -13,17 +13,29 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
   @override
   Future<Result<HubConnection>> loadConnection() => guard(() async {
-        final (url, token) = await _local.readConnection();
-        return HubConnection(url: url, token: token);
+        final (url, token, fingerprint, viaTailnet) = await _local.readConnection();
+        return HubConnection(url: url, token: token, fingerprint: fingerprint, viaTailnet: viaTailnet);
       });
 
   @override
   Future<Result<void>> saveConnection(HubConnection connection) =>
-      guard(() => _local.writeConnection(connection.url, connection.token));
+      guard(() => _local.writeConnection(connection.url, connection.token, connection.fingerprint, viaTailnet: connection.viaTailnet));
 
   @override
-  Future<ThemeMode> loadThemeMode() async => ThemeMode.values.asNameMap()[await _local.readTheme()] ?? ThemeMode.system;
+  Future<Result<void>> clearConnection() => guard(_local.clearConnection);
 
   @override
-  Future<Result<void>> saveThemeMode(ThemeMode mode) => guard(() => _local.writeTheme(mode.name));
+  Future<String> loadDraft(String key) => _local.readDraft(key);
+
+  @override
+  Future<void> saveDraft(String key, String text) => _local.writeDraft(key, text);
+
+  @override
+  Future<Appearance> loadAppearance() async {
+    final (mode, palette, accent) = await _local.readAppearance();
+    return Appearance(mode: ThemeMode.values.asNameMap()[mode] ?? ThemeMode.system, palette: palette ?? 'claude', accent: accent);
+  }
+
+  @override
+  Future<Result<void>> saveAppearance(Appearance a) => guard(() => _local.writeAppearance(a.mode.name, a.palette, a.accent));
 }

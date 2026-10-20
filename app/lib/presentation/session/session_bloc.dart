@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -19,7 +21,42 @@ class SessionOpened extends SessionEvent {
 }
 
 class MessageSubmitted extends SessionEvent {
-  const MessageSubmitted(this.text);
+  const MessageSubmitted(this.text, {this.attachments = const []});
+  final String text;
+
+  /// Artifact ids sent with the message.
+  final List<String> attachments;
+  @override
+  List<Object?> get props => [text, attachments];
+}
+
+/// Have the hub keep a copy of this session (or stop).
+class GlobalToggled extends SessionEvent {
+  const GlobalToggled(this.global);
+  final bool global;
+  @override
+  List<Object?> get props => [global];
+}
+
+/// Continue this global session on the hub's machine with a first message.
+class ContinueOnHubRequested extends SessionEvent {
+  const ContinueOnHubRequested(this.text);
+  final String text;
+  @override
+  List<Object?> get props => [text];
+}
+
+/// The composer's text changed; it is kept as a draft until sent.
+class DraftChanged extends SessionEvent {
+  const DraftChanged(this.text);
+  final String text;
+  @override
+  List<Object?> get props => [text];
+}
+
+/// Text selected in the chat, to be quoted in the composer.
+class QuoteRequested extends SessionEvent {
+  const QuoteRequested(this.text);
   final String text;
   @override
   List<Object?> get props => [text];
@@ -54,7 +91,10 @@ class SessionViewState extends Equatable {
     this.forking = false,
     this.sending = false,
     this.sentId = 0,
+    this.quote = '',
+    this.quoteId = 0,
     this.forkedTo,
+    this.draft,
     this.failure,
     this.failureId = 0,
   });
@@ -69,8 +109,15 @@ class SessionViewState extends Equatable {
   /// Bumped after each successful send, so the composer knows to clear.
   final int sentId;
 
+  /// The latest text to quote; [quoteId] is bumped so quoting the same text twice still lands.
+  final String quote;
+  final int quoteId;
+
   /// Set once a fork was created; the view navigates to it.
   final String? forkedTo;
+
+  /// Unsent text from last time, once loaded; the composer starts with it.
+  final String? draft;
   final Failure? failure;
   final int failureId;
 
@@ -86,6 +133,9 @@ class SessionViewState extends Equatable {
     bool? forking,
     bool? sending,
     int? sentId,
+    String? quote,
+    int? quoteId,
+    String? draft,
     String? Function()? forkedTo,
     Failure? failure,
     int? failureId,
@@ -99,6 +149,9 @@ class SessionViewState extends Equatable {
         forking: forking ?? this.forking,
         sending: sending ?? this.sending,
         sentId: sentId ?? this.sentId,
+        quote: quote ?? this.quote,
+        quoteId: quoteId ?? this.quoteId,
+        draft: draft ?? this.draft,
         forkedTo: forkedTo != null ? forkedTo() : this.forkedTo,
         failure: failure ?? this.failure,
         failureId: failureId ?? this.failureId,
@@ -106,7 +159,7 @@ class SessionViewState extends Equatable {
 
   @override
   List<Object?> get props =>
-      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, forkedTo, failure, failureId];
+      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, quote, quoteId, forkedTo, draft, failure, failureId];
 }
 
 // ---- bloc ----
@@ -120,13 +173,40 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     required SendMessage sendMessage,
     required this._interrupt,
     required this._endSession,
+    required this._drafts,
+    required this._setGlobal,
+    required this._continueOnHub,
   })  : _send = sendMessage,
         super(SessionViewState(sessionId: sessionId)) {
     on<SessionOpened>(_onOpened);
     on<MessageSubmitted>(_onSubmitted);
+    on<DraftChanged>(_onDraftChanged);
     on<ForkModeChanged>((e, emit) => emit(state.copyWith(forking: e.forking)));
+    on<QuoteRequested>((e, emit) {
+      final text = e.text.trim();
+      if (text.isNotEmpty) emit(state.copyWith(quote: text, quoteId: state.quoteId + 1));
+    });
     on<InterruptRequested>(_onInterrupt);
     on<EndRequested>(_onEnd);
+    on<GlobalToggled>(_onGlobal);
+    on<ContinueOnHubRequested>(_onContinue);
+  }
+
+  final SetSessionGlobal _setGlobal;
+  final ContinueOnHub _continueOnHub;
+
+  Future<void> _onGlobal(GlobalToggled e, Emitter<SessionViewState> emit) async {
+    final result = await _setGlobal(state.sessionId, global: e.global);
+    if (result.failureOrNull case final f?) emit(state.copyWith(failure: f, failureId: state.failureId + 1));
+  }
+
+  // The new session opens like a fork does.
+  Future<void> _onContinue(ContinueOnHubRequested e, Emitter<SessionViewState> emit) async {
+    final result = await _continueOnHub(state.sessionId, e.text);
+    result.fold(
+      (f) => emit(state.copyWith(failure: f, failureId: state.failureId + 1)),
+      (id) => emit(state.copyWith(forkedTo: () => id)),
+    );
   }
 
   final WatchHub _watchHub;
@@ -134,8 +214,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
   final SendMessage _send;
   final InterruptSession _interrupt;
   final EndSession _endSession;
+  final Drafts _drafts;
+  Timer? _draftSave;
+  String? _pendingDraft;
 
   Future<void> _onOpened(SessionOpened e, Emitter<SessionViewState> emit) async {
+    emit(state.copyWith(draft: await _drafts.load(state.sessionId)));
     await Future.wait([
       emit.forEach<HubSnapshot>(_watchHub(), onData: (hub) {
         final session = hub.sessions[state.sessionId];
@@ -153,16 +237,41 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     if (state.sending) return;
     emit(state.copyWith(sending: true));
     final fork = state.forking;
-    final result = await _send(state.sessionId, e.text, fork: fork);
+    final result = await _send(state.sessionId, e.text, fork: fork, attachments: e.attachments);
     result.fold(
       (f) => emit(state.copyWith(sending: false, failure: f, failureId: state.failureId + 1)),
-      (id) => emit(state.copyWith(
-        sending: false,
-        sentId: state.sentId + 1,
-        forking: false,
-        forkedTo: fork ? () => id : null,
-      )),
+      (id) {
+        _draftSave?.cancel();
+        _pendingDraft = null;
+        _drafts.save(state.sessionId, '');
+        emit(state.copyWith(
+          sending: false,
+          sentId: state.sentId + 1,
+          forking: false,
+          forkedTo: fork ? () => id : null,
+        ));
+      },
     );
+  }
+
+  // Written a moment after typing stops, not on every key.
+  void _onDraftChanged(DraftChanged e, Emitter<SessionViewState> emit) {
+    _pendingDraft = e.text;
+    _draftSave?.cancel();
+    _draftSave = Timer(const Duration(milliseconds: 500), _flushDraft);
+  }
+
+  void _flushDraft() {
+    if (_pendingDraft case final text?) _drafts.save(state.sessionId, text);
+    _pendingDraft = null;
+  }
+
+  // Events still queued are handled first, so the last edit is written.
+  @override
+  Future<void> close() async {
+    await super.close();
+    _draftSave?.cancel();
+    _flushDraft();
   }
 
   Future<void> _onEnd(EndRequested e, Emitter<SessionViewState> emit) async {

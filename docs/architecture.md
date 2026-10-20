@@ -24,7 +24,7 @@ Runs on every machine that has Claude Code: the Windows laptop and the mini PC.
 - On the mini PC, launches each session in a sandbox container instead of directly on the host ([home-server.md](home-server.md)).
 - Reports node health: CPU, memory, disk, Claude Code version, online state.
 
-On Windows it runs as a per-user logon task, not a service, so it inherits the user's Claude Code login, PATH and `~/.claude`.
+On Windows it runs as a per-user scheduled task that the app starts on launch, not a service, so it inherits the user's Claude Code login, PATH and `~/.claude`.
 
 ### tether-hub
 
