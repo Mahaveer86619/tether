@@ -396,6 +396,32 @@ void main() {
       expect(repo.modes.single.$2, PermissionMode.acceptEdits);
     });
 
+    testWidgets('an interrupt shows it is stopping, and offers more if Claude keeps going', (tester) async {
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.running)]));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('interrupt')));
+      await settle(tester);
+      expect(repo.interrupted.single, 's1');
+      expect(find.text('Stopping…'), findsOneWidget);
+      expect(find.byKey(const Key('still-working')), findsNothing);
+
+      await tester.pump(const Duration(seconds: 9));
+      await settle(tester);
+      expect(find.byKey(const Key('still-working')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('interrupt-end')));
+      await settle(tester);
+      expect(find.text('End this session?'), findsOneWidget, reason: 'ending asks first');
+      await tester.tap(find.text('Cancel'));
+      await settle(tester);
+      expect(repo.ended, isEmpty);
+
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.ready)]));
+      await settle(tester);
+      expect(find.byKey(const Key('still-working')), findsNothing);
+    });
+
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
       const input = '{"questions":['
           '{"question":"Which DB?","header":"DB","multiSelect":false,"options":[{"label":"Postgres","description":"server"},{"label":"SQLite"}]},'

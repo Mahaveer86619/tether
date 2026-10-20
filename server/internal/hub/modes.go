@@ -91,6 +91,18 @@ func (h *Hub) switchingMode(session string) bool {
 	return ok
 }
 
+// noteCommandResult shows a command the node couldn't carry out on the
+// session. Caller holds h.mu.
+func (h *Hub) noteCommandResult(node string, r *v1.CommandResult) {
+	info := h.sessions[r.Session]
+	if info == nil || info.Node != node || r.Error == "" {
+		return
+	}
+	next := proto.Clone(info).(*v1.SessionInfo)
+	next.Error = r.Error
+	h.putSession(next)
+}
+
 // modeArg is the mode to start or resume a session in; Claude Code's own
 // default needs no flag.
 func modeArg(mode string) string {

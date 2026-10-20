@@ -550,16 +550,42 @@ func (a *Agent) interrupt(session string) {
 	}
 	if err != nil {
 		a.log.Warn("interrupt", "session", session, "err", err)
+		a.commandFailed(session, "interrupt", "Couldn't interrupt: "+err.Error())
 		return
 	}
 	// Claude Code fires no Stop hook when a turn is interrupted, so nothing
 	// else would move an interactive session out of "running".
 	if interactive {
-		go func() {
-			time.Sleep(time.Second)
-			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
-		}()
+		go a.awaitInterrupt(session)
 	}
+}
+
+// awaitInterrupt watches the screen until Claude Code stops showing it's at
+// work, then marks the session ready; without a screen it waits a moment.
+func (a *Agent) awaitInterrupt(session string) {
+	t, err := a.screenTarget(session)
+	if err != nil {
+		time.Sleep(time.Second)
+		a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+		return
+	}
+	deadline := time.Now().Add(interruptWait)
+	for time.Now().Before(deadline) {
+		time.Sleep(300 * time.Millisecond)
+		screen, err := a.readScreen(t)
+		if err != nil {
+			continue
+		}
+		if !working(screen) {
+			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+			return
+		}
+	}
+	a.commandFailed(session, "interrupt", "Claude Code is still working; press Esc again, or end the session")
+}
+
+func (a *Agent) commandFailed(session, command, msg string) {
+	a.send(&v1.Frame{Body: &v1.Frame_CommandResult{CommandResult: &v1.CommandResult{Session: session, Command: command, Error: msg}}})
 }
 
 // stop ends a session the agent hosts: /exit for tmux, so Claude Code

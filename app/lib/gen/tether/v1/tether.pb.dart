@@ -49,6 +49,7 @@ enum Frame_Body {
   planUsage,
   screenSnapshot,
   modeResult,
+  commandResult,
   agentCommand,
   notSet
 }
@@ -86,6 +87,7 @@ class Frame extends $pb.GeneratedMessage {
     PlanUsage? planUsage,
     ScreenSnapshot? screenSnapshot,
     ModeResult? modeResult,
+    CommandResult? commandResult,
     AgentCommand? agentCommand,
   }) {
     final result = Frame._();
@@ -119,6 +121,7 @@ class Frame extends $pb.GeneratedMessage {
     if (planUsage != null) result.planUsage = planUsage;
     if (screenSnapshot != null) result.screenSnapshot = screenSnapshot;
     if (modeResult != null) result.modeResult = modeResult;
+    if (commandResult != null) result.commandResult = commandResult;
     if (agentCommand != null) result.agentCommand = agentCommand;
     return result;
   }
@@ -159,6 +162,7 @@ class Frame extends $pb.GeneratedMessage {
     54: Frame_Body.planUsage,
     55: Frame_Body.screenSnapshot,
     56: Frame_Body.modeResult,
+    57: Frame_Body.commandResult,
     60: Frame_Body.agentCommand,
     0: Frame_Body.notSet
   };
@@ -193,6 +197,7 @@ class Frame extends $pb.GeneratedMessage {
       54,
       55,
       56,
+      57,
       60
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
@@ -252,6 +257,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: ScreenSnapshot.$_createMessage)
     ..aOM<ModeResult>(56, _omitFieldNames ? '' : 'modeResult',
         subBuilder: ModeResult.$_createMessage)
+    ..aOM<CommandResult>(57, _omitFieldNames ? '' : 'commandResult',
+        subBuilder: CommandResult.$_createMessage)
     ..aOM<AgentCommand>(60, _omitFieldNames ? '' : 'agentCommand',
         subBuilder: AgentCommand.$_createMessage)
     ..hasRequiredFields = false;
@@ -302,6 +309,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(54)
   @$pb.TagNumber(55)
   @$pb.TagNumber(56)
+  @$pb.TagNumber(57)
   @$pb.TagNumber(60)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
@@ -330,6 +338,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(54)
   @$pb.TagNumber(55)
   @$pb.TagNumber(56)
+  @$pb.TagNumber(57)
   @$pb.TagNumber(60)
   void clearBody() => $_clearField($_whichOneof(0));
 
@@ -666,17 +675,30 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(56)
   ModeResult ensureModeResult() => $_ensure(29);
 
+  /// A command the node couldn't carry out, e.g. an interrupt that didn't
+  /// land; the hub shows it on the session.
+  @$pb.TagNumber(57)
+  CommandResult get commandResult => $_getN(30);
+  @$pb.TagNumber(57)
+  set commandResult(CommandResult value) => $_setField(57, value);
+  @$pb.TagNumber(57)
+  $core.bool hasCommandResult() => $_has(30);
+  @$pb.TagNumber(57)
+  void clearCommandResult() => $_clearField(57);
+  @$pb.TagNumber(57)
+  CommandResult ensureCommandResult() => $_ensure(30);
+
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(30);
+  AgentCommand get agentCommand => $_getN(31);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(30);
+  $core.bool hasAgentCommand() => $_has(31);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(30);
+  AgentCommand ensureAgentCommand() => $_ensure(31);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -7511,6 +7533,88 @@ class SetPermissionMode extends $pb.GeneratedMessage {
   $core.bool hasRevertAfterMs() => $_has(2);
   @$pb.TagNumber(3)
   void clearRevertAfterMs() => $_clearField(3);
+}
+
+class CommandResult extends $pb.GeneratedMessage {
+  factory CommandResult({
+    $core.String? session,
+    $core.String? command,
+    $core.String? error,
+  }) {
+    final result = CommandResult._();
+    if (session != null) result.session = session;
+    if (command != null) result.command = command;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  CommandResult._();
+
+  factory CommandResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommandResult()..mergeFromBuffer(data, registry);
+  factory CommandResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommandResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CommandResult',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: CommandResult.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'command')
+    ..aOS(3, _omitFieldNames ? '' : 'error')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommandResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommandResult copyWith(void Function(CommandResult) updates) =>
+      super.copyWith((message) => updates(message as CommandResult))
+          as CommandResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CommandResult() / CommandResult.new instead')
+  static CommandResult create() => CommandResult._();
+  static $pb.GeneratedMessage $_createMessage() => CommandResult._();
+  @$core.override
+  CommandResult createEmptyInstance() => CommandResult._();
+  @$core.pragma('dart2js:noInline')
+  static CommandResult getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CommandResult>(
+          CommandResult.$_createMessage);
+  static CommandResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  /// "interrupt".
+  @$pb.TagNumber(2)
+  $core.String get command => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set command($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCommand() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCommand() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get error => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set error($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasError() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearError() => $_clearField(3);
 }
 
 class ModeResult extends $pb.GeneratedMessage {

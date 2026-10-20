@@ -76,6 +76,11 @@ class InterruptRequested extends SessionEvent {
   const InterruptRequested();
 }
 
+/// The interrupt has had time to land; still busy means it didn't.
+class _InterruptTimedOut extends SessionEvent {
+  const _InterruptTimedOut();
+}
+
 /// Ends the session's Claude Code process (tmux or headless only).
 class EndRequested extends SessionEvent {
   const EndRequested();
@@ -116,7 +121,13 @@ class SessionViewState extends Equatable {
     this.failure,
     this.failureId = 0,
     this.outbox = const [],
+    this.interrupting = false,
+    this.interruptSlow = false,
   });
+
+  /// An interrupt is on its way; [interruptSlow] once it's taking too long,
+  /// so the view can offer Esc again, the screen, or ending the session.
+  final bool interrupting, interruptSlow;
 
   final String sessionId;
 
@@ -162,6 +173,8 @@ class SessionViewState extends Equatable {
     Failure? failure,
     int? failureId,
     List<OutboxEntry>? outbox,
+    bool? interrupting,
+    bool? interruptSlow,
   }) =>
       SessionViewState(
         sessionId: sessionId,
@@ -179,11 +192,13 @@ class SessionViewState extends Equatable {
         failure: failure ?? this.failure,
         failureId: failureId ?? this.failureId,
         outbox: outbox ?? this.outbox,
+        interrupting: interrupting ?? this.interrupting,
+        interruptSlow: interruptSlow ?? this.interruptSlow,
       );
 
   @override
   List<Object?> get props =>
-      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, quote, quoteId, forkedTo, draft, failure, failureId, outbox];
+      [sessionId, session, nodeOnline, timeline, approvals, forking, sending, sentId, quote, quoteId, forkedTo, draft, failure, failureId, outbox, interrupting, interruptSlow];
 }
 
 // ---- bloc ----
@@ -201,6 +216,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     required this._setGlobal,
     required this._continueOnHub,
     required this._outbox,
+    this.interruptTimeout = const Duration(seconds: 8),
   })  : _send = sendMessage,
         super(SessionViewState(sessionId: sessionId)) {
     on<SessionOpened>(_onOpened);
@@ -216,6 +232,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     on<GlobalToggled>(_onGlobal);
     on<ContinueOnHubRequested>(_onContinue);
     on<OutboxRetried>(_onRetry);
+    on<_InterruptTimedOut>((e, emit) {
+      if (state.interrupting && (state.session?.isBusy ?? false)) emit(state.copyWith(interruptSlow: true));
+    });
     on<OutboxDiscarded>((e, emit) => _setOutbox(emit, [for (final o in state.outbox) if (o.id != e.id) o]));
   }
 
@@ -284,8 +303,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     await Future.wait([
       emit.forEach<HubSnapshot>(_watchHub(), onData: (hub) {
         final session = hub.sessions[state.sessionId];
+        final stopped = !(session?.isBusy ?? false);
+        if (stopped) _interruptTimer?.cancel();
         return state.copyWith(
           session: session,
+          interrupting: stopped ? false : null,
+          interruptSlow: stopped ? false : null,
           nodeOnline: session != null && (hub.nodes[session.node]?.online ?? false),
           approvals: hub.approvalsFor(state.sessionId),
         );
@@ -353,6 +376,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
   // Events still queued are handled first, so the last edit is written.
   @override
   Future<void> close() async {
+    _interruptTimer?.cancel();
     await super.close();
     _draftSave?.cancel();
     _flushDraft();
@@ -363,8 +387,21 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     if (result.failureOrNull case final f?) emit(state.copyWith(failure: f, failureId: state.failureId + 1));
   }
 
+  Timer? _interruptTimer;
+
+  /// How long an interrupt gets before the view offers other ways out.
+  final Duration interruptTimeout;
+
   Future<void> _onInterrupt(InterruptRequested e, Emitter<SessionViewState> emit) async {
+    emit(state.copyWith(interrupting: true, interruptSlow: false));
     final result = await _interrupt(state.sessionId);
-    if (result.failureOrNull case final f?) emit(state.copyWith(failure: f, failureId: state.failureId + 1));
+    if (result.failureOrNull case final f?) {
+      emit(state.copyWith(interrupting: false, failure: f, failureId: state.failureId + 1));
+      return;
+    }
+    _interruptTimer?.cancel();
+    _interruptTimer = Timer(interruptTimeout, () {
+      if (!isClosed) add(const _InterruptTimedOut());
+    });
   }
 }

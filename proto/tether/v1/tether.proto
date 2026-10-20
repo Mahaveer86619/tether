@@ -53,6 +53,9 @@ message Frame {
     ScreenSnapshot screen_snapshot = 55;
     // How a SetMode went.
     ModeResult mode_result = 56;
+    // A command the node couldn't carry out, e.g. an interrupt that didn't
+    // land; the hub shows it on the session.
+    CommandResult command_result = 57;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -787,6 +790,13 @@ message SetPermissionMode {
   string session = 1;
   string mode = 2;
   int64 revert_after_ms = 3;
+}
+
+message CommandResult {
+  string session = 1;
+  // "interrupt".
+  string command = 2;
+  string error = 3;
 }
 
 message ModeResult {

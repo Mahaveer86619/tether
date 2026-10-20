@@ -312,6 +312,15 @@ const Frame$json = {
       '10': 'modeResult'
     },
     {
+      '1': 'command_result',
+      '3': 57,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.CommandResult',
+      '9': 0,
+      '10': 'commandResult'
+    },
+    {
       '1': 'agent_command',
       '3': 60,
       '4': 1,
@@ -358,8 +367,9 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'YgASgLMhQudGV0aGVyLnYxLlBsYW5Vc2FnZUgAUglwbGFuVXNhZ2USRAoPc2NyZWVuX3NuYXBz'
     'aG90GDcgASgLMhkudGV0aGVyLnYxLlNjcmVlblNuYXBzaG90SABSDnNjcmVlblNuYXBzaG90Ej'
     'gKC21vZGVfcmVzdWx0GDggASgLMhUudGV0aGVyLnYxLk1vZGVSZXN1bHRIAFIKbW9kZVJlc3Vs'
-    'dBI+Cg1hZ2VudF9jb21tYW5kGDwgASgLMhcudGV0aGVyLnYxLkFnZW50Q29tbWFuZEgAUgxhZ2'
-    'VudENvbW1hbmRCBgoEYm9keQ==');
+    'dBJBCg5jb21tYW5kX3Jlc3VsdBg5IAEoCzIYLnRldGhlci52MS5Db21tYW5kUmVzdWx0SABSDW'
+    'NvbW1hbmRSZXN1bHQSPgoNYWdlbnRfY29tbWFuZBg8IAEoCzIXLnRldGhlci52MS5BZ2VudENv'
+    'bW1hbmRIAFIMYWdlbnRDb21tYW5kQgYKBGJvZHk=');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -2017,6 +2027,21 @@ const SetPermissionMode$json = {
 final $typed_data.Uint8List setPermissionModeDescriptor = $convert.base64Decode(
     'ChFTZXRQZXJtaXNzaW9uTW9kZRIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBG1vZGUYAi'
     'ABKAlSBG1vZGUSJgoPcmV2ZXJ0X2FmdGVyX21zGAMgASgDUg1yZXZlcnRBZnRlck1z');
+
+@$core.Deprecated('Use commandResultDescriptor instead')
+const CommandResult$json = {
+  '1': 'CommandResult',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'command', '3': 2, '4': 1, '5': 9, '10': 'command'},
+    {'1': 'error', '3': 3, '4': 1, '5': 9, '10': 'error'},
+  ],
+};
+
+/// Descriptor for `CommandResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List commandResultDescriptor = $convert.base64Decode(
+    'Cg1Db21tYW5kUmVzdWx0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SGAoHY29tbWFuZBgCIA'
+    'EoCVIHY29tbWFuZBIUCgVlcnJvchgDIAEoCVIFZXJyb3I=');
 
 @$core.Deprecated('Use modeResultDescriptor instead')
 const ModeResult$json = {

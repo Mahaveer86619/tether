@@ -308,6 +308,48 @@ void main() {
 
   });
 
+  group('SessionBloc interrupt', () {
+    SessionBloc bloc(FakeHubRepository repo) => SessionBloc(
+          sessionId: 's1',
+          watchHub: WatchHub(repo),
+          watchTimeline: WatchTimeline(repo),
+          sendMessage: SendMessage(repo),
+          interrupt: InterruptSession(repo),
+          endSession: EndSession(repo),
+          drafts: Drafts(FakeSettingsRepository()),
+          setGlobal: SetSessionGlobal(repo),
+          continueOnHub: ContinueOnHub(repo),
+          outbox: Outbox(FakeSettingsRepository()),
+          interruptTimeout: const Duration(milliseconds: 40),
+        );
+
+    test('interrupting shows until the turn stops', () async {
+      final repo = FakeHubRepository(snapshotWith([session('s1', state: SessionState.running)]));
+      final b = bloc(repo)..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      b.add(const InterruptRequested());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(b.state.interrupting, isTrue);
+      expect(repo.interrupted.single, 's1');
+      repo.emitHub(snapshotWith([session('s1', state: SessionState.ready)]));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(b.state.interrupting, isFalse);
+      expect(b.state.interruptSlow, isFalse, reason: 'it stopped in time');
+      await b.close();
+    });
+
+    test('a turn that keeps going after the interrupt offers the other ways out', () async {
+      final repo = FakeHubRepository(snapshotWith([session('s1', state: SessionState.running)]));
+      final b = bloc(repo)..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      b.add(const InterruptRequested());
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(b.state.interruptSlow, isTrue);
+      expect(b.state.interrupting, isTrue);
+      await b.close();
+    });
+  });
+
   group('TerminalCubit', () {
     test('reads the screen, and reads it again after pressing keys', () async {
       final repo = FakeHubRepository(snapshotWith([session('s1')]))..screenText = '❯ 1. Yes';

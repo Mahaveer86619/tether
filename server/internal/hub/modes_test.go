@@ -146,3 +146,14 @@ func TestForksAndResumesKeepTheMode(t *testing.T) {
 		t.Fatalf("resume %q, fork %q", send.PermissionMode, start.PermissionMode)
 	}
 }
+
+func TestACommandTheNodeCouldNotCarryOutShowsOnTheSession(t *testing.T) {
+	h, _ := newTestHubWith(t)
+	h.onAgent("minipc", &v1.Frame{Body: &v1.Frame_CommandResult{CommandResult: &v1.CommandResult{Session: "s1", Command: "interrupt", Error: "forged"}}})
+	h.onAgent("laptop", &v1.Frame{Body: &v1.Frame_CommandResult{CommandResult: &v1.CommandResult{Session: "s1", Command: "interrupt", Error: "Claude Code is still working"}}})
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if e := h.sessions["s1"].Error; e != "Claude Code is still working" {
+		t.Fatalf("session error: %q", e)
+	}
+}

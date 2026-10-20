@@ -26,6 +26,20 @@ var modeLines = []struct {
 	{regexp.MustCompile(`(?i)bypass permissions on`), "bypassPermissions"},
 }
 
+const interruptWait = 6 * time.Second
+
+var workingLine = regexp.MustCompile(`(?i)esc to interrupt`)
+
+// working reports whether the screen shows Claude Code mid-turn ("esc to
+// interrupt" by its spinner).
+func working(screen string) bool {
+	lines := strings.Split(strings.TrimRight(screen, "\n "), "\n")
+	if len(lines) > 8 {
+		lines = lines[len(lines)-8:]
+	}
+	return workingLine.MatchString(strings.Join(lines, "\n"))
+}
+
 // screenMode reads the mode off the bottom of a screen; Claude Code shows
 // nothing there in the default mode.
 func screenMode(screen string) string {

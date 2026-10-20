@@ -182,3 +182,12 @@ func TestScreenMode(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkingScreen(t *testing.T) {
+	if !working("⏺ Reading files…\n\n✻ Pondering… (8s · ↑ 1.2k tokens · esc to interrupt)\n│ > │\n") {
+		t.Error("a spinner with 'esc to interrupt' is a turn in progress")
+	}
+	if working("⏺ Done.\n\n│ > │\n  ? for shortcuts\n") {
+		t.Error("an idle prompt isn't working")
+	}
+}

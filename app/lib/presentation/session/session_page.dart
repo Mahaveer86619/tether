@@ -202,11 +202,16 @@ class SessionHeader extends StatelessWidget {
               ),
             ),
           if (session.canInterrupt)
-            IconButton(
-              key: const Key('interrupt'),
-              tooltip: 'Interrupt (Esc)',
-              icon: const Icon(Icons.stop_circle_outlined),
-              onPressed: () => bloc.add(const InterruptRequested()),
+            BlocSelector<SessionBloc, SessionViewState, bool>(
+              selector: (s) => s.interrupting,
+              builder: (context, interrupting) => IconButton(
+                key: const Key('interrupt'),
+                tooltip: interrupting ? 'Stopping…' : 'Interrupt (Esc)',
+                icon: interrupting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.stop_circle_outlined),
+                onPressed: interrupting ? null : () => bloc.add(const InterruptRequested()),
+              ),
             ),
           if (!narrow)
             IconButton(
@@ -458,7 +463,13 @@ class _TimelineState extends State<_Timeline> {
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: _Working(waitingForApproval: approval)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: contentWidth),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _Working(waitingForApproval: approval, stopping: s.interrupting),
+                if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
+              ]),
+            ),
           ),
         );
       }
@@ -511,7 +522,8 @@ class _TimelineState extends State<_Timeline> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final o in outbox) _OutboxBubble(key: ValueKey('outbox-${o.id}'), entry: o),
-                    working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+                    working ? _Working(waitingForApproval: approval, stopping: s.interrupting) : const SizedBox(width: double.infinity),
+                    if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
                   ],
                 ),
               );
@@ -703,9 +715,9 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
 
 /// Shown at the end of the chat while Claude works between messages.
 class _Working extends StatefulWidget {
-  const _Working({required this.waitingForApproval});
+  const _Working({required this.waitingForApproval, this.stopping = false});
 
-  final bool waitingForApproval;
+  final bool waitingForApproval, stopping;
 
   @override
   State<_Working> createState() => _WorkingState();
@@ -746,7 +758,12 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
             ),
           ),
           const SizedBox(width: 6),
-          Text(widget.waitingForApproval ? 'Waiting for your approval' : 'Claude is working',
+          Text(
+              widget.stopping
+                  ? 'Stopping…'
+                  : widget.waitingForApproval
+                      ? 'Waiting for your approval'
+                      : 'Claude is working',
               style: TextStyle(fontSize: 12.5, color: c.muted)),
         ],
       ),
@@ -754,6 +771,45 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
   }
 
   static double _pulse(double t) => t < 0.5 ? t * 2 : (1 - t) * 2;
+}
+
+/// An interrupt that didn't stop the turn: press Esc again, look at the
+/// screen, or end the session.
+class _StillWorking extends StatelessWidget {
+  const _StillWorking({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bloc = context.read<SessionBloc>();
+    return Container(
+      key: const Key('still-working'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: [
+          Text(session.error.isNotEmpty ? session.error : "Claude hasn't stopped yet.", style: const TextStyle(fontSize: 13)),
+          TextButton(key: const Key('interrupt-again'), onPressed: () => bloc.add(const InterruptRequested()), child: const Text('Esc again')),
+          if (session.hasScreen)
+            TextButton(onPressed: () => showTerminalSheet(context, session.id), child: const Text('Show screen')),
+          if (session.canEnd)
+            TextButton(
+              key: const Key('interrupt-end'),
+              style: TextButton.styleFrom(foregroundColor: c.danger),
+              onPressed: () async {
+                if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
+              },
+              child: const Text('End session'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<bool> _confirmEnd(BuildContext context, Session session) async =>
@@ -1009,7 +1065,12 @@ class _ComposerState extends State<Composer> {
           plain: true,
           onPressed: s.canType ? _attach : null,
         ),
-        if (canStop) PromptButton(tooltip: 'Stop', icon: Icons.stop_rounded, onPressed: () => bloc.add(const InterruptRequested())),
+        if (canStop)
+          PromptButton(
+            tooltip: s.interrupting ? 'Stopping…' : 'Stop',
+            icon: Icons.stop_rounded,
+            onPressed: s.interrupting ? null : () => bloc.add(const InterruptRequested()),
+          ),
         PromptButton(key: const Key('send'), tooltip: 'Send', icon: Icons.arrow_upward_rounded, filled: true, busy: s.sending, onPressed: canSubmit ? _submit : null),
       ],
       footer: isDesktop

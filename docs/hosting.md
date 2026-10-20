@@ -65,7 +65,9 @@ On Windows the agent finds the Claude Code process behind each hook request (the
 | `headless` | stdio control `interrupt` | Closes stdin; kills the process after 5 s |
 | `terminal` | Escape typed into the console (Windows only) | Refused: it's your terminal; close it there |
 
-Claude Code fires no Stop hook when a turn is interrupted, so the agent marks interactive sessions `ready` itself a second after interrupting.
+Claude Code fires no Stop hook when a turn is interrupted, so the agent marks interactive sessions `ready` itself.
+- **Confirming the stop:** after Escape, the agent re-reads the screen every 300 ms until the spinner's "esc to interrupt" is gone. If that hasn't happened within 6 seconds, it reports `CommandResult{command: "interrupt"}` with an error, which the hub shows on the session. A session without a readable screen is marked ready after a second, as before. Failing to deliver the interrupt at all is reported the same way.
+- **In the app:** the interrupt button turns into a spinner, and the working row reads "Stopping…" until the session stops. If it's still busy after 8 seconds, a banner offers Esc again, Show screen (for sessions with a terminal) and End session (confirmed first, for sessions the agent hosts).
 
 ## Removing sessions
 

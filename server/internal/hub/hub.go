@@ -658,6 +658,8 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteScreen(node, b.ScreenSnapshot)
 	case *v1.Frame_ModeResult:
 		h.noteModeResult(node, b.ModeResult)
+	case *v1.Frame_CommandResult:
+		h.noteCommandResult(node, b.CommandResult)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()
