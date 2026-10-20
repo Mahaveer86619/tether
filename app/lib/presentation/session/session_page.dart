@@ -124,6 +124,7 @@ class SessionHeader extends StatelessWidget {
       if (session.cwd.isNotEmpty) baseName(session.cwd),
       if (!narrow && session.gitBranch.isNotEmpty) session.gitBranch,
       if (!narrow && session.model.isNotEmpty) shortModel(session.model),
+      if (!narrow && session.backedUp != null) ago(session.backedUp) == 'now' ? 'backed up just now' : 'backed up ${ago(session.backedUp)} ago',
     ];
     return Container(
       padding: EdgeInsets.fromLTRB(leading == null ? 16 : 0, narrow ? 4 : 10, 4, narrow ? 4 : 10),

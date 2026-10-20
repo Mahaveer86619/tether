@@ -104,6 +104,9 @@ class HubRepositoryImpl implements HubRepository {
   void retryNow() => _socket.retryNow();
 
   @override
+  void setActive({required bool active}) => _socket.setPresence(active: active);
+
+  @override
   Stream<HubSnapshot> watchHub() async* {
     yield _snap;
     yield* _hub.stream;

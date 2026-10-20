@@ -78,6 +78,7 @@ type Agent struct {
 	uploaded      map[string]bool    // files already sent to the artifact store
 	hashes        map[hashKey]string // file hashes for snapshots, while unchanged
 	snapMu        sync.Mutex         // one snapshot at a time
+	backupMu      sync.Mutex         // one backup run at a time
 	ended         map[string]*v1.SessionInfo
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
@@ -245,6 +246,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.capture(op.Capture.Session)
 		case *v1.AgentCommand_SetMode_:
 			go a.setMode(op.SetMode)
+		case *v1.AgentCommand_Backup:
+			go a.backup(op.Backup.Stored)
 		case *v1.AgentCommand_Send:
 			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode)
 		case *v1.AgentCommand_Interrupt_:

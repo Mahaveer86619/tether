@@ -53,6 +53,9 @@ type client struct {
 	platform string
 	version  string
 	since    time.Time
+	// In the foreground, as the app last said; apps from before presence
+	// count as active while connected.
+	active bool
 }
 
 // pendingItems holds coalesced partial-text updates in arrival order.
@@ -101,6 +104,7 @@ type Hub struct {
 	modeBefore    map[string]modeSwitch                // session -> a switch the node hasn't confirmed
 	screens       map[string]*v1.ScreenSnapshot        // session -> its last terminal screen
 	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
+	lastBackup    time.Time
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -189,6 +193,7 @@ func (h *Hub) Handler() http.Handler {
 func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
 	go h.modeLoop(ctx)
+	go h.backupLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -256,7 +261,7 @@ func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 // ---- clients ----
 
 func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip string) {
-	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now()}
+	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now(), active: true}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
 	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(device, ip)}})
@@ -307,6 +312,9 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 	switch b := f.Body.(type) {
 	case *v1.Frame_Subscribe:
 		h.subscribe(c, f.Id, b.Subscribe)
+		return
+	case *v1.Frame_ClientPresence:
+		h.notePresence(c, b.ClientPresence.Active)
 		return
 	case *v1.Frame_Unsubscribe:
 		if set := h.subs[b.Unsubscribe.Session]; set != nil {
@@ -686,6 +694,7 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.Parent, in.ForkPoint, in.Lineage = cur.Parent, cur.ForkPoint, cur.Lineage
 		in.Scratch, in.Global = cur.Scratch, cur.Global
 		in.PermissionMode, in.ModeRevertMs, in.ModeRevertTo = cur.PermissionMode, cur.ModeRevertMs, cur.ModeRevertTo
+		in.BackedUpMs, in.BackedUpBytes = cur.BackedUpMs, cur.BackedUpBytes
 		// A global session's copy is refreshed whenever a turn ends.
 		if in.Global && busy(cur.State) && !busy(in.State) {
 			defer h.uploadTranscript(in)

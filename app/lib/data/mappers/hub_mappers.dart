@@ -74,6 +74,8 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       permissionMode: s.permissionMode,
       modeRevert: _time(s.modeRevertMs),
       modeRevertTo: s.modeRevertTo,
+      backedUp: _time(s.backedUpMs),
+      backedUpBytes: s.backedUpBytes.toInt(),
     );
 
 Appearance appearanceFromPb(pb.Preferences p) => Appearance(

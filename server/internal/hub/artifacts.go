@@ -59,8 +59,9 @@ func (h *Hub) uploadArtifact(w http.ResponseWriter, r *http.Request, id identity
 	}
 	a.Sha256, a.Size = sha, n
 	h.mu.Lock()
-	oerr = h.addArtifact(a)
-	if oerr == nil && wantsDelivery(r) {
+	if a.Origin == originBackup && a.Session != "" {
+		a, oerr = h.keepBackup(a)
+	} else if oerr = h.addArtifact(a); oerr == nil && wantsDelivery(r) {
 		h.deliverAttachment(a)
 	}
 	h.mu.Unlock()
@@ -144,6 +145,8 @@ func (h *Hub) keepBlob(path, sha string) error {
 	return os.Rename(path, blob)
 }
 
+func newID() string { return uuid.NewString() }
+
 func internalError(err error) *opError {
 	return &opError{"internal", err.Error(), http.StatusInternalServerError}
 }
@@ -159,7 +162,7 @@ func writeFailure(err error) *opError {
 // addArtifact records stored content and tells every client. Caller holds
 // h.mu.
 func (h *Hub) addArtifact(a *v1.Artifact) *opError {
-	a.Id, a.CreatedMs = uuid.NewString(), time.Now().UnixMilli()
+	a.Id, a.CreatedMs = newID(), time.Now().UnixMilli()
 	if err := h.store.PutArtifact(a); err != nil {
 		return internalError(err)
 	}

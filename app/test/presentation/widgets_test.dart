@@ -450,6 +450,37 @@ void main() {
       expect(find.textContaining('too old to list its apps'), findsOneWidget);
     });
 
+    testWidgets('the app tells the hub when it is in use, for backups, and sessions show their last backup', (tester) async {
+      repo.emitHub(snapshotWith([
+        Session(
+          id: 's1',
+          node: 'minipc',
+          title: 'Session s1',
+          state: SessionState.ready,
+          host: SessionHost.tmux,
+          updated: DateTime(2026, 10, 11),
+          backedUp: DateTime.now().subtract(const Duration(minutes: 5)),
+          backedUpBytes: 2048,
+        ),
+      ]));
+      await pumpApp(tester, const Size(1400, 900));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await settle(tester);
+      expect(repo.activity.last, isFalse, reason: 'in the background');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await settle(tester);
+      expect(repo.activity.last, isTrue);
+      expect(repo.activity, contains(true), reason: 'an unfocused window still counts as in use');
+
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.textContaining('backed up 5m ago'), findsOneWidget);
+    });
+
     testWidgets("Claude's questions are answered from a card, with choices or your own words", (tester) async {
       const input = '{"questions":['
           '{"question":"Which DB?","header":"DB","multiSelect":false,"options":[{"label":"Postgres","description":"server"},{"label":"SQLite"}]},'

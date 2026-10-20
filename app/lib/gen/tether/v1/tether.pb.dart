@@ -31,6 +31,7 @@ enum Frame_Body {
   interruptSession,
   approvalDecision,
   stopSession,
+  clientPresence,
   welcome,
   ack,
   error,
@@ -69,6 +70,7 @@ class Frame extends $pb.GeneratedMessage {
     InterruptSession? interruptSession,
     ApprovalDecision? approvalDecision,
     StopSession? stopSession,
+    ClientPresence? clientPresence,
     Welcome? welcome,
     Ack? ack,
     Error? error,
@@ -103,6 +105,7 @@ class Frame extends $pb.GeneratedMessage {
     if (interruptSession != null) result.interruptSession = interruptSession;
     if (approvalDecision != null) result.approvalDecision = approvalDecision;
     if (stopSession != null) result.stopSession = stopSession;
+    if (clientPresence != null) result.clientPresence = clientPresence;
     if (welcome != null) result.welcome = welcome;
     if (ack != null) result.ack = ack;
     if (error != null) result.error = error;
@@ -144,6 +147,7 @@ class Frame extends $pb.GeneratedMessage {
     15: Frame_Body.interruptSession,
     16: Frame_Body.approvalDecision,
     17: Frame_Body.stopSession,
+    18: Frame_Body.clientPresence,
     30: Frame_Body.welcome,
     31: Frame_Body.ack,
     32: Frame_Body.error,
@@ -179,6 +183,7 @@ class Frame extends $pb.GeneratedMessage {
       15,
       16,
       17,
+      18,
       30,
       31,
       32,
@@ -221,6 +226,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: ApprovalDecision.$_createMessage)
     ..aOM<StopSession>(17, _omitFieldNames ? '' : 'stopSession',
         subBuilder: StopSession.$_createMessage)
+    ..aOM<ClientPresence>(18, _omitFieldNames ? '' : 'clientPresence',
+        subBuilder: ClientPresence.$_createMessage)
     ..aOM<Welcome>(30, _omitFieldNames ? '' : 'welcome',
         subBuilder: Welcome.$_createMessage)
     ..aOM<Ack>(31, _omitFieldNames ? '' : 'ack',
@@ -291,6 +298,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(15)
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -320,6 +328,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(15)
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -469,236 +478,248 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(17)
   StopSession ensureStopSession() => $_ensure(11);
 
+  /// The app is in the foreground (or not); backups run while one is.
+  @$pb.TagNumber(18)
+  ClientPresence get clientPresence => $_getN(12);
+  @$pb.TagNumber(18)
+  set clientPresence(ClientPresence value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasClientPresence() => $_has(12);
+  @$pb.TagNumber(18)
+  void clearClientPresence() => $_clearField(18);
+  @$pb.TagNumber(18)
+  ClientPresence ensureClientPresence() => $_ensure(12);
+
   /// Hub -> client
   @$pb.TagNumber(30)
-  Welcome get welcome => $_getN(12);
+  Welcome get welcome => $_getN(13);
   @$pb.TagNumber(30)
   set welcome(Welcome value) => $_setField(30, value);
   @$pb.TagNumber(30)
-  $core.bool hasWelcome() => $_has(12);
+  $core.bool hasWelcome() => $_has(13);
   @$pb.TagNumber(30)
   void clearWelcome() => $_clearField(30);
   @$pb.TagNumber(30)
-  Welcome ensureWelcome() => $_ensure(12);
+  Welcome ensureWelcome() => $_ensure(13);
 
   @$pb.TagNumber(31)
-  Ack get ack => $_getN(13);
+  Ack get ack => $_getN(14);
   @$pb.TagNumber(31)
   set ack(Ack value) => $_setField(31, value);
   @$pb.TagNumber(31)
-  $core.bool hasAck() => $_has(13);
+  $core.bool hasAck() => $_has(14);
   @$pb.TagNumber(31)
   void clearAck() => $_clearField(31);
   @$pb.TagNumber(31)
-  Ack ensureAck() => $_ensure(13);
+  Ack ensureAck() => $_ensure(14);
 
   @$pb.TagNumber(32)
-  Error get error => $_getN(14);
+  Error get error => $_getN(15);
   @$pb.TagNumber(32)
   set error(Error value) => $_setField(32, value);
   @$pb.TagNumber(32)
-  $core.bool hasError() => $_has(14);
+  $core.bool hasError() => $_has(15);
   @$pb.TagNumber(32)
   void clearError() => $_clearField(32);
   @$pb.TagNumber(32)
-  Error ensureError() => $_ensure(14);
+  Error ensureError() => $_ensure(15);
 
   @$pb.TagNumber(33)
-  NodeStatus get nodeStatus => $_getN(15);
+  NodeStatus get nodeStatus => $_getN(16);
   @$pb.TagNumber(33)
   set nodeStatus(NodeStatus value) => $_setField(33, value);
   @$pb.TagNumber(33)
-  $core.bool hasNodeStatus() => $_has(15);
+  $core.bool hasNodeStatus() => $_has(16);
   @$pb.TagNumber(33)
   void clearNodeStatus() => $_clearField(33);
   @$pb.TagNumber(33)
-  NodeStatus ensureNodeStatus() => $_ensure(15);
+  NodeStatus ensureNodeStatus() => $_ensure(16);
 
   @$pb.TagNumber(34)
-  SessionInfo get sessionInfo => $_getN(16);
+  SessionInfo get sessionInfo => $_getN(17);
   @$pb.TagNumber(34)
   set sessionInfo(SessionInfo value) => $_setField(34, value);
   @$pb.TagNumber(34)
-  $core.bool hasSessionInfo() => $_has(16);
+  $core.bool hasSessionInfo() => $_has(17);
   @$pb.TagNumber(34)
   void clearSessionInfo() => $_clearField(34);
   @$pb.TagNumber(34)
-  SessionInfo ensureSessionInfo() => $_ensure(16);
+  SessionInfo ensureSessionInfo() => $_ensure(17);
 
   @$pb.TagNumber(35)
-  TimelineUpdate get timeline => $_getN(17);
+  TimelineUpdate get timeline => $_getN(18);
   @$pb.TagNumber(35)
   set timeline(TimelineUpdate value) => $_setField(35, value);
   @$pb.TagNumber(35)
-  $core.bool hasTimeline() => $_has(17);
+  $core.bool hasTimeline() => $_has(18);
   @$pb.TagNumber(35)
   void clearTimeline() => $_clearField(35);
   @$pb.TagNumber(35)
-  TimelineUpdate ensureTimeline() => $_ensure(17);
+  TimelineUpdate ensureTimeline() => $_ensure(18);
 
   @$pb.TagNumber(36)
-  ApprovalRequest get approvalRequested => $_getN(18);
+  ApprovalRequest get approvalRequested => $_getN(19);
   @$pb.TagNumber(36)
   set approvalRequested(ApprovalRequest value) => $_setField(36, value);
   @$pb.TagNumber(36)
-  $core.bool hasApprovalRequested() => $_has(18);
+  $core.bool hasApprovalRequested() => $_has(19);
   @$pb.TagNumber(36)
   void clearApprovalRequested() => $_clearField(36);
   @$pb.TagNumber(36)
-  ApprovalRequest ensureApprovalRequested() => $_ensure(18);
+  ApprovalRequest ensureApprovalRequested() => $_ensure(19);
 
   @$pb.TagNumber(37)
-  ApprovalResolved get approvalResolved => $_getN(19);
+  ApprovalResolved get approvalResolved => $_getN(20);
   @$pb.TagNumber(37)
   set approvalResolved(ApprovalResolved value) => $_setField(37, value);
   @$pb.TagNumber(37)
-  $core.bool hasApprovalResolved() => $_has(19);
+  $core.bool hasApprovalResolved() => $_has(20);
   @$pb.TagNumber(37)
   void clearApprovalResolved() => $_clearField(37);
   @$pb.TagNumber(37)
-  ApprovalResolved ensureApprovalResolved() => $_ensure(19);
+  ApprovalResolved ensureApprovalResolved() => $_ensure(20);
 
   @$pb.TagNumber(38)
-  SessionRemoved get sessionRemoved => $_getN(20);
+  SessionRemoved get sessionRemoved => $_getN(21);
   @$pb.TagNumber(38)
   set sessionRemoved(SessionRemoved value) => $_setField(38, value);
   @$pb.TagNumber(38)
-  $core.bool hasSessionRemoved() => $_has(20);
+  $core.bool hasSessionRemoved() => $_has(21);
   @$pb.TagNumber(38)
   void clearSessionRemoved() => $_clearField(38);
   @$pb.TagNumber(38)
-  SessionRemoved ensureSessionRemoved() => $_ensure(20);
+  SessionRemoved ensureSessionRemoved() => $_ensure(21);
 
   /// The shared app settings changed (sent to every client).
   @$pb.TagNumber(39)
-  Preferences get preferences => $_getN(21);
+  Preferences get preferences => $_getN(22);
   @$pb.TagNumber(39)
   set preferences(Preferences value) => $_setField(39, value);
   @$pb.TagNumber(39)
-  $core.bool hasPreferences() => $_has(21);
+  $core.bool hasPreferences() => $_has(22);
   @$pb.TagNumber(39)
   void clearPreferences() => $_clearField(39);
   @$pb.TagNumber(39)
-  Preferences ensurePreferences() => $_ensure(21);
+  Preferences ensurePreferences() => $_ensure(22);
 
   /// A file was added to the artifact store (sent to every client).
   @$pb.TagNumber(40)
-  Artifact get artifactAdded => $_getN(22);
+  Artifact get artifactAdded => $_getN(23);
   @$pb.TagNumber(40)
   set artifactAdded(Artifact value) => $_setField(40, value);
   @$pb.TagNumber(40)
-  $core.bool hasArtifactAdded() => $_has(22);
+  $core.bool hasArtifactAdded() => $_has(23);
   @$pb.TagNumber(40)
   void clearArtifactAdded() => $_clearField(40);
   @$pb.TagNumber(40)
-  Artifact ensureArtifactAdded() => $_ensure(22);
+  Artifact ensureArtifactAdded() => $_ensure(23);
 
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(23);
+  AgentHello get agentHello => $_getN(24);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(23);
+  $core.bool hasAgentHello() => $_has(24);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(23);
+  AgentHello ensureAgentHello() => $_ensure(24);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(24);
+  SessionIndex get sessionIndex => $_getN(25);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(24);
+  $core.bool hasSessionIndex() => $_has(25);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(24);
+  SessionIndex ensureSessionIndex() => $_ensure(25);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(25);
+  RawEvents get rawEvents => $_getN(26);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(25);
+  $core.bool hasRawEvents() => $_has(26);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(25);
+  RawEvents ensureRawEvents() => $_ensure(26);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(26);
+  UsageReport get usageReport => $_getN(27);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(26);
+  $core.bool hasUsageReport() => $_has(27);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(26);
+  UsageReport ensureUsageReport() => $_ensure(27);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(27);
+  PlanUsage get planUsage => $_getN(28);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(27);
+  $core.bool hasPlanUsage() => $_has(28);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(27);
+  PlanUsage ensurePlanUsage() => $_ensure(28);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(28);
+  ScreenSnapshot get screenSnapshot => $_getN(29);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(28);
+  $core.bool hasScreenSnapshot() => $_has(29);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(28);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(29);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(29);
+  ModeResult get modeResult => $_getN(30);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(29);
+  $core.bool hasModeResult() => $_has(30);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(29);
+  ModeResult ensureModeResult() => $_ensure(30);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(30);
+  CommandResult get commandResult => $_getN(31);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(30);
+  $core.bool hasCommandResult() => $_has(31);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(30);
+  CommandResult ensureCommandResult() => $_ensure(31);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(31);
+  AgentCommand get agentCommand => $_getN(32);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(31);
+  $core.bool hasAgentCommand() => $_has(32);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(31);
+  AgentCommand ensureAgentCommand() => $_ensure(32);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -884,6 +905,8 @@ class SessionInfo extends $pb.GeneratedMessage {
     $core.String? permissionMode,
     $fixnum.Int64? modeRevertMs,
     $core.String? modeRevertTo,
+    $fixnum.Int64? backedUpMs,
+    $fixnum.Int64? backedUpBytes,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -915,6 +938,8 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (permissionMode != null) result.permissionMode = permissionMode;
     if (modeRevertMs != null) result.modeRevertMs = modeRevertMs;
     if (modeRevertTo != null) result.modeRevertTo = modeRevertTo;
+    if (backedUpMs != null) result.backedUpMs = backedUpMs;
+    if (backedUpBytes != null) result.backedUpBytes = backedUpBytes;
     return result;
   }
 
@@ -963,6 +988,8 @@ class SessionInfo extends $pb.GeneratedMessage {
     ..aOS(27, _omitFieldNames ? '' : 'permissionMode')
     ..aInt64(28, _omitFieldNames ? '' : 'modeRevertMs')
     ..aOS(29, _omitFieldNames ? '' : 'modeRevertTo')
+    ..aInt64(30, _omitFieldNames ? '' : 'backedUpMs')
+    ..aInt64(31, _omitFieldNames ? '' : 'backedUpBytes')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1257,6 +1284,25 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasModeRevertTo() => $_has(28);
   @$pb.TagNumber(29)
   void clearModeRevertTo() => $_clearField(29);
+
+  /// The hub's latest backup of the transcript: when, and how big.
+  @$pb.TagNumber(30)
+  $fixnum.Int64 get backedUpMs => $_getI64(29);
+  @$pb.TagNumber(30)
+  set backedUpMs($fixnum.Int64 value) => $_setInt64(29, value);
+  @$pb.TagNumber(30)
+  $core.bool hasBackedUpMs() => $_has(29);
+  @$pb.TagNumber(30)
+  void clearBackedUpMs() => $_clearField(30);
+
+  @$pb.TagNumber(31)
+  $fixnum.Int64 get backedUpBytes => $_getI64(30);
+  @$pb.TagNumber(31)
+  set backedUpBytes($fixnum.Int64 value) => $_setInt64(30, value);
+  @$pb.TagNumber(31)
+  $core.bool hasBackedUpBytes() => $_has(30);
+  @$pb.TagNumber(31)
+  void clearBackedUpBytes() => $_clearField(31);
 }
 
 /// A session no longer exists on its node (its transcript was deleted).
@@ -1853,6 +1899,63 @@ class ApprovalResolved extends $pb.GeneratedMessage {
   $core.bool hasBy() => $_has(3);
   @$pb.TagNumber(4)
   void clearBy() => $_clearField(4);
+}
+
+class ClientPresence extends $pb.GeneratedMessage {
+  factory ClientPresence({
+    $core.bool? active,
+  }) {
+    final result = ClientPresence._();
+    if (active != null) result.active = active;
+    return result;
+  }
+
+  ClientPresence._();
+
+  factory ClientPresence.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClientPresence()..mergeFromBuffer(data, registry);
+  factory ClientPresence.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ClientPresence()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClientPresence',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ClientPresence.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'active')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientPresence clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClientPresence copyWith(void Function(ClientPresence) updates) =>
+      super.copyWith((message) => updates(message as ClientPresence))
+          as ClientPresence;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ClientPresence() / ClientPresence.new instead')
+  static ClientPresence create() => ClientPresence._();
+  static $pb.GeneratedMessage $_createMessage() => ClientPresence._();
+  @$core.override
+  ClientPresence createEmptyInstance() => ClientPresence._();
+  @$core.pragma('dart2js:noInline')
+  static ClientPresence getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClientPresence>(
+          ClientPresence.$_createMessage);
+  static ClientPresence? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get active => $_getBF(0);
+  @$pb.TagNumber(1)
+  set active($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasActive() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearActive() => $_clearField(1);
 }
 
 class ClientHello extends $pb.GeneratedMessage {
@@ -4158,6 +4261,68 @@ class AgentCommand_CaptureScreen extends $pb.GeneratedMessage {
   void clearSession() => $_clearField(1);
 }
 
+class AgentCommand_BackupSessions extends $pb.GeneratedMessage {
+  factory AgentCommand_BackupSessions({
+    $core.Iterable<$core.MapEntry<$core.String, $fixnum.Int64>>? stored,
+  }) {
+    final result = AgentCommand_BackupSessions._();
+    if (stored != null) result.stored.addEntries(stored);
+    return result;
+  }
+
+  AgentCommand_BackupSessions._();
+
+  factory AgentCommand_BackupSessions.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_BackupSessions()..mergeFromBuffer(data, registry);
+  factory AgentCommand_BackupSessions.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_BackupSessions()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.BackupSessions',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_BackupSessions.$_createMessage)
+    ..m<$core.String, $fixnum.Int64>(1, _omitFieldNames ? '' : 'stored',
+        entryClassName: 'AgentCommand.BackupSessions.StoredEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.O6,
+        packageName: const $pb.PackageName('tether.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_BackupSessions clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_BackupSessions copyWith(
+          void Function(AgentCommand_BackupSessions) updates) =>
+      super.copyWith(
+              (message) => updates(message as AgentCommand_BackupSessions))
+          as AgentCommand_BackupSessions;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_BackupSessions() / AgentCommand_BackupSessions.new instead')
+  static AgentCommand_BackupSessions create() =>
+      AgentCommand_BackupSessions._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      AgentCommand_BackupSessions._();
+  @$core.override
+  AgentCommand_BackupSessions createEmptyInstance() =>
+      AgentCommand_BackupSessions._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_BackupSessions getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_BackupSessions>(
+          AgentCommand_BackupSessions.$_createMessage);
+  static AgentCommand_BackupSessions? _defaultInstance;
+
+  /// Session -> bytes of its transcript the hub has; unchanged ones are skipped.
+  @$pb.TagNumber(1)
+  $pb.PbMap<$core.String, $fixnum.Int64> get stored => $_getMap(0);
+}
+
 /// Into <cwd>/.tether/attachments/<name>, checked against its sha256.
 class AgentCommand_FetchAttachment extends $pb.GeneratedMessage {
   factory AgentCommand_FetchAttachment({
@@ -4264,6 +4429,7 @@ enum AgentCommand_Op {
   keys,
   capture,
   setMode,
+  backup,
   notSet
 }
 
@@ -4283,6 +4449,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     SendKeys? keys,
     AgentCommand_CaptureScreen? capture,
     AgentCommand_SetMode? setMode,
+    AgentCommand_BackupSessions? backup,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -4299,6 +4466,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (keys != null) result.keys = keys;
     if (capture != null) result.capture = capture;
     if (setMode != null) result.setMode = setMode;
+    if (backup != null) result.backup = backup;
     return result;
   }
 
@@ -4326,13 +4494,14 @@ class AgentCommand extends $pb.GeneratedMessage {
     12: AgentCommand_Op.keys,
     13: AgentCommand_Op.capture,
     14: AgentCommand_Op.setMode,
+    15: AgentCommand_Op.backup,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -4362,6 +4531,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_CaptureScreen.$_createMessage)
     ..aOM<AgentCommand_SetMode>(14, _omitFieldNames ? '' : 'setMode',
         subBuilder: AgentCommand_SetMode.$_createMessage)
+    ..aOM<AgentCommand_BackupSessions>(15, _omitFieldNames ? '' : 'backup',
+        subBuilder: AgentCommand_BackupSessions.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4400,6 +4571,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -4415,6 +4587,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
+  @$pb.TagNumber(15)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4580,6 +4753,18 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearSetMode() => $_clearField(14);
   @$pb.TagNumber(14)
   AgentCommand_SetMode ensureSetMode() => $_ensure(13);
+
+  /// Upload the transcripts that changed since the hub's copy.
+  @$pb.TagNumber(15)
+  AgentCommand_BackupSessions get backup => $_getN(14);
+  @$pb.TagNumber(15)
+  set backup(AgentCommand_BackupSessions value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasBackup() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearBackup() => $_clearField(15);
+  @$pb.TagNumber(15)
+  AgentCommand_BackupSessions ensureBackup() => $_ensure(14);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.

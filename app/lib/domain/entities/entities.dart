@@ -89,7 +89,13 @@ class Session extends Equatable {
     this.permissionMode = '',
     this.modeRevert,
     this.modeRevertTo = '',
+    this.backedUp,
+    this.backedUpBytes = 0,
   });
+
+  /// The hub's latest background backup of the transcript.
+  final DateTime? backedUp;
+  final int backedUpBytes;
 
   final String id, node, title, cwd, gitBranch;
 
@@ -156,7 +162,7 @@ class Session extends Equatable {
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
         lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived, parent, forkPoint, lineage, scratch, global,
-        permissionMode, modeRevert, modeRevertTo,
+        permissionMode, modeRevert, modeRevertTo, backedUp, backedUpBytes,
       ];
 }
 

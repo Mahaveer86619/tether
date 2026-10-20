@@ -25,6 +25,8 @@ message Frame {
     InterruptSession interrupt_session = 15;
     ApprovalDecision approval_decision = 16;
     StopSession stop_session = 17;
+    // The app is in the foreground (or not); backups run while one is.
+    ClientPresence client_presence = 18;
 
     // Hub -> client
     Welcome welcome = 30;
@@ -155,6 +157,9 @@ message SessionInfo {
   // A mode set for a while: when the hub puts mode_revert_to back.
   int64 mode_revert_ms = 28;
   string mode_revert_to = 29;
+  // The hub's latest backup of the transcript: when, and how big.
+  int64 backed_up_ms = 30;
+  int64 backed_up_bytes = 31;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -234,6 +239,10 @@ message ApprovalResolved {
 }
 
 // ---- Client -> hub ----
+
+message ClientPresence {
+  bool active = 1;
+}
 
 message ClientHello {
   string token = 1;
@@ -400,6 +409,8 @@ message AgentCommand {
     CaptureScreen capture = 13;
     // Switch a live session's permission mode; answered with a ModeResult.
     SetMode set_mode = 14;
+    // Upload the transcripts that changed since the hub's copy.
+    BackupSessions backup = 15;
   }
 
   message StartRun {
@@ -478,6 +489,11 @@ message AgentCommand {
 
   message CaptureScreen {
     string session = 1;
+  }
+
+  message BackupSessions {
+    // Session -> bytes of its transcript the hub has; unchanged ones are skipped.
+    map<string, int64> stored = 1;
   }
 
   // Into <cwd>/.tether/attachments/<name>, checked against its sha256.

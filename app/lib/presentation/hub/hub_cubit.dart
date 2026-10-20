@@ -39,6 +39,7 @@ class HubCubit extends Cubit<HubState> {
     required this._setArchived,
     required this._retry,
     required this._setMode,
+    required this._presence,
   })  : _decide = decideApproval,
         super(const HubState()) {
     _sub = watchHub().listen((hub) => emit(state.copyWith(hub: hub)));
@@ -47,6 +48,9 @@ class HubCubit extends Cubit<HubState> {
   final DecideApproval _decide;
   final SetSessionArchived _setArchived;
   final SetPermissionMode _setMode;
+  final ReportPresence _presence;
+
+  void setActive({required bool active}) => _presence(active: active);
   final RetryConnection _retry;
   late final StreamSubscription<HubSnapshot> _sub;
 

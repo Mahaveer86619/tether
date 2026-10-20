@@ -374,6 +374,7 @@ void main() {
       ]));
       final cubit = HubCubit(
         setMode: SetPermissionMode(repo),
+        presence: ReportPresence(repo),
           watchHub: WatchHub(repo), decideApproval: DecideApproval(repo), setArchived: SetSessionArchived(repo), retry: RetryConnection(repo));
       await Future<void>.delayed(Duration.zero);
       expect(cubit.state.hub.approvals, contains('ap'));

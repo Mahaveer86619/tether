@@ -208,6 +208,14 @@ class DecideApproval {
       _hub.decideApproval(approvalId, allow: allow, message: message, answers: answers, option: option);
 }
 
+/// Tells the hub whether the app is in use, which is when it backs
+/// sessions up.
+class ReportPresence {
+  const ReportPresence(this._hub);
+  final HubRepository _hub;
+  void call({required bool active}) => _hub.setActive(active: active);
+}
+
 class SetPermissionMode {
   const SetPermissionMode(this._hub);
   final HubRepository _hub;

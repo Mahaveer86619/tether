@@ -44,11 +44,49 @@ class TetherApp extends StatelessWidget {
           theme: buildTheme(Brightness.light, palette: palette, accent: accent),
           darkTheme: buildTheme(Brightness.dark, palette: palette, accent: accent),
           themeMode: look.mode,
-          home: settings.loaded ? const Shell() : const Scaffold(body: SizedBox.shrink()),
+          home: settings.loaded ? const PresenceReporter(child: Shell()) : const Scaffold(body: SizedBox.shrink()),
           );
         },
         ),
       ),
     );
   }
+}
+
+/// Tells the hub when the app comes to the foreground or leaves it: the hub
+/// backs sessions up while an app is in use. A desktop window that's merely
+/// unfocused still counts as in use.
+class PresenceReporter extends StatefulWidget {
+  const PresenceReporter({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<PresenceReporter> createState() => _PresenceReporterState();
+}
+
+class _PresenceReporterState extends State<PresenceReporter> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final active = switch (state) {
+      AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+      AppLifecycleState.hidden || AppLifecycleState.paused || AppLifecycleState.detached => false,
+    };
+    context.read<HubCubit>().setActive(active: active);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

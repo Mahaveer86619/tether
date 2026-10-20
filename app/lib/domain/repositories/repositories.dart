@@ -12,6 +12,9 @@ abstract interface class HubRepository {
 
   void retryNow();
 
+  /// Whether the app is in the foreground; see [HubSocket.setPresence].
+  void setActive({required bool active});
+
   /// Emits the current snapshot immediately, then every change.
   Stream<HubSnapshot> watchHub();
 

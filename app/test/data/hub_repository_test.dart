@@ -136,6 +136,17 @@ void main() {
     expect(s.modeRevertTo, 'default');
   });
 
+  test('presence goes to the socket, and a session carries its last backup', () async {
+    socket.push(SocketFrame(welcome()));
+    repo.setActive(active: false);
+    repo.setActive(active: true);
+    expect(socket.presence, [false, true]);
+    socket.push(SocketFrame(pb.Frame(sessionInfo: pb.SessionInfo(id: 'b1', node: 'minipc', backedUpMs: Int64(1792400000000), backedUpBytes: Int64(4096)))));
+    final s = repo.current.sessions['b1']!;
+    expect(s.backedUp, DateTime.fromMillisecondsSinceEpoch(1792400000000));
+    expect(s.backedUpBytes, 4096);
+  });
+
   test('losing the socket marks everything offline, unauthorized stops', () async {
     socket.push(SocketFrame(welcome()));
     socket.push(const SocketClosed(error: 'reset'));

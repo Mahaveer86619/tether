@@ -133,7 +133,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 		}
-		return &v1.ArtifactList{Artifacts: list}, nil
+		return &v1.ArtifactList{Artifacts: hideBackups(r, list)}, nil
 	}))
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)

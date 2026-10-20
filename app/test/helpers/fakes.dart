@@ -55,6 +55,11 @@ class FakeHubRepository implements HubRepository {
   @override
   void connect(HubConnection connection) {}
 
+  final activity = <bool>[];
+
+  @override
+  void setActive({required bool active}) => activity.add(active);
+
   @override
   Future<void> disconnect() async {
     disconnected = true;
@@ -319,6 +324,11 @@ class FakeHubSocket implements HubSocket {
 
   @override
   void subscribe(String session, Int64 afterSeq) => subscribed.add((session, afterSeq));
+
+  final presence = <bool>[];
+
+  @override
+  void setPresence({required bool active}) => presence.add(active);
 
   @override
   void unsubscribe(String session) => unsubscribed.add(session);
