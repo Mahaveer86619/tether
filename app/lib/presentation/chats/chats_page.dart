@@ -248,7 +248,7 @@ class _SessionRow extends StatelessWidget {
                 children: [
                   Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
-                  Text('${session.node} · ${session.cwd.isEmpty ? 'home folder' : baseName(session.cwd)}',
+                  Text(session.scratch ? 'Hub · scratch' : '${session.node} · ${session.cwd.isEmpty ? 'home folder' : baseName(session.cwd)}',
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted)),
                 ],
               ),
