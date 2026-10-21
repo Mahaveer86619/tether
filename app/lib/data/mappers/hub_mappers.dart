@@ -199,3 +199,47 @@ ConnectedClient clientFromPb(pb.ConnectedClient c) => ConnectedClient(
       ip: c.ip,
       connected: _time(c.connectedMs),
     );
+
+ChatTarget chatTargetFromPb(pb.ChatTarget t) => ChatTarget(
+      mode: TargetMode.fromWire(t.mode),
+      node: t.node,
+      cwd: t.cwd,
+      scratch: t.scratch,
+      detecting: t.state == 'detecting',
+      reason: t.reason,
+    );
+
+pb.ChatTarget chatTargetToPb(ChatTarget t) => pb.ChatTarget(mode: t.mode.wire, node: t.node, cwd: t.cwd, scratch: t.scratch, reason: t.reason);
+
+Chat chatFromPb(pb.Chat c) => Chat(
+      id: c.id,
+      title: c.title,
+      titleByUser: c.titleByUser,
+      created: _time(c.createdMs),
+      updated: _time(c.updatedMs),
+      archived: c.archived,
+      target: chatTargetFromPb(c.target),
+      activeSession: c.activeSession,
+      links: [for (final l in c.sessions) ChatLink(session: l.session, role: l.role, linked: _time(l.linkedMs))],
+    );
+
+TargetCandidate targetCandidateFromPb(pb.TargetCandidate c) => TargetCandidate(
+      node: c.node,
+      cwd: c.cwd,
+      label: c.label,
+      online: c.online,
+      score: c.score,
+      reason: c.reason,
+      lastUsed: _time(c.lastUsedMs),
+    );
+
+TargetSuggestions targetSuggestionsFromPb(pb.TargetSuggestions s) => TargetSuggestions(
+      candidates: [for (final c in s.candidates) targetCandidateFromPb(c)],
+      pick: s.hasPick() ? targetCandidateFromPb(s.pick) : null,
+    );
+
+ChatContext chatContextFromPb(pb.ChatContext c) => ChatContext(
+      chat: chatFromPb(c.chat),
+      messages: [for (final m in c.messages) ChatMessage(role: m.role, text: m.text, session: m.session, at: _time(m.tsMs))],
+      notes: {for (final n in c.notes) n.kind: n.value},
+    );

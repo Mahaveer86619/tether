@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../injection.dart';
 import 'home/shell.dart';
 import 'artifacts/artifacts_cubit.dart';
+import 'chats/chats_cubit.dart';
+import 'nav/nav_cubit.dart';
 import 'hub/hub_cubit.dart';
 import 'settings/settings_cubit.dart';
 import 'theme/palettes.dart';
@@ -19,6 +21,8 @@ class TetherApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<HubCubit>()),
         BlocProvider(create: (_) => sl<ArtifactsCubit>()),
         BlocProvider(create: (_) => sl<SettingsCubit>()..start()),
+        BlocProvider(create: (_) => sl<NavCubit>()),
+        BlocProvider(create: (_) => sl<ChatsCubit>()),
       ],
       // Settings are shared through the hub: take what another device saved,
       // or offer ours when the hub has none yet.

@@ -11,6 +11,7 @@ class WatchHub {
   const WatchHub(this._hub);
   final HubRepository _hub;
   Stream<HubSnapshot> call() => _hub.watchHub();
+  HubSnapshot get current => _hub.current;
 }
 
 class WatchTimeline {
@@ -62,6 +63,75 @@ class ContinueOnHub {
     if (text.trim().isEmpty) return const Err(ValidationFailure('Write the first message for the hub to continue with.'));
     return _hub.continueOnHub(sessionId, text.trim());
   }
+}
+
+/// Chats: start one, name it, choose where it works, read what was said.
+class Chats {
+  const Chats(this._hub);
+  final HubRepository _hub;
+
+  bool get supported => _hub.current.chatsSupported;
+
+  /// Starts a chat. On a hub before chats, starts a plain session at the
+  /// target instead and returns null with its id.
+  Future<Result<(Chat?, String)>> start(NewChatRequest r) async {
+    final prompt = r.prompt.trim();
+    if (prompt.isEmpty && r.attachments.isEmpty) return const Err(ValidationFailure('Write a message to start with.'));
+    final text = SendMessage.wording(prompt);
+    final t = r.target;
+    if (t != null && t.node.isNotEmpty) {
+      final node = _hub.current.nodes[t.node];
+      if (node != null && !node.online) return const Err(NodeOfflineFailure());
+    }
+    if (!supported) {
+      if (t == null || !t.isSet) {
+        if (_hub.current.hubNode.isEmpty) return const Err(ValidationFailure('This hub is too old to pick a folder for you. Choose a device and folder.'));
+      }
+      final created = await _hub.createSession(NewSessionRequest(
+        node: t?.scratch ?? true ? '' : t!.node,
+        cwd: t?.cwd ?? '',
+        scratch: t == null || !t.isSet || t.scratch,
+        prompt: text,
+        model: r.model,
+        permissionMode: r.permissionMode,
+        attachments: r.attachments,
+      ));
+      return created.map((id) => (null, id));
+    }
+    final made = await _hub.createChat(NewChatRequest(
+      prompt: text,
+      target: t,
+      attachments: r.attachments,
+      model: r.model,
+      permissionMode: r.permissionMode,
+      clientId: r.clientId,
+    ));
+    return made.map((c) => (c, c.activeSession));
+  }
+
+  Future<Result<Chat>> forSession(String sessionId) => _hub.chatForSession(sessionId);
+
+  Future<Result<Chat>> rename(String chatId, String title) => _hub.renameChat(chatId, title.trim());
+
+  Future<Result<Chat>> archive(String chatId, {bool archived = true}) => _hub.setChatArchived(chatId, archived: archived);
+
+  Future<Result<String>> send(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
+    if (text.trim().isEmpty && attachments.isEmpty) return const Err(ValidationFailure('Message is empty.'));
+    return _hub.sendToChat(chatId, SendMessage.wording(text), attachments: attachments, clientId: clientId);
+  }
+
+  Future<Result<Chat>> retarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) async {
+    if (!target.isSet) return const Err(ValidationFailure('Pick a device and folder.'));
+    final node = _hub.current.nodes[target.node];
+    if (!target.scratch && node != null && !node.online) return const Err(NodeOfflineFailure());
+    return _hub.setChatTarget(chatId, target, move: move, text: text.trim());
+  }
+
+  Future<Result<Chat>> unlink(String chatId, String sessionId) => _hub.linkSession(chatId, sessionId, unlink: true);
+
+  Future<Result<ChatContext>> context(String chatId) => _hub.chatContext(chatId);
+
+  Future<Result<TargetSuggestions>> suggestions(String prompt) => _hub.targetSuggestions(prompt.trim());
 }
 
 /// The artifact store: upload, fetch, share, delete.

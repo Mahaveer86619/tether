@@ -212,6 +212,102 @@ class FakeHubRepository implements HubRepository {
     return Ok('continued-$sessionId');
   }
 
+  final chatsCreated = <NewChatRequest>[];
+  final retargets = <(String, ChatTarget, bool)>[];
+  final chatSends = <(String, String)>[];
+  var suggestions = const TargetSuggestions();
+  final suggestionPrompts = <String>[];
+
+  Result<Chat> _updateChat(String id, Chat Function(Chat c) change) {
+    final c = _snap.chats[id];
+    if (c == null) return Err(NotFoundFailure('chat $id'));
+    final next = change(c);
+    emitHub(_snap.copyWith(chats: {..._snap.chats, id: next}));
+    return Ok(next);
+  }
+
+  @override
+  Future<Result<Chat>> createChat(NewChatRequest request) async {
+    chatsCreated.add(request);
+    final id = 'chat-${chatsCreated.length}';
+    final session = 'new-session-${chatsCreated.length}';
+    final chat = Chat(
+      id: id,
+      title: request.prompt.split('\n').first,
+      target: request.target ?? const ChatTarget(mode: TargetMode.auto, node: 'minipc', cwd: '/srv/app', reason: 'matched "app"'),
+      activeSession: session,
+      links: [ChatLink(session: session)],
+      updated: DateTime.now(),
+    );
+    emitHub(_snap.copyWith(
+      chats: {..._snap.chats, id: chat},
+      sessions: {..._snap.sessions, session: Session(id: session, node: 'minipc', title: chat.title, state: SessionState.running, host: SessionHost.headless, updated: DateTime.now())},
+    ));
+    return Ok(chat);
+  }
+
+  @override
+  Future<Result<Chat>> chatForSession(String sessionId) async {
+    final existing = _snap.chatOf(sessionId);
+    if (existing != null) return Ok(existing);
+    final chat = Chat(id: 'chat-of-$sessionId', title: _snap.sessions[sessionId]?.title ?? '', activeSession: sessionId, links: [ChatLink(session: sessionId)]);
+    emitHub(_snap.copyWith(chats: {..._snap.chats, chat.id: chat}));
+    return Ok(chat);
+  }
+
+  @override
+  Future<Result<Chat>> renameChat(String chatId, String title) async => _updateChat(
+        chatId,
+        (c) => Chat(id: c.id, title: title.isEmpty ? 'Auto title' : title, titleByUser: title.isNotEmpty, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated),
+      );
+
+  @override
+  Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) async => _updateChat(
+        chatId,
+        (c) => Chat(id: c.id, title: c.title, titleByUser: c.titleByUser, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated, archived: archived),
+      );
+
+  @override
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
+    chatSends.add((chatId, text));
+    return Ok(_snap.chats[chatId]?.activeSession ?? '');
+  }
+
+  @override
+  Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) async {
+    retargets.add((chatId, target, move));
+    return _updateChat(
+      chatId,
+      (c) => Chat(id: c.id, title: c.title, titleByUser: c.titleByUser, target: target, activeSession: c.activeSession, links: c.links, updated: c.updated),
+    );
+  }
+
+  @override
+  Future<Result<Chat>> linkSession(String chatId, String sessionId, {bool unlink = false}) async => _updateChat(
+        chatId,
+        (c) => Chat(
+          id: c.id,
+          title: c.title,
+          target: c.target,
+          activeSession: c.activeSession,
+          updated: c.updated,
+          links: unlink ? [for (final l in c.links) if (l.session != sessionId) l] : [...c.links, ChatLink(session: sessionId, role: 'linked')],
+        ),
+      );
+
+  @override
+  Future<Result<ChatContext>> chatContext(String chatId) async {
+    final c = _snap.chats[chatId];
+    if (c == null) return Err(NotFoundFailure('chat $chatId'));
+    return Ok(ChatContext(chat: c, messages: const [ChatMessage(role: 'user', text: 'hello'), ChatMessage(role: 'assistant', text: 'hi there')]));
+  }
+
+  @override
+  Future<Result<TargetSuggestions>> targetSuggestions(String prompt) async {
+    suggestionPrompts.add(prompt);
+    return Ok(suggestions);
+  }
+
   @override
   Future<Result<List<int>>> artifactBytes(String id) async => const Ok([]);
 

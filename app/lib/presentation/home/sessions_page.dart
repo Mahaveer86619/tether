@@ -5,7 +5,7 @@ import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import 'cards.dart';
-import 'home_page.dart';
+import 'monitor_page.dart';
 
 enum SessionFilter { all, running, needsYou, finished, failed, hub, archived }
 

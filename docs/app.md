@@ -11,7 +11,7 @@
 | Data | `lib/data` | REST client, WebSocket, cache, mappers, repository implementations | The hub, the device |
 | Core | `lib/core` | `Result`, exceptions, failures | — |
 
-Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repositories and use cases are lazy singletons; view models are factories. `SessionBloc` takes its session id, and `NewSessionCubit` takes the current hub snapshot.
+Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repositories and use cases are lazy singletons; view models are factories. `SessionBloc` takes its session id, and `NewSessionCubit` takes the current hub snapshot. `NavCubit` and `ChatsCubit` are created once, at the top of the app.
 
 ## Errors
 
@@ -38,9 +38,22 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 
 ## Views
 
-- **Home** (`home/home_page.dart`), top to bottom:
+- **Navigation** (`nav/nav_cubit.dart`): one `NavCubit` holds where the app is: the destination (Chats, Monitor, Sessions, Devices, Activity, Files, Usage, Settings), the screens open on top of it (a chat, a new chat, a session, a device), and a history for Back (up to 50 steps). Every layout renders from it, and every screen moves through it; no screen keeps navigation state of its own.
+  - Back (the phone's back button, a back arrow, Esc outside a chat or session, the mouse's back button) restores the previous state. With no history it closes the top screen, then returns to Chats; on Chats with nothing open, the phone's back leaves the app.
+  - Opening a session that is a chat's active session opens the chat, so you stay in the conversation. Other sessions open on their own.
+  - A new chat becomes its chat in place, so Back skips the empty composer.
+- **Layouts** (`home/shell.dart`), by window width:
+  - **Under 600 px (phones):** a bottom bar with Chats, Monitor (badged with what needs you), Sessions and Devices. Activity, Files, Usage and Settings are in the header's menu and open with a back arrow. Chats, sessions, new chats and devices open as pages on top, through a `Navigator` built from the nav state, so the system back button and the state can't disagree.
+  - **600 to 999 px (tablets, narrow windows):** an icon rail with labels, a New chat button and Settings, beside the main pane.
+  - **1000 px and wider:** a sidebar with New chat, the destinations, then **Recents** (chats as single lines, the open one highlighted, with a menu on hover) or **Projects** (the session tree by project or device), and the connection line with Settings at the bottom.
+  - The current destination is tinted in the accent colour with a filled icon, in the sidebar, the rail and the bottom bar alike.
+- **Chats** (`chats/`; see [chats.md](chats.md)):
+  - **History** (`chats_page.dart`): chats grouped by Today, Yesterday, Previous 7 days, Previous 30 days and Older, with search and an Archived filter. Each row shows its title, where it runs, its session's state while live, how many sessions are linked, and a menu: Rename, Copy conversation (from the hub's stored context), Archive or Restore. On a hub before 0.16 the history lists sessions instead and starts plain sessions.
+  - **New chat** (`new_chat_page.dart`): "What should Claude work on?", a message box with attachments, and a target chip. While the target is Auto, the chip shows what the hub would pick for the text so far ("Auto · tether on laptop", with why), refreshed as you type. The draft is kept on the device.
+  - **Target picker** (`target_picker.dart`): Let Tether decide; Let Claude work it out; No project (a scratch folder on the hub's machine); or a device and one of its folders, best match for the message first, then most recently used, plus its home folder. For a chat already going, it also asks whether to carry the conversation over now.
+  - **A chat** (`chat_page.dart`) is its active session's screen with the chat's title in the header (tap it to rename in place; Enter saves, Esc cancels, empty hands naming back to the hub). Under the header: where it runs and why, **Change**, the number of linked sessions as a menu (each with its role, device and folder; tap to open), and the chat menu. While Claude is still working out the target, the line says so, with **Choose myself**. If the chat's session is gone, it says so and the next message starts a new session at the target with the conversation so far.
+- **Monitor** (`home/monitor_page.dart`), top to bottom:
   - A devices strip ("2 online · 1 offline") that opens Devices. It counts only the other devices, not the one the app runs on.
-  - **Start a task:** a quick-start box. It starts a hub session (on the hub's machine, in a scratch folder) when that machine is online, otherwise on the device and in the folder used most recently. The chips change device and folder, the paperclip attaches files, and "more options" opens the full form.
   - **Needs you:** approvals, sessions waiting for a reply, and failures from the last day.
   - **Running now:** sessions Claude is working in.
   - **Pick up where you left off:** up to four projects (a folder on a device) not already shown above, with **View all** for the Sessions page.
@@ -54,8 +67,6 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   Then an "Adding a device" guide (hub, agents, apps; see [running.md](running.md#install-order)) and the rest of the tailnet.
 - **Activity:** a feed grouped by day: sessions started, forked, continued on the hub, finished or failed, and files saved.
 - **Files** (`artifacts/files_page.dart`): the hub's artifact store as a list. Search covers names and notes. It filters by type (images, documents, data, media, attached), session and size, and sorts by date, size or name. Each row shows its size, session and note, and has download, copy link, open session and delete. Downloads and uploads show as progress bars with speed, pause, resume and cancel (see [plan.md](plan.md#large-files)). Opened from a session's menu ("This session's files"), the page shows only that session's files, and its Attach button attaches to it. The **Pages** filter lists the pages sessions made (`artifacts/pages_view.dart`), each with Open, which opens it in the browser, and Copy link; a session's own pages are also in its menu.
-- **Desktop (840px and wider):** a sidebar with Home, Sessions, Devices, Activity, Files and Usage, then the project tree, and a main pane. The tree groups sessions by project or by device. Sessions marked done sit in a collapsed "Done" section at the end.
-- **Phone:** a bottom bar with Home, Sessions, Devices and Activity (Home carries a badge for what needs you). Files, Usage and Settings are in the header. Sessions and device pages open on top.
 - **Mark as done:** the session menu archives a session on the hub, so it leaves the "pick up" lists on every client. It comes back by itself if it starts working again.
 - **Session screen:** a header (title, state, device and folder, interrupt, menu), the timeline, approval cards, a progress panel for to-dos, and the composer. On phones, fork moves into the menu.
 - **Timeline:** consecutive tool calls fold into one "Ran N steps" group that opens in place. Rows are keyed by item id, so new messages don't rebuild the rows above them. Long output, diffs and code show their first lines with "Show all N lines" rather than a nested scroll box. Opening something keeps it where you tapped, even though the list is anchored at the bottom. A long message sent as a file shows in full, collapsed to its first lines with "Show full message". Claude's questions show as a card with each question's options (radio buttons, or checkboxes for multiple choice) and a box for your own words; Skip answers with nothing. The timeline sits in one `SelectionArea`, so text can be selected across messages; the selection menu adds **Quote**, which puts the text into the composer as a `>` quote.
@@ -67,15 +78,14 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - Each theme has its own syntax colours, so code blocks, shell commands and file previews are highlighted to match (`theme/syntax.dart`, using the `highlight` package; unknown languages stay plain).
   - Themes live in `theme/palettes.dart`. Most are generated from one hue, and the choice is saved per device.
 - **Synced settings:** appearance is saved on the hub (`PUT /preferences`) and pushed to every connected app, so changing the theme on the laptop changes it on the phone. When the hub has none yet, the first app to connect offers its own.
-- **Drafts:** unsent text in a session's composer, and in the quick-start box, is kept on the device per session, saved half a second after typing stops, and cleared once sent. It survives restarts.
+- **Drafts:** unsent text in a session's composer, and in the new-chat box, is kept on the device per session, saved half a second after typing stops, and cleared once sent. It survives restarts.
 - **Message source:** your messages show where they came from (the phone, a desktop app, `tetherctl`, or typed in the terminal), as recorded by the hub.
 - **Tailnet:** Settings → Devices also lists every machine on the hub's tailnet, with tags for the hub, its Tether agent and its apps. Machines without Tether are marked too.
-- **Desktop navigation:** the main pane keeps a history. Settings and device pages have a back arrow, and Esc or the mouse back button also go back, except inside a session, where Esc interrupts Claude. Projects in the sidebar start collapsed, apart from the one holding the open session.
+- **Projects tree:** groups sessions by project or by device. Sessions marked done sit in a collapsed "Done" section at the end. Projects start collapsed, apart from the one holding the open session.
 - **Workspaces:**
   - Projects are the folders sessions ran in, remembered per device.
   - Workspace roots are folders where new projects are made. They're stored on the hub, managed in Settings → Workspaces, and suggested from the parents of recent projects.
   - The new-session form switches between **Existing project** and **New project** (a root, a name, and the path it will create).
-  - The quick-start folder chip offers "New project…".
   - A suggested root that gets used is remembered.
   - **Settings → Codebases** lists each folder directly in a root as a codebase, by device: when the hub last copied it, its size and branch, why the last copy failed if it did, its `.env` files as key names (expand a codebase), and **Snapshot now**. See [plan.md](plan.md#codebases-on-the-hub).
 - **Usage:** the sidebar's **Usage** page (an icon in the phone's header) has three parts.
@@ -84,7 +94,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - **Sessions:** this week's sessions by tokens.
 
   It refreshes every 30 seconds while open.
-- **Message box:** `PromptBox` is used by the composer and the quick-start box.
+- **Message box:** `PromptBox` is used by the composer and the new-chat box.
   - The text and the 40 px buttons share one row, so the hint sits level with the buttons.
   - It grows to 5 lines (8 on desktop) with the buttons on the last line.
   - Past a few lines, an expand button opens a full editor (full screen on phones, a large dialog on desktop) on the same text. The desktop editor sends with Ctrl+Enter.

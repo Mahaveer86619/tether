@@ -24,27 +24,31 @@ import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
 class SessionScreen extends StatelessWidget {
-  const SessionScreen({super.key, required this.sessionId, required this.onOpenSession, this.leading});
+  const SessionScreen({super.key, required this.sessionId, required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final String sessionId;
   final ValueChanged<String> onOpenSession;
   final Widget? leading;
+
+  /// In a chat: the chat's title in place of the session's, and a line
+  /// under the header (where it runs, linked sessions).
+  final Widget? title, subtitle;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       key: ValueKey(sessionId),
       create: (_) => sl<SessionBloc>(param1: sessionId)..add(const SessionOpened()),
-      child: _SessionBody(onOpenSession: onOpenSession, leading: leading),
+      child: _SessionBody(onOpenSession: onOpenSession, leading: leading, title: title, subtitle: subtitle),
     );
   }
 }
 
 class _SessionBody extends StatelessWidget {
-  const _SessionBody({required this.onOpenSession, this.leading});
+  const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final ValueChanged<String> onOpenSession;
-  final Widget? leading;
+  final Widget? leading, title, subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +73,8 @@ class _SessionBody extends StatelessWidget {
           }
           return Column(
             children: [
-              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession),
+              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession, title: title),
+              ?subtitle,
               Expanded(child: _Timeline(state: s)),
               Center(
                 child: ConstrainedBox(
@@ -105,10 +110,10 @@ class _SessionBody extends StatelessWidget {
 }
 
 class SessionHeader extends StatelessWidget {
-  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession});
+  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title});
 
   final Session session;
-  final Widget? leading;
+  final Widget? leading, title;
   final ValueChanged<String>? onOpenSession;
 
   @override
@@ -136,8 +141,9 @@ class SessionHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                title ??
+                    Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Row(
                   children: [

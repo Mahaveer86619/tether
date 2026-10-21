@@ -18,6 +18,10 @@ import 'domain/repositories/repositories.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
 import 'presentation/artifacts/pages_view.dart';
+import 'presentation/chats/chats_cubit.dart';
+import 'presentation/chats/new_chat_cubit.dart';
+import 'presentation/chats/target_picker.dart';
+import 'presentation/nav/nav_cubit.dart';
 import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
 import 'presentation/new_session/new_session_cubit.dart';
@@ -83,6 +87,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))
+    ..registerLazySingleton(() => Chats(sl()))
     ..registerLazySingleton(() => Artifacts(sl()))
     ..registerLazySingleton(() => Transfers(sl()))
     ..registerLazySingleton(() => TerminalControl(sl()))
@@ -94,6 +99,10 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => RevokeDevice(sl()))
     ..registerLazySingleton(() => DisconnectThisDevice(sl(), sl()))
     // View models
+    ..registerFactory(() => NavCubit(watchHub: sl()))
+    ..registerFactory(() => ChatsCubit(chats: sl()))
+    ..registerFactoryParam<NewChatCubit, String, void>((node, _) => NewChatCubit(chats: sl(), drafts: sl(), watchHub: sl(), node: node))
+    ..registerFactoryParam<TargetPickerCubit, String, String>((prompt, node) => TargetPickerCubit(chats: sl(), prompt: prompt, node: node))
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
