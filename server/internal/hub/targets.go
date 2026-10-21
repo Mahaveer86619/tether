@@ -86,7 +86,8 @@ func matchScore(cwd string, words map[string]bool, text string) (float64, string
 		return 0, ""
 	}
 	joined := strings.Join(nameWords, "")
-	if strings.Contains(text, " "+strings.Join(nameWords, " ")+" ") && (len(nameWords) > 1 || !genericWords[joined]) || len(joined) >= 4 && words[joined] {
+	distinct := len(nameWords) > 1 || !genericWords[joined]
+	if distinct && (strings.Contains(text, " "+strings.Join(nameWords, " ")+" ") || len(joined) >= 4 && words[joined]) {
 		return scoreName, `matched "` + name + `"`
 	}
 	var score float64

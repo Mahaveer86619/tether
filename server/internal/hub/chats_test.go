@@ -267,6 +267,14 @@ func TestTargetMatching(t *testing.T) {
 	if s, _ := matchScore("/src/app", words, text); s != 0 {
 		t.Errorf("a generic name matched: %v", s)
 	}
+	w2 := wordsOf("continue the proj-b work")
+	t2 := " " + strings.Join(wordList("continue the proj-b work"), " ") + " "
+	if s, _ := matchScore(`C:\Users\me\work`, w2, t2); s != 0 {
+		t.Errorf("a generic folder name matched as one word: %v", s)
+	}
+	if s, _ := matchScore(`C:\Users\me\proj-b`, w2, t2); s != scoreName {
+		t.Errorf("proj-b: %v", s)
+	}
 	if s, _ := matchScore("/src/session-store", words, text); s != scoreWord {
 		t.Errorf("one word: %v", s)
 	}
