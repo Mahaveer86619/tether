@@ -78,6 +78,14 @@ The same commands are available over HTTP, with `Authorization: Bearer <TETHER_T
 | `GET /api/v1/codebases` | | `CodebaseList`: each codebase with its latest snapshot and its `.env` files as paths and key names; never values |
 | `POST /api/v1/codebases/{id}/snapshot` | | `Ack`. Asks the codebase's node for a fresh snapshot. |
 | `GET /api/v1/codebases/{id}/snapshots` | | `SnapshotList`, newest first |
+| `GET /api/v1/chats` | | `ChatList`, newest first. Also in `Welcome.chats`, and pushed as `chat` frames when one changes. See [chats.md](chats.md). |
+| `POST /api/v1/chats` | `CreateChat {prompt, target, attachments, model, permissionMode, title, clientId}` or `{session}` | `Chat`. Starts the chat's first session where `target` says (or makes a chat of an existing session). |
+| `PATCH /api/v1/chats/{id}` | `UpdateChat {title?, archived?}` | `Chat`. An empty title hands naming back to the title job. |
+| `POST /api/v1/chats/{id}/messages` | `SendMessage {text, attachments, clientId}` | `Ack {session}`: the active session, or a new one at the chat's target if that one is gone. |
+| `POST /api/v1/chats/{id}/target` | `SetChatTarget {target, move, text}` | `Chat`. With `move`, the conversation carries over to a new session there. |
+| `POST /api/v1/chats/{id}/links` | `LinkSession {session, role, unlink}` | `Chat` |
+| `GET /api/v1/chats/{id}/context` | | `ChatContext {chat, messages, notes}`: everything said in the chat, kept after its sessions go, plus what post-processing jobs made of it |
+| `GET /api/v1/targets?prompt=` | | `TargetSuggestions {candidates, pick}`: the folders the user works in, best match for the prompt first, and what auto would pick |
 
 Agents also use: `POST /api/v1/codebases/found` (`FoundCodebases`, what a scan of the workspace roots found), `POST /api/v1/codebases/{id}/manifest` (a `SnapshotManifest`; answers `MissingBlobs`), `PUT /api/v1/blobs/{sha}` (one file, checked against its hash), `POST /api/v1/codebases/{id}/snapshots` (records the snapshot), `POST /api/v1/codebases/{id}/error`, and `PUT /api/v1/codebases/{id}/env` (`EnvFiles`, sealed into the vault). To restore, the hub machine's agent reads `GET /api/v1/snapshots/{id}/manifest`, `GET /api/v1/blobs/{sha}` and `GET /api/v1/codebases/{id}/env/files`; the last one only answers requests from the hub's own machine.
 

@@ -105,6 +105,9 @@ type Hub struct {
 	screens       map[string]*v1.ScreenSnapshot        // session -> its last terminal screen
 	screenWaiters map[string][]chan *v1.ScreenSnapshot // session -> requests waiting for a capture
 	lastBackup    time.Time
+
+	chats  map[string]*v1.Chat
+	chatOf map[string]string // session -> the chat it's in
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -133,6 +136,8 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		keptSources:  map[string]map[string]string{},
 		codes:        map[string]time.Time{},
 		fails:        map[string][]time.Time{},
+		chats:        map[string]*v1.Chat{},
+		chatOf:       map[string]string{},
 	}
 	devices, err := st.Devices()
 	if err != nil {
@@ -165,6 +170,9 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 			s.State = v1.SessionState_SESSION_STATE_IDLE
 		}
 		h.sessions[s.Id] = s
+	}
+	if err := h.loadChats(); err != nil {
+		return nil, err
 	}
 	return h, nil
 }
@@ -301,6 +309,7 @@ func (h *Hub) welcome(device, ip string) *v1.Welcome {
 		w.Preferences = proto.Clone(h.prefs).(*v1.Preferences)
 	}
 	w.HubNode = h.hubNode()
+	w.Chats = h.chatList()
 	return w
 }
 
@@ -372,6 +381,15 @@ func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
 // expect h.mu to be held and return the affected session id.
 
 func (h *Hub) createSession(cs *v1.CreateSession, from string) (string, *opError) {
+	return h.startSession(cs, from, startExtra{})
+}
+
+// startExtra is what chats add to a new session.
+type startExtra struct {
+	systemPrompt, clientID string
+}
+
+func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) (string, *opError) {
 	if cs.Scratch {
 		cs.Node, cs.Cwd = h.hubNode(), ""
 		if cs.Node == "" {
@@ -403,10 +421,10 @@ func (h *Hub) createSession(cs *v1.CreateSession, from string) (string, *opError
 		attachments = append(attachments, long)
 	}
 	h.putSession(info)
-	h.noteSent(info.Id, prompt, from)
+	h.noteSentAs(info.Id, prompt, from, extra.clientID)
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 		Session: info.Id, Cwd: cs.Cwd, Prompt: prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name, CreateCwd: cs.CreateCwd,
-		Attachments: attachments, Scratch: cs.Scratch,
+		Attachments: attachments, Scratch: cs.Scratch, SystemPrompt: extra.systemPrompt,
 	}}}))
 	return info.Id, nil
 }
@@ -460,7 +478,8 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		attachments = append(attachments, long)
 	}
 	h.noteSentAs(info.Id, text, from, m.ClientId)
-	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode)}}}))
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode),
+		SystemPrompt: h.chatSystemPrompt(info.Id)}}}))
 	return info.Id, nil
 }
 
@@ -699,6 +718,9 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		if in.Global && busy(cur.State) && !busy(in.State) {
 			defer h.uploadTranscript(in)
 		}
+		if busy(cur.State) && !busy(in.State) {
+			defer h.noteTurnEnded(in.Id)
+		}
 		if in.CreatedMs == 0 {
 			in.CreatedMs = cur.CreatedMs
 		}
@@ -860,6 +882,7 @@ func (h *Hub) commit(s string, items []*v1.TimelineItem) {
 	if len(stored) == 0 {
 		return
 	}
+	h.keepMessages(s, stored)
 	f := &v1.Frame{Seq: seq, Body: timeline(s, stored)}
 	for c := range h.subs[s] {
 		c.conn.Send(f)
@@ -936,7 +959,11 @@ func (h *Hub) removeSession(node, id string) {
 // ---- shared state ----
 
 func (h *Hub) putSession(info *v1.SessionInfo) {
+	_, known := h.sessions[info.Id]
 	h.sessions[info.Id] = info
+	if !known {
+		defer h.noteNewSession(info)
+	}
 	if err := h.store.PutSession(info); err != nil {
 		h.log.Error("store session", "session", info.Id, "err", err)
 	}

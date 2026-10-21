@@ -112,6 +112,37 @@ CREATE TABLE IF NOT EXISTS devices (
 // user_version counts how many have run. Append only.
 var migrations = []string{
 	`ALTER TABLE artifacts ADD COLUMN note TEXT NOT NULL DEFAULT ''`,
+	// Chats: the conversations, the sessions behind each, what was said in
+	// them, and what post-processing jobs made of it.
+	`CREATE TABLE chats (
+		id         TEXT PRIMARY KEY,
+		info       BLOB NOT NULL,
+		updated_ms INTEGER NOT NULL
+	);
+	CREATE TABLE chat_sessions (
+		chat      TEXT NOT NULL,
+		session   TEXT NOT NULL,
+		role      TEXT NOT NULL,
+		linked_ms INTEGER NOT NULL,
+		PRIMARY KEY (chat, session)
+	);
+	CREATE INDEX chat_sessions_by_session ON chat_sessions (session);
+	CREATE TABLE chat_messages (
+		chat    TEXT NOT NULL,
+		session TEXT NOT NULL,
+		item_id TEXT NOT NULL,
+		role    TEXT NOT NULL,
+		text    TEXT NOT NULL,
+		ts_ms   INTEGER NOT NULL,
+		PRIMARY KEY (chat, session, item_id)
+	);
+	CREATE TABLE chat_notes (
+		chat       TEXT NOT NULL,
+		kind       TEXT NOT NULL,
+		value      TEXT NOT NULL,
+		updated_ms INTEGER NOT NULL,
+		PRIMARY KEY (chat, kind)
+	)`,
 }
 
 type Store struct {

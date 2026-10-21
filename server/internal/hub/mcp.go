@@ -82,8 +82,23 @@ var mcpTools = []mcpTool{
 			"node":   "string: the machine to run on; omit for a hub session",
 			"cwd":    "string: folder on that machine (default: its home folder)",
 			"model":  "string: e.g. sonnet, opus, haiku",
+			"chat":   "string: the Tether chat you are working in, if your instructions name one; the session then shows in that chat",
 		}),
 		call: (*Hub).mcpStartSession,
+	},
+	{
+		Name: "set_chat_target",
+		Description: "Record where a Tether chat should work: a machine and folder, or scratch for no project. " +
+			"By default Tether then carries the conversation over to a new session there, which takes over the chat.",
+		InputSchema: schema([]string{"chat"}, map[string]string{
+			"chat":    "string: the chat id from your instructions",
+			"node":    "string: the machine, as list_nodes names it",
+			"cwd":     "string: the folder on that machine",
+			"scratch": "boolean: no project; a fresh scratch folder on the hub's machine",
+			"reason":  "string: one line on why this folder, shown to the user",
+			"move":    "boolean: carry the conversation over now (default true)",
+		}),
+		call: (*Hub).mcpSetChatTarget,
 	},
 	{
 		Name:        "send_message",
@@ -275,11 +290,52 @@ func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
 	defer h.mu.Unlock()
 	cs := &v1.CreateSession{Prompt: str(args, "prompt"), Node: str(args, "node"), Cwd: str(args, "cwd"), Model: str(args, "model")}
 	cs.Scratch = cs.Node == ""
-	id, err := h.createSession(cs, mcpSource)
+	chat := h.chats[str(args, "chat")]
+	if str(args, "chat") != "" && chat == nil {
+		return "", fmt.Errorf("unknown chat %s", str(args, "chat"))
+	}
+	extra := startExtra{}
+	if chat != nil {
+		extra.systemPrompt = h.chatPromptFor(chat, cs.Node)
+		if cs.Scratch {
+			extra.systemPrompt = h.chatPromptFor(chat, h.hubNode())
+		}
+	}
+	id, err := h.startSession(cs, mcpSource, extra)
 	if err != nil {
 		return "", opErr(err)
 	}
+	if chat != nil {
+		h.link(chat, id, linkStarted)
+		h.putChat(chat)
+	}
 	return "Started session " + id + " on " + h.sessions[id].Node + ".", nil
+}
+
+func (h *Hub) mcpSetChatTarget(args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	move, ok := args["move"].(bool)
+	if !ok {
+		move = true
+	}
+	scratch, _ := args["scratch"].(bool)
+	t := &v1.ChatTarget{Mode: targetClaude, Node: str(args, "node"), Cwd: str(args, "cwd"), Scratch: scratch,
+		Reason: firstNonEmpty(str(args, "reason"), "picked by Claude")}
+	if scratch {
+		t.Node, t.Cwd = h.hubNode(), ""
+	}
+	if !scratch && h.agents[t.Node] == nil {
+		return "", fmt.Errorf("%s is not online; list_nodes shows the machines that are", t.Node)
+	}
+	c, err := h.setChatTarget(str(args, "chat"), &v1.SetChatTarget{Target: t, Move: move && !scratch}, mcpSource)
+	if err != nil {
+		return "", opErr(err)
+	}
+	if move && !scratch {
+		return "Done: the chat continues in session " + c.ActiveSession + " on " + t.Node + " in " + t.Cwd + ". Stop here; that session takes over.", nil
+	}
+	return "Recorded. Carry on here.", nil
 }
 
 func (h *Hub) mcpSendMessage(args map[string]any) (string, error) {

@@ -42,6 +42,8 @@ message Frame {
     Preferences preferences = 39;
     // A file was added to the artifact store (sent to every client).
     Artifact artifact_added = 40;
+    // A chat was created or changed (sent to every client).
+    Chat chat = 41;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -342,6 +344,8 @@ message Welcome {
   // which matches NodeStatus.ip for the node on its own machine.
   string device_id = 7;
   string client_ip = 8;
+  // Conversations, newest first; empty from a hub before 0.16.
+  repeated Chat chats = 9;
 }
 
 message Ack {
@@ -436,6 +440,9 @@ message AgentCommand {
     // with its .env files; cwd is then relative to that folder.
     string restore_codebase = 13;
     string restore_snapshot = 14;
+    // Passed to Claude Code as --append-system-prompt. Agents before 0.16
+    // ignore it, so the hub only sets it for newer ones.
+    string system_prompt = 15;
   }
 
   message SendInput {
@@ -445,6 +452,9 @@ message AgentCommand {
     repeated Artifact attachments = 3;
     // For a resume, when no process is live: the mode to start in.
     string permission_mode = 4;
+    // For a resume: StartRun.system_prompt again, since Claude Code doesn't
+    // keep it across --resume.
+    string system_prompt = 5;
   }
 
   message SetMode {
@@ -883,4 +893,136 @@ message Page {
 // GET /api/v1/pages?session=
 message PageList {
   repeated Page pages = 1;
+}
+
+// ---- Chats ----
+//
+// A chat is the conversation the user sees; the sessions doing the work sit
+// behind it. One is active (messages go there); others are linked: forks,
+// sessions it started on other machines, or a move to another folder.
+// See docs/chats.md.
+
+message Chat {
+  string id = 1;
+  string title = 2;
+  // The user named it; title jobs leave it alone.
+  bool title_by_user = 3;
+  int64 created_ms = 4;
+  int64 updated_ms = 5;
+  bool archived = 6;
+  ChatTarget target = 7;
+  // Where messages go now.
+  string active_session = 8;
+  // Oldest first, the active one included.
+  repeated ChatLink sessions = 9;
+}
+
+// Where a chat's work runs.
+message ChatTarget {
+  // "auto": the hub picked it from the prompt and recent work; "manual":
+  // the user picked it; "claude": Claude works it out in a scratch folder.
+  string mode = 1;
+  string node = 2;
+  // Empty with node set: the node's home folder.
+  string cwd = 3;
+  // "resolved", or "detecting" while Claude is still working it out.
+  string state = 4;
+  // Why it was picked, for the UI: "matched “tether”", "picked by you"...
+  string reason = 5;
+  // A fresh scratch folder on the hub's machine.
+  bool scratch = 6;
+}
+
+message ChatLink {
+  string session = 1;
+  // "main", "moved" (continued in another folder), "fork", "started" (by
+  // Claude, through the hub), "linked" (added by hand).
+  string role = 2;
+  int64 linked_ms = 3;
+}
+
+// POST /api/v1/chats. Starts the chat's first session, or adopts an
+// existing one when session is set.
+message CreateChat {
+  string prompt = 1;
+  // Unset or mode "auto": the hub picks; it falls back to "claude".
+  ChatTarget target = 2;
+  repeated string attachments = 3;
+  string model = 4;
+  string permission_mode = 5;
+  string title = 6;
+  string session = 7;
+  // Made by the client; stamped on the first message like SendMessage's.
+  string client_id = 8;
+}
+
+// PATCH /api/v1/chats/{id}. Unset fields stay as they are.
+message UpdateChat {
+  optional string title = 1;
+  optional bool archived = 2;
+}
+
+// POST /api/v1/chats/{id}/target: change where the chat works. With move,
+// a new session starts there carrying the conversation so far and becomes
+// the active one; without it only the target is recorded.
+message SetChatTarget {
+  ChatTarget target = 1;
+  bool move = 2;
+  // The first message for the moved session; defaults to carrying on.
+  string text = 3;
+}
+
+// POST /api/v1/chats/{id}/links
+message LinkSession {
+  string session = 1;
+  string role = 2;
+  bool unlink = 3;
+}
+
+message ChatList {
+  repeated Chat chats = 1;
+}
+
+// One message of a chat's stored context.
+message ChatMessage {
+  string session = 1;
+  string item_id = 2;
+  // "user" or "assistant".
+  string role = 3;
+  string text = 4;
+  int64 ts_ms = 5;
+}
+
+// Output of a post-processing job, by kind ("title", "summary"...).
+message ChatNote {
+  string kind = 1;
+  string value = 2;
+  int64 updated_ms = 3;
+}
+
+// GET /api/v1/chats/{id}/context: everything said in the chat, across its
+// sessions, kept even after a session is gone.
+message ChatContext {
+  Chat chat = 1;
+  repeated ChatMessage messages = 2;
+  repeated ChatNote notes = 3;
+}
+
+// A place a chat could run, best first.
+message TargetCandidate {
+  string node = 1;
+  string cwd = 2;
+  string label = 3;
+  bool online = 4;
+  // Higher is better; 0 means no clue from the prompt.
+  double score = 5;
+  string reason = 6;
+  int64 last_used_ms = 7;
+}
+
+// GET /api/v1/targets?prompt=
+message TargetSuggestions {
+  repeated TargetCandidate candidates = 1;
+  // What auto would pick now; unset when it would hand over to Claude.
+  TargetCandidate pick = 2;
 }
