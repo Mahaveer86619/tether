@@ -87,7 +87,7 @@ func matchScore(cwd string, words map[string]bool, text string) (float64, string
 	}
 	joined := strings.Join(nameWords, "")
 	if strings.Contains(text, " "+strings.Join(nameWords, " ")+" ") && (len(nameWords) > 1 || !genericWords[joined]) || len(joined) >= 4 && words[joined] {
-		return scoreName, "matched “" + name + "”"
+		return scoreName, `matched "` + name + `"`
 	}
 	var score float64
 	var hits []string
@@ -106,7 +106,7 @@ func matchScore(cwd string, words map[string]bool, text string) (float64, string
 		}
 	}
 	if len(hits) > 0 {
-		return score, "matched “" + strings.Join(hits, "”, “") + "”"
+		return score, `matched "` + strings.Join(hits, `", "`) + `"`
 	}
 	if score > 0 {
 		return score, "matched its parent folder"
