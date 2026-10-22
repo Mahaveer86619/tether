@@ -293,6 +293,21 @@ void main() {
       await again.close();
     });
 
+    test('a message that shows in the timeline before its send returns leaves the outbox', () async {
+      repo.timelines['s1'] ??= StreamController<TimelineSnapshot>.broadcast();
+      repo.onSend = (_, _) {
+        // The hub's echo beats its answer to the send.
+        repo.emitTimeline('s1', [TimelineItem(itemId: 'u1', user: rpb.UserText(text: 'quick one', clientId: repo.clientIds.last))]);
+        return const Ok('s1');
+      };
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(const MessageSubmitted('quick one'));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(b.state.outbox, isEmpty, reason: 'shown once, by the timeline');
+      await b.close();
+    });
+
     test('discarding drops a message without sending it', () async {
       repo.onSend = (_, _) => const Err(NodeOfflineFailure());
       final b = open()..add(const SessionOpened());

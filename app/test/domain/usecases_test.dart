@@ -50,6 +50,14 @@ void main() {
       expect(pending.map((e) => e.id), ['c2'], reason: 'one "again" arrived, so one is still to come');
     });
 
+    test('a message pasted into a terminal still matches, though its line breaks doubled', () {
+      final pending = Outbox.pending(
+        [entry('c1', 'check the csv\r\n{"row":5}\r\n{"row":3}\r\n\r\nrecalculate?')],
+        [user('u1', 'check the csv\n\n{"row":5}\n\n{"row":3}\n\n\n\nrecalculate?')],
+      );
+      expect(pending, isEmpty);
+    });
+
     test('unsent and failed messages stay whatever the timeline shows', () {
       final pending = Outbox.pending(
         [entry('c1', 'x', state: OutboxState.failed), entry('c2', 'y', state: OutboxState.sending)],

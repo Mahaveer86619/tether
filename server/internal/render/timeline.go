@@ -254,13 +254,13 @@ func (b *Builder) Feed(line []byte) Output {
 		a := l.Attachment
 		if a.Type == "queued_command" && (a.CommandMode == "" || a.CommandMode == "prompt") && !l.IsSidechain {
 			texts, images, _ := userContent(a.Prompt)
-			if text := strings.TrimSpace(strings.Join(texts, "\n")); text != "" {
+			if text, pasted := unpaste(strings.Join(texts, "\n")); text != "" {
 				uuid := l.UUID
 				if a.SourceUUID != "" {
 					uuid = a.SourceUUID
 				}
 				id := itemID("user", uuid, []byte(text))
-				emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+				emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text, PastedIds: pasted}}})
 				for _, img := range images {
 					img.ItemID = id
 					out.Images = append(out.Images, img)
@@ -386,7 +386,7 @@ func (b *Builder) userMessage(l rawLine, m message, out *Output, emit func(*v1.T
 		ApplyResult(card, cb.Content, cb.IsError)
 		emit(&v1.TimelineItem{ItemId: cb.ToolUseID, Kind: &v1.TimelineItem_Tool{Tool: card}})
 	}
-	text := strings.TrimSpace(strings.Join(texts, "\n"))
+	text, pasted := unpaste(strings.Join(texts, "\n"))
 	if text == "" {
 		return
 	}
@@ -410,17 +410,31 @@ func (b *Builder) userMessage(l rawLine, m message, out *Output, emit func(*v1.T
 	case strings.HasPrefix(text, "[Request interrupted by user"):
 		emit(notice(id, v1.Notice_LEVEL_WARNING, "Interrupted"))
 	default:
-		emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text}}})
+		emit(&v1.TimelineItem{ItemId: id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text, PastedIds: pasted}}})
 	}
+}
+
+var pastedBlock = regexp.MustCompile(`(?s)<pasted_content id="([^"]*)">\n?(.*?)\n?</pasted_content(?: id="[^"]*")?>`)
+
+// unpaste takes out the tags Claude Code wraps pasted text in, keeping what
+// was pasted, and returns the trimmed text with the pastes' ids in order.
+func unpaste(text string) (string, []string) {
+	var ids []string
+	text = pastedBlock.ReplaceAllStringFunc(text, func(m string) string {
+		sub := pastedBlock.FindStringSubmatch(m)
+		ids = append(ids, sub[1])
+		return sub[2]
+	})
+	return strings.TrimSpace(text), ids
 }
 
 // queueOperation shows a message as soon as it is queued, and removes that
 // placeholder once Claude takes it in (it then arrives as a queued_command
 // attachment or a user line) or it is pulled back into the input box.
 func (b *Builder) queueOperation(l rawLine, emit func(*v1.TimelineItem)) {
-	var text string
-	_ = json.Unmarshal(l.Content, &text)
-	text = strings.TrimSpace(text)
+	var raw string
+	_ = json.Unmarshal(l.Content, &raw)
+	text, pasted := unpaste(raw)
 	switch l.Operation {
 	case "enqueue":
 		if text == "" || strings.HasPrefix(text, "<") {
@@ -428,7 +442,7 @@ func (b *Builder) queueOperation(l rawLine, emit func(*v1.TimelineItem)) {
 		}
 		q := queuedMsg{id: itemID("queued", l.Timestamp, []byte(text)), text: text}
 		b.queued = append(b.queued, q)
-		emit(&v1.TimelineItem{ItemId: q.id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text, Queued: true}}})
+		emit(&v1.TimelineItem{ItemId: q.id, Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: text, Queued: true, PastedIds: pasted}}})
 	case "popAll":
 		for _, q := range b.queued {
 			emit(&v1.TimelineItem{ItemId: q.id})

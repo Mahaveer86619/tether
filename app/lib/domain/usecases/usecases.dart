@@ -238,11 +238,12 @@ class Outbox {
       (i.user.clientId == e.id || sameMessage(SendMessage.wording(e.text), i.user.text)));
 
   /// The same message as sent and as the transcript has it: the agent adds
-  /// the list of attached files, and Windows line endings.
+  /// the list of attached files, and pasting into a terminal can turn each
+  /// CRLF into two newlines, so whitespace runs count as one.
   static bool sameMessage(String sent, String got) {
-    String norm(String s) => s.replaceAll('\r\n', '\n').trim();
+    String norm(String s) => s.trim().split(RegExp(r'\s+')).join(' ');
     final a = norm(sent), b = norm(got);
-    return a == b || b.startsWith('$a\n\nAttached files');
+    return a == b || b.startsWith('$a Attached files');
   }
 }
 

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/render"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
 )
 
@@ -157,5 +158,30 @@ func TestWorkspaceRootsCanBeAddedAndRemoved(t *testing.T) {
 	w.Reset()
 	if err := protojson.Unmarshal([]byte(body), w); err != nil || len(w.Roots) != 1 || w.Roots[0].Node != "laptop" {
 		t.Fatalf("after remove: %s", body)
+	}
+}
+
+func TestAPastedAppMessageKeepsItsSourceAndClientID(t *testing.T) {
+	h, _ := newTestHubWith(t)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.noteSentAs("s1", "make sample files", "Pixel (android)", "abc123")
+	b := render.NewBuilder()
+	p := b.Feed([]byte(`{"type":"user","uuid":"p1","message":{"role":"user","content":"\n\n<pasted_content id=\"c669\">\nmake sample files\n</pasted_content id=\"c669\">\n"}}`))
+	h.commit("s1", p.Items)
+	it, _ := h.store.Item("s1", "user:p1")
+	if u := it.GetUser(); u.Source != "Pixel (android)" || u.ClientId != "abc123" || u.Text != "make sample files" {
+		t.Fatalf("got %v", u)
+	}
+}
+
+func TestSameMessageIgnoresHowATerminalReflowedIt(t *testing.T) {
+	sent := "check the csv\r\n{\"row\":5}\r\n{\"row\":3}\r\n\r\nshould i recalculate?"
+	got := "check the csv\n\n{\"row\":5}\n\n{\"row\":3}\n\n\n\nshould i recalculate?"
+	if !sameMessage(sent, got) || !sameMessage(sent, got+"\n\nAttached files (in this folder):\n- a.png") {
+		t.Fatal("a reflowed paste should match what was sent")
+	}
+	if sameMessage("fix the tests", "fix the tests now") {
+		t.Fatal("different text matched")
 	}
 }

@@ -290,3 +290,30 @@ func TestPermissionModeComesFromTheTranscript(t *testing.T) {
 		t.Fatalf("a subagent's line shouldn't set the session's mode: %q", out.Patch.Mode)
 	}
 }
+
+func TestPastedContentTagsAreTakenOutAndTheirIdsKept(t *testing.T) {
+	b := NewBuilder()
+	// What Claude Code writes for a message the agent pasted into a terminal.
+	line := []byte(`{"type":"user","uuid":"p1","message":{"role":"user","content":"\n\n<pasted_content id=\"c669\">\nMake sample files\n\nAttached files (in this folder):\n- .tether/attachments/a.xlsx\n</pasted_content id=\"c669\">\n"}}`)
+	items := b.Feed(line).Items
+	u := items[0].GetUser()
+	if len(items) != 1 || u.GetText() != "Make sample files\n\nAttached files (in this folder):\n- .tether/attachments/a.xlsx" || len(u.PastedIds) != 1 || u.PastedIds[0] != "c669" {
+		t.Fatalf("got %v", items)
+	}
+
+	mixed := []byte(`{"type":"user","uuid":"p2","message":{"role":"user","content":"look at this:\n<pasted_content id=\"a1\">\nline one\n</pasted_content id=\"a1\">\nand\n<pasted_content id=\"b2\">\nline two\n</pasted_content>"}}`)
+	u = b.Feed(mixed).Items[0].GetUser()
+	if u.GetText() != "look at this:\nline one\nand\nline two" || strings.Join(u.PastedIds, ",") != "a1,b2" {
+		t.Fatalf("got %q %v", u.GetText(), u.PastedIds)
+	}
+
+	// A pasted message sent mid-turn still shows as queued, and clears by its text.
+	q := b.Feed([]byte(`{"type":"queue-operation","operation":"enqueue","timestamp":"2026-10-22T04:54:30Z","content":"<pasted_content id=\"d4\">\nstop the probes\n</pasted_content id=\"d4\">"}`)).Items
+	if len(q) != 1 || !q[0].GetUser().GetQueued() || q[0].GetUser().GetText() != "stop the probes" {
+		t.Fatalf("queued: %v", q)
+	}
+	gone := b.Feed([]byte(`{"type":"queue-operation","operation":"remove","timestamp":"2026-10-22T04:54:31Z","content":"<pasted_content id=\"d4\">\nstop the probes\n</pasted_content id=\"d4\">"}`)).Items
+	if len(gone) != 1 || gone[0].ItemId != q[0].ItemId || gone[0].Kind != nil {
+		t.Fatalf("remove: %v", gone)
+	}
+}

@@ -61,11 +61,12 @@ func (h *Hub) tagSources(session string, items []*v1.TimelineItem) {
 }
 
 // sameMessage compares a message as sent with how the transcript shows it:
-// the agent appends the list of attached files, and Windows adds CRs.
+// the agent appends the list of attached files, and pasting into a terminal
+// can turn each CRLF into two newlines, so whitespace runs count as one.
 func sameMessage(sent, got string) bool {
-	norm := func(s string) string { return strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n")) }
+	norm := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 	sent, got = norm(sent), norm(got)
-	return sent == got || strings.HasPrefix(got, sent+"\n\nAttached files")
+	return sent == got || strings.HasPrefix(got, sent+" Attached files")
 }
 
 // sourceOf finds who sent text and the client's id for it, dropping notes

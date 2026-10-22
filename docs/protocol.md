@@ -102,6 +102,8 @@ Agents also send `planUsage` frames: what `claude -p /usage --no-session-persist
 
 Sessions carry their lineage, owned by the hub like `archived`: `parent` (the session they split off from), `forkPoint` (the parent's last timeline item at that moment) and `lineage` (`fork`; later `branch`).
 
+Claude Code wraps pasted text in `<pasted_content id="…">…</pasted_content id="…">`. That includes every message an agent pastes into a tmux session for an app. The renderer takes the tags out of user items and queued placeholders, and keeps the ids in `UserText.pasted_ids`, so the text matches what was sent.
+
 User messages carry `source`, set by the hub: the name of the app or tool that sent it through the hub, or `terminal` when it was typed in the session's terminal. It's stored with the message, survives a rebuild, and is part of the history the second brain will read.
 
 A QR code for pairing carries `tether://pair?hub=<ws url>&code=<code>&fp=<certificate sha256>`; `fp` is only there for a hub with a self-signed certificate.

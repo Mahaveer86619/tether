@@ -555,7 +555,7 @@ class _Timeline {
 
   void apply(List<rpb.TimelineItem> items, Int64 frameSeq, {bool endOfReplay = false, bool persist = true}) {
     for (final it in items) {
-      _items[it.itemId] = it;
+      _items[it.itemId] = unpastedItem(it);
     }
     if (frameSeq > seq) seq = frameSeq;
     if (endOfReplay) loading = false;

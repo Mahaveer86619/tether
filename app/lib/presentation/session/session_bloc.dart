@@ -257,6 +257,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     switch (result) {
       case Ok():
         _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sent, sentAt: DateTime.now(), error: ''));
+        // The message can reach the timeline before the hub's answer does;
+        // with no later timeline change it would otherwise stay shown twice.
+        if (state.timeline case final t?) {
+          final pending = Outbox.pending(state.outbox, t.items);
+          if (pending.length != state.outbox.length) _setOutbox(emit, pending);
+        }
       case Err(:final failure):
         _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.failed, error: failure.userMessage));
         emit(state.copyWith(failure: failure, failureId: state.failureId + 1));
