@@ -78,10 +78,10 @@ make dist-go deploy       # when only the server changed: no APK
 1. Stops the hub and agent and backs up into `~/tether/backups/<time>-pre-X.Y.Z/`: `hub.db*`, the three binaries and the systemd units. Each binary is also kept as `~/tether/bin/<name>.prev`. It writes `rollback.sh` next to the backup.
 2. Installs the new binaries with `install.sh` and restarts both services. The agent's `KillMode=process` keeps tmux sessions alive.
 3. Copies the release into `~/tether/updates/X.Y.Z/`.
-4. Waits up to a minute for `/healthz` and for `/api/v1/state` to report the new `hubVersion`. If they don't, it removes the release from `updates/`, runs `rollback.sh` (binaries, units and database) and fails.
+4. Waits up to a minute for `/healthz` and for `/api/v1/state` to report the new `hubVersion`. If they don't, it removes the release from `updates/`, runs `rollback.sh` (binaries and units; the database stays, since older hubs ignore newer tables) and fails.
 5. Waits up to a minute for the hub's own agent to reconnect with the new version. If it doesn't, it puts `tether-agent.prev` back and fails.
 
-To undo a deploy that passed: `~/tether/backups/<time>-pre-X.Y.Z/rollback.sh`.
+To undo a deploy that passed: `~/tether/backups/<time>-pre-X.Y.Z/rollback.sh`. Add `--db` to also restore the database from the backup; that drops the WAL files first and loses anything written since.
 
 ## How apps and agents update
 

@@ -57,15 +57,23 @@ cp -p "$HOME/.config/systemd/user/tether-hub.service" "$HOME/.config/systemd/use
 
 cat > "$backup/rollback.sh" <<EOF
 #!/usr/bin/env bash
-# Puts back what was running before $v was deployed.
+# Puts back what was running before $v was deployed. Older hubs ignore the
+# tables newer ones add, so the database is kept unless --db is given; with
+# it, the backup replaces it (and anything written since is lost).
 set -euo pipefail
 systemctl --user stop tether-hub tether-agent
 for b in tether-hub tether-agent tetherctl; do
-  [ -f "$backup/\$b" ] && cp -p "$backup/\$b" "$home/bin/\$b"
+  if [ -f "$backup/\$b" ]; then cp -p "$backup/\$b" "$home/bin/\$b"; fi
 done
-cp -p "$backup"/hub.db* "$home"/ 2>/dev/null || true
+if [ "\${1:-}" = --db ]; then
+  # A WAL left by the newer hub must not be replayed onto the old database.
+  rm -f "$home/hub.db-wal" "$home/hub.db-shm"
+  for f in hub.db hub.db-wal hub.db-shm; do
+    if [ -f "$backup/\$f" ]; then cp -p "$backup/\$f" "$home/"; fi
+  done
+fi
 for u in tether-hub.service tether-agent.service; do
-  [ -f "$backup/\$u" ] && cp -p "$backup/\$u" "\$HOME/.config/systemd/user/\$u"
+  if [ -f "$backup/\$u" ]; then cp -p "$backup/\$u" "\$HOME/.config/systemd/user/\$u"; fi
 done
 systemctl --user daemon-reload
 systemctl --user start tether-hub tether-agent
@@ -125,4 +133,4 @@ if [ "${roles[*]}" = "hub agent" ]; then
   fi
   echo "agent $v is connected"
 fi
-echo "deployed $v. To undo: $backup/rollback.sh"
+echo "deployed $v. To undo: $backup/rollback.sh (add --db to restore the database too)"
