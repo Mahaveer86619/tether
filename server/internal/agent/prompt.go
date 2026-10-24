@@ -3,14 +3,13 @@ package agent
 import (
 	"context"
 	"errors"
-	"regexp"
-	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/console"
 )
 
 // Claude Code shows some dialogs only on its screen: feedback surveys,
@@ -23,162 +22,12 @@ import (
 
 const (
 	screenEvery = 2 * time.Second
-	// Lines from the bottom a dialog can start in; older lines are history.
-	dialogWindow = 24
 )
 
-// dialog is a choice read off the screen.
-type dialog struct {
-	title    string
-	options  []string
-	keys     []string // inline surveys: the key that picks each option
-	selected int      // the cursor's option, or -1
-}
+type dialog = console.Dialog
 
-func (d *dialog) signature() string {
-	return d.title + "\x00" + strings.Join(d.options, "\x00")
-}
-
-var (
-	boxChars    = "│┃|╭╮╰╯─━┌┐└┘├┤"
-	menuLine    = regexp.MustCompile(`^(\s*)([❯›>]?)\s*(?:(\d{1,2})[.)]\s+)?(\S.*?)\s*$`)
-	inlineEntry = regexp.MustCompile(`(\d):\s*([^\s\d][^:]*?)(?:\s{2,}|$)`)
-	hintLine    = regexp.MustCompile(`(?i)(esc|enter|↑|↓|tab) to `)
-	// Option lines may carry marks like ✔ (the current value) after the text.
-	marks = regexp.MustCompile(`\s+[✔✓]\s*$`)
-)
-
-// cleanLine strips a dialog box's borders.
-func cleanLine(l string) string {
-	l = strings.TrimRight(l, " ")
-	trimmed := strings.Trim(l, " ")
-	if trimmed != "" && strings.Trim(trimmed, boxChars+" ") == "" {
-		return ""
-	}
-	for _, c := range []string{"│", "┃"} {
-		if strings.HasPrefix(strings.TrimLeft(l, " "), c) {
-			l = strings.TrimLeft(l, " ")
-			l = strings.TrimPrefix(l, c)
-		}
-		l = strings.TrimSuffix(strings.TrimRight(l, " "), c)
-	}
-	return strings.TrimRight(l, " ")
-}
-
-// parseDialog finds the dialog at the bottom of a screen, if there is one:
-// a vertical menu with a cursor (❯) on one option, or a one-line survey
-// like "1: Bad  2: Fine  3: Good  0: Dismiss".
-func parseDialog(screen string) *dialog {
-	raw := strings.Split(strings.ReplaceAll(screen, "\r", ""), "\n")
-	lines := make([]string, len(raw))
-	for i, l := range raw {
-		lines[i] = cleanLine(l)
-	}
-	last := len(lines) - 1
-	for last >= 0 && strings.TrimSpace(lines[last]) == "" {
-		last--
-	}
-	start := max(0, last-dialogWindow+1)
-	if d := parseMenu(lines, start, last); d != nil {
-		return d
-	}
-	return parseInline(lines, start, last)
-}
-
-func parseMenu(lines []string, start, last int) *dialog {
-	// Find the cursor, then the run of sibling options around it.
-	cursor := -1
-	for i := last; i >= start; i-- {
-		if m := menuLine.FindStringSubmatch(lines[i]); m != nil && m[2] == "❯" {
-			cursor = i
-			break
-		}
-	}
-	if cursor < 0 {
-		return nil
-	}
-	cm := menuLine.FindStringSubmatch(lines[cursor])
-	numbered := cm[3] != ""
-	indent := utf8.RuneCountInString(cm[1])
-	isOption := func(i int) (string, bool) {
-		m := menuLine.FindStringSubmatch(lines[i])
-		if m == nil || hintLine.MatchString(lines[i]) {
-			return "", false
-		}
-		if numbered {
-			return m[4], m[3] != ""
-		}
-		// Unnumbered: same column as the cursor line's text.
-		col := utf8.RuneCountInString(m[1])
-		if m[2] == "" {
-			col -= 2
-		}
-		return m[4], m[2] == "❯" || (col >= indent-1 && col <= indent+1)
-	}
-	first, end := cursor, cursor
-	for i := cursor - 1; i >= start; i-- {
-		if strings.TrimSpace(lines[i]) == "" {
-			break
-		}
-		if _, ok := isOption(i); ok {
-			first = i
-		} else if !numbered {
-			break
-		}
-	}
-	for i := cursor + 1; i <= last; i++ {
-		if strings.TrimSpace(lines[i]) == "" || hintLine.MatchString(lines[i]) {
-			break
-		}
-		if _, ok := isOption(i); ok {
-			end = i
-		} else if !numbered {
-			break
-		}
-	}
-	d := &dialog{selected: -1}
-	for i := first; i <= end; i++ {
-		if text, ok := isOption(i); ok {
-			if i == cursor {
-				d.selected = len(d.options)
-			}
-			d.options = append(d.options, marks.ReplaceAllString(text, ""))
-		}
-	}
-	if len(d.options) < 2 {
-		return nil
-	}
-	d.title = titleAbove(lines, first, start)
-	return d
-}
-
-func parseInline(lines []string, start, last int) *dialog {
-	for i := last; i >= start; i-- {
-		ms := inlineEntry.FindAllStringSubmatch(lines[i], -1)
-		if len(ms) < 2 {
-			continue
-		}
-		d := &dialog{selected: -1}
-		for _, m := range ms {
-			d.keys = append(d.keys, m[1])
-			d.options = append(d.options, strings.TrimSpace(m[2]))
-		}
-		d.title = titleAbove(lines, i, start)
-		return d
-	}
-	return nil
-}
-
-// titleAbove is the nearest text above a dialog's options: its question.
-func titleAbove(lines []string, first, start int) string {
-	for i := first - 1; i >= start; i-- {
-		t := strings.TrimSpace(lines[i])
-		if t == "" {
-			continue
-		}
-		return strings.TrimLeft(t, "●⏺✻* ")
-	}
-	return "Claude Code is asking"
+func parseDialog(screen string) *console.Dialog {
+	return console.ParseDialog(screen)
 }
 
 // screenTarget is how to read and drive one interactive session.
@@ -332,17 +181,17 @@ func (a *Agent) noteScreen(t screenTarget, screen string) {
 	switch {
 	case d == nil && cur != nil:
 		a.dropPrompt(t.session, "screen")
-	case d != nil && (cur == nil || cur.sig != d.signature()):
+	case d != nil && (cur == nil || cur.sig != d.Signature()):
 		if cur != nil {
 			a.dropPrompt(t.session, "screen")
 		}
-		p := &screenPrompt{id: uuid.NewString(), sig: d.signature(), target: t}
+		p := &screenPrompt{id: uuid.NewString(), sig: d.Signature(), target: t}
 		a.mu.Lock()
 		a.prompts[t.session] = p
 		a.mu.Unlock()
 		a.send(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequest{
 			ApprovalId: p.id, Session: t.session, Kind: v1.ApprovalRequest_KIND_PROMPT, ToolName: "Claude Code prompt",
-			Description: d.title, Options: d.options, Selected: int32(d.selected), Screen: lastLines(screen, 40),
+			Description: d.Title, Options: d.Options, Selected: int32(d.Selected), Screen: console.LastLines(screen, 40),
 			InputJson: "{}",
 		}}})
 		a.setHookState(t.session, v1.SessionState_SESSION_STATE_AWAITING_APPROVAL)
@@ -425,18 +274,18 @@ func (a *Agent) driveDialog(t screenTarget, d *v1.ApprovalDecision) error {
 		}
 		target := int(d.Option) - 1
 		if target < 0 {
-			target = cur.selected
+			target = cur.Selected
 		}
-		if target < 0 || target >= len(cur.options) {
+		if target < 0 || target >= len(cur.Options) {
 			return errors.New("the option isn't on the screen any more")
 		}
 		var key string
 		switch {
-		case len(cur.keys) > 0:
-			key = cur.keys[target]
-		case cur.selected < target:
+		case len(cur.Keys) > 0:
+			key = cur.Keys[target]
+		case cur.Selected < target:
 			key = "Down"
-		case cur.selected > target:
+		case cur.Selected > target:
 			key = "Up"
 		default:
 			key = "Enter"
@@ -444,18 +293,10 @@ func (a *Agent) driveDialog(t screenTarget, d *v1.ApprovalDecision) error {
 		if err := a.pressKeys(t, []string{key}, ""); err != nil {
 			return err
 		}
-		if key == "Enter" || len(cur.keys) > 0 {
+		if key == "Enter" || len(cur.Keys) > 0 {
 			return nil
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
 	return errors.New("the dialog didn't respond to the keys")
-}
-
-func lastLines(s string, n int) string {
-	lines := strings.Split(strings.TrimRight(s, "\n "), "\n")
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
 }

@@ -19,6 +19,7 @@ import (
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 	"github.com/Mahaveer86619/tether/server/internal/render"
 	"github.com/Mahaveer86619/tether/server/internal/store"
+	"github.com/Mahaveer86619/tether/server/internal/tailnet"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
 )
 
@@ -43,6 +44,18 @@ type Config struct {
 	TrustTailnet bool
 	// Where the hub keeps files: the artifact store lives under it.
 	DataDir string
+	// Releases to serve; defaults to <DataDir>/updates.
+	UpdatesDir string
+	// A published latest.json to poll for new releases; empty turns it off.
+	UpdateFeed string
+	// Tell idle agents older than the newest release to update themselves.
+	AutoUpdateAgents bool
+	// Take secrets out of stored history (see docs/history.md).
+	HistoryRedact bool
+	// Drop a session's history after this many days untouched, and the
+	// oldest sessions' when it outgrows this many MB; 0 keeps everything.
+	HistoryKeepDays int
+	HistoryMaxMB    int
 }
 
 type client struct {
@@ -91,7 +104,7 @@ type Hub struct {
 	linkKey      []byte
 
 	tsMu     sync.Mutex
-	tsStatus *tsStatus
+	tsStatus *tailnet.Status
 	tsAt     time.Time
 
 	sent        map[string][]sentMsg         // session -> messages sent through the hub
@@ -108,6 +121,9 @@ type Hub struct {
 
 	chats  map[string]*v1.Chat
 	chatOf map[string]string // session -> the chat it's in
+
+	update       *v1.UpdateManifest     // the newest release known
+	agentUpdates map[string]agentUpdate // node -> the update last asked of it
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -138,6 +154,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		fails:        map[string][]time.Time{},
 		chats:        map[string]*v1.Chat{},
 		chatOf:       map[string]string{},
+		agentUpdates: map[string]agentUpdate{},
 	}
 	devices, err := st.Devices()
 	if err != nil {
@@ -174,6 +191,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 	if err := h.loadChats(); err != nil {
 		return nil, err
 	}
+	h.loadLocalUpdate()
 	return h, nil
 }
 
@@ -202,6 +220,8 @@ func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
 	go h.modeLoop(ctx)
 	go h.backupLoop(ctx)
+	go h.updateLoop(ctx)
+	go h.historyLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -310,6 +330,7 @@ func (h *Hub) welcome(device, ip string) *v1.Welcome {
 	}
 	w.HubNode = h.hubNode()
 	w.Chats = h.chatList()
+	w.Update = h.servedManifest()
 	return w
 }
 
@@ -324,6 +345,9 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 		return
 	case *v1.Frame_ClientPresence:
 		h.notePresence(c, b.ClientPresence.Active)
+		return
+	case *v1.Frame_Heartbeat:
+		ack(c, f.Id, "")
 		return
 	case *v1.Frame_Unsubscribe:
 		if set := h.subs[b.Unsubscribe.Session]; set != nil {
@@ -591,6 +615,7 @@ func (h *Hub) serveAgent(conn *wire.Conn, st *v1.NodeStatus, device, ip string) 
 	st.Online, st.LastSeenMs = true, time.Now().UnixMilli()
 	h.putNode(st)
 	h.scanRoots(node)
+	h.requestHistory(node)
 	for s, set := range h.subs {
 		if info := h.sessions[s]; info != nil && info.Node == node && len(set) > 0 {
 			delete(h.mirroring, s)
@@ -690,6 +715,14 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteModeResult(node, b.ModeResult)
 	case *v1.Frame_CommandResult:
 		h.noteCommandResult(node, b.CommandResult)
+	case *v1.Frame_HistoryChunk:
+		c := b.HistoryChunk
+		offset := h.ingestChunk(node, c)
+		if agent := h.agents[node]; agent != nil {
+			agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_HistoryAck_{HistoryAck: &v1.AgentCommand_HistoryAck{Session: c.Session, File: c.File, Offset: offset}}}))
+		}
+	case *v1.Frame_HistorySynced:
+		h.noteHistorySynced(node, b.HistorySynced.AtMs)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()
@@ -720,6 +753,9 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		}
 		if busy(cur.State) && !busy(in.State) {
 			defer h.noteTurnEnded(in.Id)
+		}
+		if in.State != cur.State {
+			defer h.noteStateEvent(in)
 		}
 		if in.CreatedMs == 0 {
 			in.CreatedMs = cur.CreatedMs
@@ -977,11 +1013,18 @@ func (h *Hub) putNode(st *v1.NodeStatus) {
 	} else if old := h.nodes[st.Node]; old != nil {
 		st.Ip = old.Ip
 	}
+	// Agents don't report it; the hub keeps it across their updates.
+	if old := h.nodes[st.Node]; old != nil && st.HistorySyncedMs == 0 {
+		st.HistorySyncedMs = old.HistorySyncedMs
+	}
 	h.nodes[st.Node] = st
 	if err := h.store.PutNode(st); err != nil {
 		h.log.Error("store node", "node", st.Node, "err", err)
 	}
 	h.broadcast(&v1.Frame{Body: &v1.Frame_NodeStatus{NodeStatus: proto.Clone(st).(*v1.NodeStatus)}})
+	if st.Online {
+		h.maybeUpdateAgent(st.Node)
+	}
 }
 
 func (h *Hub) broadcast(f *v1.Frame) {

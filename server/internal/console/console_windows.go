@@ -1,4 +1,4 @@
-package agent
+package console
 
 import (
 	"errors"
@@ -27,7 +27,8 @@ var (
 	consoleMu sync.Mutex
 )
 
-const terminalInputSupported = true
+// TerminalInputSupported is true on Windows where Tether can attach to console processes.
+const TerminalInputSupported = true
 
 type keyEventRecord struct {
 	KeyDown         int32
@@ -58,125 +59,88 @@ func keyPair(vk, scan, ch uint16) []inputRecord {
 	return []inputRecord{down, up}
 }
 
-// typeIntoConsole types text into the console of process pid and presses
-// Enter, as if the user had typed it. Line breaks become Ctrl+J, Claude
-// Code's newline key, so a multi-line message is submitted once.
-func typeIntoConsole(pid uint32, text string) error {
+// Type sends text into a Windows console process by attaching to it and
+// injecting WriteConsoleInputW records.
+func Type(pid uint32, text string) error {
 	var recs []inputRecord
 	for _, r := range text {
 		switch r {
 		case '\r':
 			continue
 		case '\n':
-			recs = append(recs, keyPair('J', 0x24, '\n')...)
-			continue
-		}
-		for _, u := range utf16.Encode([]rune{r}) {
-			recs = append(recs, keyPair(0, 0, u)...)
-		}
-	}
-	// A long message written in one go can overrun the console's input
-	// buffer and lose its start; write it in slices instead.
-	for len(recs) > 0 {
-		n := min(len(recs), typeChunk)
-		if err := writeConsole(pid, recs[:n]); err != nil {
-			return err
-		}
-		recs = recs[n:]
-		if len(recs) > 0 {
-			time.Sleep(15 * time.Millisecond)
-		}
-	}
-	if text != "" {
-		// The TUI reads a burst of keys as a paste, and an Enter inside a
-		// paste is only a newline; send it on its own once the paste lands.
-		time.Sleep(pasteSettle(len(text)))
-	}
-	return writeConsole(pid, keyPair(vkReturn, 0x1C, '\r'))
-}
-
-func pasteSettle(n int) time.Duration {
-	return min(300*time.Millisecond+time.Duration(n)*200*time.Microsecond, 2*time.Second)
-}
-
-// pressEscape interrupts Claude Code's current turn in that console.
-func pressEscape(pid uint32) error {
-	return writeConsole(pid, keyPair(0x1B, 0x01, 0x1B))
-}
-
-const shiftPressed = 0x0010
-
-// consoleKeys are SendKeys names as virtual keys and scan codes.
-var consoleKeys = map[string][2]uint16{
-	"Enter": {vkReturn, 0x1C}, "Escape": {0x1B, 0x01}, "Up": {0x26, 0x48}, "Down": {0x28, 0x50},
-	"Left": {0x25, 0x4B}, "Right": {0x27, 0x4D}, "Tab": {0x09, 0x0F}, "BTab": {0x09, 0x0F},
-	"Space": {0x20, 0x39}, "Backspace": {0x08, 0x0E},
-}
-
-// pressConsoleKeys presses named keys one at a time, then types text.
-func pressConsoleKeys(pid uint32, keys []string, text string) error {
-	for _, k := range keys {
-		var recs []inputRecord
-		if vk, ok := consoleKeys[k]; ok {
-			var ch uint16
-			switch k {
-			case "Enter":
-				ch = '\r'
-			case "Escape":
-				ch = 0x1B
-			case "Tab", "BTab":
-				ch = '\t'
-			case "Space":
-				ch = ' '
-			case "Backspace":
-				ch = 0x08
-			}
-			recs = keyPair(vk[0], vk[1], ch)
-			if k == "BTab" {
-				for i := range recs {
-					recs[i].Event.ControlKeyState = shiftPressed
-				}
-			}
-		} else {
-			r := []rune(k)
-			if len(r) != 1 {
-				return fmt.Errorf("unknown key %s", k)
-			}
-			for _, u := range utf16.Encode(r) {
+			recs = append(recs, keyPair(vkReturn, 0x1C, '\r')...)
+		default:
+			for _, u := range utf16.Encode([]rune{r}) {
 				recs = append(recs, keyPair(0, 0, u)...)
 			}
 		}
-		if err := writeConsole(pid, recs); err != nil {
+	}
+	for i := 0; i < len(recs); i += typeChunk {
+		end := min(i+typeChunk, len(recs))
+		if err := writeInput(pid, recs[i:end]); err != nil {
 			return err
 		}
-		time.Sleep(80 * time.Millisecond)
-	}
-	if text == "" {
-		return nil
-	}
-	var recs []inputRecord
-	for _, r := range text {
-		for _, u := range utf16.Encode([]rune{r}) {
-			recs = append(recs, keyPair(0, 0, u)...)
+		if end < len(recs) {
+			time.Sleep(30 * time.Millisecond)
 		}
 	}
-	return writeConsole(pid, recs)
+	return nil
+}
+
+// PressEscape injects the Escape key.
+func PressEscape(pid uint32) error {
+	const vkEscape = 0x1B
+	return writeInput(pid, keyPair(vkEscape, 0x01, 0x1B))
+}
+
+var winKeys = map[string]struct{ vk, scan uint16 }{
+	"Enter":     {vkReturn, 0x1C},
+	"Escape":    {0x1B, 0x01},
+	"Up":        {0x26, 0x48},
+	"Down":      {0x28, 0x50},
+	"Left":      {0x25, 0x4B},
+	"Right":     {0x27, 0x4D},
+	"Tab":       {0x09, 0x0F},
+	"Space":     {0x20, 0x39},
+	"Backspace": {0x08, 0x0E},
+}
+
+// PressKeys injects virtual keys followed by typed text.
+func PressKeys(pid uint32, keys []string, text string) error {
+	var recs []inputRecord
+	for _, k := range keys {
+		spec, ok := winKeys[k]
+		if !ok {
+			return errors.New("unknown key " + k)
+		}
+		recs = append(recs, keyPair(spec.vk, spec.scan, 0)...)
+	}
+	if len(recs) > 0 {
+		if err := writeInput(pid, recs); err != nil {
+			return err
+		}
+		if text != "" {
+			time.Sleep(150 * time.Millisecond)
+		}
+	}
+	if text != "" {
+		return Type(pid, text)
+	}
+	return nil
 }
 
 type coord struct{ X, Y int16 }
-
 type smallRect struct{ Left, Top, Right, Bottom int16 }
-
-type screenBufferInfo struct {
-	Size              coord
-	CursorPosition    coord
-	Attributes        uint16
-	Window            smallRect
-	MaximumWindowSize coord
+type consoleScreenBufferInfo struct {
+	Size       coord
+	CursorPos  coord
+	Attributes uint16
+	Window     smallRect
+	MaxWindow  coord
 }
 
-// readConsole returns the visible window of process pid's console as text.
-func readConsole(pid uint32) (string, error) {
+// Read copies the current console screen buffer of the process as text.
+func Read(pid uint32) (string, error) {
 	conout, err := syscall.UTF16PtrFromString("CONOUT$")
 	if err != nil {
 		return "", err
@@ -185,36 +149,59 @@ func readConsole(pid uint32) (string, error) {
 	defer consoleMu.Unlock()
 	procFreeConsole.Call()
 	if ok, _, err := procAttachConsole.Call(uintptr(pid)); ok == 0 {
-		return "", fmt.Errorf("attach to the terminal of process %d: %w", pid, err)
+		return "", fmt.Errorf("attach to console of process %d: %w", pid, err)
 	}
 	defer procFreeConsole.Call()
+
 	h, err := syscall.CreateFile(conout,
 		syscall.GENERIC_READ|syscall.GENERIC_WRITE, syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE,
 		nil, syscall.OPEN_EXISTING, 0, 0)
 	if err != nil {
-		return "", fmt.Errorf("open terminal output: %w", err)
+		return "", fmt.Errorf("open CONOUT$: %w", err)
 	}
 	defer syscall.CloseHandle(h)
-	var info screenBufferInfo
+
+	var info consoleScreenBufferInfo
 	if ok, _, err := procGetConsoleSBInfo.Call(uintptr(h), uintptr(unsafe.Pointer(&info))); ok == 0 {
-		return "", fmt.Errorf("read terminal size: %w", err)
+		return "", fmt.Errorf("get screen buffer info: %w", err)
 	}
-	width := int(info.Window.Right-info.Window.Left) + 1
+
+	w := int(info.Window.Right - info.Window.Left + 1)
+	hLines := int(info.Window.Bottom - info.Window.Top + 1)
+	if w <= 0 || hLines <= 0 || w > 500 || hLines > 200 {
+		w, hLines = int(info.Size.X), int(info.Size.Y)
+	}
+	total := w * hLines
+	if total <= 0 || total > 200000 {
+		return "", fmt.Errorf("implausible console size %dx%d", w, hLines)
+	}
+
+	buf := make([]uint16, total)
+	var read uint32
+	origin := coord{X: info.Window.Left, Y: info.Window.Top}
+	if ok, _, err := procReadConsoleOutChar.Call(uintptr(h), uintptr(unsafe.Pointer(&buf[0])),
+		uintptr(total), *(*uintptr)(unsafe.Pointer(&origin)), uintptr(unsafe.Pointer(&read))); ok == 0 {
+		return "", fmt.Errorf("read console characters: %w", err)
+	}
+
 	var b strings.Builder
-	buf := make([]uint16, width)
-	for y := info.Window.Top; y <= info.Window.Bottom; y++ {
-		var read uint32
-		at := uintptr(uint32(uint16(info.Window.Left)) | uint32(uint16(y))<<16)
-		if ok, _, err := procReadConsoleOutChar.Call(uintptr(h), uintptr(unsafe.Pointer(&buf[0])), uintptr(width), at, uintptr(unsafe.Pointer(&read))); ok == 0 {
-			return "", fmt.Errorf("read terminal: %w", err)
+	for row := 0; row < hLines; row++ {
+		start := row * w
+		end := min(start+w, int(read))
+		if start >= len(buf) {
+			break
 		}
-		b.WriteString(strings.TrimRight(string(utf16.Decode(buf[:read])), " "))
+		line := strings.TrimRight(string(utf16.Decode(buf[start:end])), " ")
+		b.WriteString(line)
 		b.WriteByte('\n')
 	}
-	return b.String(), nil
+	return strings.TrimRight(b.String(), "\n"), nil
 }
 
-func writeConsole(pid uint32, recs []inputRecord) error {
+func writeInput(pid uint32, recs []inputRecord) error {
+	if len(recs) == 0 {
+		return nil
+	}
 	conin, err := syscall.UTF16PtrFromString("CONIN$")
 	if err != nil {
 		return err
@@ -249,9 +236,9 @@ type tcpRowOwnerPID struct {
 	State, LocalAddr, LocalPort, RemoteAddr, RemotePort, OwningPID uint32
 }
 
-// pidOfLocalPeer finds the process that owns the client end of a loopback
+// PIDOfLocalPeer finds the process that owns the client end of a loopback
 // TCP connection, e.g. the Claude Code process posting a hook.
-func pidOfLocalPeer(remoteAddr string, serverPort int) (uint32, error) {
+func PIDOfLocalPeer(remoteAddr string, serverPort int) (uint32, error) {
 	_, portStr, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
 		return 0, err

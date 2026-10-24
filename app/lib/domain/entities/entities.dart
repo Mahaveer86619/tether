@@ -276,7 +276,16 @@ class HubSnapshot extends Equatable {
     this.clientIp = '',
     this.artifacts = const {},
     this.chats = const {},
+    this.update,
+    this.retryAt,
+    this.attempts = 0,
   });
+
+  /// While offline: when the next connection attempt is due.
+  final DateTime? retryAt;
+
+  /// Attempts since the connection was last up.
+  final int attempts;
 
   final ConnectionStatus status;
   final Map<String, Node> nodes;
@@ -309,6 +318,10 @@ class HubSnapshot extends Equatable {
 
   /// Conversations, by id; empty on a hub before 0.16.
   final Map<String, Chat> chats;
+
+  /// The newest release the hub has; null when it has none or is older
+  /// than 0.17.
+  final Release? update;
 
   /// Whether the hub keeps chats; older ones only know sessions.
   bool get chatsSupported => hubVersion.isNotEmpty && !isOlderVersion(hubVersion, '0.16.0');
@@ -399,6 +412,9 @@ class HubSnapshot extends Equatable {
     String? clientIp,
     Map<String, Artifact>? artifacts,
     Map<String, Chat>? chats,
+    Release? Function()? update,
+    DateTime? Function()? retryAt,
+    int? attempts,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -414,10 +430,13 @@ class HubSnapshot extends Equatable {
         clientIp: clientIp ?? this.clientIp,
         artifacts: artifacts ?? this.artifacts,
         chats: chats ?? this.chats,
+        update: update != null ? update() : this.update,
+        retryAt: retryAt != null ? retryAt() : this.retryAt,
+        attempts: attempts ?? this.attempts,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -1082,4 +1101,36 @@ class ChatContext extends Equatable {
 
   @override
   List<Object?> get props => [chat, messages, notes];
+}
+
+/// A file of a release, for one platform.
+class UpdateAsset extends Equatable {
+  const UpdateAsset({required this.name, required this.url, required this.sha256, this.size = 0});
+
+  /// [url] is a path on the hub when the hub has the file, else a full URL.
+  final String name, url, sha256;
+  final int size;
+
+  @override
+  List<Object?> get props => [name, url, sha256, size];
+}
+
+/// The newest release the hub knows of; see docs/releasing.md.
+class Release extends Equatable {
+  const Release({required this.version, this.notes = '', this.minSupported = '', this.published, this.assets = const {}});
+
+  final String version;
+
+  /// Markdown.
+  final String notes;
+
+  /// Apps older than this must update before they carry on.
+  final String minSupported;
+  final DateTime? published;
+
+  /// By platform: android, windows, agent-linux-amd64...
+  final Map<String, UpdateAsset> assets;
+
+  @override
+  List<Object?> get props => [version, notes, minSupported, published, assets];
 }

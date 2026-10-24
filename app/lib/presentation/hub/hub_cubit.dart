@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/error/failures.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
+import '../widgets/common.dart';
 
 class HubState extends Equatable {
   const HubState({this.hub = const HubSnapshot(), this.deciding = const {}, this.failure, this.failureId = 0});
@@ -88,5 +90,18 @@ class HubCubit extends Cubit<HubState> {
   Future<void> close() async {
     await _sub.cancel();
     return super.close();
+  }
+}
+
+/// [ConnectionLine] for the hub this app is connected to, with Retry.
+class HubConnectionLine extends StatelessWidget {
+  const HubConnectionLine({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final (status, retryAt, attempts, error) = context.select<HubCubit, (ConnectionStatus, DateTime?, int, String?)>(
+      (h) => (h.state.hub.status, h.state.hub.retryAt, h.state.hub.attempts, h.state.hub.lastError),
+    );
+    return ConnectionLine(status: status, retryAt: retryAt, attempts: attempts, error: error, onRetry: context.read<HubCubit>().retry);
   }
 }

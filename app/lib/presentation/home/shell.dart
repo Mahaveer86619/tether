@@ -16,6 +16,8 @@ import '../session/session_page.dart';
 import '../settings/settings_cubit.dart';
 import '../settings/settings_page.dart';
 import '../theme/theme.dart';
+import '../update/update_banner.dart';
+import '../update/update_cubit.dart';
 import '../usage/usage_page.dart';
 import '../widgets/common.dart';
 import 'activity_page.dart';
@@ -41,6 +43,8 @@ class Shell extends StatelessWidget {
     // Decided by saved settings, not hub state, so a configured app never
     // flashes the setup screen while the first snapshot is on its way.
     final configured = context.select<SettingsCubit, bool>((c) => c.state.connection.isComplete);
+    final forced = context.select<UpdateCubit, bool>((c) => c.state.forced && c.state.release != null);
+    if (forced) return const ForcedUpdatePage();
     return MultiBlocListener(
       listeners: [
         BlocListener<HubCubit, HubState>(
@@ -157,7 +161,7 @@ class _WideShell extends StatelessWidget {
                   child: ScaffoldMessenger(
                     child: Scaffold(
                       backgroundColor: Colors.transparent,
-                      body: SafeArea(child: _WidePane(state: s)),
+                      body: SafeArea(child: Column(children: [const UpdateBanner(), Expanded(child: _WidePane(state: s))])),
                     ),
                   ),
                 ),
@@ -278,7 +282,7 @@ class _SidebarState extends State<_Sidebar> {
               padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
               child: Row(
                 children: [
-                  Expanded(child: ConnectionLine(status: status)),
+                  const Expanded(child: HubConnectionLine()),
                   IconButton(
                     tooltip: 'Settings',
                     icon: Icon(s.destination == Destination.settings && s.top == null ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
@@ -559,7 +563,7 @@ class _PhoneRoot extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Text('Tether'),
                   const SizedBox(width: 12),
-                  Flexible(child: ConnectionLine(status: status)),
+                  const Flexible(child: HubConnectionLine()),
                 ],
               )
             : Text(_title(d)),
@@ -580,9 +584,16 @@ class _PhoneRoot extends StatelessWidget {
           ),
         ],
       ),
-      body: d == Destination.monitor
-          ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
-          : _destinationPage(context, d),
+      body: Column(
+        children: [
+          const UpdateBanner(),
+          Expanded(
+            child: d == Destination.monitor
+                ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
+                : _destinationPage(context, d),
+          ),
+        ],
+      ),
       floatingActionButton: d == Destination.chats
           ? FloatingActionButton.extended(
               key: const Key('new-chat'),

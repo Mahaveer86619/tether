@@ -272,3 +272,14 @@ rpb.TimelineItem unpastedItem(rpb.TimelineItem it) {
     ..pastedIds.addAll(ids.where((id) => !copy.user.pastedIds.contains(id)));
   return copy;
 }
+
+/// Null for an empty manifest: the hub knows of no release.
+Release? releaseFromPb(pb.UpdateManifest m) => m.version.isEmpty
+    ? null
+    : Release(
+        version: m.version,
+        notes: m.notes,
+        minSupported: m.minSupported,
+        published: DateTime.tryParse(m.published),
+        assets: {for (final e in m.platforms.entries) e.key: UpdateAsset(name: e.value.name, url: e.value.url, sha256: e.value.sha256, size: e.value.size.toInt())},
+      );

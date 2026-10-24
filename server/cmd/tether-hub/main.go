@@ -28,6 +28,12 @@ func main() {
 	keyFile := flag.String("tls-key", "", "private key for -tls-cert")
 	insecure := flag.Bool("insecure", false, "allow plain HTTP on a public address (not recommended)")
 	trustTailnet := flag.Bool("trust-tailnet", false, "let apps and agents on machines owned by this machine's Tailscale user connect without a token")
+	updateFeed := flag.String("update-feed", "https://github.com/Mahaveer86619/tether/releases/latest/download/latest.json", "a published latest.json to poll for releases; empty turns polling off")
+	updatesDir := flag.String("updates-dir", "", "where releases are kept and served from (default: updates next to the database)")
+	autoAgents := flag.Bool("update-agents", true, "tell idle agents older than the newest release to update themselves")
+	redact := flag.Bool("history-redact", true, "take tokens, keys and passwords out of the stored history")
+	keepDays := flag.Int("history-keep-days", 0, "drop a session's history after this many days untouched (0 keeps it)")
+	maxMB := flag.Int("history-max-mb", 0, "drop the oldest sessions' history beyond this many MB (0: no limit)")
 	flag.Parse()
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
@@ -74,7 +80,9 @@ func main() {
 	}
 	defer st.Close()
 
-	h, err := hub.New(hub.Config{Token: token, Version: version.Version, Log: log, CertFingerprint: fp, TrustTailnet: *trustTailnet, DataDir: filepath.Dir(*dbPath)}, st)
+	h, err := hub.New(hub.Config{Token: token, Version: version.Version, Log: log, CertFingerprint: fp, TrustTailnet: *trustTailnet, DataDir: filepath.Dir(*dbPath),
+		UpdatesDir: *updatesDir, UpdateFeed: *updateFeed, AutoUpdateAgents: *autoAgents,
+		HistoryRedact: *redact, HistoryKeepDays: *keepDays, HistoryMaxMB: *maxMB}, st)
 	if err != nil {
 		log.Error("start hub", "err", err)
 		os.Exit(1)

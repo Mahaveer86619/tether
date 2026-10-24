@@ -509,3 +509,23 @@ String? normalizeHubUrl(String input) {
   if (hub.isEmpty || code.isEmpty) return null;
   return (url: hub, code: code, fingerprint: u.queryParameters['fp'] ?? '');
 }
+
+/// Finding, fetching and installing a newer release of this app.
+class AppUpdates {
+  const AppUpdates(this._updates);
+  final UpdateRepository _updates;
+
+  String? get platform => _updates.platform;
+  Future<Result<Release?>> latest() => _updates.latest();
+
+  /// This platform's file in [r], if the release has one.
+  UpdateAsset? assetFor(Release r) => platform == null ? null : r.assets[platform];
+
+  Future<Result<String>> download(UpdateAsset a, {void Function(int received, int total)? onProgress}) => _updates.download(a, onProgress: onProgress);
+  Future<Result<void>> install(String path) => _updates.install(path);
+  Future<String> skipped() => _updates.skipped();
+  Future<void> skip(String version) => _updates.skip(version);
+  Future<String> notified() => _updates.notified();
+  Future<void> setNotified(String version) => _updates.setNotified(version);
+  Future<void> notify(String title, String body) => _updates.notify(title, body);
+}

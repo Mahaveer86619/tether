@@ -32,6 +32,7 @@ enum Frame_Body {
   approvalDecision,
   stopSession,
   clientPresence,
+  heartbeat,
   welcome,
   ack,
   error,
@@ -44,6 +45,7 @@ enum Frame_Body {
   preferences,
   artifactAdded,
   chat,
+  updateAvailable,
   agentHello,
   sessionIndex,
   rawEvents,
@@ -52,6 +54,8 @@ enum Frame_Body {
   screenSnapshot,
   modeResult,
   commandResult,
+  historyChunk,
+  historySynced,
   agentCommand,
   notSet
 }
@@ -72,6 +76,7 @@ class Frame extends $pb.GeneratedMessage {
     ApprovalDecision? approvalDecision,
     StopSession? stopSession,
     ClientPresence? clientPresence,
+    Heartbeat? heartbeat,
     Welcome? welcome,
     Ack? ack,
     Error? error,
@@ -84,6 +89,7 @@ class Frame extends $pb.GeneratedMessage {
     Preferences? preferences,
     Artifact? artifactAdded,
     Chat? chat,
+    UpdateManifest? updateAvailable,
     AgentHello? agentHello,
     SessionIndex? sessionIndex,
     RawEvents? rawEvents,
@@ -92,6 +98,8 @@ class Frame extends $pb.GeneratedMessage {
     ScreenSnapshot? screenSnapshot,
     ModeResult? modeResult,
     CommandResult? commandResult,
+    HistoryChunk? historyChunk,
+    HistorySynced? historySynced,
     AgentCommand? agentCommand,
   }) {
     final result = Frame._();
@@ -108,6 +116,7 @@ class Frame extends $pb.GeneratedMessage {
     if (approvalDecision != null) result.approvalDecision = approvalDecision;
     if (stopSession != null) result.stopSession = stopSession;
     if (clientPresence != null) result.clientPresence = clientPresence;
+    if (heartbeat != null) result.heartbeat = heartbeat;
     if (welcome != null) result.welcome = welcome;
     if (ack != null) result.ack = ack;
     if (error != null) result.error = error;
@@ -120,6 +129,7 @@ class Frame extends $pb.GeneratedMessage {
     if (preferences != null) result.preferences = preferences;
     if (artifactAdded != null) result.artifactAdded = artifactAdded;
     if (chat != null) result.chat = chat;
+    if (updateAvailable != null) result.updateAvailable = updateAvailable;
     if (agentHello != null) result.agentHello = agentHello;
     if (sessionIndex != null) result.sessionIndex = sessionIndex;
     if (rawEvents != null) result.rawEvents = rawEvents;
@@ -128,6 +138,8 @@ class Frame extends $pb.GeneratedMessage {
     if (screenSnapshot != null) result.screenSnapshot = screenSnapshot;
     if (modeResult != null) result.modeResult = modeResult;
     if (commandResult != null) result.commandResult = commandResult;
+    if (historyChunk != null) result.historyChunk = historyChunk;
+    if (historySynced != null) result.historySynced = historySynced;
     if (agentCommand != null) result.agentCommand = agentCommand;
     return result;
   }
@@ -151,6 +163,7 @@ class Frame extends $pb.GeneratedMessage {
     16: Frame_Body.approvalDecision,
     17: Frame_Body.stopSession,
     18: Frame_Body.clientPresence,
+    19: Frame_Body.heartbeat,
     30: Frame_Body.welcome,
     31: Frame_Body.ack,
     32: Frame_Body.error,
@@ -163,6 +176,7 @@ class Frame extends $pb.GeneratedMessage {
     39: Frame_Body.preferences,
     40: Frame_Body.artifactAdded,
     41: Frame_Body.chat,
+    42: Frame_Body.updateAvailable,
     50: Frame_Body.agentHello,
     51: Frame_Body.sessionIndex,
     52: Frame_Body.rawEvents,
@@ -171,6 +185,8 @@ class Frame extends $pb.GeneratedMessage {
     55: Frame_Body.screenSnapshot,
     56: Frame_Body.modeResult,
     57: Frame_Body.commandResult,
+    58: Frame_Body.historyChunk,
+    59: Frame_Body.historySynced,
     60: Frame_Body.agentCommand,
     0: Frame_Body.notSet
   };
@@ -188,6 +204,7 @@ class Frame extends $pb.GeneratedMessage {
       16,
       17,
       18,
+      19,
       30,
       31,
       32,
@@ -200,6 +217,7 @@ class Frame extends $pb.GeneratedMessage {
       39,
       40,
       41,
+      42,
       50,
       51,
       52,
@@ -208,6 +226,8 @@ class Frame extends $pb.GeneratedMessage {
       55,
       56,
       57,
+      58,
+      59,
       60
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
@@ -233,6 +253,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: StopSession.$_createMessage)
     ..aOM<ClientPresence>(18, _omitFieldNames ? '' : 'clientPresence',
         subBuilder: ClientPresence.$_createMessage)
+    ..aOM<Heartbeat>(19, _omitFieldNames ? '' : 'heartbeat',
+        subBuilder: Heartbeat.$_createMessage)
     ..aOM<Welcome>(30, _omitFieldNames ? '' : 'welcome',
         subBuilder: Welcome.$_createMessage)
     ..aOM<Ack>(31, _omitFieldNames ? '' : 'ack',
@@ -257,6 +279,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: Artifact.$_createMessage)
     ..aOM<Chat>(41, _omitFieldNames ? '' : 'chat',
         subBuilder: Chat.$_createMessage)
+    ..aOM<UpdateManifest>(42, _omitFieldNames ? '' : 'updateAvailable',
+        subBuilder: UpdateManifest.$_createMessage)
     ..aOM<AgentHello>(50, _omitFieldNames ? '' : 'agentHello',
         subBuilder: AgentHello.$_createMessage)
     ..aOM<SessionIndex>(51, _omitFieldNames ? '' : 'sessionIndex',
@@ -273,6 +297,10 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: ModeResult.$_createMessage)
     ..aOM<CommandResult>(57, _omitFieldNames ? '' : 'commandResult',
         subBuilder: CommandResult.$_createMessage)
+    ..aOM<HistoryChunk>(58, _omitFieldNames ? '' : 'historyChunk',
+        subBuilder: HistoryChunk.$_createMessage)
+    ..aOM<HistorySynced>(59, _omitFieldNames ? '' : 'historySynced',
+        subBuilder: HistorySynced.$_createMessage)
     ..aOM<AgentCommand>(60, _omitFieldNames ? '' : 'agentCommand',
         subBuilder: AgentCommand.$_createMessage)
     ..hasRequiredFields = false;
@@ -306,6 +334,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -318,6 +347,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(39)
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -326,6 +356,8 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(55)
   @$pb.TagNumber(56)
   @$pb.TagNumber(57)
+  @$pb.TagNumber(58)
+  @$pb.TagNumber(59)
   @$pb.TagNumber(60)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
@@ -337,6 +369,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -349,6 +382,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(39)
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -357,6 +391,8 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(55)
   @$pb.TagNumber(56)
   @$pb.TagNumber(57)
+  @$pb.TagNumber(58)
+  @$pb.TagNumber(59)
   @$pb.TagNumber(60)
   void clearBody() => $_clearField($_whichOneof(0));
 
@@ -499,248 +535,297 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(18)
   ClientPresence ensureClientPresence() => $_ensure(12);
 
+  /// Is the connection alive? The hub answers with an Ack (hubs before 0.17
+  /// answer with an unsupported Error, which says the same).
+  @$pb.TagNumber(19)
+  Heartbeat get heartbeat => $_getN(13);
+  @$pb.TagNumber(19)
+  set heartbeat(Heartbeat value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasHeartbeat() => $_has(13);
+  @$pb.TagNumber(19)
+  void clearHeartbeat() => $_clearField(19);
+  @$pb.TagNumber(19)
+  Heartbeat ensureHeartbeat() => $_ensure(13);
+
   /// Hub -> client
   @$pb.TagNumber(30)
-  Welcome get welcome => $_getN(13);
+  Welcome get welcome => $_getN(14);
   @$pb.TagNumber(30)
   set welcome(Welcome value) => $_setField(30, value);
   @$pb.TagNumber(30)
-  $core.bool hasWelcome() => $_has(13);
+  $core.bool hasWelcome() => $_has(14);
   @$pb.TagNumber(30)
   void clearWelcome() => $_clearField(30);
   @$pb.TagNumber(30)
-  Welcome ensureWelcome() => $_ensure(13);
+  Welcome ensureWelcome() => $_ensure(14);
 
   @$pb.TagNumber(31)
-  Ack get ack => $_getN(14);
+  Ack get ack => $_getN(15);
   @$pb.TagNumber(31)
   set ack(Ack value) => $_setField(31, value);
   @$pb.TagNumber(31)
-  $core.bool hasAck() => $_has(14);
+  $core.bool hasAck() => $_has(15);
   @$pb.TagNumber(31)
   void clearAck() => $_clearField(31);
   @$pb.TagNumber(31)
-  Ack ensureAck() => $_ensure(14);
+  Ack ensureAck() => $_ensure(15);
 
   @$pb.TagNumber(32)
-  Error get error => $_getN(15);
+  Error get error => $_getN(16);
   @$pb.TagNumber(32)
   set error(Error value) => $_setField(32, value);
   @$pb.TagNumber(32)
-  $core.bool hasError() => $_has(15);
+  $core.bool hasError() => $_has(16);
   @$pb.TagNumber(32)
   void clearError() => $_clearField(32);
   @$pb.TagNumber(32)
-  Error ensureError() => $_ensure(15);
+  Error ensureError() => $_ensure(16);
 
   @$pb.TagNumber(33)
-  NodeStatus get nodeStatus => $_getN(16);
+  NodeStatus get nodeStatus => $_getN(17);
   @$pb.TagNumber(33)
   set nodeStatus(NodeStatus value) => $_setField(33, value);
   @$pb.TagNumber(33)
-  $core.bool hasNodeStatus() => $_has(16);
+  $core.bool hasNodeStatus() => $_has(17);
   @$pb.TagNumber(33)
   void clearNodeStatus() => $_clearField(33);
   @$pb.TagNumber(33)
-  NodeStatus ensureNodeStatus() => $_ensure(16);
+  NodeStatus ensureNodeStatus() => $_ensure(17);
 
   @$pb.TagNumber(34)
-  SessionInfo get sessionInfo => $_getN(17);
+  SessionInfo get sessionInfo => $_getN(18);
   @$pb.TagNumber(34)
   set sessionInfo(SessionInfo value) => $_setField(34, value);
   @$pb.TagNumber(34)
-  $core.bool hasSessionInfo() => $_has(17);
+  $core.bool hasSessionInfo() => $_has(18);
   @$pb.TagNumber(34)
   void clearSessionInfo() => $_clearField(34);
   @$pb.TagNumber(34)
-  SessionInfo ensureSessionInfo() => $_ensure(17);
+  SessionInfo ensureSessionInfo() => $_ensure(18);
 
   @$pb.TagNumber(35)
-  TimelineUpdate get timeline => $_getN(18);
+  TimelineUpdate get timeline => $_getN(19);
   @$pb.TagNumber(35)
   set timeline(TimelineUpdate value) => $_setField(35, value);
   @$pb.TagNumber(35)
-  $core.bool hasTimeline() => $_has(18);
+  $core.bool hasTimeline() => $_has(19);
   @$pb.TagNumber(35)
   void clearTimeline() => $_clearField(35);
   @$pb.TagNumber(35)
-  TimelineUpdate ensureTimeline() => $_ensure(18);
+  TimelineUpdate ensureTimeline() => $_ensure(19);
 
   @$pb.TagNumber(36)
-  ApprovalRequest get approvalRequested => $_getN(19);
+  ApprovalRequest get approvalRequested => $_getN(20);
   @$pb.TagNumber(36)
   set approvalRequested(ApprovalRequest value) => $_setField(36, value);
   @$pb.TagNumber(36)
-  $core.bool hasApprovalRequested() => $_has(19);
+  $core.bool hasApprovalRequested() => $_has(20);
   @$pb.TagNumber(36)
   void clearApprovalRequested() => $_clearField(36);
   @$pb.TagNumber(36)
-  ApprovalRequest ensureApprovalRequested() => $_ensure(19);
+  ApprovalRequest ensureApprovalRequested() => $_ensure(20);
 
   @$pb.TagNumber(37)
-  ApprovalResolved get approvalResolved => $_getN(20);
+  ApprovalResolved get approvalResolved => $_getN(21);
   @$pb.TagNumber(37)
   set approvalResolved(ApprovalResolved value) => $_setField(37, value);
   @$pb.TagNumber(37)
-  $core.bool hasApprovalResolved() => $_has(20);
+  $core.bool hasApprovalResolved() => $_has(21);
   @$pb.TagNumber(37)
   void clearApprovalResolved() => $_clearField(37);
   @$pb.TagNumber(37)
-  ApprovalResolved ensureApprovalResolved() => $_ensure(20);
+  ApprovalResolved ensureApprovalResolved() => $_ensure(21);
 
   @$pb.TagNumber(38)
-  SessionRemoved get sessionRemoved => $_getN(21);
+  SessionRemoved get sessionRemoved => $_getN(22);
   @$pb.TagNumber(38)
   set sessionRemoved(SessionRemoved value) => $_setField(38, value);
   @$pb.TagNumber(38)
-  $core.bool hasSessionRemoved() => $_has(21);
+  $core.bool hasSessionRemoved() => $_has(22);
   @$pb.TagNumber(38)
   void clearSessionRemoved() => $_clearField(38);
   @$pb.TagNumber(38)
-  SessionRemoved ensureSessionRemoved() => $_ensure(21);
+  SessionRemoved ensureSessionRemoved() => $_ensure(22);
 
   /// The shared app settings changed (sent to every client).
   @$pb.TagNumber(39)
-  Preferences get preferences => $_getN(22);
+  Preferences get preferences => $_getN(23);
   @$pb.TagNumber(39)
   set preferences(Preferences value) => $_setField(39, value);
   @$pb.TagNumber(39)
-  $core.bool hasPreferences() => $_has(22);
+  $core.bool hasPreferences() => $_has(23);
   @$pb.TagNumber(39)
   void clearPreferences() => $_clearField(39);
   @$pb.TagNumber(39)
-  Preferences ensurePreferences() => $_ensure(22);
+  Preferences ensurePreferences() => $_ensure(23);
 
   /// A file was added to the artifact store (sent to every client).
   @$pb.TagNumber(40)
-  Artifact get artifactAdded => $_getN(23);
+  Artifact get artifactAdded => $_getN(24);
   @$pb.TagNumber(40)
   set artifactAdded(Artifact value) => $_setField(40, value);
   @$pb.TagNumber(40)
-  $core.bool hasArtifactAdded() => $_has(23);
+  $core.bool hasArtifactAdded() => $_has(24);
   @$pb.TagNumber(40)
   void clearArtifactAdded() => $_clearField(40);
   @$pb.TagNumber(40)
-  Artifact ensureArtifactAdded() => $_ensure(23);
+  Artifact ensureArtifactAdded() => $_ensure(24);
 
   /// A chat was created or changed (sent to every client).
   @$pb.TagNumber(41)
-  Chat get chat => $_getN(24);
+  Chat get chat => $_getN(25);
   @$pb.TagNumber(41)
   set chat(Chat value) => $_setField(41, value);
   @$pb.TagNumber(41)
-  $core.bool hasChat() => $_has(24);
+  $core.bool hasChat() => $_has(25);
   @$pb.TagNumber(41)
   void clearChat() => $_clearField(41);
   @$pb.TagNumber(41)
-  Chat ensureChat() => $_ensure(24);
+  Chat ensureChat() => $_ensure(25);
+
+  /// A newer release is available (sent to every client).
+  @$pb.TagNumber(42)
+  UpdateManifest get updateAvailable => $_getN(26);
+  @$pb.TagNumber(42)
+  set updateAvailable(UpdateManifest value) => $_setField(42, value);
+  @$pb.TagNumber(42)
+  $core.bool hasUpdateAvailable() => $_has(26);
+  @$pb.TagNumber(42)
+  void clearUpdateAvailable() => $_clearField(42);
+  @$pb.TagNumber(42)
+  UpdateManifest ensureUpdateAvailable() => $_ensure(26);
 
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(25);
+  AgentHello get agentHello => $_getN(27);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(25);
+  $core.bool hasAgentHello() => $_has(27);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(25);
+  AgentHello ensureAgentHello() => $_ensure(27);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(26);
+  SessionIndex get sessionIndex => $_getN(28);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(26);
+  $core.bool hasSessionIndex() => $_has(28);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(26);
+  SessionIndex ensureSessionIndex() => $_ensure(28);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(27);
+  RawEvents get rawEvents => $_getN(29);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(27);
+  $core.bool hasRawEvents() => $_has(29);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(27);
+  RawEvents ensureRawEvents() => $_ensure(29);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(28);
+  UsageReport get usageReport => $_getN(30);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(28);
+  $core.bool hasUsageReport() => $_has(30);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(28);
+  UsageReport ensureUsageReport() => $_ensure(30);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(29);
+  PlanUsage get planUsage => $_getN(31);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(29);
+  $core.bool hasPlanUsage() => $_has(31);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(29);
+  PlanUsage ensurePlanUsage() => $_ensure(31);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(30);
+  ScreenSnapshot get screenSnapshot => $_getN(32);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(30);
+  $core.bool hasScreenSnapshot() => $_has(32);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(30);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(32);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(31);
+  ModeResult get modeResult => $_getN(33);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(31);
+  $core.bool hasModeResult() => $_has(33);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(31);
+  ModeResult ensureModeResult() => $_ensure(33);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(32);
+  CommandResult get commandResult => $_getN(34);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(32);
+  $core.bool hasCommandResult() => $_has(34);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(32);
+  CommandResult ensureCommandResult() => $_ensure(34);
+
+  /// Transcript bytes for the hub's history (agent -> hub), and the end of
+  /// a sync run.
+  @$pb.TagNumber(58)
+  HistoryChunk get historyChunk => $_getN(35);
+  @$pb.TagNumber(58)
+  set historyChunk(HistoryChunk value) => $_setField(58, value);
+  @$pb.TagNumber(58)
+  $core.bool hasHistoryChunk() => $_has(35);
+  @$pb.TagNumber(58)
+  void clearHistoryChunk() => $_clearField(58);
+  @$pb.TagNumber(58)
+  HistoryChunk ensureHistoryChunk() => $_ensure(35);
+
+  @$pb.TagNumber(59)
+  HistorySynced get historySynced => $_getN(36);
+  @$pb.TagNumber(59)
+  set historySynced(HistorySynced value) => $_setField(59, value);
+  @$pb.TagNumber(59)
+  $core.bool hasHistorySynced() => $_has(36);
+  @$pb.TagNumber(59)
+  void clearHistorySynced() => $_clearField(59);
+  @$pb.TagNumber(59)
+  HistorySynced ensureHistorySynced() => $_ensure(36);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(33);
+  AgentCommand get agentCommand => $_getN(37);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(33);
+  $core.bool hasAgentCommand() => $_has(37);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(33);
+  AgentCommand ensureAgentCommand() => $_ensure(37);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -754,6 +839,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     $fixnum.Int64? lastSeenMs,
     $core.int? runningSessions,
     $core.String? ip,
+    $fixnum.Int64? historySyncedMs,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -765,6 +851,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (lastSeenMs != null) result.lastSeenMs = lastSeenMs;
     if (runningSessions != null) result.runningSessions = runningSessions;
     if (ip != null) result.ip = ip;
+    if (historySyncedMs != null) result.historySyncedMs = historySyncedMs;
     return result;
   }
 
@@ -790,6 +877,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     ..aInt64(7, _omitFieldNames ? '' : 'lastSeenMs')
     ..aI(8, _omitFieldNames ? '' : 'runningSessions')
     ..aOS(9, _omitFieldNames ? '' : 'ip')
+    ..aInt64(10, _omitFieldNames ? '' : 'historySyncedMs')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -893,6 +981,16 @@ class NodeStatus extends $pb.GeneratedMessage {
   $core.bool hasIp() => $_has(8);
   @$pb.TagNumber(9)
   void clearIp() => $_clearField(9);
+
+  /// When the node's transcripts were last fully synced to the hub's history.
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get historySyncedMs => $_getI64(9);
+  @$pb.TagNumber(10)
+  set historySyncedMs($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasHistorySyncedMs() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearHistorySyncedMs() => $_clearField(10);
 }
 
 class SessionInfo extends $pb.GeneratedMessage {
@@ -2865,6 +2963,7 @@ class Welcome extends $pb.GeneratedMessage {
     $core.String? deviceId,
     $core.String? clientIp,
     $core.Iterable<Chat>? chats,
+    UpdateManifest? update,
   }) {
     final result = Welcome._();
     if (hubVersion != null) result.hubVersion = hubVersion;
@@ -2877,6 +2976,7 @@ class Welcome extends $pb.GeneratedMessage {
     if (deviceId != null) result.deviceId = deviceId;
     if (clientIp != null) result.clientIp = clientIp;
     if (chats != null) result.chats.addAll(chats);
+    if (update != null) result.update = update;
     return result;
   }
 
@@ -2907,6 +3007,8 @@ class Welcome extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'clientIp')
     ..pPM<Chat>(9, _omitFieldNames ? '' : 'chats',
         subBuilder: Chat.$_createMessage)
+    ..aOM<UpdateManifest>(10, _omitFieldNames ? '' : 'update',
+        subBuilder: UpdateManifest.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2993,6 +3095,18 @@ class Welcome extends $pb.GeneratedMessage {
   /// Conversations, newest first; empty from a hub before 0.16.
   @$pb.TagNumber(9)
   $pb.PbList<Chat> get chats => $_getList(8);
+
+  /// The newest release the hub knows of; unset when it knows none.
+  @$pb.TagNumber(10)
+  UpdateManifest get update => $_getN(9);
+  @$pb.TagNumber(10)
+  set update(UpdateManifest value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUpdate() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUpdate() => $_clearField(10);
+  @$pb.TagNumber(10)
+  UpdateManifest ensureUpdate() => $_ensure(9);
 }
 
 class Ack extends $pb.GeneratedMessage {
@@ -3683,6 +3797,219 @@ class AgentCommand_SendInput extends $pb.GeneratedMessage {
   $core.bool hasSystemPrompt() => $_has(4);
   @$pb.TagNumber(5)
   void clearSystemPrompt() => $_clearField(5);
+}
+
+class AgentCommand_SyncHistory extends $pb.GeneratedMessage {
+  factory AgentCommand_SyncHistory({
+    $core.Iterable<HistoryPosition>? positions,
+  }) {
+    final result = AgentCommand_SyncHistory._();
+    if (positions != null) result.positions.addAll(positions);
+    return result;
+  }
+
+  AgentCommand_SyncHistory._();
+
+  factory AgentCommand_SyncHistory.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SyncHistory()..mergeFromBuffer(data, registry);
+  factory AgentCommand_SyncHistory.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SyncHistory()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.SyncHistory',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_SyncHistory.$_createMessage)
+    ..pPM<HistoryPosition>(1, _omitFieldNames ? '' : 'positions',
+        subBuilder: HistoryPosition.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SyncHistory clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SyncHistory copyWith(
+          void Function(AgentCommand_SyncHistory) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_SyncHistory))
+          as AgentCommand_SyncHistory;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_SyncHistory() / AgentCommand_SyncHistory.new instead')
+  static AgentCommand_SyncHistory create() => AgentCommand_SyncHistory._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_SyncHistory._();
+  @$core.override
+  AgentCommand_SyncHistory createEmptyInstance() =>
+      AgentCommand_SyncHistory._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_SyncHistory getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_SyncHistory>(
+          AgentCommand_SyncHistory.$_createMessage);
+  static AgentCommand_SyncHistory? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<HistoryPosition> get positions => $_getList(0);
+}
+
+class AgentCommand_HistoryAck extends $pb.GeneratedMessage {
+  factory AgentCommand_HistoryAck({
+    $core.String? session,
+    $core.String? file,
+    $fixnum.Int64? offset,
+  }) {
+    final result = AgentCommand_HistoryAck._();
+    if (session != null) result.session = session;
+    if (file != null) result.file = file;
+    if (offset != null) result.offset = offset;
+    return result;
+  }
+
+  AgentCommand_HistoryAck._();
+
+  factory AgentCommand_HistoryAck.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_HistoryAck()..mergeFromBuffer(data, registry);
+  factory AgentCommand_HistoryAck.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_HistoryAck()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.HistoryAck',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_HistoryAck.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'file')
+    ..aInt64(3, _omitFieldNames ? '' : 'offset')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_HistoryAck clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_HistoryAck copyWith(
+          void Function(AgentCommand_HistoryAck) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_HistoryAck))
+          as AgentCommand_HistoryAck;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_HistoryAck() / AgentCommand_HistoryAck.new instead')
+  static AgentCommand_HistoryAck create() => AgentCommand_HistoryAck._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_HistoryAck._();
+  @$core.override
+  AgentCommand_HistoryAck createEmptyInstance() => AgentCommand_HistoryAck._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_HistoryAck getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_HistoryAck>(
+          AgentCommand_HistoryAck.$_createMessage);
+  static AgentCommand_HistoryAck? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get file => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set file($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFile() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get offset => $_getI64(2);
+  @$pb.TagNumber(3)
+  set offset($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOffset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOffset() => $_clearField(3);
+}
+
+class AgentCommand_SelfUpdate extends $pb.GeneratedMessage {
+  factory AgentCommand_SelfUpdate({
+    $core.String? version,
+    UpdateAsset? asset,
+  }) {
+    final result = AgentCommand_SelfUpdate._();
+    if (version != null) result.version = version;
+    if (asset != null) result.asset = asset;
+    return result;
+  }
+
+  AgentCommand_SelfUpdate._();
+
+  factory AgentCommand_SelfUpdate.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SelfUpdate()..mergeFromBuffer(data, registry);
+  factory AgentCommand_SelfUpdate.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SelfUpdate()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.SelfUpdate',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_SelfUpdate.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'version')
+    ..aOM<UpdateAsset>(2, _omitFieldNames ? '' : 'asset',
+        subBuilder: UpdateAsset.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SelfUpdate clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SelfUpdate copyWith(
+          void Function(AgentCommand_SelfUpdate) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_SelfUpdate))
+          as AgentCommand_SelfUpdate;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_SelfUpdate() / AgentCommand_SelfUpdate.new instead')
+  static AgentCommand_SelfUpdate create() => AgentCommand_SelfUpdate._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_SelfUpdate._();
+  @$core.override
+  AgentCommand_SelfUpdate createEmptyInstance() => AgentCommand_SelfUpdate._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_SelfUpdate getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_SelfUpdate>(
+          AgentCommand_SelfUpdate.$_createMessage);
+  static AgentCommand_SelfUpdate? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get version => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set version($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersion() => $_clearField(1);
+
+  /// url is a path on the hub.
+  @$pb.TagNumber(2)
+  UpdateAsset get asset => $_getN(1);
+  @$pb.TagNumber(2)
+  set asset(UpdateAsset value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAsset() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAsset() => $_clearField(2);
+  @$pb.TagNumber(2)
+  UpdateAsset ensureAsset() => $_ensure(1);
 }
 
 class AgentCommand_SetMode extends $pb.GeneratedMessage {
@@ -4487,6 +4814,9 @@ enum AgentCommand_Op {
   capture,
   setMode,
   backup,
+  selfUpdate,
+  syncHistory,
+  historyAck,
   notSet
 }
 
@@ -4507,6 +4837,9 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_CaptureScreen? capture,
     AgentCommand_SetMode? setMode,
     AgentCommand_BackupSessions? backup,
+    AgentCommand_SelfUpdate? selfUpdate,
+    AgentCommand_SyncHistory? syncHistory,
+    AgentCommand_HistoryAck? historyAck,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -4524,6 +4857,9 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (capture != null) result.capture = capture;
     if (setMode != null) result.setMode = setMode;
     if (backup != null) result.backup = backup;
+    if (selfUpdate != null) result.selfUpdate = selfUpdate;
+    if (syncHistory != null) result.syncHistory = syncHistory;
+    if (historyAck != null) result.historyAck = historyAck;
     return result;
   }
 
@@ -4552,13 +4888,16 @@ class AgentCommand extends $pb.GeneratedMessage {
     13: AgentCommand_Op.capture,
     14: AgentCommand_Op.setMode,
     15: AgentCommand_Op.backup,
+    16: AgentCommand_Op.selfUpdate,
+    17: AgentCommand_Op.syncHistory,
+    18: AgentCommand_Op.historyAck,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -4590,6 +4929,12 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_SetMode.$_createMessage)
     ..aOM<AgentCommand_BackupSessions>(15, _omitFieldNames ? '' : 'backup',
         subBuilder: AgentCommand_BackupSessions.$_createMessage)
+    ..aOM<AgentCommand_SelfUpdate>(16, _omitFieldNames ? '' : 'selfUpdate',
+        subBuilder: AgentCommand_SelfUpdate.$_createMessage)
+    ..aOM<AgentCommand_SyncHistory>(17, _omitFieldNames ? '' : 'syncHistory',
+        subBuilder: AgentCommand_SyncHistory.$_createMessage)
+    ..aOM<AgentCommand_HistoryAck>(18, _omitFieldNames ? '' : 'historyAck',
+        subBuilder: AgentCommand_HistoryAck.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4629,6 +4974,9 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -4645,6 +4993,9 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
+  @$pb.TagNumber(17)
+  @$pb.TagNumber(18)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4822,6 +5173,43 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearBackup() => $_clearField(15);
   @$pb.TagNumber(15)
   AgentCommand_BackupSessions ensureBackup() => $_ensure(14);
+
+  /// Replace the agent's own binary with a newer release, then restart.
+  @$pb.TagNumber(16)
+  AgentCommand_SelfUpdate get selfUpdate => $_getN(15);
+  @$pb.TagNumber(16)
+  set selfUpdate(AgentCommand_SelfUpdate value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasSelfUpdate() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearSelfUpdate() => $_clearField(16);
+  @$pb.TagNumber(16)
+  AgentCommand_SelfUpdate ensureSelfUpdate() => $_ensure(15);
+
+  /// What the hub's history has of this node's transcripts; the agent sends
+  /// the rest.
+  @$pb.TagNumber(17)
+  AgentCommand_SyncHistory get syncHistory => $_getN(16);
+  @$pb.TagNumber(17)
+  set syncHistory(AgentCommand_SyncHistory value) => $_setField(17, value);
+  @$pb.TagNumber(17)
+  $core.bool hasSyncHistory() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearSyncHistory() => $_clearField(17);
+  @$pb.TagNumber(17)
+  AgentCommand_SyncHistory ensureSyncHistory() => $_ensure(16);
+
+  /// The hub took a HistoryChunk up to offset; the next chunk starts there.
+  @$pb.TagNumber(18)
+  AgentCommand_HistoryAck get historyAck => $_getN(17);
+  @$pb.TagNumber(18)
+  set historyAck(AgentCommand_HistoryAck value) => $_setField(18, value);
+  @$pb.TagNumber(18)
+  $core.bool hasHistoryAck() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearHistoryAck() => $_clearField(18);
+  @$pb.TagNumber(18)
+  AgentCommand_HistoryAck ensureHistoryAck() => $_ensure(17);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -9859,6 +10247,1264 @@ class TargetSuggestions extends $pb.GeneratedMessage {
   void clearPick() => $_clearField(2);
   @$pb.TagNumber(2)
   TargetCandidate ensurePick() => $_ensure(1);
+}
+
+class UpdateAsset extends $pb.GeneratedMessage {
+  factory UpdateAsset({
+    $core.String? name,
+    $core.String? url,
+    $core.String? sha256,
+    $fixnum.Int64? size,
+  }) {
+    final result = UpdateAsset._();
+    if (name != null) result.name = name;
+    if (url != null) result.url = url;
+    if (sha256 != null) result.sha256 = sha256;
+    if (size != null) result.size = size;
+    return result;
+  }
+
+  UpdateAsset._();
+
+  factory UpdateAsset.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateAsset()..mergeFromBuffer(data, registry);
+  factory UpdateAsset.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateAsset()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateAsset',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UpdateAsset.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'url')
+    ..aOS(3, _omitFieldNames ? '' : 'sha256')
+    ..aInt64(4, _omitFieldNames ? '' : 'size')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateAsset clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateAsset copyWith(void Function(UpdateAsset) updates) =>
+      super.copyWith((message) => updates(message as UpdateAsset))
+          as UpdateAsset;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UpdateAsset() / UpdateAsset.new instead')
+  static UpdateAsset create() => UpdateAsset._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateAsset._();
+  @$core.override
+  UpdateAsset createEmptyInstance() => UpdateAsset._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateAsset getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UpdateAsset>(
+          UpdateAsset.$_createMessage);
+  static UpdateAsset? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  /// From the hub: a path on it (/api/v1/updates/files/...). In latest.json
+  /// as published: the GitHub release download URL.
+  @$pb.TagNumber(2)
+  $core.String get url => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set url($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sha256 => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sha256($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSha256() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSha256() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get size => $_getI64(3);
+  @$pb.TagNumber(4)
+  set size($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSize() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSize() => $_clearField(4);
+}
+
+class UpdateManifest extends $pb.GeneratedMessage {
+  factory UpdateManifest({
+    $core.String? version,
+    $core.String? notes,
+    $core.String? published,
+    $core.String? minSupported,
+    $core.Iterable<$core.MapEntry<$core.String, UpdateAsset>>? platforms,
+  }) {
+    final result = UpdateManifest._();
+    if (version != null) result.version = version;
+    if (notes != null) result.notes = notes;
+    if (published != null) result.published = published;
+    if (minSupported != null) result.minSupported = minSupported;
+    if (platforms != null) result.platforms.addEntries(platforms);
+    return result;
+  }
+
+  UpdateManifest._();
+
+  factory UpdateManifest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateManifest()..mergeFromBuffer(data, registry);
+  factory UpdateManifest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateManifest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateManifest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UpdateManifest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'version')
+    ..aOS(2, _omitFieldNames ? '' : 'notes')
+    ..aOS(3, _omitFieldNames ? '' : 'published')
+    ..aOS(4, _omitFieldNames ? '' : 'minSupported')
+    ..m<$core.String, UpdateAsset>(5, _omitFieldNames ? '' : 'platforms',
+        entryClassName: 'UpdateManifest.PlatformsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OM,
+        valueCreator: UpdateAsset.$_createMessage,
+        valueDefaultOrMaker: UpdateAsset.getDefault,
+        packageName: const $pb.PackageName('tether.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateManifest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateManifest copyWith(void Function(UpdateManifest) updates) =>
+      super.copyWith((message) => updates(message as UpdateManifest))
+          as UpdateManifest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UpdateManifest() / UpdateManifest.new instead')
+  static UpdateManifest create() => UpdateManifest._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateManifest._();
+  @$core.override
+  UpdateManifest createEmptyInstance() => UpdateManifest._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateManifest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UpdateManifest>(
+          UpdateManifest.$_createMessage);
+  static UpdateManifest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get version => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set version($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersion() => $_clearField(1);
+
+  /// Markdown.
+  @$pb.TagNumber(2)
+  $core.String get notes => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set notes($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNotes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNotes() => $_clearField(2);
+
+  /// RFC 3339.
+  @$pb.TagNumber(3)
+  $core.String get published => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set published($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublished() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublished() => $_clearField(3);
+
+  /// Apps and agents older than this must update before they carry on.
+  @$pb.TagNumber(4)
+  $core.String get minSupported => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set minSupported($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMinSupported() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMinSupported() => $_clearField(4);
+
+  /// By platform: android, windows (the app as a zip), agent-linux-amd64,
+  /// agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
+  /// tetherctl-windows-amd64.
+  @$pb.TagNumber(5)
+  $pb.PbMap<$core.String, UpdateAsset> get platforms => $_getMap(4);
+}
+
+/// How far the hub has one transcript file. file is "" for the session's
+/// own transcript, or "subagents/<name>.jsonl".
+class HistoryPosition extends $pb.GeneratedMessage {
+  factory HistoryPosition({
+    $core.String? session,
+    $core.String? file,
+    $fixnum.Int64? offset,
+    $core.String? head,
+    $fixnum.Int64? headLen,
+  }) {
+    final result = HistoryPosition._();
+    if (session != null) result.session = session;
+    if (file != null) result.file = file;
+    if (offset != null) result.offset = offset;
+    if (head != null) result.head = head;
+    if (headLen != null) result.headLen = headLen;
+    return result;
+  }
+
+  HistoryPosition._();
+
+  factory HistoryPosition.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryPosition()..mergeFromBuffer(data, registry);
+  factory HistoryPosition.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryPosition()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryPosition',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryPosition.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'file')
+    ..aInt64(3, _omitFieldNames ? '' : 'offset')
+    ..aOS(4, _omitFieldNames ? '' : 'head')
+    ..aInt64(5, _omitFieldNames ? '' : 'headLen')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryPosition clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryPosition copyWith(void Function(HistoryPosition) updates) =>
+      super.copyWith((message) => updates(message as HistoryPosition))
+          as HistoryPosition;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryPosition() / HistoryPosition.new instead')
+  static HistoryPosition create() => HistoryPosition._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryPosition._();
+  @$core.override
+  HistoryPosition createEmptyInstance() => HistoryPosition._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryPosition getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryPosition>(
+          HistoryPosition.$_createMessage);
+  static HistoryPosition? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get file => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set file($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFile() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get offset => $_getI64(2);
+  @$pb.TagNumber(3)
+  set offset($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOffset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOffset() => $_clearField(3);
+
+  /// sha256 (hex) of the file's first head_len bytes, as the hub got them:
+  /// a file that no longer starts the same was rewritten and is sent again.
+  @$pb.TagNumber(4)
+  $core.String get head => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set head($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasHead() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearHead() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get headLen => $_getI64(4);
+  @$pb.TagNumber(5)
+  set headLen($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHeadLen() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHeadLen() => $_clearField(5);
+}
+
+/// Whole lines of a transcript file from offset; reset starts the file over.
+class HistoryChunk extends $pb.GeneratedMessage {
+  factory HistoryChunk({
+    $core.String? session,
+    $core.String? file,
+    $fixnum.Int64? offset,
+    $core.List<$core.int>? data,
+    $core.bool? reset,
+    $fixnum.Int64? size,
+    $fixnum.Int64? skip,
+  }) {
+    final result = HistoryChunk._();
+    if (session != null) result.session = session;
+    if (file != null) result.file = file;
+    if (offset != null) result.offset = offset;
+    if (data != null) result.data = data;
+    if (reset != null) result.reset = reset;
+    if (size != null) result.size = size;
+    if (skip != null) result.skip = skip;
+    return result;
+  }
+
+  HistoryChunk._();
+
+  factory HistoryChunk.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryChunk()..mergeFromBuffer(data, registry);
+  factory HistoryChunk.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryChunk()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryChunk',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryChunk.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'session')
+    ..aOS(2, _omitFieldNames ? '' : 'file')
+    ..aInt64(3, _omitFieldNames ? '' : 'offset')
+    ..a<$core.List<$core.int>>(
+        4, _omitFieldNames ? '' : 'data', $pb.PbFieldType.OY)
+    ..aOB(5, _omitFieldNames ? '' : 'reset')
+    ..aInt64(6, _omitFieldNames ? '' : 'size')
+    ..aInt64(7, _omitFieldNames ? '' : 'skip')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryChunk clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryChunk copyWith(void Function(HistoryChunk) updates) =>
+      super.copyWith((message) => updates(message as HistoryChunk))
+          as HistoryChunk;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryChunk() / HistoryChunk.new instead')
+  static HistoryChunk create() => HistoryChunk._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryChunk._();
+  @$core.override
+  HistoryChunk createEmptyInstance() => HistoryChunk._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryChunk getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryChunk>(
+          HistoryChunk.$_createMessage);
+  static HistoryChunk? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get session => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set session($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSession() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSession() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get file => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set file($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFile() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get offset => $_getI64(2);
+  @$pb.TagNumber(3)
+  set offset($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOffset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOffset() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.List<$core.int> get data => $_getN(3);
+  @$pb.TagNumber(4)
+  set data($core.List<$core.int> value) => $_setBytes(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasData() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearData() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get reset => $_getBF(4);
+  @$pb.TagNumber(5)
+  set reset($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasReset() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearReset() => $_clearField(5);
+
+  /// The file's size when read.
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get size => $_getI64(5);
+  @$pb.TagNumber(6)
+  set size($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSize() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSize() => $_clearField(6);
+
+  /// Bytes after data that the agent didn't send: a line too large for a
+  /// message. The hub moves its position past them.
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get skip => $_getI64(6);
+  @$pb.TagNumber(7)
+  set skip($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSkip() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSkip() => $_clearField(7);
+}
+
+class HistorySynced extends $pb.GeneratedMessage {
+  factory HistorySynced({
+    $fixnum.Int64? atMs,
+  }) {
+    final result = HistorySynced._();
+    if (atMs != null) result.atMs = atMs;
+    return result;
+  }
+
+  HistorySynced._();
+
+  factory HistorySynced.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistorySynced()..mergeFromBuffer(data, registry);
+  factory HistorySynced.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistorySynced()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistorySynced',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistorySynced.$_createMessage)
+    ..aInt64(1, _omitFieldNames ? '' : 'atMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistorySynced clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistorySynced copyWith(void Function(HistorySynced) updates) =>
+      super.copyWith((message) => updates(message as HistorySynced))
+          as HistorySynced;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistorySynced() / HistorySynced.new instead')
+  static HistorySynced create() => HistorySynced._();
+  static $pb.GeneratedMessage $_createMessage() => HistorySynced._();
+  @$core.override
+  HistorySynced createEmptyInstance() => HistorySynced._();
+  @$core.pragma('dart2js:noInline')
+  static HistorySynced getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistorySynced>(
+          HistorySynced.$_createMessage);
+  static HistorySynced? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get atMs => $_getI64(0);
+  @$pb.TagNumber(1)
+  set atMs($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAtMs() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAtMs() => $_clearField(1);
+}
+
+/// One transcript line, as history: what was said or done, and where.
+class HistoryEvent extends $pb.GeneratedMessage {
+  factory HistoryEvent({
+    $fixnum.Int64? seq,
+    $core.String? session,
+    $core.String? node,
+    $core.String? file,
+    $fixnum.Int64? offset,
+    $core.String? eventId,
+    $fixnum.Int64? tsMs,
+    $core.String? kind,
+    $core.String? text,
+    $core.String? tool,
+    $core.String? model,
+    $core.String? cwd,
+    $core.bool? redacted,
+  }) {
+    final result = HistoryEvent._();
+    if (seq != null) result.seq = seq;
+    if (session != null) result.session = session;
+    if (node != null) result.node = node;
+    if (file != null) result.file = file;
+    if (offset != null) result.offset = offset;
+    if (eventId != null) result.eventId = eventId;
+    if (tsMs != null) result.tsMs = tsMs;
+    if (kind != null) result.kind = kind;
+    if (text != null) result.text = text;
+    if (tool != null) result.tool = tool;
+    if (model != null) result.model = model;
+    if (cwd != null) result.cwd = cwd;
+    if (redacted != null) result.redacted = redacted;
+    return result;
+  }
+
+  HistoryEvent._();
+
+  factory HistoryEvent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryEvent()..mergeFromBuffer(data, registry);
+  factory HistoryEvent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryEvent()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryEvent',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryEvent.$_createMessage)
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'seq', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOS(2, _omitFieldNames ? '' : 'session')
+    ..aOS(3, _omitFieldNames ? '' : 'node')
+    ..aOS(4, _omitFieldNames ? '' : 'file')
+    ..aInt64(5, _omitFieldNames ? '' : 'offset')
+    ..aOS(6, _omitFieldNames ? '' : 'eventId')
+    ..aInt64(7, _omitFieldNames ? '' : 'tsMs')
+    ..aOS(8, _omitFieldNames ? '' : 'kind')
+    ..aOS(9, _omitFieldNames ? '' : 'text')
+    ..aOS(10, _omitFieldNames ? '' : 'tool')
+    ..aOS(11, _omitFieldNames ? '' : 'model')
+    ..aOS(12, _omitFieldNames ? '' : 'cwd')
+    ..aOB(13, _omitFieldNames ? '' : 'redacted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryEvent clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryEvent copyWith(void Function(HistoryEvent) updates) =>
+      super.copyWith((message) => updates(message as HistoryEvent))
+          as HistoryEvent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryEvent() / HistoryEvent.new instead')
+  static HistoryEvent create() => HistoryEvent._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryEvent._();
+  @$core.override
+  HistoryEvent createEmptyInstance() => HistoryEvent._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryEvent getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryEvent>(
+          HistoryEvent.$_createMessage);
+  static HistoryEvent? _defaultInstance;
+
+  /// Grows with every event stored: the changes feed's cursor.
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get seq => $_getI64(0);
+  @$pb.TagNumber(1)
+  set seq($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSeq() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSeq() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get session => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set session($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSession() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSession() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get node => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set node($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get file => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set file($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFile() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFile() => $_clearField(4);
+
+  /// Byte offset of the line in its transcript file.
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get offset => $_getI64(4);
+  @$pb.TagNumber(5)
+  set offset($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasOffset() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearOffset() => $_clearField(5);
+
+  /// The line's uuid, when it has one.
+  @$pb.TagNumber(6)
+  $core.String get eventId => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set eventId($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasEventId() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearEventId() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get tsMs => $_getI64(6);
+  @$pb.TagNumber(7)
+  set tsMs($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTsMs() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTsMs() => $_clearField(7);
+
+  /// user, assistant, tool_use, tool_result, summary, system, state.
+  @$pb.TagNumber(8)
+  $core.String get kind => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set kind($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasKind() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearKind() => $_clearField(8);
+
+  /// Plain text (secrets redacted when the hub is set to).
+  @$pb.TagNumber(9)
+  $core.String get text => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set text($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasText() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearText() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get tool => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set tool($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasTool() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearTool() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get model => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set model($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasModel() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearModel() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get cwd => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set cwd($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCwd() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCwd() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.bool get redacted => $_getBF(12);
+  @$pb.TagNumber(13)
+  set redacted($core.bool value) => $_setBool(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasRedacted() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearRedacted() => $_clearField(13);
+}
+
+/// A page of history, oldest first. Pass before to get older events,
+/// after to get newer ones.
+class HistoryPage extends $pb.GeneratedMessage {
+  factory HistoryPage({
+    $core.Iterable<HistoryEvent>? events,
+    $core.String? before,
+    $core.String? after,
+    $core.bool? moreBefore,
+    $core.bool? moreAfter,
+  }) {
+    final result = HistoryPage._();
+    if (events != null) result.events.addAll(events);
+    if (before != null) result.before = before;
+    if (after != null) result.after = after;
+    if (moreBefore != null) result.moreBefore = moreBefore;
+    if (moreAfter != null) result.moreAfter = moreAfter;
+    return result;
+  }
+
+  HistoryPage._();
+
+  factory HistoryPage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryPage()..mergeFromBuffer(data, registry);
+  factory HistoryPage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryPage()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryPage',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryPage.$_createMessage)
+    ..pPM<HistoryEvent>(1, _omitFieldNames ? '' : 'events',
+        subBuilder: HistoryEvent.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'before')
+    ..aOS(3, _omitFieldNames ? '' : 'after')
+    ..aOB(4, _omitFieldNames ? '' : 'moreBefore')
+    ..aOB(5, _omitFieldNames ? '' : 'moreAfter')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryPage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryPage copyWith(void Function(HistoryPage) updates) =>
+      super.copyWith((message) => updates(message as HistoryPage))
+          as HistoryPage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryPage() / HistoryPage.new instead')
+  static HistoryPage create() => HistoryPage._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryPage._();
+  @$core.override
+  HistoryPage createEmptyInstance() => HistoryPage._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryPage getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryPage>(
+          HistoryPage.$_createMessage);
+  static HistoryPage? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<HistoryEvent> get events => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.String get before => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set before($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBefore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBefore() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get after => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set after($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAfter() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAfter() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get moreBefore => $_getBF(3);
+  @$pb.TagNumber(4)
+  set moreBefore($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMoreBefore() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMoreBefore() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get moreAfter => $_getBF(4);
+  @$pb.TagNumber(5)
+  set moreAfter($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMoreAfter() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMoreAfter() => $_clearField(5);
+}
+
+class HistoryHit extends $pb.GeneratedMessage {
+  factory HistoryHit({
+    HistoryEvent? event,
+    $core.String? snippet,
+    $core.String? chat,
+  }) {
+    final result = HistoryHit._();
+    if (event != null) result.event = event;
+    if (snippet != null) result.snippet = snippet;
+    if (chat != null) result.chat = chat;
+    return result;
+  }
+
+  HistoryHit._();
+
+  factory HistoryHit.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryHit()..mergeFromBuffer(data, registry);
+  factory HistoryHit.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryHit()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryHit',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryHit.$_createMessage)
+    ..aOM<HistoryEvent>(1, _omitFieldNames ? '' : 'event',
+        subBuilder: HistoryEvent.$_createMessage)
+    ..aOS(2, _omitFieldNames ? '' : 'snippet')
+    ..aOS(3, _omitFieldNames ? '' : 'chat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryHit clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryHit copyWith(void Function(HistoryHit) updates) =>
+      super.copyWith((message) => updates(message as HistoryHit)) as HistoryHit;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryHit() / HistoryHit.new instead')
+  static HistoryHit create() => HistoryHit._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryHit._();
+  @$core.override
+  HistoryHit createEmptyInstance() => HistoryHit._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryHit getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<HistoryHit>(HistoryHit.$_createMessage);
+  static HistoryHit? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  HistoryEvent get event => $_getN(0);
+  @$pb.TagNumber(1)
+  set event(HistoryEvent value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEvent() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEvent() => $_clearField(1);
+  @$pb.TagNumber(1)
+  HistoryEvent ensureEvent() => $_ensure(0);
+
+  /// The matching words in [brackets].
+  @$pb.TagNumber(2)
+  $core.String get snippet => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set snippet($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSnippet() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSnippet() => $_clearField(2);
+
+  /// The chat the session is in, if any.
+  @$pb.TagNumber(3)
+  $core.String get chat => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set chat($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChat() => $_clearField(3);
+}
+
+class HistorySearch extends $pb.GeneratedMessage {
+  factory HistorySearch({
+    $core.Iterable<HistoryHit>? hits,
+  }) {
+    final result = HistorySearch._();
+    if (hits != null) result.hits.addAll(hits);
+    return result;
+  }
+
+  HistorySearch._();
+
+  factory HistorySearch.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistorySearch()..mergeFromBuffer(data, registry);
+  factory HistorySearch.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistorySearch()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistorySearch',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistorySearch.$_createMessage)
+    ..pPM<HistoryHit>(1, _omitFieldNames ? '' : 'hits',
+        subBuilder: HistoryHit.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistorySearch clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistorySearch copyWith(void Function(HistorySearch) updates) =>
+      super.copyWith((message) => updates(message as HistorySearch))
+          as HistorySearch;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistorySearch() / HistorySearch.new instead')
+  static HistorySearch create() => HistorySearch._();
+  static $pb.GeneratedMessage $_createMessage() => HistorySearch._();
+  @$core.override
+  HistorySearch createEmptyInstance() => HistorySearch._();
+  @$core.pragma('dart2js:noInline')
+  static HistorySearch getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistorySearch>(
+          HistorySearch.$_createMessage);
+  static HistorySearch? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<HistoryHit> get hits => $_getList(0);
+}
+
+/// GET /api/v1/history/changes?since=: events stored after the cursor.
+class HistoryChanges extends $pb.GeneratedMessage {
+  factory HistoryChanges({
+    $core.Iterable<HistoryEvent>? events,
+    $fixnum.Int64? cursor,
+    $core.bool? more,
+    $core.Iterable<HistoryPosition>? resets,
+  }) {
+    final result = HistoryChanges._();
+    if (events != null) result.events.addAll(events);
+    if (cursor != null) result.cursor = cursor;
+    if (more != null) result.more = more;
+    if (resets != null) result.resets.addAll(resets);
+    return result;
+  }
+
+  HistoryChanges._();
+
+  factory HistoryChanges.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryChanges()..mergeFromBuffer(data, registry);
+  factory HistoryChanges.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryChanges()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryChanges',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryChanges.$_createMessage)
+    ..pPM<HistoryEvent>(1, _omitFieldNames ? '' : 'events',
+        subBuilder: HistoryEvent.$_createMessage)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'cursor', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOB(3, _omitFieldNames ? '' : 'more')
+    ..pPM<HistoryPosition>(4, _omitFieldNames ? '' : 'resets',
+        subBuilder: HistoryPosition.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryChanges clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryChanges copyWith(void Function(HistoryChanges) updates) =>
+      super.copyWith((message) => updates(message as HistoryChanges))
+          as HistoryChanges;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryChanges() / HistoryChanges.new instead')
+  static HistoryChanges create() => HistoryChanges._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryChanges._();
+  @$core.override
+  HistoryChanges createEmptyInstance() => HistoryChanges._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryChanges getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryChanges>(
+          HistoryChanges.$_createMessage);
+  static HistoryChanges? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<HistoryEvent> get events => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get cursor => $_getI64(1);
+  @$pb.TagNumber(2)
+  set cursor($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCursor() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCursor() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get more => $_getBF(2);
+  @$pb.TagNumber(3)
+  set more($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasMore() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearMore() => $_clearField(3);
+
+  /// Files started over since the cursor: drop what you have of them.
+  @$pb.TagNumber(4)
+  $pb.PbList<HistoryPosition> get resets => $_getList(3);
+}
+
+class HistoryNodeStatus extends $pb.GeneratedMessage {
+  factory HistoryNodeStatus({
+    $core.String? node,
+    $fixnum.Int64? syncedMs,
+    $fixnum.Int64? files,
+    $fixnum.Int64? bytes,
+    $fixnum.Int64? events,
+  }) {
+    final result = HistoryNodeStatus._();
+    if (node != null) result.node = node;
+    if (syncedMs != null) result.syncedMs = syncedMs;
+    if (files != null) result.files = files;
+    if (bytes != null) result.bytes = bytes;
+    if (events != null) result.events = events;
+    return result;
+  }
+
+  HistoryNodeStatus._();
+
+  factory HistoryNodeStatus.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryNodeStatus()..mergeFromBuffer(data, registry);
+  factory HistoryNodeStatus.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryNodeStatus()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryNodeStatus',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryNodeStatus.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'node')
+    ..aInt64(2, _omitFieldNames ? '' : 'syncedMs')
+    ..aInt64(3, _omitFieldNames ? '' : 'files')
+    ..aInt64(4, _omitFieldNames ? '' : 'bytes')
+    ..aInt64(5, _omitFieldNames ? '' : 'events')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryNodeStatus clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryNodeStatus copyWith(void Function(HistoryNodeStatus) updates) =>
+      super.copyWith((message) => updates(message as HistoryNodeStatus))
+          as HistoryNodeStatus;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryNodeStatus() / HistoryNodeStatus.new instead')
+  static HistoryNodeStatus create() => HistoryNodeStatus._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryNodeStatus._();
+  @$core.override
+  HistoryNodeStatus createEmptyInstance() => HistoryNodeStatus._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryNodeStatus getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryNodeStatus>(
+          HistoryNodeStatus.$_createMessage);
+  static HistoryNodeStatus? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get node => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set node($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNode() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get syncedMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set syncedMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSyncedMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSyncedMs() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get files => $_getI64(2);
+  @$pb.TagNumber(3)
+  set files($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasFiles() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearFiles() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get bytes => $_getI64(3);
+  @$pb.TagNumber(4)
+  set bytes($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBytes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBytes() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get events => $_getI64(4);
+  @$pb.TagNumber(5)
+  set events($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEvents() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEvents() => $_clearField(5);
+}
+
+class HistoryStatus extends $pb.GeneratedMessage {
+  factory HistoryStatus({
+    $core.Iterable<HistoryNodeStatus>? nodes,
+    $fixnum.Int64? events,
+    $fixnum.Int64? bytes,
+  }) {
+    final result = HistoryStatus._();
+    if (nodes != null) result.nodes.addAll(nodes);
+    if (events != null) result.events = events;
+    if (bytes != null) result.bytes = bytes;
+    return result;
+  }
+
+  HistoryStatus._();
+
+  factory HistoryStatus.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryStatus()..mergeFromBuffer(data, registry);
+  factory HistoryStatus.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HistoryStatus()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HistoryStatus',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: HistoryStatus.$_createMessage)
+    ..pPM<HistoryNodeStatus>(1, _omitFieldNames ? '' : 'nodes',
+        subBuilder: HistoryNodeStatus.$_createMessage)
+    ..aInt64(2, _omitFieldNames ? '' : 'events')
+    ..aInt64(3, _omitFieldNames ? '' : 'bytes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryStatus clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HistoryStatus copyWith(void Function(HistoryStatus) updates) =>
+      super.copyWith((message) => updates(message as HistoryStatus))
+          as HistoryStatus;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HistoryStatus() / HistoryStatus.new instead')
+  static HistoryStatus create() => HistoryStatus._();
+  static $pb.GeneratedMessage $_createMessage() => HistoryStatus._();
+  @$core.override
+  HistoryStatus createEmptyInstance() => HistoryStatus._();
+  @$core.pragma('dart2js:noInline')
+  static HistoryStatus getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HistoryStatus>(
+          HistoryStatus.$_createMessage);
+  static HistoryStatus? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<HistoryNodeStatus> get nodes => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get events => $_getI64(1);
+  @$pb.TagNumber(2)
+  set events($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasEvents() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearEvents() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get bytes => $_getI64(2);
+  @$pb.TagNumber(3)
+  set bytes($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBytes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBytes() => $_clearField(3);
+}
+
+class Heartbeat extends $pb.GeneratedMessage {
+  factory Heartbeat() => Heartbeat._();
+
+  Heartbeat._();
+
+  factory Heartbeat.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Heartbeat()..mergeFromBuffer(data, registry);
+  factory Heartbeat.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Heartbeat()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Heartbeat',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: Heartbeat.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Heartbeat clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Heartbeat copyWith(void Function(Heartbeat) updates) =>
+      super.copyWith((message) => updates(message as Heartbeat)) as Heartbeat;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Heartbeat() / Heartbeat.new instead')
+  static Heartbeat create() => Heartbeat._();
+  static $pb.GeneratedMessage $_createMessage() => Heartbeat._();
+  @$core.override
+  Heartbeat createEmptyInstance() => Heartbeat._();
+  @$core.pragma('dart2js:noInline')
+  static Heartbeat getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Heartbeat>(Heartbeat.$_createMessage);
+  static Heartbeat? _defaultInstance;
 }
 
 const $core.bool _omitFieldNames =

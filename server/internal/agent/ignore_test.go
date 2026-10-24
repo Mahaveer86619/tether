@@ -27,7 +27,7 @@ func TestTetherignore(t *testing.T) {
 		{".tether/attachments", true, true},
 	}
 	for _, c := range cases {
-		if got := rules.ignored(c.path, c.dir); got != c.want {
+		if got := rules.Ignored(c.path, c.dir); got != c.want {
 			t.Errorf("ignored(%q, dir=%v) = %v, want %v", c.path, c.dir, got, c.want)
 		}
 	}

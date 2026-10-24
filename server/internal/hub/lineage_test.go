@@ -85,7 +85,7 @@ func TestScratchRetentionAndGlobalSessions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if c := f.GetAgentCommand(); c != nil {
+			if c := f.GetAgentCommand(); c != nil && c.GetSyncHistory() == nil {
 				return c
 			}
 		}

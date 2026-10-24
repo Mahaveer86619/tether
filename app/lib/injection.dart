@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -13,6 +14,8 @@ import 'data/datasources/settings_local.dart';
 import 'data/repositories/hub_repository_impl.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
+import 'data/repositories/update_repository_impl.dart';
+import 'data/datasources/update_platform.dart';
 import 'domain/entities/entities.dart';
 import 'domain/repositories/repositories.dart';
 import 'domain/usecases/usecases.dart';
@@ -22,6 +25,7 @@ import 'presentation/chats/chats_cubit.dart';
 import 'presentation/chats/new_chat_cubit.dart';
 import 'presentation/chats/target_picker.dart';
 import 'presentation/nav/nav_cubit.dart';
+import 'presentation/update/update_cubit.dart';
 import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
 import 'presentation/new_session/new_session_cubit.dart';
@@ -53,11 +57,13 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton(SettingsLocalDataSource.new)
       ..registerLazySingleton<HubCache>(FileHubCache.new)
       ..registerLazySingleton<HubRepository>(
-        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl()),
+        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl(), networkChanges: _networkChanges()),
         dispose: (r) => r.dispose(),
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
       ..registerLazySingleton<FileDownloads>(BackgroundFileDownloads.new)
+      ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
+      ..registerLazySingleton<UpdateRepository>(() => UpdateRepositoryImpl(api: sl(), client: sl(), platform: sl(), local: sl()))
       ..registerLazySingleton<TransferRepository>(() => TransferRepositoryImpl(api: sl(), downloads: sl()), dispose: (r) => (r as TransferRepositoryImpl).dispose());
   }
 
@@ -88,6 +94,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))
     ..registerLazySingleton(() => Chats(sl()))
+    ..registerLazySingleton(() => AppUpdates(sl()))
     ..registerLazySingleton(() => Artifacts(sl()))
     ..registerLazySingleton(() => Transfers(sl()))
     ..registerLazySingleton(() => TerminalControl(sl()))
@@ -101,6 +108,7 @@ void configureDependencies({bool withData = true}) {
     // View models
     ..registerFactory(() => NavCubit(watchHub: sl()))
     ..registerFactory(() => ChatsCubit(chats: sl()))
+    ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), exit: () => exit(0)))
     ..registerFactoryParam<NewChatCubit, String, void>((node, _) => NewChatCubit(chats: sl(), drafts: sl(), watchHub: sl(), node: node))
     ..registerFactoryParam<TargetPickerCubit, String, String>((prompt, node) => TargetPickerCubit(chats: sl(), prompt: prompt, node: node))
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
@@ -140,3 +148,7 @@ void configureDependencies({bool withData = true}) {
 }
 
 String _title(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+/// The device's network changing (Wi-Fi, mobile data, a VPN coming up),
+/// without the state it starts in.
+Stream<void> _networkChanges() => Connectivity().onConnectivityChanged.map((r) => (r.map((e) => e.name).toList()..sort()).join(',')).distinct().skip(1);

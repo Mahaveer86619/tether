@@ -23,7 +23,13 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 ## Talking to the hub
 
 - **REST (`package:http`)** for request/response: `GET /api/v1/state`, `GET /api/v1/sessions/{id}/timeline?after=`, and `POST` for creating, sending, forking, interrupting, ending and approving. See [protocol.md](protocol.md).
-- **WebSocket** only for what the hub pushes: state changes and live timeline updates. It reconnects on its own with backoff, and stops retrying if the token is rejected.
+- **WebSocket** only for what the hub pushes: state changes and live timeline updates. Keeping it alive (`data/datasources/hub_socket.dart`):
+  - **Heartbeat:** every 15 s the app sends a `heartbeat` frame. If no frame at all arrives within 10 s, the socket counts as dead, however open it looks. Hubs before 0.17 answer with an `unsupported` error, which counts as an answer.
+  - **Backoff:** reconnects back off exponentially with jitter (1 s, 2 s, 4 s… up to 30 s, each between half and all of that). A rejected token stops retrying.
+  - **Forced reconnects:** a network change (Wi-Fi, mobile data, a VPN; from `connectivity_plus`) and **Retry** always reconnect at once, replacing a socket that only looks alive.
+  - **Coming back to the foreground** retries at once if the app was waiting out a backoff, and otherwise sends a heartbeat straight away.
+  - **Catching up:** after a reconnect, open timelines subscribe again from their last `seq`.
+  - **Status:** the connection line shows "Reconnecting… (try N)" or "Offline · retrying in Ns", with the last error and the number of failed tries in its tooltip; tapping it retries. The socket logs each drop, its reason and the next delay.
 
 ## History and background sync
 
@@ -94,6 +100,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - **Sessions:** this week's sessions by tokens.
 
   It refreshes every 30 seconds while open.
+- **Updates** (`update/`): `UpdateCubit` checks the hub's `/api/v1/updates/latest` at start, every 6 hours and when the hub pushes `update_available`. A newer release shows a banner above the main pane (What's new, Skip this version, Update, then download progress), and Android also gets a system notification once per version. Android downloads the APK, checks its sha256 and opens the installer; Windows downloads the zip and applies it on **Restart to update**. Below the release's `min_supported`, `ForcedUpdatePage` replaces the app. The platform side is `data/datasources/update_platform.dart` and `MainActivity.kt`. See [releasing.md](releasing.md#how-apps-and-agents-update).
 - **Message box:** `PromptBox` is used by the composer and the new-chat box.
   - The text and the 40 px buttons share one row, so the hint sits level with the buttons.
   - It grows to 5 lines (8 on desktop) with the buttons on the last line.
