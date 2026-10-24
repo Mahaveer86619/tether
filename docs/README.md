@@ -7,6 +7,7 @@
 | [hosting.md](hosting.md) | How sessions run (tmux, headless, your own terminal) and how hooks track their state and approvals |
 | [sessions.md](sessions.md) | How Claude Code sessions are discovered, started, mirrored, resumed and forked |
 | [releasing.md](releasing.md) | Versions, tagging a release, CI (self-hosted runner on the hub's machine), deploy with rollback, signing, and how apps and agents update |
+| [GITHUB-SETUP.md](GITHUB-SETUP.md) | One-time GitHub setup for the repo owner: collaborator, protection, environment, secrets, runner, with `deploy/ci/github-bootstrap.sh`; and the signing key decision |
 | [running.md](running.md) | Building, deploying the hub and agents, and using `tetherctl` |
 | [home-server.md](home-server.md) | Mini PC sandbox and NAS setup, plus the current state of that machine |
 | [security.md](security.md) | Trust boundaries, auth, sandboxing, approvals |
