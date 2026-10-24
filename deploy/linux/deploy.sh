@@ -81,7 +81,7 @@ echo "rolled back to what ran before $v"
 EOF
 chmod 700 "$backup/rollback.sh"
 
-"$here/install.sh" "$stage" "${roles[@]}" >/dev/null
+bash "$here/install.sh" "$stage" "${roles[@]}" >/dev/null
 
 # The release goes in the updates folder only now, so a rollback leaves
 # no newer release for the old hub to hand out.
