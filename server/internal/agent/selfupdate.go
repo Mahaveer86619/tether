@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/updates"
 )
 
 // The agent updates itself when the hub asks: it downloads the new binary
@@ -24,17 +24,15 @@ import (
 
 // ExitRestart is the exit code that tells the service manager to start
 // the agent again.
-const ExitRestart = 75
-
+const ExitRestart = updates.ExitRestart
 const maxUpdateStarts = 3
 
-type updateMarker struct {
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Starts int    `json:"starts"`
-}
+func markerPath(exe string) string { return updates.MarkerPath(exe) }
 
-func markerPath(exe string) string { return exe + ".update" }
+// Relaunch asks Task Scheduler to start the agent again on Windows.
+func Relaunch(log *slog.Logger) {
+	updates.Relaunch(log)
+}
 
 func (a *Agent) selfUpdate(u *v1.AgentCommand_SelfUpdate) {
 	if !a.cfg.SelfUpdate || a.cfg.Exe == "" || u.GetAsset() == nil {
@@ -79,8 +77,7 @@ func (a *Agent) installUpdate(u *v1.AgentCommand_SelfUpdate) error {
 	if err := os.Chmod(exe, 0o755); err != nil {
 		return err
 	}
-	b, _ := json.Marshal(updateMarker{From: a.cfg.Version, To: u.Version})
-	return os.WriteFile(markerPath(exe), b, 0o644)
+	return updates.WriteMarker(exe, a.cfg.Version, u.Version)
 }
 
 // runCheck is checkRuns; tests replace it.
@@ -151,34 +148,7 @@ func (a *Agent) downloadFrom(path, sha, dst string) error {
 // previous one back and returns true: the caller should exit with
 // ExitRestart so the old binary starts.
 func CheckUpdate(exe, version string, log *slog.Logger) bool {
-	b, err := os.ReadFile(markerPath(exe))
-	if err != nil {
-		return false
-	}
-	var m updateMarker
-	if json.Unmarshal(b, &m) != nil || m.To != version {
-		_ = os.Remove(markerPath(exe))
-		return false
-	}
-	m.Starts++
-	if m.Starts <= maxUpdateStarts {
-		b, _ = json.Marshal(m)
-		_ = os.WriteFile(markerPath(exe), b, 0o644)
-		return false
-	}
-	log.Error("the update keeps failing; going back", "from", m.To, "to", m.From)
-	_ = os.Remove(exe + ".failed")
-	if err := os.Rename(exe, exe+".failed"); err != nil {
-		log.Error("roll back", "err", err)
-		return false
-	}
-	if err := os.Rename(exe+".prev", exe); err != nil {
-		_ = os.Rename(exe+".failed", exe)
-		log.Error("roll back", "err", err)
-		return false
-	}
-	_ = os.Remove(markerPath(exe))
-	return true
+	return updates.Check(exe, version, log)
 }
 
 // commitUpdate forgets the marker once the new binary has reached the hub.

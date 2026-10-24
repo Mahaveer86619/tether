@@ -3,7 +3,6 @@ package hub
 import (
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -12,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/updates"
 )
 
 // Chats are the conversations the app shows; sessions do the work behind
@@ -488,38 +488,17 @@ func (h *Hub) agentAtLeast(node, v string) bool {
 	return versionAtLeast(n.AgentVersion, v)
 }
 
+// versionAtLeast is updates.AtLeast, except a build without a release
+// version (dev, tests) counts as new.
 func versionAtLeast(have, want string) bool {
-	h, ok := parseVersion(have)
-	if !ok {
+	if _, ok := updates.Parse(have); !ok {
 		return true
 	}
-	w, _ := parseVersion(want)
-	for i := range h {
-		if h[i] != w[i] {
-			return h[i] > w[i]
-		}
-	}
-	return true
+	return updates.AtLeast(have, want)
 }
 
 func parseVersion(s string) ([3]int, bool) {
-	var out [3]int
-	s = strings.TrimPrefix(strings.TrimSpace(s), "v")
-	if i := strings.IndexAny(s, "-+ "); i >= 0 {
-		s = s[:i]
-	}
-	parts := strings.Split(s, ".")
-	if len(parts) != 3 {
-		return out, false
-	}
-	for i, p := range parts {
-		n, err := strconv.Atoi(p)
-		if err != nil {
-			return out, false
-		}
-		out[i] = n
-	}
-	return out, true
+	return updates.Parse(s)
 }
 
 // ---- post-processing ----

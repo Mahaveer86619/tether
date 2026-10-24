@@ -19,6 +19,7 @@ import (
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 	"github.com/Mahaveer86619/tether/server/internal/render"
 	"github.com/Mahaveer86619/tether/server/internal/store"
+	"github.com/Mahaveer86619/tether/server/internal/tailnet"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
 )
 
@@ -103,7 +104,7 @@ type Hub struct {
 	linkKey      []byte
 
 	tsMu     sync.Mutex
-	tsStatus *tsStatus
+	tsStatus *tailnet.Status
 	tsAt     time.Time
 
 	sent        map[string][]sentMsg         // session -> messages sent through the hub

@@ -197,7 +197,7 @@ func (a *Agent) snapshot(c *v1.Codebase, session string) error {
 			return nil
 		}
 		if d.IsDir() {
-			if rules.ignored(rel, true) {
+			if rules.Ignored(rel, true) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -214,7 +214,7 @@ func (a *Agent) snapshot(c *v1.Codebase, session string) error {
 			}
 			return nil
 		}
-		if rules.ignored(rel, false) {
+		if rules.Ignored(rel, false) {
 			return nil
 		}
 		if info.Size() > maxUpload {

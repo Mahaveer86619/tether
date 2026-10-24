@@ -1,6 +1,6 @@
 //go:build !windows
 
-package agent
+package updates
 
 import "log/slog"
 

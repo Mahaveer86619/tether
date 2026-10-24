@@ -1,4 +1,6 @@
-package agent
+//go:build windows
+
+package updates
 
 import (
 	"log/slog"

@@ -94,8 +94,8 @@ func TestParseDialog(t *testing.T) {
 			if d == nil {
 				t.Fatal("no dialog found")
 			}
-			if d.title != c.title || !reflect.DeepEqual(d.options, c.options) || d.selected != c.selected || !reflect.DeepEqual(d.keys, c.keys) {
-				t.Fatalf("got title %q options %q keys %q selected %d", d.title, d.options, d.keys, d.selected)
+			if d.Title != c.title || !reflect.DeepEqual(d.Options, c.options) || d.Selected != c.selected || !reflect.DeepEqual(d.Keys, c.keys) {
+				t.Fatalf("got title %q options %q keys %q selected %d", d.Title, d.Options, d.Keys, d.Selected)
 			}
 		})
 	}

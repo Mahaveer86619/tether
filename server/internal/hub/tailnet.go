@@ -2,15 +2,12 @@ package hub
 
 import (
 	"context"
-	"encoding/json"
-	"os/exec"
-	"sort"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/tailnet"
 )
 
 // The hub's view of its tailnet, so the app can show every machine and
@@ -20,34 +17,7 @@ const prefsKey = "preferences"
 
 // TailscaleStatus runs `tailscale status --json` on the hub's machine.
 func TailscaleStatus(ctx context.Context) ([]byte, error) {
-	return exec.CommandContext(ctx, "tailscale", "status", "--json").Output()
-}
-
-type tsStatus struct {
-	Self *tsPeer
-	Peer map[string]*tsPeer
-}
-
-type tsPeer struct {
-	UserID       int64
-	HostName     string
-	DNSName      string
-	OS           string
-	Online       bool
-	TailscaleIPs []string
-	LastSeen     time.Time
-}
-
-func (p *tsPeer) device(self bool) *v1.TailnetDevice {
-	name, _, _ := strings.Cut(p.DNSName, ".")
-	if name == "" {
-		name = strings.ToLower(p.HostName)
-	}
-	d := &v1.TailnetDevice{Name: name, Hostname: p.HostName, Os: p.OS, Online: p.Online || self, Ips: p.TailscaleIPs, Self: self}
-	if !p.LastSeen.IsZero() && p.LastSeen.Year() > 2000 {
-		d.LastSeenMs = p.LastSeen.UnixMilli()
-	}
-	return d
+	return tailnet.StatusCLI(ctx)
 }
 
 // tailnet lists the machines on the tailnet and what of Tether each runs.
@@ -62,17 +32,13 @@ func (h *Hub) tailnet(ctx context.Context) *v1.Tailnet {
 	if err != nil {
 		return &v1.Tailnet{Error: "couldn't read tailscale status on the hub: " + err.Error()}
 	}
-	var st tsStatus
-	if err := json.Unmarshal(out, &st); err != nil {
+	st, err := tailnet.ParseStatus(out)
+	if err != nil {
 		return &v1.Tailnet{Error: "couldn't parse tailscale status: " + err.Error()}
 	}
 
-	res := &v1.Tailnet{}
-	if st.Self != nil {
-		res.Devices = append(res.Devices, st.Self.device(true))
-	}
-	for _, p := range st.Peer {
-		res.Devices = append(res.Devices, p.device(false))
+	res := &v1.Tailnet{
+		Devices: st.Devices(),
 	}
 
 	h.mu.Lock()
@@ -94,23 +60,11 @@ func (h *Hub) tailnet(ctx context.Context) *v1.Tailnet {
 	}
 	h.mu.Unlock()
 
-	sort.Slice(res.Devices, func(i, j int) bool {
-		a, b := res.Devices[i], res.Devices[j]
-		if a.Self != b.Self {
-			return a.Self
-		}
-		if a.Online != b.Online {
-			return a.Online
-		}
-		return a.Name < b.Name
-	})
 	return res
 }
 
 // ownDevice reports whether ip belongs to a machine on the tailnet owned by
 // the same Tailscale user as the hub's machine, and that machine's name.
-// Tailscale only delivers 100.x traffic from the tailnet interface, so the
-// address can be trusted. The status is cached briefly; it costs a process.
 func (h *Hub) ownDevice(ip string) (string, bool) {
 	h.tsMu.Lock()
 	defer h.tsMu.Unlock()
@@ -122,29 +76,16 @@ func (h *Hub) ownDevice(ip string) (string, bool) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		out, err := status(ctx)
 		cancel()
-		var st tsStatus
-		if err != nil || json.Unmarshal(out, &st) != nil || st.Self == nil {
+		if err != nil {
 			return "", false
 		}
-		h.tsStatus, h.tsAt = &st, time.Now()
-	}
-	st := h.tsStatus
-	for _, p := range append([]*tsPeer{st.Self}, mapValues(st.Peer)...) {
-		for _, a := range p.TailscaleIPs {
-			if a == ip && p.UserID == st.Self.UserID {
-				return p.device(false).Name, true
-			}
+		st, err := tailnet.ParseStatus(out)
+		if err != nil || st.Self == nil {
+			return "", false
 		}
+		h.tsStatus, h.tsAt = st, time.Now()
 	}
-	return "", false
-}
-
-func mapValues[K comparable, V any](m map[K]V) []V {
-	out := make([]V, 0, len(m))
-	for _, v := range m {
-		out = append(out, v)
-	}
-	return out
+	return h.tsStatus.OwnDevice(ip)
 }
 
 // setPreferences stores the shared app settings and sends them to every
