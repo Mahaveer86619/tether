@@ -44,6 +44,8 @@ message Frame {
     Artifact artifact_added = 40;
     // A chat was created or changed (sent to every client).
     Chat chat = 41;
+    // A newer release is available (sent to every client).
+    UpdateManifest update_available = 42;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -346,6 +348,8 @@ message Welcome {
   string client_ip = 8;
   // Conversations, newest first; empty from a hub before 0.16.
   repeated Chat chats = 9;
+  // The newest release the hub knows of; unset when it knows none.
+  UpdateManifest update = 10;
 }
 
 message Ack {
@@ -415,6 +419,8 @@ message AgentCommand {
     SetMode set_mode = 14;
     // Upload the transcripts that changed since the hub's copy.
     BackupSessions backup = 15;
+    // Replace the agent's own binary with a newer release, then restart.
+    SelfUpdate self_update = 16;
   }
 
   message StartRun {
@@ -455,6 +461,12 @@ message AgentCommand {
     // For a resume: StartRun.system_prompt again, since Claude Code doesn't
     // keep it across --resume.
     string system_prompt = 5;
+  }
+
+  message SelfUpdate {
+    string version = 1;
+    // url is a path on the hub.
+    UpdateAsset asset = 2;
   }
 
   message SetMode {
@@ -1025,4 +1037,32 @@ message TargetSuggestions {
   repeated TargetCandidate candidates = 1;
   // What auto would pick now; unset when it would hand over to Claude.
   TargetCandidate pick = 2;
+}
+
+// ---- Updates ----
+//
+// A release's latest.json, as CI publishes it and the hub serves it at
+// GET /api/v1/updates/latest. See docs/releasing.md.
+
+message UpdateAsset {
+  string name = 1;
+  // From the hub: a path on it (/api/v1/updates/files/...). In latest.json
+  // as published: the GitHub release download URL.
+  string url = 2;
+  string sha256 = 3;
+  int64 size = 4;
+}
+
+message UpdateManifest {
+  string version = 1;
+  // Markdown.
+  string notes = 2;
+  // RFC 3339.
+  string published = 3;
+  // Apps and agents older than this must update before they carry on.
+  string min_supported = 4;
+  // By platform: android, windows (the app as a zip), agent-linux-amd64,
+  // agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
+  // tetherctl-windows-amd64.
+  map<string, UpdateAsset> platforms = 5;
 }

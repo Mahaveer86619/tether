@@ -44,6 +44,7 @@ enum Frame_Body {
   preferences,
   artifactAdded,
   chat,
+  updateAvailable,
   agentHello,
   sessionIndex,
   rawEvents,
@@ -84,6 +85,7 @@ class Frame extends $pb.GeneratedMessage {
     Preferences? preferences,
     Artifact? artifactAdded,
     Chat? chat,
+    UpdateManifest? updateAvailable,
     AgentHello? agentHello,
     SessionIndex? sessionIndex,
     RawEvents? rawEvents,
@@ -120,6 +122,7 @@ class Frame extends $pb.GeneratedMessage {
     if (preferences != null) result.preferences = preferences;
     if (artifactAdded != null) result.artifactAdded = artifactAdded;
     if (chat != null) result.chat = chat;
+    if (updateAvailable != null) result.updateAvailable = updateAvailable;
     if (agentHello != null) result.agentHello = agentHello;
     if (sessionIndex != null) result.sessionIndex = sessionIndex;
     if (rawEvents != null) result.rawEvents = rawEvents;
@@ -163,6 +166,7 @@ class Frame extends $pb.GeneratedMessage {
     39: Frame_Body.preferences,
     40: Frame_Body.artifactAdded,
     41: Frame_Body.chat,
+    42: Frame_Body.updateAvailable,
     50: Frame_Body.agentHello,
     51: Frame_Body.sessionIndex,
     52: Frame_Body.rawEvents,
@@ -200,6 +204,7 @@ class Frame extends $pb.GeneratedMessage {
       39,
       40,
       41,
+      42,
       50,
       51,
       52,
@@ -257,6 +262,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: Artifact.$_createMessage)
     ..aOM<Chat>(41, _omitFieldNames ? '' : 'chat',
         subBuilder: Chat.$_createMessage)
+    ..aOM<UpdateManifest>(42, _omitFieldNames ? '' : 'updateAvailable',
+        subBuilder: UpdateManifest.$_createMessage)
     ..aOM<AgentHello>(50, _omitFieldNames ? '' : 'agentHello',
         subBuilder: AgentHello.$_createMessage)
     ..aOM<SessionIndex>(51, _omitFieldNames ? '' : 'sessionIndex',
@@ -318,6 +325,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(39)
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -349,6 +357,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(39)
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
+  @$pb.TagNumber(42)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -635,112 +644,124 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(41)
   Chat ensureChat() => $_ensure(24);
 
+  /// A newer release is available (sent to every client).
+  @$pb.TagNumber(42)
+  UpdateManifest get updateAvailable => $_getN(25);
+  @$pb.TagNumber(42)
+  set updateAvailable(UpdateManifest value) => $_setField(42, value);
+  @$pb.TagNumber(42)
+  $core.bool hasUpdateAvailable() => $_has(25);
+  @$pb.TagNumber(42)
+  void clearUpdateAvailable() => $_clearField(42);
+  @$pb.TagNumber(42)
+  UpdateManifest ensureUpdateAvailable() => $_ensure(25);
+
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(25);
+  AgentHello get agentHello => $_getN(26);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(25);
+  $core.bool hasAgentHello() => $_has(26);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(25);
+  AgentHello ensureAgentHello() => $_ensure(26);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(26);
+  SessionIndex get sessionIndex => $_getN(27);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(26);
+  $core.bool hasSessionIndex() => $_has(27);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(26);
+  SessionIndex ensureSessionIndex() => $_ensure(27);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(27);
+  RawEvents get rawEvents => $_getN(28);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(27);
+  $core.bool hasRawEvents() => $_has(28);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(27);
+  RawEvents ensureRawEvents() => $_ensure(28);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(28);
+  UsageReport get usageReport => $_getN(29);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(28);
+  $core.bool hasUsageReport() => $_has(29);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(28);
+  UsageReport ensureUsageReport() => $_ensure(29);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(29);
+  PlanUsage get planUsage => $_getN(30);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(29);
+  $core.bool hasPlanUsage() => $_has(30);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(29);
+  PlanUsage ensurePlanUsage() => $_ensure(30);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(30);
+  ScreenSnapshot get screenSnapshot => $_getN(31);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(30);
+  $core.bool hasScreenSnapshot() => $_has(31);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(30);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(31);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(31);
+  ModeResult get modeResult => $_getN(32);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(31);
+  $core.bool hasModeResult() => $_has(32);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(31);
+  ModeResult ensureModeResult() => $_ensure(32);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(32);
+  CommandResult get commandResult => $_getN(33);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(32);
+  $core.bool hasCommandResult() => $_has(33);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(32);
+  CommandResult ensureCommandResult() => $_ensure(33);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(33);
+  AgentCommand get agentCommand => $_getN(34);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(33);
+  $core.bool hasAgentCommand() => $_has(34);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(33);
+  AgentCommand ensureAgentCommand() => $_ensure(34);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -2865,6 +2886,7 @@ class Welcome extends $pb.GeneratedMessage {
     $core.String? deviceId,
     $core.String? clientIp,
     $core.Iterable<Chat>? chats,
+    UpdateManifest? update,
   }) {
     final result = Welcome._();
     if (hubVersion != null) result.hubVersion = hubVersion;
@@ -2877,6 +2899,7 @@ class Welcome extends $pb.GeneratedMessage {
     if (deviceId != null) result.deviceId = deviceId;
     if (clientIp != null) result.clientIp = clientIp;
     if (chats != null) result.chats.addAll(chats);
+    if (update != null) result.update = update;
     return result;
   }
 
@@ -2907,6 +2930,8 @@ class Welcome extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'clientIp')
     ..pPM<Chat>(9, _omitFieldNames ? '' : 'chats',
         subBuilder: Chat.$_createMessage)
+    ..aOM<UpdateManifest>(10, _omitFieldNames ? '' : 'update',
+        subBuilder: UpdateManifest.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2993,6 +3018,18 @@ class Welcome extends $pb.GeneratedMessage {
   /// Conversations, newest first; empty from a hub before 0.16.
   @$pb.TagNumber(9)
   $pb.PbList<Chat> get chats => $_getList(8);
+
+  /// The newest release the hub knows of; unset when it knows none.
+  @$pb.TagNumber(10)
+  UpdateManifest get update => $_getN(9);
+  @$pb.TagNumber(10)
+  set update(UpdateManifest value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasUpdate() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearUpdate() => $_clearField(10);
+  @$pb.TagNumber(10)
+  UpdateManifest ensureUpdate() => $_ensure(9);
 }
 
 class Ack extends $pb.GeneratedMessage {
@@ -3683,6 +3720,81 @@ class AgentCommand_SendInput extends $pb.GeneratedMessage {
   $core.bool hasSystemPrompt() => $_has(4);
   @$pb.TagNumber(5)
   void clearSystemPrompt() => $_clearField(5);
+}
+
+class AgentCommand_SelfUpdate extends $pb.GeneratedMessage {
+  factory AgentCommand_SelfUpdate({
+    $core.String? version,
+    UpdateAsset? asset,
+  }) {
+    final result = AgentCommand_SelfUpdate._();
+    if (version != null) result.version = version;
+    if (asset != null) result.asset = asset;
+    return result;
+  }
+
+  AgentCommand_SelfUpdate._();
+
+  factory AgentCommand_SelfUpdate.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SelfUpdate()..mergeFromBuffer(data, registry);
+  factory AgentCommand_SelfUpdate.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SelfUpdate()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.SelfUpdate',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_SelfUpdate.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'version')
+    ..aOM<UpdateAsset>(2, _omitFieldNames ? '' : 'asset',
+        subBuilder: UpdateAsset.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SelfUpdate clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SelfUpdate copyWith(
+          void Function(AgentCommand_SelfUpdate) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_SelfUpdate))
+          as AgentCommand_SelfUpdate;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_SelfUpdate() / AgentCommand_SelfUpdate.new instead')
+  static AgentCommand_SelfUpdate create() => AgentCommand_SelfUpdate._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_SelfUpdate._();
+  @$core.override
+  AgentCommand_SelfUpdate createEmptyInstance() => AgentCommand_SelfUpdate._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_SelfUpdate getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_SelfUpdate>(
+          AgentCommand_SelfUpdate.$_createMessage);
+  static AgentCommand_SelfUpdate? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get version => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set version($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersion() => $_clearField(1);
+
+  /// url is a path on the hub.
+  @$pb.TagNumber(2)
+  UpdateAsset get asset => $_getN(1);
+  @$pb.TagNumber(2)
+  set asset(UpdateAsset value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAsset() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAsset() => $_clearField(2);
+  @$pb.TagNumber(2)
+  UpdateAsset ensureAsset() => $_ensure(1);
 }
 
 class AgentCommand_SetMode extends $pb.GeneratedMessage {
@@ -4487,6 +4599,7 @@ enum AgentCommand_Op {
   capture,
   setMode,
   backup,
+  selfUpdate,
   notSet
 }
 
@@ -4507,6 +4620,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_CaptureScreen? capture,
     AgentCommand_SetMode? setMode,
     AgentCommand_BackupSessions? backup,
+    AgentCommand_SelfUpdate? selfUpdate,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -4524,6 +4638,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (capture != null) result.capture = capture;
     if (setMode != null) result.setMode = setMode;
     if (backup != null) result.backup = backup;
+    if (selfUpdate != null) result.selfUpdate = selfUpdate;
     return result;
   }
 
@@ -4552,13 +4667,14 @@ class AgentCommand extends $pb.GeneratedMessage {
     13: AgentCommand_Op.capture,
     14: AgentCommand_Op.setMode,
     15: AgentCommand_Op.backup,
+    16: AgentCommand_Op.selfUpdate,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -4590,6 +4706,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_SetMode.$_createMessage)
     ..aOM<AgentCommand_BackupSessions>(15, _omitFieldNames ? '' : 'backup',
         subBuilder: AgentCommand_BackupSessions.$_createMessage)
+    ..aOM<AgentCommand_SelfUpdate>(16, _omitFieldNames ? '' : 'selfUpdate',
+        subBuilder: AgentCommand_SelfUpdate.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -4629,6 +4747,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -4645,6 +4764,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -4822,6 +4942,18 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearBackup() => $_clearField(15);
   @$pb.TagNumber(15)
   AgentCommand_BackupSessions ensureBackup() => $_ensure(14);
+
+  /// Replace the agent's own binary with a newer release, then restart.
+  @$pb.TagNumber(16)
+  AgentCommand_SelfUpdate get selfUpdate => $_getN(15);
+  @$pb.TagNumber(16)
+  set selfUpdate(AgentCommand_SelfUpdate value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasSelfUpdate() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearSelfUpdate() => $_clearField(16);
+  @$pb.TagNumber(16)
+  AgentCommand_SelfUpdate ensureSelfUpdate() => $_ensure(15);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -9859,6 +9991,212 @@ class TargetSuggestions extends $pb.GeneratedMessage {
   void clearPick() => $_clearField(2);
   @$pb.TagNumber(2)
   TargetCandidate ensurePick() => $_ensure(1);
+}
+
+class UpdateAsset extends $pb.GeneratedMessage {
+  factory UpdateAsset({
+    $core.String? name,
+    $core.String? url,
+    $core.String? sha256,
+    $fixnum.Int64? size,
+  }) {
+    final result = UpdateAsset._();
+    if (name != null) result.name = name;
+    if (url != null) result.url = url;
+    if (sha256 != null) result.sha256 = sha256;
+    if (size != null) result.size = size;
+    return result;
+  }
+
+  UpdateAsset._();
+
+  factory UpdateAsset.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateAsset()..mergeFromBuffer(data, registry);
+  factory UpdateAsset.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateAsset()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateAsset',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UpdateAsset.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'url')
+    ..aOS(3, _omitFieldNames ? '' : 'sha256')
+    ..aInt64(4, _omitFieldNames ? '' : 'size')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateAsset clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateAsset copyWith(void Function(UpdateAsset) updates) =>
+      super.copyWith((message) => updates(message as UpdateAsset))
+          as UpdateAsset;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UpdateAsset() / UpdateAsset.new instead')
+  static UpdateAsset create() => UpdateAsset._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateAsset._();
+  @$core.override
+  UpdateAsset createEmptyInstance() => UpdateAsset._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateAsset getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UpdateAsset>(
+          UpdateAsset.$_createMessage);
+  static UpdateAsset? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  /// From the hub: a path on it (/api/v1/updates/files/...). In latest.json
+  /// as published: the GitHub release download URL.
+  @$pb.TagNumber(2)
+  $core.String get url => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set url($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUrl() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUrl() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get sha256 => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sha256($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSha256() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSha256() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get size => $_getI64(3);
+  @$pb.TagNumber(4)
+  set size($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSize() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSize() => $_clearField(4);
+}
+
+class UpdateManifest extends $pb.GeneratedMessage {
+  factory UpdateManifest({
+    $core.String? version,
+    $core.String? notes,
+    $core.String? published,
+    $core.String? minSupported,
+    $core.Iterable<$core.MapEntry<$core.String, UpdateAsset>>? platforms,
+  }) {
+    final result = UpdateManifest._();
+    if (version != null) result.version = version;
+    if (notes != null) result.notes = notes;
+    if (published != null) result.published = published;
+    if (minSupported != null) result.minSupported = minSupported;
+    if (platforms != null) result.platforms.addEntries(platforms);
+    return result;
+  }
+
+  UpdateManifest._();
+
+  factory UpdateManifest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateManifest()..mergeFromBuffer(data, registry);
+  factory UpdateManifest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UpdateManifest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateManifest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UpdateManifest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'version')
+    ..aOS(2, _omitFieldNames ? '' : 'notes')
+    ..aOS(3, _omitFieldNames ? '' : 'published')
+    ..aOS(4, _omitFieldNames ? '' : 'minSupported')
+    ..m<$core.String, UpdateAsset>(5, _omitFieldNames ? '' : 'platforms',
+        entryClassName: 'UpdateManifest.PlatformsEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OM,
+        valueCreator: UpdateAsset.$_createMessage,
+        valueDefaultOrMaker: UpdateAsset.getDefault,
+        packageName: const $pb.PackageName('tether.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateManifest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateManifest copyWith(void Function(UpdateManifest) updates) =>
+      super.copyWith((message) => updates(message as UpdateManifest))
+          as UpdateManifest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UpdateManifest() / UpdateManifest.new instead')
+  static UpdateManifest create() => UpdateManifest._();
+  static $pb.GeneratedMessage $_createMessage() => UpdateManifest._();
+  @$core.override
+  UpdateManifest createEmptyInstance() => UpdateManifest._();
+  @$core.pragma('dart2js:noInline')
+  static UpdateManifest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UpdateManifest>(
+          UpdateManifest.$_createMessage);
+  static UpdateManifest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get version => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set version($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasVersion() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearVersion() => $_clearField(1);
+
+  /// Markdown.
+  @$pb.TagNumber(2)
+  $core.String get notes => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set notes($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNotes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNotes() => $_clearField(2);
+
+  /// RFC 3339.
+  @$pb.TagNumber(3)
+  $core.String get published => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set published($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPublished() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPublished() => $_clearField(3);
+
+  /// Apps and agents older than this must update before they carry on.
+  @$pb.TagNumber(4)
+  $core.String get minSupported => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set minSupported($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMinSupported() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMinSupported() => $_clearField(4);
+
+  /// By platform: android, windows (the app as a zip), agent-linux-amd64,
+  /// agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
+  /// tetherctl-windows-amd64.
+  @$pb.TagNumber(5)
+  $pb.PbMap<$core.String, UpdateAsset> get platforms => $_getMap(4);
 }
 
 const $core.bool _omitFieldNames =

@@ -108,6 +108,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		return ackOf(h.rebuild(r.PathValue("id")))
 	}))
 	h.chatRoutes(mux)
+	h.updateRoutes(mux)
 	mux.HandleFunc("POST /api/v1/pairing-codes", h.api(func(r *http.Request) (proto.Message, *opError) {
 		code, err := h.newPairingCode()
 		if err != nil {

@@ -57,6 +57,11 @@ type Config struct {
 	// MCP registers the hub's MCP server with Claude Code.
 	MCP     bool
 	Version string
+	// Replace this binary (Exe) with a newer release when the hub asks,
+	// then call Restart.
+	SelfUpdate bool
+	Exe        string
+	Restart    func()
 	Log     *slog.Logger
 }
 
@@ -183,6 +188,7 @@ func (a *Agent) session(ctx context.Context) error {
 	a.reported = map[string]*v1.SessionInfo{}
 	a.mu.Unlock()
 	a.log.Info("connected to hub", "url", a.cfg.HubURL)
+	a.commitUpdate()
 	a.publish(true)
 	go a.checkPlan(ctx)
 
@@ -249,6 +255,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.setMode(op.SetMode)
 		case *v1.AgentCommand_Backup:
 			go a.backup(op.Backup.Stored)
+		case *v1.AgentCommand_SelfUpdate_:
+			go a.selfUpdate(op.SelfUpdate)
 		case *v1.AgentCommand_Send:
 			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode, op.Send.SystemPrompt)
 		case *v1.AgentCommand_Interrupt_:

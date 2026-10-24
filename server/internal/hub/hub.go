@@ -43,6 +43,12 @@ type Config struct {
 	TrustTailnet bool
 	// Where the hub keeps files: the artifact store lives under it.
 	DataDir string
+	// Releases to serve; defaults to <DataDir>/updates.
+	UpdatesDir string
+	// A published latest.json to poll for new releases; empty turns it off.
+	UpdateFeed string
+	// Tell idle agents older than the newest release to update themselves.
+	AutoUpdateAgents bool
 }
 
 type client struct {
@@ -108,6 +114,9 @@ type Hub struct {
 
 	chats  map[string]*v1.Chat
 	chatOf map[string]string // session -> the chat it's in
+
+	update       *v1.UpdateManifest     // the newest release known
+	agentUpdates map[string]agentUpdate // node -> the update last asked of it
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -138,6 +147,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		fails:        map[string][]time.Time{},
 		chats:        map[string]*v1.Chat{},
 		chatOf:       map[string]string{},
+		agentUpdates: map[string]agentUpdate{},
 	}
 	devices, err := st.Devices()
 	if err != nil {
@@ -174,6 +184,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 	if err := h.loadChats(); err != nil {
 		return nil, err
 	}
+	h.loadLocalUpdate()
 	return h, nil
 }
 
@@ -202,6 +213,7 @@ func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
 	go h.modeLoop(ctx)
 	go h.backupLoop(ctx)
+	go h.updateLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -310,6 +322,7 @@ func (h *Hub) welcome(device, ip string) *v1.Welcome {
 	}
 	w.HubNode = h.hubNode()
 	w.Chats = h.chatList()
+	w.Update = h.servedManifest()
 	return w
 }
 
@@ -982,6 +995,9 @@ func (h *Hub) putNode(st *v1.NodeStatus) {
 		h.log.Error("store node", "node", st.Node, "err", err)
 	}
 	h.broadcast(&v1.Frame{Body: &v1.Frame_NodeStatus{NodeStatus: proto.Clone(st).(*v1.NodeStatus)}})
+	if st.Online {
+		h.maybeUpdateAgent(st.Node)
+	}
 }
 
 func (h *Hub) broadcast(f *v1.Frame) {

@@ -22,6 +22,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Println(version.Version)
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "pair" {
 		if err := pair(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "tether-agent pair:", err)
@@ -51,6 +55,7 @@ func main() {
 	logFile := flag.String("log", "", "append logs to this file instead of stderr")
 	mcp := flag.Bool("mcp", true, "register the hub's MCP server with Claude Code (undo with 'claude mcp remove tether -s user')")
 	scratch := flag.String("scratch-dir", filepath.Join(home(), ".tether", "scratch"), "folder for hub sessions, one subfolder each")
+	selfUpdate := flag.Bool("self-update", true, "replace this binary with a newer release when the hub asks, keeping the old one as .prev")
 	flag.Parse()
 
 	out := os.Stderr
@@ -85,11 +90,23 @@ func main() {
 		settings = settingsPath()
 	}
 
+	exe, _ := os.Executable()
+	if exe != "" && agent.CheckUpdate(exe, version.Version, log) {
+		agent.Relaunch(log)
+		os.Exit(agent.ExitRestart)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	a, err := agent.New(agent.Config{
 		HubURL: *hubURL, HubFingerprint: *fingerprint, Token: token, Node: *node, Claude: *claude, ProjectsDir: *projects,
 		Host: *hostMode, HookAddr: *hookAddr, SettingsPath: settings, ScratchDir: *scratch, MCP: *mcp, Version: version.Version, Log: log,
+		SelfUpdate: *selfUpdate, Exe: exe,
+		Restart: func() {
+			agent.Relaunch(log)
+			stop()
+			os.Exit(agent.ExitRestart)
+		},
 	})
 	if err != nil {
 		log.Error("start agent", "err", err)
