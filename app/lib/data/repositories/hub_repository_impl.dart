@@ -25,9 +25,13 @@ class HubRepositoryImpl implements HubRepository {
     required this._cache,
     this.keepTimeline = const Duration(seconds: 30),
     this.keepBackground = const Duration(minutes: 2),
+    Stream<void>? networkChanges,
   }) {
     _socketSub = _socket.events.listen(_onSocket);
+    _networkSub = networkChanges?.listen((_) => _socket.networkChanged());
   }
+
+  StreamSubscription<void>? _networkSub;
 
   final HubRestApi _api;
   final HubSocket _socket;
@@ -136,13 +140,15 @@ class HubRepositoryImpl implements HubRepository {
 
   void _onSocket(SocketEvent ev) {
     switch (ev) {
-      case SocketConnecting():
-        if (_snap.status != ConnectionStatus.connected) _emit(_snap.copyWith(status: ConnectionStatus.connecting));
-      case SocketClosed(:final error, :final unauthorized):
+      case SocketConnecting(:final attempt):
+        _emit(_snap.copyWith(status: ConnectionStatus.connecting, retryAt: () => null, attempts: attempt - 1));
+      case SocketClosed(:final error, :final unauthorized, :final retryAt, :final attempts):
         _emit(_snap.copyWith(
           status: unauthorized ? ConnectionStatus.unauthorized : ConnectionStatus.offline,
           nodes: {for (final n in _snap.nodes.values) n.name: _offline(n)},
           lastError: () => unauthorized ? const UnauthorizedFailure().userMessage : error,
+          retryAt: () => retryAt,
+          attempts: attempts,
         ));
         for (final t in _timelines.values) {
           t.subscribed = false;
@@ -167,6 +173,8 @@ class HubRepositoryImpl implements HubRepository {
           ..addEntries(w.chats.map((c) => MapEntry(c.id, c)));
         _emit(_snap.copyWith(
           status: ConnectionStatus.connected,
+          retryAt: () => null,
+          attempts: 0,
           hubVersion: w.hubVersion,
           hubNode: w.hubNode,
           deviceId: w.deviceId,
@@ -525,6 +533,7 @@ class HubRepositoryImpl implements HubRepository {
       await s.cancel();
     }
     await _socketSub.cancel();
+    await _networkSub?.cancel();
     await _socket.close();
     for (final t in _timelines.values) {
       t.close();

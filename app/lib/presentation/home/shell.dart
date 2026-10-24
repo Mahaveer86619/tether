@@ -282,7 +282,7 @@ class _SidebarState extends State<_Sidebar> {
               padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
               child: Row(
                 children: [
-                  Expanded(child: ConnectionLine(status: status)),
+                  const Expanded(child: HubConnectionLine()),
                   IconButton(
                     tooltip: 'Settings',
                     icon: Icon(s.destination == Destination.settings && s.top == null ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
@@ -563,7 +563,7 @@ class _PhoneRoot extends StatelessWidget {
                   const SizedBox(width: 8),
                   const Text('Tether'),
                   const SizedBox(width: 12),
-                  Flexible(child: ConnectionLine(status: status)),
+                  const Flexible(child: HubConnectionLine()),
                 ],
               )
             : Text(_title(d)),

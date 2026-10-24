@@ -980,6 +980,22 @@ void main() {
       expect(updates.installed, isNotEmpty);
     });
 
+    testWidgets('offline: the countdown to the next try, the last error, and Retry', (tester) async {
+      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      repo.emitHub(repo.current.copyWith(
+        status: ConnectionStatus.offline,
+        retryAt: () => DateTime.now().add(const Duration(seconds: 8)),
+        attempts: 3,
+        lastError: () => 'no answer from the hub for 10s',
+      ));
+      await tester.pump();
+      expect(find.textContaining('retrying in'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('connection-retry')));
+      await tester.pump();
+      expect(repo.retries, 1);
+      expect(find.byTooltip('no answer from the hub for 10s\n3 failed tries'), findsOneWidget);
+    });
+
     testWidgets('tablet widths get the icon rail', (tester) async {
       await pumpApp(tester, const Size(800, 900));
       expect(find.text('RUNNING NOW'), findsOneWidget);

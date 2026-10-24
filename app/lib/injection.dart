@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
@@ -56,7 +57,7 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton(SettingsLocalDataSource.new)
       ..registerLazySingleton<HubCache>(FileHubCache.new)
       ..registerLazySingleton<HubRepository>(
-        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl()),
+        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl(), networkChanges: _networkChanges()),
         dispose: (r) => r.dispose(),
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
@@ -147,3 +148,7 @@ void configureDependencies({bool withData = true}) {
 }
 
 String _title(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+/// The device's network changing (Wi-Fi, mobile data, a VPN coming up),
+/// without the state it starts in.
+Stream<void> _networkChanges() => Connectivity().onConnectivityChanged.map((r) => (r.map((e) => e.name).toList()..sort()).join(',')).distinct().skip(1);

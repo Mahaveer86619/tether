@@ -346,6 +346,9 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 	case *v1.Frame_ClientPresence:
 		h.notePresence(c, b.ClientPresence.Active)
 		return
+	case *v1.Frame_Heartbeat:
+		ack(c, f.Id, "")
+		return
 	case *v1.Frame_Unsubscribe:
 		if set := h.subs[b.Unsubscribe.Session]; set != nil {
 			delete(set, c)

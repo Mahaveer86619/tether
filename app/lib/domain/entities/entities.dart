@@ -277,7 +277,15 @@ class HubSnapshot extends Equatable {
     this.artifacts = const {},
     this.chats = const {},
     this.update,
+    this.retryAt,
+    this.attempts = 0,
   });
+
+  /// While offline: when the next connection attempt is due.
+  final DateTime? retryAt;
+
+  /// Attempts since the connection was last up.
+  final int attempts;
 
   final ConnectionStatus status;
   final Map<String, Node> nodes;
@@ -405,6 +413,8 @@ class HubSnapshot extends Equatable {
     Map<String, Artifact>? artifacts,
     Map<String, Chat>? chats,
     Release? Function()? update,
+    DateTime? Function()? retryAt,
+    int? attempts,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -421,10 +431,12 @@ class HubSnapshot extends Equatable {
         artifacts: artifacts ?? this.artifacts,
         chats: chats ?? this.chats,
         update: update != null ? update() : this.update,
+        retryAt: retryAt != null ? retryAt() : this.retryAt,
+        attempts: attempts ?? this.attempts,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }

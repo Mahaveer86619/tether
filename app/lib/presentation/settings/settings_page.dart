@@ -142,7 +142,7 @@ class _SettingsPageState extends State<SettingsPage> {
             Expanded(
               child: Row(
                 children: [
-                  Flexible(child: ConnectionLine(status: hub.status)),
+                  const Flexible(child: HubConnectionLine()),
                   if (hub.version.isNotEmpty)
                     Flexible(
                       child: Text('  · hub ${hub.version}', maxLines: 1, overflow: TextOverflow.ellipsis,

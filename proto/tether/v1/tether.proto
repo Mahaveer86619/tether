@@ -27,6 +27,9 @@ message Frame {
     StopSession stop_session = 17;
     // The app is in the foreground (or not); backups run while one is.
     ClientPresence client_presence = 18;
+    // Is the connection alive? The hub answers with an Ack (hubs before 0.17
+    // answer with an unsupported Error, which says the same).
+    Heartbeat heartbeat = 19;
 
     // Hub -> client
     Welcome welcome = 30;
@@ -1189,3 +1192,5 @@ message HistoryStatus {
   int64 events = 2;
   int64 bytes = 3;
 }
+
+message Heartbeat {}

@@ -66,8 +66,10 @@ class FakeHubRepository implements HubRepository {
     emitHub(const HubSnapshot());
   }
 
+  var retries = 0;
+
   @override
-  void retryNow() {}
+  void retryNow() => retries++;
 
   @override
   Stream<HubSnapshot> watchHub() async* {
@@ -428,6 +430,11 @@ class FakeHubSocket implements HubSocket {
 
   @override
   void unsubscribe(String session) => unsubscribed.add(session);
+
+  var networkChanges = 0;
+
+  @override
+  void networkChanged() => networkChanges++;
 
   @override
   Future<void> close() => _events.close();

@@ -32,6 +32,7 @@ enum Frame_Body {
   approvalDecision,
   stopSession,
   clientPresence,
+  heartbeat,
   welcome,
   ack,
   error,
@@ -75,6 +76,7 @@ class Frame extends $pb.GeneratedMessage {
     ApprovalDecision? approvalDecision,
     StopSession? stopSession,
     ClientPresence? clientPresence,
+    Heartbeat? heartbeat,
     Welcome? welcome,
     Ack? ack,
     Error? error,
@@ -114,6 +116,7 @@ class Frame extends $pb.GeneratedMessage {
     if (approvalDecision != null) result.approvalDecision = approvalDecision;
     if (stopSession != null) result.stopSession = stopSession;
     if (clientPresence != null) result.clientPresence = clientPresence;
+    if (heartbeat != null) result.heartbeat = heartbeat;
     if (welcome != null) result.welcome = welcome;
     if (ack != null) result.ack = ack;
     if (error != null) result.error = error;
@@ -160,6 +163,7 @@ class Frame extends $pb.GeneratedMessage {
     16: Frame_Body.approvalDecision,
     17: Frame_Body.stopSession,
     18: Frame_Body.clientPresence,
+    19: Frame_Body.heartbeat,
     30: Frame_Body.welcome,
     31: Frame_Body.ack,
     32: Frame_Body.error,
@@ -200,6 +204,7 @@ class Frame extends $pb.GeneratedMessage {
       16,
       17,
       18,
+      19,
       30,
       31,
       32,
@@ -248,6 +253,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: StopSession.$_createMessage)
     ..aOM<ClientPresence>(18, _omitFieldNames ? '' : 'clientPresence',
         subBuilder: ClientPresence.$_createMessage)
+    ..aOM<Heartbeat>(19, _omitFieldNames ? '' : 'heartbeat',
+        subBuilder: Heartbeat.$_createMessage)
     ..aOM<Welcome>(30, _omitFieldNames ? '' : 'welcome',
         subBuilder: Welcome.$_createMessage)
     ..aOM<Ack>(31, _omitFieldNames ? '' : 'ack',
@@ -327,6 +334,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -361,6 +369,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   @$pb.TagNumber(30)
   @$pb.TagNumber(31)
   @$pb.TagNumber(32)
@@ -526,284 +535,297 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(18)
   ClientPresence ensureClientPresence() => $_ensure(12);
 
+  /// Is the connection alive? The hub answers with an Ack (hubs before 0.17
+  /// answer with an unsupported Error, which says the same).
+  @$pb.TagNumber(19)
+  Heartbeat get heartbeat => $_getN(13);
+  @$pb.TagNumber(19)
+  set heartbeat(Heartbeat value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasHeartbeat() => $_has(13);
+  @$pb.TagNumber(19)
+  void clearHeartbeat() => $_clearField(19);
+  @$pb.TagNumber(19)
+  Heartbeat ensureHeartbeat() => $_ensure(13);
+
   /// Hub -> client
   @$pb.TagNumber(30)
-  Welcome get welcome => $_getN(13);
+  Welcome get welcome => $_getN(14);
   @$pb.TagNumber(30)
   set welcome(Welcome value) => $_setField(30, value);
   @$pb.TagNumber(30)
-  $core.bool hasWelcome() => $_has(13);
+  $core.bool hasWelcome() => $_has(14);
   @$pb.TagNumber(30)
   void clearWelcome() => $_clearField(30);
   @$pb.TagNumber(30)
-  Welcome ensureWelcome() => $_ensure(13);
+  Welcome ensureWelcome() => $_ensure(14);
 
   @$pb.TagNumber(31)
-  Ack get ack => $_getN(14);
+  Ack get ack => $_getN(15);
   @$pb.TagNumber(31)
   set ack(Ack value) => $_setField(31, value);
   @$pb.TagNumber(31)
-  $core.bool hasAck() => $_has(14);
+  $core.bool hasAck() => $_has(15);
   @$pb.TagNumber(31)
   void clearAck() => $_clearField(31);
   @$pb.TagNumber(31)
-  Ack ensureAck() => $_ensure(14);
+  Ack ensureAck() => $_ensure(15);
 
   @$pb.TagNumber(32)
-  Error get error => $_getN(15);
+  Error get error => $_getN(16);
   @$pb.TagNumber(32)
   set error(Error value) => $_setField(32, value);
   @$pb.TagNumber(32)
-  $core.bool hasError() => $_has(15);
+  $core.bool hasError() => $_has(16);
   @$pb.TagNumber(32)
   void clearError() => $_clearField(32);
   @$pb.TagNumber(32)
-  Error ensureError() => $_ensure(15);
+  Error ensureError() => $_ensure(16);
 
   @$pb.TagNumber(33)
-  NodeStatus get nodeStatus => $_getN(16);
+  NodeStatus get nodeStatus => $_getN(17);
   @$pb.TagNumber(33)
   set nodeStatus(NodeStatus value) => $_setField(33, value);
   @$pb.TagNumber(33)
-  $core.bool hasNodeStatus() => $_has(16);
+  $core.bool hasNodeStatus() => $_has(17);
   @$pb.TagNumber(33)
   void clearNodeStatus() => $_clearField(33);
   @$pb.TagNumber(33)
-  NodeStatus ensureNodeStatus() => $_ensure(16);
+  NodeStatus ensureNodeStatus() => $_ensure(17);
 
   @$pb.TagNumber(34)
-  SessionInfo get sessionInfo => $_getN(17);
+  SessionInfo get sessionInfo => $_getN(18);
   @$pb.TagNumber(34)
   set sessionInfo(SessionInfo value) => $_setField(34, value);
   @$pb.TagNumber(34)
-  $core.bool hasSessionInfo() => $_has(17);
+  $core.bool hasSessionInfo() => $_has(18);
   @$pb.TagNumber(34)
   void clearSessionInfo() => $_clearField(34);
   @$pb.TagNumber(34)
-  SessionInfo ensureSessionInfo() => $_ensure(17);
+  SessionInfo ensureSessionInfo() => $_ensure(18);
 
   @$pb.TagNumber(35)
-  TimelineUpdate get timeline => $_getN(18);
+  TimelineUpdate get timeline => $_getN(19);
   @$pb.TagNumber(35)
   set timeline(TimelineUpdate value) => $_setField(35, value);
   @$pb.TagNumber(35)
-  $core.bool hasTimeline() => $_has(18);
+  $core.bool hasTimeline() => $_has(19);
   @$pb.TagNumber(35)
   void clearTimeline() => $_clearField(35);
   @$pb.TagNumber(35)
-  TimelineUpdate ensureTimeline() => $_ensure(18);
+  TimelineUpdate ensureTimeline() => $_ensure(19);
 
   @$pb.TagNumber(36)
-  ApprovalRequest get approvalRequested => $_getN(19);
+  ApprovalRequest get approvalRequested => $_getN(20);
   @$pb.TagNumber(36)
   set approvalRequested(ApprovalRequest value) => $_setField(36, value);
   @$pb.TagNumber(36)
-  $core.bool hasApprovalRequested() => $_has(19);
+  $core.bool hasApprovalRequested() => $_has(20);
   @$pb.TagNumber(36)
   void clearApprovalRequested() => $_clearField(36);
   @$pb.TagNumber(36)
-  ApprovalRequest ensureApprovalRequested() => $_ensure(19);
+  ApprovalRequest ensureApprovalRequested() => $_ensure(20);
 
   @$pb.TagNumber(37)
-  ApprovalResolved get approvalResolved => $_getN(20);
+  ApprovalResolved get approvalResolved => $_getN(21);
   @$pb.TagNumber(37)
   set approvalResolved(ApprovalResolved value) => $_setField(37, value);
   @$pb.TagNumber(37)
-  $core.bool hasApprovalResolved() => $_has(20);
+  $core.bool hasApprovalResolved() => $_has(21);
   @$pb.TagNumber(37)
   void clearApprovalResolved() => $_clearField(37);
   @$pb.TagNumber(37)
-  ApprovalResolved ensureApprovalResolved() => $_ensure(20);
+  ApprovalResolved ensureApprovalResolved() => $_ensure(21);
 
   @$pb.TagNumber(38)
-  SessionRemoved get sessionRemoved => $_getN(21);
+  SessionRemoved get sessionRemoved => $_getN(22);
   @$pb.TagNumber(38)
   set sessionRemoved(SessionRemoved value) => $_setField(38, value);
   @$pb.TagNumber(38)
-  $core.bool hasSessionRemoved() => $_has(21);
+  $core.bool hasSessionRemoved() => $_has(22);
   @$pb.TagNumber(38)
   void clearSessionRemoved() => $_clearField(38);
   @$pb.TagNumber(38)
-  SessionRemoved ensureSessionRemoved() => $_ensure(21);
+  SessionRemoved ensureSessionRemoved() => $_ensure(22);
 
   /// The shared app settings changed (sent to every client).
   @$pb.TagNumber(39)
-  Preferences get preferences => $_getN(22);
+  Preferences get preferences => $_getN(23);
   @$pb.TagNumber(39)
   set preferences(Preferences value) => $_setField(39, value);
   @$pb.TagNumber(39)
-  $core.bool hasPreferences() => $_has(22);
+  $core.bool hasPreferences() => $_has(23);
   @$pb.TagNumber(39)
   void clearPreferences() => $_clearField(39);
   @$pb.TagNumber(39)
-  Preferences ensurePreferences() => $_ensure(22);
+  Preferences ensurePreferences() => $_ensure(23);
 
   /// A file was added to the artifact store (sent to every client).
   @$pb.TagNumber(40)
-  Artifact get artifactAdded => $_getN(23);
+  Artifact get artifactAdded => $_getN(24);
   @$pb.TagNumber(40)
   set artifactAdded(Artifact value) => $_setField(40, value);
   @$pb.TagNumber(40)
-  $core.bool hasArtifactAdded() => $_has(23);
+  $core.bool hasArtifactAdded() => $_has(24);
   @$pb.TagNumber(40)
   void clearArtifactAdded() => $_clearField(40);
   @$pb.TagNumber(40)
-  Artifact ensureArtifactAdded() => $_ensure(23);
+  Artifact ensureArtifactAdded() => $_ensure(24);
 
   /// A chat was created or changed (sent to every client).
   @$pb.TagNumber(41)
-  Chat get chat => $_getN(24);
+  Chat get chat => $_getN(25);
   @$pb.TagNumber(41)
   set chat(Chat value) => $_setField(41, value);
   @$pb.TagNumber(41)
-  $core.bool hasChat() => $_has(24);
+  $core.bool hasChat() => $_has(25);
   @$pb.TagNumber(41)
   void clearChat() => $_clearField(41);
   @$pb.TagNumber(41)
-  Chat ensureChat() => $_ensure(24);
+  Chat ensureChat() => $_ensure(25);
 
   /// A newer release is available (sent to every client).
   @$pb.TagNumber(42)
-  UpdateManifest get updateAvailable => $_getN(25);
+  UpdateManifest get updateAvailable => $_getN(26);
   @$pb.TagNumber(42)
   set updateAvailable(UpdateManifest value) => $_setField(42, value);
   @$pb.TagNumber(42)
-  $core.bool hasUpdateAvailable() => $_has(25);
+  $core.bool hasUpdateAvailable() => $_has(26);
   @$pb.TagNumber(42)
   void clearUpdateAvailable() => $_clearField(42);
   @$pb.TagNumber(42)
-  UpdateManifest ensureUpdateAvailable() => $_ensure(25);
+  UpdateManifest ensureUpdateAvailable() => $_ensure(26);
 
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(26);
+  AgentHello get agentHello => $_getN(27);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(26);
+  $core.bool hasAgentHello() => $_has(27);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(26);
+  AgentHello ensureAgentHello() => $_ensure(27);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(27);
+  SessionIndex get sessionIndex => $_getN(28);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(27);
+  $core.bool hasSessionIndex() => $_has(28);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(27);
+  SessionIndex ensureSessionIndex() => $_ensure(28);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(28);
+  RawEvents get rawEvents => $_getN(29);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(28);
+  $core.bool hasRawEvents() => $_has(29);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(28);
+  RawEvents ensureRawEvents() => $_ensure(29);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(29);
+  UsageReport get usageReport => $_getN(30);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(29);
+  $core.bool hasUsageReport() => $_has(30);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(29);
+  UsageReport ensureUsageReport() => $_ensure(30);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(30);
+  PlanUsage get planUsage => $_getN(31);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(30);
+  $core.bool hasPlanUsage() => $_has(31);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(30);
+  PlanUsage ensurePlanUsage() => $_ensure(31);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(31);
+  ScreenSnapshot get screenSnapshot => $_getN(32);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(31);
+  $core.bool hasScreenSnapshot() => $_has(32);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(31);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(32);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(32);
+  ModeResult get modeResult => $_getN(33);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(32);
+  $core.bool hasModeResult() => $_has(33);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(32);
+  ModeResult ensureModeResult() => $_ensure(33);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(33);
+  CommandResult get commandResult => $_getN(34);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(33);
+  $core.bool hasCommandResult() => $_has(34);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(33);
+  CommandResult ensureCommandResult() => $_ensure(34);
 
   /// Transcript bytes for the hub's history (agent -> hub), and the end of
   /// a sync run.
   @$pb.TagNumber(58)
-  HistoryChunk get historyChunk => $_getN(34);
+  HistoryChunk get historyChunk => $_getN(35);
   @$pb.TagNumber(58)
   set historyChunk(HistoryChunk value) => $_setField(58, value);
   @$pb.TagNumber(58)
-  $core.bool hasHistoryChunk() => $_has(34);
+  $core.bool hasHistoryChunk() => $_has(35);
   @$pb.TagNumber(58)
   void clearHistoryChunk() => $_clearField(58);
   @$pb.TagNumber(58)
-  HistoryChunk ensureHistoryChunk() => $_ensure(34);
+  HistoryChunk ensureHistoryChunk() => $_ensure(35);
 
   @$pb.TagNumber(59)
-  HistorySynced get historySynced => $_getN(35);
+  HistorySynced get historySynced => $_getN(36);
   @$pb.TagNumber(59)
   set historySynced(HistorySynced value) => $_setField(59, value);
   @$pb.TagNumber(59)
-  $core.bool hasHistorySynced() => $_has(35);
+  $core.bool hasHistorySynced() => $_has(36);
   @$pb.TagNumber(59)
   void clearHistorySynced() => $_clearField(59);
   @$pb.TagNumber(59)
-  HistorySynced ensureHistorySynced() => $_ensure(35);
+  HistorySynced ensureHistorySynced() => $_ensure(36);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(36);
+  AgentCommand get agentCommand => $_getN(37);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(36);
+  $core.bool hasAgentCommand() => $_has(37);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(36);
+  AgentCommand ensureAgentCommand() => $_ensure(37);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -11444,6 +11466,45 @@ class HistoryStatus extends $pb.GeneratedMessage {
   $core.bool hasBytes() => $_has(2);
   @$pb.TagNumber(3)
   void clearBytes() => $_clearField(3);
+}
+
+class Heartbeat extends $pb.GeneratedMessage {
+  factory Heartbeat() => Heartbeat._();
+
+  Heartbeat._();
+
+  factory Heartbeat.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Heartbeat()..mergeFromBuffer(data, registry);
+  factory Heartbeat.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Heartbeat()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Heartbeat',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: Heartbeat.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Heartbeat clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Heartbeat copyWith(void Function(Heartbeat) updates) =>
+      super.copyWith((message) => updates(message as Heartbeat)) as Heartbeat;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Heartbeat() / Heartbeat.new instead')
+  static Heartbeat create() => Heartbeat._();
+  static $pb.GeneratedMessage $_createMessage() => Heartbeat._();
+  @$core.override
+  Heartbeat createEmptyInstance() => Heartbeat._();
+  @$core.pragma('dart2js:noInline')
+  static Heartbeat getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Heartbeat>(Heartbeat.$_createMessage);
+  static Heartbeat? _defaultInstance;
 }
 
 const $core.bool _omitFieldNames =
