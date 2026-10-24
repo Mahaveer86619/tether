@@ -95,7 +95,7 @@ EOF
 flutter config --no-analytics >/dev/null
 flutter config --android-sdk "$sdk" >/dev/null
 flutter precache --android >/dev/null
-flutter doctor --android-licenses >/dev/null 2>&1 <<<"$(yes)" || true
+yes 2>/dev/null | flutter doctor --android-licenses >/dev/null 2>&1 || true
 
 if [ -n "$keystore" ]; then
   # For `make dist` by hand; CI writes its own from GitHub secrets.
