@@ -38,6 +38,10 @@ message UserText {
   string attachment_id = 4;
   // SendMessage.client_id of the message this is, when the hub sent it.
   string client_id = 5;
+  // Claude Code wraps pasted text (including what the agent pastes into a
+  // terminal) in <pasted_content id="..."> tags. The hub takes the tags
+  // out of text and keeps their ids here, in order.
+  repeated string pasted_ids = 6;
 }
 
 message Markdown {

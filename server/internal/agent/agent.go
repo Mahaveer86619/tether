@@ -233,7 +233,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			s := op.Start
 			a.start(startOpts{session: s.Session, cwd: s.Cwd, prompt: s.Prompt, model: s.Model,
 				permissionMode: s.PermissionMode, name: s.Name, resume: s.Resume, fork: s.Fork, createCwd: s.CreateCwd, attachments: s.Attachments,
-				scratch: s.Scratch, restoreTranscript: s.RestoreTranscript, restoreCodebase: s.RestoreCodebase, restoreSnapshot: s.RestoreSnapshot})
+				scratch: s.Scratch, restoreTranscript: s.RestoreTranscript, restoreCodebase: s.RestoreCodebase, restoreSnapshot: s.RestoreSnapshot,
+				systemPrompt: s.SystemPrompt})
 		case *v1.AgentCommand_Snapshot:
 			go a.snapshotCodebase(op.Snapshot.Codebase, op.Snapshot.Session)
 		case *v1.AgentCommand_Scan:
@@ -249,7 +250,7 @@ func (a *Agent) onFrame(f *v1.Frame) {
 		case *v1.AgentCommand_Backup:
 			go a.backup(op.Backup.Stored)
 		case *v1.AgentCommand_Send:
-			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode)
+			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode, op.Send.SystemPrompt)
 		case *v1.AgentCommand_Interrupt_:
 			a.interrupt(op.Interrupt.Session)
 		case *v1.AgentCommand_Stop_:
@@ -314,7 +315,7 @@ func (a *Agent) pane(session string) string {
 
 func (a *Agent) start(o startOpts) {
 	if a.pane(o.session) != "" || a.run(o.session) != nil {
-		a.sendInput(o.session, o.prompt, o.attachments, o.permissionMode)
+		a.sendInput(o.session, o.prompt, o.attachments, o.permissionMode, o.systemPrompt)
 		return
 	}
 	if o.resume != "" && o.cwd == "" {
@@ -431,6 +432,9 @@ func sessionArgs(o startOpts) []string {
 	if o.name != "" {
 		args = append(args, "--name", o.name)
 	}
+	if o.systemPrompt != "" {
+		args = append(args, "--append-system-prompt", o.systemPrompt)
+	}
 	return args
 }
 
@@ -489,7 +493,7 @@ func (a *Agent) answerTrust(id, pane string, allow bool) {
 	a.log.Warn("trust dialog did not close", "approval", id)
 }
 
-func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode string) {
+func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode, systemPrompt string) {
 	if len(attachments) > 0 {
 		cwd := a.index.Cwd(session)
 		if cwd == "" {
@@ -518,7 +522,7 @@ func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode
 		a.typeIntoTerminal(session, hs.pid, text)
 		return
 	}
-	a.start(startOpts{session: session, resume: session, prompt: text, permissionMode: mode})
+	a.start(startOpts{session: session, resume: session, prompt: text, permissionMode: mode, systemPrompt: systemPrompt})
 }
 
 // typeIntoTerminal sends a message to a session open in the user's own

@@ -37,6 +37,32 @@ abstract interface class HubRepository {
   /// Continues a global session on the hub's machine; returns the new id.
   Future<Result<String>> continueOnHub(String sessionId, String text);
 
+  /// Starts a chat and its first session; see docs/chats.md.
+  Future<Result<Chat>> createChat(NewChatRequest request);
+
+  /// Makes a chat of a session that has none, or returns the one it's in.
+  Future<Result<Chat>> chatForSession(String sessionId);
+
+  /// Renames a chat; an empty [title] lets the hub name it again.
+  Future<Result<Chat>> renameChat(String chatId, String title);
+
+  Future<Result<Chat>> setChatArchived(String chatId, {required bool archived});
+
+  /// Sends to the chat's active session; returns the session that got it.
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''});
+
+  /// Records where the chat works; with [move], carries the conversation
+  /// over to a new session there.
+  Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''});
+
+  /// Adds a session to a chat, or with [unlink] takes it out.
+  Future<Result<Chat>> linkSession(String chatId, String sessionId, {bool unlink = false});
+
+  Future<Result<ChatContext>> chatContext(String chatId);
+
+  /// Folders a chat could run in, ranked for [prompt].
+  Future<Result<TargetSuggestions>> targetSuggestions(String prompt);
+
   Future<Result<List<int>>> artifactBytes(String id);
 
   /// A link that works without a token for an hour.

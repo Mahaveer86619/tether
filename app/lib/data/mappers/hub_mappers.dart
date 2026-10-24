@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:fixnum/fixnum.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../gen/tether/v1/render.pb.dart' as rpb;
 import '../../gen/tether/v1/render.pbenum.dart' as rpbe;
 import '../../gen/tether/v1/tether.pb.dart' as pb;
 import '../../gen/tether/v1/tether.pbenum.dart' as pbe;
@@ -49,7 +50,7 @@ TodoItem todoFromPb(Todo t) => TodoItem(
 Session sessionFromPb(pb.SessionInfo s) => Session(
       id: s.id,
       node: s.node,
-      title: s.title,
+      title: unpaste(s.title).$1,
       cwd: s.cwd,
       gitBranch: s.gitBranch,
       created: _time(s.createdMs),
@@ -58,7 +59,7 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       state: _state(s.state),
       host: _host(s.host),
       attachCommand: s.attachCommand,
-      lastPrompt: s.lastPrompt,
+      lastPrompt: unpaste(s.lastPrompt).$1,
       claudeVersion: s.claudeVersion,
       model: s.model,
       todos: [for (final t in s.todos) todoFromPb(t)],
@@ -199,3 +200,75 @@ ConnectedClient clientFromPb(pb.ConnectedClient c) => ConnectedClient(
       ip: c.ip,
       connected: _time(c.connectedMs),
     );
+
+ChatTarget chatTargetFromPb(pb.ChatTarget t) => ChatTarget(
+      mode: TargetMode.fromWire(t.mode),
+      node: t.node,
+      cwd: t.cwd,
+      scratch: t.scratch,
+      detecting: t.state == 'detecting',
+      reason: t.reason,
+    );
+
+pb.ChatTarget chatTargetToPb(ChatTarget t) => pb.ChatTarget(mode: t.mode.wire, node: t.node, cwd: t.cwd, scratch: t.scratch, reason: t.reason);
+
+Chat chatFromPb(pb.Chat c) => Chat(
+      id: c.id,
+      title: c.title,
+      titleByUser: c.titleByUser,
+      created: _time(c.createdMs),
+      updated: _time(c.updatedMs),
+      archived: c.archived,
+      target: chatTargetFromPb(c.target),
+      activeSession: c.activeSession,
+      links: [for (final l in c.sessions) ChatLink(session: l.session, role: l.role, linked: _time(l.linkedMs))],
+    );
+
+TargetCandidate targetCandidateFromPb(pb.TargetCandidate c) => TargetCandidate(
+      node: c.node,
+      cwd: c.cwd,
+      label: c.label,
+      online: c.online,
+      score: c.score,
+      reason: c.reason,
+      lastUsed: _time(c.lastUsedMs),
+    );
+
+TargetSuggestions targetSuggestionsFromPb(pb.TargetSuggestions s) => TargetSuggestions(
+      candidates: [for (final c in s.candidates) targetCandidateFromPb(c)],
+      pick: s.hasPick() ? targetCandidateFromPb(s.pick) : null,
+    );
+
+ChatContext chatContextFromPb(pb.ChatContext c) => ChatContext(
+      chat: chatFromPb(c.chat),
+      messages: [for (final m in c.messages) ChatMessage(role: m.role, text: m.text, session: m.session, at: _time(m.tsMs))],
+      notes: {for (final n in c.notes) n.kind: n.value},
+    );
+
+final _pastedBlock = RegExp(r'<pasted_content id="([^"]*)">\n?([\s\S]*?)\n?</pasted_content(?: id="[^"]*")?>');
+
+/// Takes out the tags Claude Code wraps pasted text in (including what an
+/// agent pastes into a terminal), keeping what was pasted. Returns the
+/// trimmed text and the pastes' ids. Hubs from 0.16 do this themselves;
+/// older ones, and timelines cached from them, still have the tags.
+(String, List<String>) unpaste(String text) {
+  if (!text.contains('<pasted_content')) return (text, const []);
+  final ids = <String>[];
+  final out = text.replaceAllMapped(_pastedBlock, (m) {
+    ids.add(m[1]!);
+    return m[2]!;
+  });
+  return (out.trim(), ids);
+}
+
+/// A user item with its pasted-content tags taken out and their ids kept.
+rpb.TimelineItem unpastedItem(rpb.TimelineItem it) {
+  if (!it.hasUser()) return it;
+  final (text, ids) = unpaste(it.user.text);
+  if (ids.isEmpty) return it;
+  final copy = it.deepCopy();
+  copy.user
+    ..text = text
+    ..pastedIds.addAll(ids.where((id) => !copy.user.pastedIds.contains(id)));
+  return copy;
+}

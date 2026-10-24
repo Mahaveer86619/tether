@@ -47,6 +47,7 @@ type startOpts struct {
 	restoreTranscript string
 	// A codebase snapshot to restore and run in; cwd is then relative to it.
 	restoreCodebase, restoreSnapshot string
+	systemPrompt                     string
 }
 
 func (a *Agent) startRun(o startOpts) (*run, error) {

@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 
 import 'package:flutter/material.dart' show ThemeMode;
 
+import '../../core/version.dart';
 import '../../gen/tether/v1/render.pb.dart' as render;
 
 // The timeline's render types (items, Markdown blocks, tool cards) are the
@@ -274,6 +275,7 @@ class HubSnapshot extends Equatable {
     this.deviceId = '',
     this.clientIp = '',
     this.artifacts = const {},
+    this.chats = const {},
   });
 
   final ConnectionStatus status;
@@ -304,6 +306,29 @@ class HubSnapshot extends Equatable {
 
   /// Recent files in the hub's artifact store, by id.
   final Map<String, Artifact> artifacts;
+
+  /// Conversations, by id; empty on a hub before 0.16.
+  final Map<String, Chat> chats;
+
+  /// Whether the hub keeps chats; older ones only know sessions.
+  bool get chatsSupported => hubVersion.isNotEmpty && !isOlderVersion(hubVersion, '0.16.0');
+
+  /// Chats not archived, most recently active first.
+  List<Chat> get recentChats => chats.values.where((c) => !c.archived).toList()..sort(compareChats);
+
+  /// The chat a session belongs to, if any.
+  Chat? chatOf(String session) => chats.values.where((c) => c.links.any((l) => l.session == session)).firstOrNull;
+
+  /// When a chat last moved: its own time or its active session's.
+  DateTime? chatUpdated(Chat c) {
+    final s = sessions[c.activeSession]?.updated;
+    final u = c.updated;
+    if (s == null) return u;
+    if (u == null) return s;
+    return s.isAfter(u) ? s : u;
+  }
+
+  int compareChats(Chat a, Chat b) => (chatUpdated(b) ?? DateTime(0)).compareTo(chatUpdated(a) ?? DateTime(0));
 
   /// Files linked to a tool call or message.
   List<Artifact> artifactsFor(String ref) => [for (final a in artifacts.values) if (a.ref == ref && a.ref.isNotEmpty) a];
@@ -373,6 +398,7 @@ class HubSnapshot extends Equatable {
     String? deviceId,
     String? clientIp,
     Map<String, Artifact>? artifacts,
+    Map<String, Chat>? chats,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -387,10 +413,11 @@ class HubSnapshot extends Equatable {
         deviceId: deviceId ?? this.deviceId,
         clientIp: clientIp ?? this.clientIp,
         artifacts: artifacts ?? this.artifacts,
+        chats: chats ?? this.chats,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -896,4 +923,163 @@ class ConnectedClient extends Equatable {
 
   @override
   List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
+}
+
+/// How a chat's target was chosen; see docs/chats.md#targets.
+enum TargetMode {
+  /// The hub matched it from the prompt and recent work.
+  auto('auto'),
+
+  /// The user picked it.
+  manual('manual'),
+
+  /// Claude works it out in a scratch folder.
+  claude('claude');
+
+  const TargetMode(this.wire);
+  final String wire;
+
+  static TargetMode fromWire(String s) => values.firstWhere((m) => m.wire == s, orElse: () => auto);
+}
+
+/// Where a chat's work runs.
+class ChatTarget extends Equatable {
+  const ChatTarget({this.mode = TargetMode.auto, this.node = '', this.cwd = '', this.scratch = false, this.detecting = false, this.reason = ''});
+
+  const ChatTarget.scratch() : this(mode: TargetMode.manual, scratch: true);
+
+  final TargetMode mode;
+  final String node, cwd;
+
+  /// A fresh scratch folder on the hub's machine.
+  final bool scratch;
+
+  /// Claude is still working it out.
+  final bool detecting;
+  final String reason;
+
+  bool get isSet => scratch || node.isNotEmpty;
+
+  @override
+  List<Object?> get props => [mode, node, cwd, scratch, detecting, reason];
+}
+
+/// A session behind a chat, and why it's there: main, moved, fork,
+/// started (by Claude) or linked (by hand).
+class ChatLink extends Equatable {
+  const ChatLink({required this.session, this.role = 'main', this.linked});
+
+  final String session, role;
+  final DateTime? linked;
+
+  @override
+  List<Object?> get props => [session, role, linked];
+}
+
+/// A conversation: what the user sees, with the sessions doing the work
+/// behind it.
+class Chat extends Equatable {
+  const Chat({
+    required this.id,
+    this.title = '',
+    this.titleByUser = false,
+    this.created,
+    this.updated,
+    this.archived = false,
+    this.target = const ChatTarget(),
+    this.activeSession = '',
+    this.links = const [],
+  });
+
+  final String id, title;
+
+  /// The user named it, so it isn't renamed automatically.
+  final bool titleByUser;
+  final DateTime? created, updated;
+  final bool archived;
+  final ChatTarget target;
+
+  /// Where messages go now.
+  final String activeSession;
+
+  /// Oldest first, the active one included.
+  final List<ChatLink> links;
+
+  String get displayTitle => title.trim().isEmpty ? 'New chat' : title;
+
+  @override
+  List<Object?> get props => [id, title, titleByUser, created, updated, archived, target, activeSession, links];
+}
+
+class NewChatRequest extends Equatable {
+  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = ''});
+
+  final String prompt;
+
+  /// Null leaves it to the hub (auto).
+  final ChatTarget? target;
+  final List<String> attachments;
+  final String model, permissionMode, clientId;
+
+  @override
+  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId];
+}
+
+/// A folder a chat could run in, as the hub ranks it.
+class TargetCandidate extends Equatable {
+  const TargetCandidate({required this.node, required this.cwd, this.label = '', this.online = false, this.score = 0, this.reason = '', this.lastUsed});
+
+  final String node, cwd, label, reason;
+  final bool online;
+
+  /// Higher is a better match for the prompt; 0 means no clue from it.
+  final double score;
+  final DateTime? lastUsed;
+
+  @override
+  List<Object?> get props => [node, cwd, label, online, score, reason, lastUsed];
+}
+
+class TargetSuggestions extends Equatable {
+  const TargetSuggestions({this.candidates = const [], this.pick});
+
+  /// Best match first, then most recently used.
+  final List<TargetCandidate> candidates;
+
+  /// What auto would pick; null when it would hand over to Claude.
+  final TargetCandidate? pick;
+
+  @override
+  List<Object?> get props => [candidates, pick];
+}
+
+/// One message of a chat's stored context.
+class ChatMessage extends Equatable {
+  const ChatMessage({required this.role, required this.text, this.session = '', this.at});
+
+  /// "user" or "assistant".
+  final String role, text, session;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [role, text, session, at];
+}
+
+/// Everything said in a chat across its sessions, plus what the hub's
+/// post-processing made of it (notes by kind, e.g. "title").
+class ChatContext extends Equatable {
+  const ChatContext({required this.chat, this.messages = const [], this.notes = const {}});
+
+  final Chat chat;
+  final List<ChatMessage> messages;
+  final Map<String, String> notes;
+
+  /// The conversation as Markdown, for copying.
+  String get markdown => [
+        '# ${chat.displayTitle}',
+        for (final m in messages) '**${m.role == 'user' ? 'You' : 'Claude'}:** ${m.text}',
+      ].join('\n\n');
+
+  @override
+  List<Object?> get props => [chat, messages, notes];
 }

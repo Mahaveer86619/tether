@@ -49,6 +49,33 @@ class HubRestApi {
   Future<String> continueOnHub(String session, String text) async =>
       (await _post('/sessions/${Uri.encodeComponent(session)}/continue', pb.SendMessage(text: text), pb.Ack())).session;
 
+  Future<pb.Chat> createChat(pb.CreateChat body) => _post('/chats', body, pb.Chat());
+
+  Future<pb.Chat> updateChat(String chat, pb.UpdateChat body) => _send(
+        () => _client.patch(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body.toProto3Json()),
+        ),
+        pb.Chat(),
+      );
+
+  Future<String> sendToChat(String chat, String text, {List<String> attachments = const [], String clientId = ''}) async => (await _post(
+        '/chats/${Uri.encodeComponent(chat)}/messages',
+        pb.SendMessage(text: text, attachments: attachments, clientId: clientId.isEmpty ? null : clientId),
+        pb.Ack(),
+      ))
+          .session;
+
+  Future<pb.Chat> setChatTarget(String chat, pb.SetChatTarget body) => _post('/chats/${Uri.encodeComponent(chat)}/target', body, pb.Chat());
+
+  Future<pb.Chat> linkSession(String chat, pb.LinkSession body) => _post('/chats/${Uri.encodeComponent(chat)}/links', body, pb.Chat());
+
+  Future<pb.ChatContext> chatContext(String chat) => _get('/chats/${Uri.encodeComponent(chat)}/context', pb.ChatContext());
+
+  Future<pb.TargetSuggestions> targetSuggestions(String prompt) =>
+      _get('/targets', pb.TargetSuggestions(), query: prompt.isEmpty ? null : {'prompt': prompt});
+
   Future<pb.ArtifactList> artifacts({String session = '', int limit = 300}) =>
       _get('/artifacts', pb.ArtifactList(), query: {if (session.isNotEmpty) 'session': session, 'limit': '$limit'});
 
@@ -250,7 +277,8 @@ class HubRestApi {
 
     final Object? json;
     try {
-      json = res.body.isEmpty ? <String, dynamic>{} : jsonDecode(res.body);
+      // The hub sends JSON without a charset, which package:http would read as Latin-1.
+      json = res.bodyBytes.isEmpty ? <String, dynamic>{} : jsonDecode(utf8.decode(res.bodyBytes));
     } on FormatException {
       if (res.statusCode >= 400) {
         throw ApiException(statusCode: res.statusCode, code: 'http_${res.statusCode}', message: res.reasonPhrase ?? 'HTTP ${res.statusCode}');

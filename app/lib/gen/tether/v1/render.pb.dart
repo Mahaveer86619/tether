@@ -253,6 +253,7 @@ class UserText extends $pb.GeneratedMessage {
     $core.String? source,
     $core.String? attachmentId,
     $core.String? clientId,
+    $core.Iterable<$core.String>? pastedIds,
   }) {
     final result = UserText._();
     if (text != null) result.text = text;
@@ -260,6 +261,7 @@ class UserText extends $pb.GeneratedMessage {
     if (source != null) result.source = source;
     if (attachmentId != null) result.attachmentId = attachmentId;
     if (clientId != null) result.clientId = clientId;
+    if (pastedIds != null) result.pastedIds.addAll(pastedIds);
     return result;
   }
 
@@ -281,6 +283,7 @@ class UserText extends $pb.GeneratedMessage {
     ..aOS(3, _omitFieldNames ? '' : 'source')
     ..aOS(4, _omitFieldNames ? '' : 'attachmentId')
     ..aOS(5, _omitFieldNames ? '' : 'clientId')
+    ..pPS(6, _omitFieldNames ? '' : 'pastedIds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -354,6 +357,12 @@ class UserText extends $pb.GeneratedMessage {
   $core.bool hasClientId() => $_has(4);
   @$pb.TagNumber(5)
   void clearClientId() => $_clearField(5);
+
+  /// Claude Code wraps pasted text (including what the agent pastes into a
+  /// terminal) in <pasted_content id="..."> tags. The hub takes the tags
+  /// out of text and keeps their ids here, in order.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get pastedIds => $_getList(5);
 }
 
 class Markdown extends $pb.GeneratedMessage {

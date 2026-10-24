@@ -2,16 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
-import '../../injection.dart';
-import '../artifacts/attachments.dart';
 import '../hub/hub_cubit.dart';
-import '../new_session/new_session_cubit.dart';
-import '../new_session/new_session_sheet.dart';
-import '../session/session_page.dart';
 import '../theme/theme.dart';
+import '../session/session_page.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
-import '../widgets/prompt_box.dart';
 import 'cards.dart';
 
 /// Sessions that are waiting on you: Claude finished a turn, or failed.
@@ -30,10 +25,10 @@ List<Session> needingYou(HubSnapshot hub) {
 /// Approvals plus sessions waiting on you, for nav badges.
 int attentionCount(HubSnapshot hub) => hub.approvals.length + needingYou(hub).length;
 
-/// Home: what's connected, start something, what needs you, what's running,
-/// and where you left off.
-class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.onSession, required this.onDevices, required this.onAllSessions});
+/// Monitor: what's connected, what needs you, what's running, and where
+/// you left off.
+class MonitorPage extends StatelessWidget {
+  const MonitorPage({super.key, required this.onSession, required this.onDevices, required this.onAllSessions});
 
   final ValueChanged<String> onSession;
   final VoidCallback onDevices, onAllSessions;
@@ -62,10 +57,6 @@ class HomePage extends StatelessWidget {
     return PageColumn(
       children: [
         _DevicesStrip(hub: hub, onTap: onDevices),
-        if (hub.connected) ...[
-          const SectionLabel('Start a task'),
-          QuickStart(onCreated: onSession),
-        ],
         if (approvals.isNotEmpty || waiting.isNotEmpty) ...[
           SectionLabel('Needs you', trailing: Pill('${approvals.length + waiting.length}', color: c.warning)),
           for (final a in approvals)
@@ -148,195 +139,6 @@ class _DevicesStrip extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A prompt box that starts a session straight away: on the hub in a scratch
-/// folder when it can, else on the device used most recently; "more options"
-/// opens the full form.
-class QuickStart extends StatelessWidget {
-  const QuickStart({super.key, required this.onCreated});
-
-  final ValueChanged<String> onCreated;
-
-  @override
-  Widget build(BuildContext context) {
-    final hub = context.read<HubCubit>().state.hub;
-    final online = context.select<HubCubit, String>((c) => c.state.hub.sortedNodes.where((n) => n.online).map((n) => n.name).join(','));
-    return BlocProvider(
-      key: ValueKey(online),
-      create: (_) => sl<NewSessionCubit>(param1: hub, param2: hub.hubNode.isNotEmpty ? hubScratch : hub.projects().firstOrNull?.node),
-      child: _QuickStartBox(onCreated: onCreated),
-    );
-  }
-}
-
-class _QuickStartBox extends StatefulWidget {
-  const _QuickStartBox({required this.onCreated});
-
-  final ValueChanged<String> onCreated;
-
-  @override
-  State<_QuickStartBox> createState() => _QuickStartBoxState();
-}
-
-class _QuickStartBoxState extends State<_QuickStartBox> {
-  final _prompt = TextEditingController();
-  final _files = <Artifact>[];
-  int _uploading = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    final cubit = context.read<NewSessionCubit>();
-    cubit.loadDraft().then((draft) {
-      if (mounted && _prompt.text.isEmpty && draft.isNotEmpty) _prompt.text = draft;
-    });
-    _prompt.addListener(() {
-      setState(() {});
-      cubit.saveDraft(_prompt.text);
-    });
-  }
-
-  @override
-  void dispose() {
-    _prompt.dispose();
-    super.dispose();
-  }
-
-  void _created(String id) {
-    _prompt.clear();
-    setState(_files.clear);
-    widget.onCreated(id);
-  }
-
-  Future<void> _attach() async {
-    final added = await pickAndUpload(context, onUploading: (n) => mounted ? setState(() => _uploading = n) : null);
-    if (mounted && added.isNotEmpty) setState(() => _files.addAll(added));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final cubit = context.read<NewSessionCubit>();
-    return BlocConsumer<NewSessionCubit, NewSessionState>(
-      listenWhen: (a, b) => a.failureId != b.failureId || a.createdId != b.createdId,
-      listener: (context, s) {
-        if (s.createdId != null) {
-          _created(s.createdId!);
-        } else if (s.failure != null) {
-          showFailure(context, s.failure!);
-        }
-      },
-      builder: (context, s) {
-        final canStart = s.node != null && !s.submitting && _uploading == 0 && _prompt.text.trim().isNotEmpty;
-        void start() {
-          if (canStart) cubit.submit(_prompt.text, attachments: [for (final f in _files) f.id]);
-        }
-
-        final node = s.nodes.where((n) => n.name == s.node).firstOrNull;
-        return PromptBox(
-          controller: _prompt,
-          fieldKey: const Key('quick-start'),
-          hint: 'What should Claude work on?',
-          canSubmit: s.node != null && !s.submitting,
-          onSubmit: start,
-          header: _files.isEmpty && _uploading == 0
-              ? null
-              : AttachmentChips(files: _files, uploading: _uploading, onRemove: (f) => setState(() => _files.remove(f))),
-          actions: [
-            PromptButton(tooltip: 'Attach files', icon: Icons.attach_file_rounded, plain: true, onPressed: s.node == null ? null : _attach),
-            PromptButton(
-              key: const Key('quick-start-send'),
-              tooltip: 'Start session',
-              icon: Icons.arrow_upward_rounded,
-              filled: true,
-              busy: s.submitting,
-              onPressed: canStart ? start : null,
-            ),
-          ],
-          footer: Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                if (s.nodes.isEmpty)
-                  Text('No devices online', style: TextStyle(color: c.danger, fontSize: 12.5))
-                else
-                  _ChipMenu(
-                    icon: s.scratch ? Icons.hub_outlined : osIcon(node?.os ?? ''),
-                    label: s.scratch ? 'Hub · scratch' : s.node ?? '',
-                    tooltip: s.scratch ? 'On ${s.hubNode}, in a fresh scratch folder' : 'Device',
-                    options: {if (s.hubNode.isNotEmpty) hubScratch: 'Hub · scratch folder', for (final n in s.nodes) n.name: n.name},
-                    onSelected: (v) => v == hubScratch ? cubit.selectScratch() : cubit.selectNode(v),
-                  ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: s.nodes.isEmpty || s.scratch
-                        ? const SizedBox.shrink()
-                        : _ChipMenu(
-                            icon: Icons.folder_outlined,
-                            label: s.cwd.isEmpty ? 'Home folder' : baseName(s.cwd),
-                            tooltip: s.cwd.isEmpty ? 'Folder' : s.cwd,
-                            options: {for (final f in s.folders.take(10)) f: baseName(f), '': 'Home folder', _newProject: 'New project…'},
-                            onSelected: (v) async {
-                              if (v != _newProject) return cubit.setCwd(v);
-                              final id = await showNewSession(context, node: s.node, prompt: _prompt.text, newProject: true);
-                              if (id != null) _created(id);
-                            },
-                          ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'More options',
-                  icon: Icon(Icons.tune_rounded, size: 20, color: c.muted),
-                  onPressed: () async {
-                    final id = await showNewSession(context, node: s.scratch ? hubScratch : s.node, cwd: s.cwd, prompt: _prompt.text);
-                    if (id != null) _created(id);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// A menu value no folder can have.
-const _newProject = '\u0000new';
-
-class _ChipMenu extends StatelessWidget {
-  const _ChipMenu({required this.icon, required this.label, required this.tooltip, required this.options, required this.onSelected});
-
-  final IconData icon;
-  final String label, tooltip;
-  final Map<String, String> options;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return PopupMenuButton<String>(
-      tooltip: tooltip,
-      onSelected: onSelected,
-      itemBuilder: (_) => [for (final e in options.entries) PopupMenuItem(value: e.key, child: Text(e.value))],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: c.muted),
-            const SizedBox(width: 6),
-            Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: c.text))),
-            Icon(Icons.expand_more_rounded, size: 16, color: c.faint),
-          ],
         ),
       ),
     );

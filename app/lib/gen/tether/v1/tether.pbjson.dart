@@ -258,6 +258,15 @@ const Frame$json = {
       '10': 'artifactAdded'
     },
     {
+      '1': 'chat',
+      '3': 41,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.Chat',
+      '9': 0,
+      '10': 'chat'
+    },
+    {
       '1': 'agent_hello',
       '3': 50,
       '4': 1,
@@ -369,17 +378,18 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'cm92YWxSZXNvbHZlZBJECg9zZXNzaW9uX3JlbW92ZWQYJiABKAsyGS50ZXRoZXIudjEuU2Vzc2'
     'lvblJlbW92ZWRIAFIOc2Vzc2lvblJlbW92ZWQSOgoLcHJlZmVyZW5jZXMYJyABKAsyFi50ZXRo'
     'ZXIudjEuUHJlZmVyZW5jZXNIAFILcHJlZmVyZW5jZXMSPAoOYXJ0aWZhY3RfYWRkZWQYKCABKA'
-    'syEy50ZXRoZXIudjEuQXJ0aWZhY3RIAFINYXJ0aWZhY3RBZGRlZBI4CgthZ2VudF9oZWxsbxgy'
-    'IAEoCzIVLnRldGhlci52MS5BZ2VudEhlbGxvSABSCmFnZW50SGVsbG8SPgoNc2Vzc2lvbl9pbm'
-    'RleBgzIAEoCzIXLnRldGhlci52MS5TZXNzaW9uSW5kZXhIAFIMc2Vzc2lvbkluZGV4EjUKCnJh'
-    'd19ldmVudHMYNCABKAsyFC50ZXRoZXIudjEuUmF3RXZlbnRzSABSCXJhd0V2ZW50cxI7Cgx1c2'
-    'FnZV9yZXBvcnQYNSABKAsyFi50ZXRoZXIudjEuVXNhZ2VSZXBvcnRIAFILdXNhZ2VSZXBvcnQS'
-    'NQoKcGxhbl91c2FnZRg2IAEoCzIULnRldGhlci52MS5QbGFuVXNhZ2VIAFIJcGxhblVzYWdlEk'
-    'QKD3NjcmVlbl9zbmFwc2hvdBg3IAEoCzIZLnRldGhlci52MS5TY3JlZW5TbmFwc2hvdEgAUg5z'
-    'Y3JlZW5TbmFwc2hvdBI4Cgttb2RlX3Jlc3VsdBg4IAEoCzIVLnRldGhlci52MS5Nb2RlUmVzdW'
-    'x0SABSCm1vZGVSZXN1bHQSQQoOY29tbWFuZF9yZXN1bHQYOSABKAsyGC50ZXRoZXIudjEuQ29t'
-    'bWFuZFJlc3VsdEgAUg1jb21tYW5kUmVzdWx0Ej4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZX'
-    'RoZXIudjEuQWdlbnRDb21tYW5kSABSDGFnZW50Q29tbWFuZEIGCgRib2R5');
+    'syEy50ZXRoZXIudjEuQXJ0aWZhY3RIAFINYXJ0aWZhY3RBZGRlZBIlCgRjaGF0GCkgASgLMg8u'
+    'dGV0aGVyLnYxLkNoYXRIAFIEY2hhdBI4CgthZ2VudF9oZWxsbxgyIAEoCzIVLnRldGhlci52MS'
+    '5BZ2VudEhlbGxvSABSCmFnZW50SGVsbG8SPgoNc2Vzc2lvbl9pbmRleBgzIAEoCzIXLnRldGhl'
+    'ci52MS5TZXNzaW9uSW5kZXhIAFIMc2Vzc2lvbkluZGV4EjUKCnJhd19ldmVudHMYNCABKAsyFC'
+    '50ZXRoZXIudjEuUmF3RXZlbnRzSABSCXJhd0V2ZW50cxI7Cgx1c2FnZV9yZXBvcnQYNSABKAsy'
+    'Fi50ZXRoZXIudjEuVXNhZ2VSZXBvcnRIAFILdXNhZ2VSZXBvcnQSNQoKcGxhbl91c2FnZRg2IA'
+    'EoCzIULnRldGhlci52MS5QbGFuVXNhZ2VIAFIJcGxhblVzYWdlEkQKD3NjcmVlbl9zbmFwc2hv'
+    'dBg3IAEoCzIZLnRldGhlci52MS5TY3JlZW5TbmFwc2hvdEgAUg5zY3JlZW5TbmFwc2hvdBI4Cg'
+    'ttb2RlX3Jlc3VsdBg4IAEoCzIVLnRldGhlci52MS5Nb2RlUmVzdWx0SABSCm1vZGVSZXN1bHQS'
+    'QQoOY29tbWFuZF9yZXN1bHQYOSABKAsyGC50ZXRoZXIudjEuQ29tbWFuZFJlc3VsdEgAUg1jb2'
+    '1tYW5kUmVzdWx0Ej4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZXRoZXIudjEuQWdlbnRDb21t'
+    'YW5kSABSDGFnZW50Q29tbWFuZEIGCgRib2R5');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -894,6 +904,14 @@ const Welcome$json = {
     {'1': 'hub_node', '3': 6, '4': 1, '5': 9, '10': 'hubNode'},
     {'1': 'device_id', '3': 7, '4': 1, '5': 9, '10': 'deviceId'},
     {'1': 'client_ip', '3': 8, '4': 1, '5': 9, '10': 'clientIp'},
+    {
+      '1': 'chats',
+      '3': 9,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.Chat',
+      '10': 'chats'
+    },
   ],
 };
 
@@ -905,7 +923,8 @@ final $typed_data.Uint8List welcomeDescriptor = $convert.base64Decode(
     'IaLnRldGhlci52MS5BcHByb3ZhbFJlcXVlc3RSEHBlbmRpbmdBcHByb3ZhbHMSOAoLcHJlZmVy'
     'ZW5jZXMYBSABKAsyFi50ZXRoZXIudjEuUHJlZmVyZW5jZXNSC3ByZWZlcmVuY2VzEhkKCGh1Yl'
     '9ub2RlGAYgASgJUgdodWJOb2RlEhsKCWRldmljZV9pZBgHIAEoCVIIZGV2aWNlSWQSGwoJY2xp'
-    'ZW50X2lwGAggASgJUghjbGllbnRJcA==');
+    'ZW50X2lwGAggASgJUghjbGllbnRJcBIlCgVjaGF0cxgJIAMoCzIPLnRldGhlci52MS5DaGF0Ug'
+    'VjaGF0cw==');
 
 @$core.Deprecated('Use ackDescriptor instead')
 const Ack$json = {
@@ -1204,6 +1223,7 @@ const AgentCommand_StartRun$json = {
     },
     {'1': 'restore_codebase', '3': 13, '4': 1, '5': 9, '10': 'restoreCodebase'},
     {'1': 'restore_snapshot', '3': 14, '4': 1, '5': 9, '10': 'restoreSnapshot'},
+    {'1': 'system_prompt', '3': 15, '4': 1, '5': 9, '10': 'systemPrompt'},
   ],
 };
 
@@ -1222,6 +1242,7 @@ const AgentCommand_SendInput$json = {
       '10': 'attachments'
     },
     {'1': 'permission_mode', '3': 4, '4': 1, '5': 9, '10': 'permissionMode'},
+    {'1': 'system_prompt', '3': 5, '4': 1, '5': 9, '10': 'systemPrompt'},
   ],
 };
 
@@ -1377,7 +1398,7 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'DSABKAsyJS50ZXRoZXIudjEuQWdlbnRDb21tYW5kLkNhcHR1cmVTY3JlZW5IAFIHY2FwdHVyZR'
     'I8CghzZXRfbW9kZRgOIAEoCzIfLnRldGhlci52MS5BZ2VudENvbW1hbmQuU2V0TW9kZUgAUgdz'
     'ZXRNb2RlEkAKBmJhY2t1cBgPIAEoCzImLnRldGhlci52MS5BZ2VudENvbW1hbmQuQmFja3VwU2'
-    'Vzc2lvbnNIAFIGYmFja3VwGsIDCghTdGFydFJ1bhIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u'
+    'Vzc2lvbnNIAFIGYmFja3VwGucDCghTdGFydFJ1bhIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u'
     'EhAKA2N3ZBgCIAEoCVIDY3dkEhYKBnByb21wdBgDIAEoCVIGcHJvbXB0EhQKBW1vZGVsGAQgAS'
     'gJUgVtb2RlbBInCg9wZXJtaXNzaW9uX21vZGUYBSABKAlSDnBlcm1pc3Npb25Nb2RlEhIKBG5h'
     'bWUYBiABKAlSBG5hbWUSFgoGcmVzdW1lGAcgASgJUgZyZXN1bWUSEgoEZm9yaxgIIAEoCFIEZm'
@@ -1385,24 +1406,25 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'Ey50ZXRoZXIudjEuQXJ0aWZhY3RSC2F0dGFjaG1lbnRzEhgKB3NjcmF0Y2gYCyABKAhSB3Njcm'
     'F0Y2gSLQoScmVzdG9yZV90cmFuc2NyaXB0GAwgASgJUhFyZXN0b3JlVHJhbnNjcmlwdBIpChBy'
     'ZXN0b3JlX2NvZGViYXNlGA0gASgJUg9yZXN0b3JlQ29kZWJhc2USKQoQcmVzdG9yZV9zbmFwc2'
-    'hvdBgOIAEoCVIPcmVzdG9yZVNuYXBzaG90GpkBCglTZW5kSW5wdXQSGAoHc2Vzc2lvbhgBIAEo'
-    'CVIHc2Vzc2lvbhISCgR0ZXh0GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG1lbnRzGAMgAygLMhMudG'
-    'V0aGVyLnYxLkFydGlmYWN0UgthdHRhY2htZW50cxInCg9wZXJtaXNzaW9uX21vZGUYBCABKAlS'
-    'DnBlcm1pc3Npb25Nb2RlGjcKB1NldE1vZGUSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCg'
-    'Rtb2RlGAIgASgJUgRtb2RlGiUKCUludGVycnVwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u'
-    'GkMKBk1pcnJvchIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEh8KC2Zyb21fb2Zmc2V0GAIgAS'
-    'gDUgpmcm9tT2Zmc2V0GiYKClN0b3BNaXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhog'
-    'CgRTdG9wEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aIgoGRm9yZ2V0EhgKB3Nlc3Npb24YAS'
-    'ABKAlSB3Nlc3Npb24aLAoQVXBsb2FkVHJhbnNjcmlwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNz'
-    'aW9uGl0KEFNuYXBzaG90Q29kZWJhc2USLwoIY29kZWJhc2UYASABKAsyEy50ZXRoZXIudjEuQ2'
-    '9kZWJhc2VSCGNvZGViYXNlEhgKB3Nlc3Npb24YAiABKAlSB3Nlc3Npb24aJQoNU2NhbkNvZGVi'
-    'YXNlcxIUCgVyb290cxgBIAMoCVIFcm9vdHMaKQoNQ2FwdHVyZVNjcmVlbhIYCgdzZXNzaW9uGA'
-    'EgASgJUgdzZXNzaW9uGpcBCg5CYWNrdXBTZXNzaW9ucxJKCgZzdG9yZWQYASADKAsyMi50ZXRo'
-    'ZXIudjEuQWdlbnRDb21tYW5kLkJhY2t1cFNlc3Npb25zLlN0b3JlZEVudHJ5UgZzdG9yZWQaOQ'
-    'oLU3RvcmVkRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKANSBXZhbHVlOgI4'
-    'ARpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQCgNjd2QYAi'
-    'ABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhlci52MS5BcnRpZmFjdFIIYXJ0aWZh'
-    'Y3RCBAoCb3A=');
+    'hvdBgOIAEoCVIPcmVzdG9yZVNuYXBzaG90EiMKDXN5c3RlbV9wcm9tcHQYDyABKAlSDHN5c3Rl'
+    'bVByb21wdBq+AQoJU2VuZElucHV0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEgoEdGV4dB'
+    'gCIAEoCVIEdGV4dBI1CgthdHRhY2htZW50cxgDIAMoCzITLnRldGhlci52MS5BcnRpZmFjdFIL'
+    'YXR0YWNobWVudHMSJwoPcGVybWlzc2lvbl9tb2RlGAQgASgJUg5wZXJtaXNzaW9uTW9kZRIjCg'
+    '1zeXN0ZW1fcHJvbXB0GAUgASgJUgxzeXN0ZW1Qcm9tcHQaNwoHU2V0TW9kZRIYCgdzZXNzaW9u'
+    'GAEgASgJUgdzZXNzaW9uEhIKBG1vZGUYAiABKAlSBG1vZGUaJQoJSW50ZXJydXB0EhgKB3Nlc3'
+    'Npb24YASABKAlSB3Nlc3Npb24aQwoGTWlycm9yEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24S'
+    'HwoLZnJvbV9vZmZzZXQYAiABKANSCmZyb21PZmZzZXQaJgoKU3RvcE1pcnJvchIYCgdzZXNzaW'
+    '9uGAEgASgJUgdzZXNzaW9uGiAKBFN0b3ASGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhoiCgZG'
+    'b3JnZXQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhosChBVcGxvYWRUcmFuc2NyaXB0EhgKB3'
+    'Nlc3Npb24YASABKAlSB3Nlc3Npb24aXQoQU25hcHNob3RDb2RlYmFzZRIvCghjb2RlYmFzZRgB'
+    'IAEoCzITLnRldGhlci52MS5Db2RlYmFzZVIIY29kZWJhc2USGAoHc2Vzc2lvbhgCIAEoCVIHc2'
+    'Vzc2lvbholCg1TY2FuQ29kZWJhc2VzEhQKBXJvb3RzGAEgAygJUgVyb290cxopCg1DYXB0dXJl'
+    'U2NyZWVuEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24alwEKDkJhY2t1cFNlc3Npb25zEkoKBn'
+    'N0b3JlZBgBIAMoCzIyLnRldGhlci52MS5BZ2VudENvbW1hbmQuQmFja3VwU2Vzc2lvbnMuU3Rv'
+    'cmVkRW50cnlSBnN0b3JlZBo5CgtTdG9yZWRFbnRyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YW'
+    'x1ZRgCIAEoA1IFdmFsdWU6AjgBGm4KD0ZldGNoQXR0YWNobWVudBIYCgdzZXNzaW9uGAEgASgJ'
+    'UgdzZXNzaW9uEhAKA2N3ZBgCIAEoCVIDY3dkEi8KCGFydGlmYWN0GAMgASgLMhMudGV0aGVyLn'
+    'YxLkFydGlmYWN0UghhcnRpZmFjdEIECgJvcA==');
 
 @$core.Deprecated('Use codebaseDescriptor instead')
 const Codebase$json = {
@@ -2279,3 +2301,308 @@ const PageList$json = {
 /// Descriptor for `PageList`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List pageListDescriptor = $convert.base64Decode(
     'CghQYWdlTGlzdBIlCgVwYWdlcxgBIAMoCzIPLnRldGhlci52MS5QYWdlUgVwYWdlcw==');
+
+@$core.Deprecated('Use chatDescriptor instead')
+const Chat$json = {
+  '1': 'Chat',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'title_by_user', '3': 3, '4': 1, '5': 8, '10': 'titleByUser'},
+    {'1': 'created_ms', '3': 4, '4': 1, '5': 3, '10': 'createdMs'},
+    {'1': 'updated_ms', '3': 5, '4': 1, '5': 3, '10': 'updatedMs'},
+    {'1': 'archived', '3': 6, '4': 1, '5': 8, '10': 'archived'},
+    {
+      '1': 'target',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.ChatTarget',
+      '10': 'target'
+    },
+    {'1': 'active_session', '3': 8, '4': 1, '5': 9, '10': 'activeSession'},
+    {
+      '1': 'sessions',
+      '3': 9,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ChatLink',
+      '10': 'sessions'
+    },
+  ],
+};
+
+/// Descriptor for `Chat`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatDescriptor = $convert.base64Decode(
+    'CgRDaGF0Eg4KAmlkGAEgASgJUgJpZBIUCgV0aXRsZRgCIAEoCVIFdGl0bGUSIgoNdGl0bGVfYn'
+    'lfdXNlchgDIAEoCFILdGl0bGVCeVVzZXISHQoKY3JlYXRlZF9tcxgEIAEoA1IJY3JlYXRlZE1z'
+    'Eh0KCnVwZGF0ZWRfbXMYBSABKANSCXVwZGF0ZWRNcxIaCghhcmNoaXZlZBgGIAEoCFIIYXJjaG'
+    'l2ZWQSLQoGdGFyZ2V0GAcgASgLMhUudGV0aGVyLnYxLkNoYXRUYXJnZXRSBnRhcmdldBIlCg5h'
+    'Y3RpdmVfc2Vzc2lvbhgIIAEoCVINYWN0aXZlU2Vzc2lvbhIvCghzZXNzaW9ucxgJIAMoCzITLn'
+    'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnM=');
+
+@$core.Deprecated('Use chatTargetDescriptor instead')
+const ChatTarget$json = {
+  '1': 'ChatTarget',
+  '2': [
+    {'1': 'mode', '3': 1, '4': 1, '5': 9, '10': 'mode'},
+    {'1': 'node', '3': 2, '4': 1, '5': 9, '10': 'node'},
+    {'1': 'cwd', '3': 3, '4': 1, '5': 9, '10': 'cwd'},
+    {'1': 'state', '3': 4, '4': 1, '5': 9, '10': 'state'},
+    {'1': 'reason', '3': 5, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'scratch', '3': 6, '4': 1, '5': 8, '10': 'scratch'},
+  ],
+};
+
+/// Descriptor for `ChatTarget`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatTargetDescriptor = $convert.base64Decode(
+    'CgpDaGF0VGFyZ2V0EhIKBG1vZGUYASABKAlSBG1vZGUSEgoEbm9kZRgCIAEoCVIEbm9kZRIQCg'
+    'Njd2QYAyABKAlSA2N3ZBIUCgVzdGF0ZRgEIAEoCVIFc3RhdGUSFgoGcmVhc29uGAUgASgJUgZy'
+    'ZWFzb24SGAoHc2NyYXRjaBgGIAEoCFIHc2NyYXRjaA==');
+
+@$core.Deprecated('Use chatLinkDescriptor instead')
+const ChatLink$json = {
+  '1': 'ChatLink',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'role', '3': 2, '4': 1, '5': 9, '10': 'role'},
+    {'1': 'linked_ms', '3': 3, '4': 1, '5': 3, '10': 'linkedMs'},
+  ],
+};
+
+/// Descriptor for `ChatLink`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatLinkDescriptor = $convert.base64Decode(
+    'CghDaGF0TGluaxIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBHJvbGUYAiABKAlSBHJvbG'
+    'USGwoJbGlua2VkX21zGAMgASgDUghsaW5rZWRNcw==');
+
+@$core.Deprecated('Use createChatDescriptor instead')
+const CreateChat$json = {
+  '1': 'CreateChat',
+  '2': [
+    {'1': 'prompt', '3': 1, '4': 1, '5': 9, '10': 'prompt'},
+    {
+      '1': 'target',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.ChatTarget',
+      '10': 'target'
+    },
+    {'1': 'attachments', '3': 3, '4': 3, '5': 9, '10': 'attachments'},
+    {'1': 'model', '3': 4, '4': 1, '5': 9, '10': 'model'},
+    {'1': 'permission_mode', '3': 5, '4': 1, '5': 9, '10': 'permissionMode'},
+    {'1': 'title', '3': 6, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'session', '3': 7, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'client_id', '3': 8, '4': 1, '5': 9, '10': 'clientId'},
+  ],
+};
+
+/// Descriptor for `CreateChat`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List createChatDescriptor = $convert.base64Decode(
+    'CgpDcmVhdGVDaGF0EhYKBnByb21wdBgBIAEoCVIGcHJvbXB0Ei0KBnRhcmdldBgCIAEoCzIVLn'
+    'RldGhlci52MS5DaGF0VGFyZ2V0UgZ0YXJnZXQSIAoLYXR0YWNobWVudHMYAyADKAlSC2F0dGFj'
+    'aG1lbnRzEhQKBW1vZGVsGAQgASgJUgVtb2RlbBInCg9wZXJtaXNzaW9uX21vZGUYBSABKAlSDn'
+    'Blcm1pc3Npb25Nb2RlEhQKBXRpdGxlGAYgASgJUgV0aXRsZRIYCgdzZXNzaW9uGAcgASgJUgdz'
+    'ZXNzaW9uEhsKCWNsaWVudF9pZBgIIAEoCVIIY2xpZW50SWQ=');
+
+@$core.Deprecated('Use updateChatDescriptor instead')
+const UpdateChat$json = {
+  '1': 'UpdateChat',
+  '2': [
+    {'1': 'title', '3': 1, '4': 1, '5': 9, '9': 0, '10': 'title', '17': true},
+    {
+      '1': 'archived',
+      '3': 2,
+      '4': 1,
+      '5': 8,
+      '9': 1,
+      '10': 'archived',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_title'},
+    {'1': '_archived'},
+  ],
+};
+
+/// Descriptor for `UpdateChat`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List updateChatDescriptor = $convert.base64Decode(
+    'CgpVcGRhdGVDaGF0EhkKBXRpdGxlGAEgASgJSABSBXRpdGxliAEBEh8KCGFyY2hpdmVkGAIgAS'
+    'gISAFSCGFyY2hpdmVkiAEBQggKBl90aXRsZUILCglfYXJjaGl2ZWQ=');
+
+@$core.Deprecated('Use setChatTargetDescriptor instead')
+const SetChatTarget$json = {
+  '1': 'SetChatTarget',
+  '2': [
+    {
+      '1': 'target',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.ChatTarget',
+      '10': 'target'
+    },
+    {'1': 'move', '3': 2, '4': 1, '5': 8, '10': 'move'},
+    {'1': 'text', '3': 3, '4': 1, '5': 9, '10': 'text'},
+  ],
+};
+
+/// Descriptor for `SetChatTarget`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setChatTargetDescriptor = $convert.base64Decode(
+    'Cg1TZXRDaGF0VGFyZ2V0Ei0KBnRhcmdldBgBIAEoCzIVLnRldGhlci52MS5DaGF0VGFyZ2V0Ug'
+    'Z0YXJnZXQSEgoEbW92ZRgCIAEoCFIEbW92ZRISCgR0ZXh0GAMgASgJUgR0ZXh0');
+
+@$core.Deprecated('Use linkSessionDescriptor instead')
+const LinkSession$json = {
+  '1': 'LinkSession',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'role', '3': 2, '4': 1, '5': 9, '10': 'role'},
+    {'1': 'unlink', '3': 3, '4': 1, '5': 8, '10': 'unlink'},
+  ],
+};
+
+/// Descriptor for `LinkSession`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List linkSessionDescriptor = $convert.base64Decode(
+    'CgtMaW5rU2Vzc2lvbhIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBHJvbGUYAiABKAlSBH'
+    'JvbGUSFgoGdW5saW5rGAMgASgIUgZ1bmxpbms=');
+
+@$core.Deprecated('Use chatListDescriptor instead')
+const ChatList$json = {
+  '1': 'ChatList',
+  '2': [
+    {
+      '1': 'chats',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.Chat',
+      '10': 'chats'
+    },
+  ],
+};
+
+/// Descriptor for `ChatList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatListDescriptor = $convert.base64Decode(
+    'CghDaGF0TGlzdBIlCgVjaGF0cxgBIAMoCzIPLnRldGhlci52MS5DaGF0UgVjaGF0cw==');
+
+@$core.Deprecated('Use chatMessageDescriptor instead')
+const ChatMessage$json = {
+  '1': 'ChatMessage',
+  '2': [
+    {'1': 'session', '3': 1, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'item_id', '3': 2, '4': 1, '5': 9, '10': 'itemId'},
+    {'1': 'role', '3': 3, '4': 1, '5': 9, '10': 'role'},
+    {'1': 'text', '3': 4, '4': 1, '5': 9, '10': 'text'},
+    {'1': 'ts_ms', '3': 5, '4': 1, '5': 3, '10': 'tsMs'},
+  ],
+};
+
+/// Descriptor for `ChatMessage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatMessageDescriptor = $convert.base64Decode(
+    'CgtDaGF0TWVzc2FnZRIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhcKB2l0ZW1faWQYAiABKA'
+    'lSBml0ZW1JZBISCgRyb2xlGAMgASgJUgRyb2xlEhIKBHRleHQYBCABKAlSBHRleHQSEwoFdHNf'
+    'bXMYBSABKANSBHRzTXM=');
+
+@$core.Deprecated('Use chatNoteDescriptor instead')
+const ChatNote$json = {
+  '1': 'ChatNote',
+  '2': [
+    {'1': 'kind', '3': 1, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+    {'1': 'updated_ms', '3': 3, '4': 1, '5': 3, '10': 'updatedMs'},
+  ],
+};
+
+/// Descriptor for `ChatNote`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatNoteDescriptor = $convert.base64Decode(
+    'CghDaGF0Tm90ZRISCgRraW5kGAEgASgJUgRraW5kEhQKBXZhbHVlGAIgASgJUgV2YWx1ZRIdCg'
+    'p1cGRhdGVkX21zGAMgASgDUgl1cGRhdGVkTXM=');
+
+@$core.Deprecated('Use chatContextDescriptor instead')
+const ChatContext$json = {
+  '1': 'ChatContext',
+  '2': [
+    {
+      '1': 'chat',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.Chat',
+      '10': 'chat'
+    },
+    {
+      '1': 'messages',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ChatMessage',
+      '10': 'messages'
+    },
+    {
+      '1': 'notes',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ChatNote',
+      '10': 'notes'
+    },
+  ],
+};
+
+/// Descriptor for `ChatContext`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatContextDescriptor = $convert.base64Decode(
+    'CgtDaGF0Q29udGV4dBIjCgRjaGF0GAEgASgLMg8udGV0aGVyLnYxLkNoYXRSBGNoYXQSMgoIbW'
+    'Vzc2FnZXMYAiADKAsyFi50ZXRoZXIudjEuQ2hhdE1lc3NhZ2VSCG1lc3NhZ2VzEikKBW5vdGVz'
+    'GAMgAygLMhMudGV0aGVyLnYxLkNoYXROb3RlUgVub3Rlcw==');
+
+@$core.Deprecated('Use targetCandidateDescriptor instead')
+const TargetCandidate$json = {
+  '1': 'TargetCandidate',
+  '2': [
+    {'1': 'node', '3': 1, '4': 1, '5': 9, '10': 'node'},
+    {'1': 'cwd', '3': 2, '4': 1, '5': 9, '10': 'cwd'},
+    {'1': 'label', '3': 3, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'online', '3': 4, '4': 1, '5': 8, '10': 'online'},
+    {'1': 'score', '3': 5, '4': 1, '5': 1, '10': 'score'},
+    {'1': 'reason', '3': 6, '4': 1, '5': 9, '10': 'reason'},
+    {'1': 'last_used_ms', '3': 7, '4': 1, '5': 3, '10': 'lastUsedMs'},
+  ],
+};
+
+/// Descriptor for `TargetCandidate`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List targetCandidateDescriptor = $convert.base64Decode(
+    'Cg9UYXJnZXRDYW5kaWRhdGUSEgoEbm9kZRgBIAEoCVIEbm9kZRIQCgNjd2QYAiABKAlSA2N3ZB'
+    'IUCgVsYWJlbBgDIAEoCVIFbGFiZWwSFgoGb25saW5lGAQgASgIUgZvbmxpbmUSFAoFc2NvcmUY'
+    'BSABKAFSBXNjb3JlEhYKBnJlYXNvbhgGIAEoCVIGcmVhc29uEiAKDGxhc3RfdXNlZF9tcxgHIA'
+    'EoA1IKbGFzdFVzZWRNcw==');
+
+@$core.Deprecated('Use targetSuggestionsDescriptor instead')
+const TargetSuggestions$json = {
+  '1': 'TargetSuggestions',
+  '2': [
+    {
+      '1': 'candidates',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.TargetCandidate',
+      '10': 'candidates'
+    },
+    {
+      '1': 'pick',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.TargetCandidate',
+      '10': 'pick'
+    },
+  ],
+};
+
+/// Descriptor for `TargetSuggestions`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List targetSuggestionsDescriptor = $convert.base64Decode(
+    'ChFUYXJnZXRTdWdnZXN0aW9ucxI6CgpjYW5kaWRhdGVzGAEgAygLMhoudGV0aGVyLnYxLlRhcm'
+    'dldENhbmRpZGF0ZVIKY2FuZGlkYXRlcxIuCgRwaWNrGAIgASgLMhoudGV0aGVyLnYxLlRhcmdl'
+    'dENhbmRpZGF0ZVIEcGljaw==');

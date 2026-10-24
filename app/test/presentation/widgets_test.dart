@@ -1,4 +1,5 @@
 import 'package:fixnum/fixnum.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -136,12 +137,18 @@ void main() {
       configureDependencies(withData: false);
     });
 
-    Future<void> pumpApp(WidgetTester tester, Size size) async {
+    /// Opens the app on Monitor, where sessions are, unless [monitor] is
+    /// false: it starts on Chats.
+    Future<void> pumpApp(WidgetTester tester, Size size, {bool monitor = true}) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(const TetherApp());
       await settle(tester);
+      if (monitor) {
+        await tester.tap(find.byKey(const Key('nav-monitor')));
+        await settle(tester);
+      }
     }
 
     testWidgets('desktop: overview, approve from the dashboard, open a session and send', (tester) async {
@@ -649,7 +656,7 @@ void main() {
         'a1': Artifact(id: 'a1', name: 'notes.md', mime: 'text/markdown', size: 2048, session: 's1', created: DateTime.now()),
       }));
       await pumpApp(tester, const Size(1400, 1000));
-      expect(find.text('Session e1'), findsOneWidget, reason: 'a fresh failure needs you');
+      expect(find.descendant(of: find.byType(CardShell), matching: find.text('Session e1')), findsOneWidget, reason: 'a fresh failure needs you');
 
       await tester.tap(find.text('Sessions').first);
       await settle(tester);
@@ -776,19 +783,19 @@ void main() {
       expect(settings.appearance.accent, isNull);
     });
 
-    testWidgets('phone: home, the bottom tabs, and a pushed session page', (tester) async {
+    testWidgets('phone: monitor, the bottom tabs, a pushed session page, and Back through the nav state', (tester) async {
       await pumpApp(tester, const Size(400, 860));
-      expect(find.byKey(const Key('quick-start')), findsOneWidget);
       expect(find.text('RUNNING NOW'), findsOneWidget);
+      expect(find.byKey(const Key('quick-start')), findsNothing, reason: 'starting work moved to Chats');
 
-      await tester.tap(find.text('Sessions').last);
+      await tester.tap(find.byKey(const Key('nav-sessions')));
       await settle(tester);
       await tester.enterText(find.byKey(const Key('session-search')), 't1');
       await settle(tester);
       expect(find.text('Session s1'), findsNothing);
       expect(find.text('Session t1'), findsOneWidget);
 
-      await tester.tap(find.text('Home').last);
+      await tester.tap(find.byKey(const Key('nav-monitor')));
       await settle(tester);
       final card = find.descendant(of: find.byType(CardShell), matching: find.text('Session s1')).first;
       await tester.ensureVisible(card);
@@ -797,6 +804,152 @@ void main() {
       await settle(tester);
       expect(find.byType(BackButton), findsOneWidget);
       expect(find.byKey(const Key('composer')), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await settle(tester);
+      expect(find.byKey(const Key('composer')), findsNothing);
+      expect(find.text('RUNNING NOW'), findsOneWidget, reason: 'Back returns to Monitor');
+
+      // The system back button walks the same history: Sessions, Monitor, Chats.
+      for (var i = 0; i < 3; i++) {
+        await tester.binding.handlePopRoute();
+        await settle(tester);
+      }
+      expect(find.byKey(const Key('new-chat')), findsOneWidget, reason: 'back on Chats, with its New chat button');
+      expect(find.byType(NavigationBar), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('more-destinations')));
+      await settle(tester);
+      await tester.tap(find.text('Activity').last);
+      await settle(tester);
+      expect(find.byType(NavigationBar), findsNothing, reason: 'pages from the menu sit on top, with a back arrow');
+      await tester.tap(find.byType(BackButton));
+      await settle(tester);
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
+
+    testWidgets('chats: start one with an auto target, rename it inline, and see where it runs', (tester) async {
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', hubNode: 'minipc'));
+      repo.suggestions = const TargetSuggestions(
+        candidates: [TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"')],
+        pick: TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"'),
+      );
+      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      expect(find.text('No chats yet'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('new-chat')));
+      await settle(tester);
+      await tester.enterText(find.byKey(const Key('new-chat-input')), 'fix the tether login');
+      await tester.pump(const Duration(milliseconds: 600));
+      await settle(tester);
+      expect(find.text('Auto · tether on laptop'), findsOneWidget, reason: 'the chip previews what auto would pick');
+      expect(repo.suggestionPrompts.last, 'fix the tether login');
+
+      await tester.tap(find.byKey(const Key('new-chat-send')));
+      await settle(tester);
+      expect(repo.chatsCreated.single.target, isNull, reason: 'auto leaves the choice to the hub');
+      expect(find.byKey(const Key('composer')), findsOneWidget, reason: 'the new chat opens on its session');
+      expect(find.byKey(const Key('chat-target')), findsOneWidget);
+      expect(find.textContaining('matched "app"', findRichText: true), findsOneWidget);
+      expect(find.byKey(const Key('recent-chat-1')), findsOneWidget, reason: 'it shows in the sidebar recents');
+
+      await tester.tap(find.byKey(const Key('chat-title')));
+      await settle(tester);
+      await tester.enterText(find.byKey(const Key('chat-title-field')), 'Login bug');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await settle(tester);
+      expect(repo.current.chats['chat-1']!.title, 'Login bug');
+      expect(find.text('Login bug'), findsWidgets);
+    });
+
+    testWidgets('chats: pick a folder by hand, and move a chat to another one', (tester) async {
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', hubNode: 'minipc'));
+      repo.suggestions = const TargetSuggestions(candidates: [
+        TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true),
+        TargetCandidate(node: 'laptop', cwd: '/src/other', label: 'other', online: true),
+      ]);
+      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await tester.tap(find.byKey(const Key('new-chat')));
+      await settle(tester);
+      await tester.enterText(find.byKey(const Key('new-chat-input')), 'hello');
+      await tester.tap(find.byKey(const Key('target-chip')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('target-node-laptop')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('target-folder-tether')));
+      await settle(tester);
+      expect(find.text('laptop · tether'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('new-chat-send')));
+      await settle(tester);
+      final t = repo.chatsCreated.single.target!;
+      expect((t.mode, t.node, t.cwd), (TargetMode.manual, 'laptop', '/src/tether'));
+
+      await tester.tap(find.byKey(const Key('change-target')));
+      await settle(tester);
+      expect(find.byKey(const Key('move-now')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('target-folder-other')));
+      await settle(tester);
+      expect(repo.retargets.single, ('chat-1', const ChatTarget(mode: TargetMode.manual, node: 'laptop', cwd: '/src/other'), true));
+      expect(find.text('The chat carries on there'), findsOneWidget);
+    });
+
+    testWidgets('chats: the history groups, searches and archives chats; Back leaves a chat', (tester) async {
+      final now = DateTime.now();
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', chats: {
+        'c1': Chat(id: 'c1', title: 'Fix login', activeSession: 's1', links: const [ChatLink(session: 's1')], updated: now),
+        'c2': Chat(id: 'c2', title: 'Old idea', activeSession: 'gone', links: const [ChatLink(session: 'gone')], updated: now.subtract(const Duration(days: 40))),
+      }));
+      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      expect(find.text('TODAY'), findsOneWidget);
+      expect(find.text('OLDER'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('chat-search')), 'idea');
+      await settle(tester);
+      expect(find.byKey(const Key('chat-c1')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('chat-c2')));
+      await settle(tester);
+      expect(find.text('This chat has no session right now'), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('chat-composer')), 'carry on please');
+      await tester.tap(find.byTooltip('Send'));
+      await settle(tester);
+      expect(repo.chatSends.single, ('c2', 'carry on please'));
+
+      // The mouse's back button leaves the chat.
+      await tester.sendEventToBinding(const PointerDownEvent(buttons: kBackMouseButton, position: Offset(900, 400)));
+      await tester.sendEventToBinding(const PointerUpEvent(position: Offset(900, 400)));
+      await settle(tester);
+      expect(find.byKey(const Key('chat-search')), findsOneWidget, reason: 'back on the history');
+
+      await tester.enterText(find.byKey(const Key('chat-search')), '');
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('chat-menu-c1')).first);
+      await settle(tester);
+      await tester.tap(find.text('Archive'));
+      await settle(tester);
+      expect(repo.current.chats['c1']!.archived, isTrue);
+      expect(find.text('Chat archived'), findsOneWidget);
+    });
+
+    testWidgets('chats: a monitored session that is a chat opens as the chat', (tester) async {
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', chats: {
+        'c1': Chat(id: 'c1', title: 'Chat about s1', activeSession: 's1', links: const [ChatLink(session: 's1'), ChatLink(session: 't1', role: 'started')]),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(sessionCard('s1'));
+      await settle(tester);
+      expect(find.text('Chat about s1'), findsWidgets);
+      expect(find.byKey(const Key('linked-sessions')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('linked-sessions')));
+      await settle(tester);
+      expect(find.text('Started by Claude · laptop · app'), findsOneWidget);
+    });
+
+    testWidgets('tablet widths get the icon rail', (tester) async {
+      await pumpApp(tester, const Size(800, 900));
+      expect(find.text('RUNNING NOW'), findsOneWidget);
+      expect(find.byKey(const Key('nav-chats')), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.text('RECENTS'), findsNothing, reason: 'recents need the full sidebar');
     });
   });
 }

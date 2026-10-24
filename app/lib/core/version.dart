@@ -1,6 +1,6 @@
 /// This app's version, sent to the hub so the devices screen can show
 /// which apps need an update. Keep in step with pubspec.yaml.
-const appVersion = '0.15.0';
+const appVersion = '0.16.0';
 
 /// Whether [version] is older than [than] (dotted numbers like 0.14.2).
 /// Builds without a release number ("dev", "") are never called out.

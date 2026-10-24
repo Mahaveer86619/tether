@@ -48,6 +48,7 @@ class HubRepositoryImpl implements HubRepository {
   // Wire copies of the state, kept for the on-device cache.
   final _wireNodes = <String, pb.NodeStatus>{};
   final _wireSessions = <String, pb.SessionInfo>{};
+  final _wireChats = <String, pb.Chat>{};
   Timer? _saveState;
 
   @override
@@ -69,6 +70,7 @@ class HubRepositoryImpl implements HubRepository {
     _api.endpoint = null;
     _wireNodes.clear();
     _wireSessions.clear();
+    _wireChats.clear();
     _emit(const HubSnapshot());
     await _cache.clear().catchError((Object _) {});
   }
@@ -83,9 +85,14 @@ class HubRepositoryImpl implements HubRepository {
     for (final s in cached.sessions) {
       _wireSessions[s.id] = s;
     }
+    for (final c in cached.chats) {
+      _wireChats[c.id] = c;
+    }
     _emit(_snap.copyWith(
       nodes: {for (final n in _wireNodes.values) n.node: nodeFromPb(n)},
       sessions: {for (final s in _wireSessions.values) s.id: sessionFromPb(s)},
+      chats: {for (final c in _wireChats.values) c.id: chatFromPb(c)},
+      hubVersion: cached.hubVersion,
       deviceId: cached.deviceId,
       clientIp: cached.clientIp,
     ));
@@ -95,7 +102,14 @@ class HubRepositoryImpl implements HubRepository {
     _saveState?.cancel();
     _saveState = Timer(const Duration(seconds: 2), () {
       _cache
-          .writeState(pb.Welcome(nodes: _wireNodes.values, sessions: _wireSessions.values, deviceId: _snap.deviceId, clientIp: _snap.clientIp))
+          .writeState(pb.Welcome(
+            nodes: _wireNodes.values,
+            sessions: _wireSessions.values,
+            chats: _wireChats.values,
+            hubVersion: _snap.hubVersion,
+            deviceId: _snap.deviceId,
+            clientIp: _snap.clientIp,
+          ))
           .catchError((Object _) {});
     });
   }
@@ -148,6 +162,9 @@ class HubRepositoryImpl implements HubRepository {
         _wireSessions
           ..clear()
           ..addEntries(w.sessions.map((s) => MapEntry(s.id, s)));
+        _wireChats
+          ..clear()
+          ..addEntries(w.chats.map((c) => MapEntry(c.id, c)));
         _emit(_snap.copyWith(
           status: ConnectionStatus.connected,
           hubVersion: w.hubVersion,
@@ -156,6 +173,7 @@ class HubRepositoryImpl implements HubRepository {
           clientIp: w.clientIp,
           nodes: {for (final n in w.nodes) n.node: nodeFromPb(n)},
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
+          chats: {for (final c in w.chats) c.id: chatFromPb(c)},
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
           preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
@@ -169,6 +187,8 @@ class HubRepositoryImpl implements HubRepository {
       case pb.Frame_Body.artifactAdded:
         final a = artifactFromPb(f.artifactAdded);
         _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
+      case pb.Frame_Body.chat:
+        _putChat(f.chat);
       case pb.Frame_Body.preferences:
         _emit(_snap.copyWith(preferences: () => appearanceFromPb(f.preferences)));
       case pb.Frame_Body.nodeStatus:
@@ -320,6 +340,59 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   Future<Result<String>> continueOnHub(String sessionId, String text) => _command(() => _api.continueOnHub(sessionId, text));
+
+  @override
+  Future<Result<Chat>> createChat(NewChatRequest r) => _chat(() => _api.createChat(pb.CreateChat(
+        prompt: r.prompt,
+        target: r.target == null ? null : chatTargetToPb(r.target!),
+        attachments: r.attachments,
+        model: r.model,
+        permissionMode: r.permissionMode,
+        clientId: r.clientId.isEmpty ? null : r.clientId,
+      )));
+
+  @override
+  Future<Result<Chat>> chatForSession(String sessionId) => _chat(() => _api.createChat(pb.CreateChat(session: sessionId)));
+
+  @override
+  Future<Result<Chat>> renameChat(String chatId, String title) => _chat(() => _api.updateChat(chatId, pb.UpdateChat(title: title)));
+
+  @override
+  Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) =>
+      _chat(() => _api.updateChat(chatId, pb.UpdateChat(archived: archived)));
+
+  @override
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) =>
+      _command(() => _api.sendToChat(chatId, text, attachments: attachments, clientId: clientId));
+
+  @override
+  Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) =>
+      _chat(() => _api.setChatTarget(chatId, pb.SetChatTarget(target: chatTargetToPb(target), move: move, text: text)));
+
+  @override
+  Future<Result<Chat>> linkSession(String chatId, String sessionId, {bool unlink = false}) =>
+      _chat(() => _api.linkSession(chatId, pb.LinkSession(session: sessionId, unlink: unlink)));
+
+  @override
+  Future<Result<ChatContext>> chatContext(String chatId) async => (await _command(() => _api.chatContext(chatId))).map(chatContextFromPb);
+
+  @override
+  Future<Result<TargetSuggestions>> targetSuggestions(String prompt) async =>
+      (await _command(() => _api.targetSuggestions(prompt))).map(targetSuggestionsFromPb);
+
+  /// Runs a chat command and takes its answer in at once, ahead of the
+  /// hub's broadcast of the same change.
+  Future<Result<Chat>> _chat(Future<pb.Chat> Function() body) async {
+    final r = await _command(body);
+    if (r case Ok(:final value)) _putChat(value);
+    return r.map(chatFromPb);
+  }
+
+  void _putChat(pb.Chat c) {
+    _wireChats[c.id] = c;
+    _emit(_snap.copyWith(chats: {..._snap.chats, c.id: chatFromPb(c)}));
+    _scheduleStateSave();
+  }
 
   @override
   Future<Result<List<int>>> artifactBytes(String id) => _command(() => _api.artifactBytes(id));
@@ -482,7 +555,7 @@ class _Timeline {
 
   void apply(List<rpb.TimelineItem> items, Int64 frameSeq, {bool endOfReplay = false, bool persist = true}) {
     for (final it in items) {
-      _items[it.itemId] = it;
+      _items[it.itemId] = unpastedItem(it);
     }
     if (frameSeq > seq) seq = frameSeq;
     if (endOfReplay) loading = false;
