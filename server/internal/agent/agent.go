@@ -84,6 +84,10 @@ type Agent struct {
 	hashes        map[hashKey]string // file hashes for snapshots, while unchanged
 	snapMu        sync.Mutex         // one snapshot at a time
 	backupMu      sync.Mutex         // one backup run at a time
+	historyMu     sync.Mutex         // one history sync at a time
+	historyAcks   chan *v1.AgentCommand_HistoryAck
+	historyNext   []*v1.HistoryPosition // the latest sync request, while one runs
+	historyAsked  bool
 	ended         map[string]*v1.SessionInfo
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
@@ -103,6 +107,7 @@ func New(cfg Config) (*Agent, error) {
 		hooks:         map[string]*hookSession{},
 		hookApprovals: map[string]*hookApproval{},
 		uploaded:      map[string]bool{},
+		historyAcks:   make(chan *v1.AgentCommand_HistoryAck, 1),
 		hashes:        map[hashKey]string{},
 		ended:         map[string]*v1.SessionInfo{},
 		mirrors:       map[string]context.CancelFunc{},
@@ -257,6 +262,13 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.backup(op.Backup.Stored)
 		case *v1.AgentCommand_SelfUpdate_:
 			go a.selfUpdate(op.SelfUpdate)
+		case *v1.AgentCommand_SyncHistory_:
+			go a.syncHistory(op.SyncHistory.Positions)
+		case *v1.AgentCommand_HistoryAck_:
+			select {
+			case a.historyAcks <- op.HistoryAck:
+			default:
+			}
 		case *v1.AgentCommand_Send:
 			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode, op.Send.SystemPrompt)
 		case *v1.AgentCommand_Interrupt_:

@@ -14,7 +14,8 @@ func TestChatsMigrateIntoAnOlderDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Back to how a 0.15 hub left it: one migration run, no chat tables.
-	for _, q := range []string{`DROP TABLE chats`, `DROP TABLE chat_sessions`, `DROP TABLE chat_messages`, `DROP TABLE chat_notes`, `PRAGMA user_version = 1`} {
+	for _, q := range []string{`DROP TABLE chats`, `DROP TABLE chat_sessions`, `DROP TABLE chat_messages`, `DROP TABLE chat_notes`,
+		`DROP TABLE history_events`, `DROP TABLE history_fts`, `DROP TABLE history_files`, `DROP TABLE history_resets`, `PRAGMA user_version = 1`} {
 		if _, err := s.db.Exec(q); err != nil {
 			t.Fatal(q, err)
 		}

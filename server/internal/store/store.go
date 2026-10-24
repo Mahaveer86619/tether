@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	_ "modernc.org/sqlite"
@@ -143,6 +145,7 @@ var migrations = []string{
 		updated_ms INTEGER NOT NULL,
 		PRIMARY KEY (chat, kind)
 	)`,
+	historySchema,
 }
 
 type Store struct {
@@ -160,17 +163,31 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	if err := migrate(db); err != nil {
+	if err := migrate(db, path); err != nil {
 		db.Close()
 		return nil, err
 	}
 	return &Store{db: db}, nil
 }
 
-func migrate(db *sql.DB) error {
+func migrate(db *sql.DB, path string) error {
 	var done int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&done); err != nil {
 		return err
+	}
+	// A copy from before the first migration this run makes, next to the
+	// database. A fresh database (only the schema, no sessions) needs none.
+	var sessions int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&sessions); err != nil {
+		return err
+	}
+	if done < len(migrations) && sessions > 0 {
+		backup := fmt.Sprintf("%s.pre-migration-%d", path, done+1)
+		_ = os.Remove(backup)
+		// VACUUM INTO takes the path as a string literal; quotes are doubled.
+		if _, err := db.Exec(`VACUUM INTO '` + strings.ReplaceAll(backup, "'", "''") + `'`); err != nil {
+			return fmt.Errorf("back up before migrating: %w", err)
+		}
 	}
 	for i := done; i < len(migrations); i++ {
 		tx, err := db.Begin()
@@ -658,6 +675,25 @@ func (s *Store) PageFile(session, path string) (*v1.Artifact, error) {
 }
 
 // BackupFile returns a session's backed-up file at path, or nil.
+// BackupFiles lists the newest backup of every session's files.
+func (s *Store) BackupFiles() ([]*v1.Artifact, error) {
+	rows, err := s.db.Query(`SELECT ` + artifactCols + ` FROM artifacts a WHERE origin = 'backup'
+		AND created_ms = (SELECT MAX(created_ms) FROM artifacts b WHERE b.origin = 'backup' AND b.session = a.session AND b.path = a.path)`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.Artifact
+	for rows.Next() {
+		a, err := scanArtifact(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) BackupFile(session, path string) (*v1.Artifact, error) {
 	a, err := scanArtifact(s.db.QueryRow(`SELECT `+artifactCols+` FROM artifacts
 		WHERE origin = 'backup' AND session = ? AND path = ? ORDER BY created_ms DESC LIMIT 1`, session, path))

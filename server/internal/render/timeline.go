@@ -491,3 +491,6 @@ func itemID(prefix, uuid string, fallback []byte) string {
 	h := sha1.Sum(fallback)
 	return prefix + ":" + hex.EncodeToString(h[:8])
 }
+
+// Unpaste is unpaste for other packages: the hub's history uses it too.
+func Unpaste(text string) (string, []string) { return unpaste(text) }

@@ -49,6 +49,12 @@ type Config struct {
 	UpdateFeed string
 	// Tell idle agents older than the newest release to update themselves.
 	AutoUpdateAgents bool
+	// Take secrets out of stored history (see docs/history.md).
+	HistoryRedact bool
+	// Drop a session's history after this many days untouched, and the
+	// oldest sessions' when it outgrows this many MB; 0 keeps everything.
+	HistoryKeepDays int
+	HistoryMaxMB    int
 }
 
 type client struct {
@@ -214,6 +220,7 @@ func (h *Hub) Run(ctx context.Context) {
 	go h.modeLoop(ctx)
 	go h.backupLoop(ctx)
 	go h.updateLoop(ctx)
+	go h.historyLoop(ctx)
 	t := time.NewTicker(flushInterval)
 	defer t.Stop()
 	for {
@@ -604,6 +611,7 @@ func (h *Hub) serveAgent(conn *wire.Conn, st *v1.NodeStatus, device, ip string) 
 	st.Online, st.LastSeenMs = true, time.Now().UnixMilli()
 	h.putNode(st)
 	h.scanRoots(node)
+	h.requestHistory(node)
 	for s, set := range h.subs {
 		if info := h.sessions[s]; info != nil && info.Node == node && len(set) > 0 {
 			delete(h.mirroring, s)
@@ -703,6 +711,14 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteModeResult(node, b.ModeResult)
 	case *v1.Frame_CommandResult:
 		h.noteCommandResult(node, b.CommandResult)
+	case *v1.Frame_HistoryChunk:
+		c := b.HistoryChunk
+		offset := h.ingestChunk(node, c)
+		if agent := h.agents[node]; agent != nil {
+			agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_HistoryAck_{HistoryAck: &v1.AgentCommand_HistoryAck{Session: c.Session, File: c.File, Offset: offset}}}))
+		}
+	case *v1.Frame_HistorySynced:
+		h.noteHistorySynced(node, b.HistorySynced.AtMs)
 	case *v1.Frame_NodeStatus:
 		st := b.NodeStatus
 		st.Node, st.Online, st.LastSeenMs = node, true, time.Now().UnixMilli()
@@ -733,6 +749,9 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		}
 		if busy(cur.State) && !busy(in.State) {
 			defer h.noteTurnEnded(in.Id)
+		}
+		if in.State != cur.State {
+			defer h.noteStateEvent(in)
 		}
 		if in.CreatedMs == 0 {
 			in.CreatedMs = cur.CreatedMs
@@ -989,6 +1008,10 @@ func (h *Hub) putNode(st *v1.NodeStatus) {
 		st.Ip = ip
 	} else if old := h.nodes[st.Node]; old != nil {
 		st.Ip = old.Ip
+	}
+	// Agents don't report it; the hub keeps it across their updates.
+	if old := h.nodes[st.Node]; old != nil && st.HistorySyncedMs == 0 {
+		st.HistorySyncedMs = old.HistorySyncedMs
 	}
 	h.nodes[st.Node] = st
 	if err := h.store.PutNode(st); err != nil {

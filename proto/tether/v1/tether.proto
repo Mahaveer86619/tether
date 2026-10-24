@@ -62,6 +62,10 @@ message Frame {
     // A command the node couldn't carry out, e.g. an interrupt that didn't
     // land; the hub shows it on the session.
     CommandResult command_result = 57;
+    // Transcript bytes for the hub's history (agent -> hub), and the end of
+    // a sync run.
+    HistoryChunk history_chunk = 58;
+    HistorySynced history_synced = 59;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -84,6 +88,8 @@ message NodeStatus {
   int32 running_sessions = 8;
   // The address the agent connects to the hub from, set by the hub.
   string ip = 9;
+  // When the node's transcripts were last fully synced to the hub's history.
+  int64 history_synced_ms = 10;
 }
 
 enum SessionState {
@@ -421,6 +427,11 @@ message AgentCommand {
     BackupSessions backup = 15;
     // Replace the agent's own binary with a newer release, then restart.
     SelfUpdate self_update = 16;
+    // What the hub's history has of this node's transcripts; the agent sends
+    // the rest.
+    SyncHistory sync_history = 17;
+    // The hub took a HistoryChunk up to offset; the next chunk starts there.
+    HistoryAck history_ack = 18;
   }
 
   message StartRun {
@@ -461,6 +472,16 @@ message AgentCommand {
     // For a resume: StartRun.system_prompt again, since Claude Code doesn't
     // keep it across --resume.
     string system_prompt = 5;
+  }
+
+  message SyncHistory {
+    repeated HistoryPosition positions = 1;
+  }
+
+  message HistoryAck {
+    string session = 1;
+    string file = 2;
+    int64 offset = 3;
   }
 
   message SelfUpdate {
@@ -1065,4 +1086,106 @@ message UpdateManifest {
   // agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
   // tetherctl-windows-amd64.
   map<string, UpdateAsset> platforms = 5;
+}
+
+// ---- History ----
+//
+// The hub keeps every session's transcript: agents send it in chunks, the
+// hub stores the lines and indexes them as events. See docs/history.md.
+
+// How far the hub has one transcript file. file is "" for the session's
+// own transcript, or "subagents/<name>.jsonl".
+message HistoryPosition {
+  string session = 1;
+  string file = 2;
+  int64 offset = 3;
+  // sha256 (hex) of the file's first head_len bytes, as the hub got them:
+  // a file that no longer starts the same was rewritten and is sent again.
+  string head = 4;
+  int64 head_len = 5;
+}
+
+// Whole lines of a transcript file from offset; reset starts the file over.
+message HistoryChunk {
+  string session = 1;
+  string file = 2;
+  int64 offset = 3;
+  bytes data = 4;
+  bool reset = 5;
+  // The file's size when read.
+  int64 size = 6;
+  // Bytes after data that the agent didn't send: a line too large for a
+  // message. The hub moves its position past them.
+  int64 skip = 7;
+}
+
+message HistorySynced {
+  int64 at_ms = 1;
+}
+
+// One transcript line, as history: what was said or done, and where.
+message HistoryEvent {
+  // Grows with every event stored: the changes feed's cursor.
+  uint64 seq = 1;
+  string session = 2;
+  string node = 3;
+  string file = 4;
+  // Byte offset of the line in its transcript file.
+  int64 offset = 5;
+  // The line's uuid, when it has one.
+  string event_id = 6;
+  int64 ts_ms = 7;
+  // user, assistant, tool_use, tool_result, summary, system, state.
+  string kind = 8;
+  // Plain text (secrets redacted when the hub is set to).
+  string text = 9;
+  string tool = 10;
+  string model = 11;
+  string cwd = 12;
+  bool redacted = 13;
+}
+
+// A page of history, oldest first. Pass before to get older events,
+// after to get newer ones.
+message HistoryPage {
+  repeated HistoryEvent events = 1;
+  string before = 2;
+  string after = 3;
+  bool more_before = 4;
+  bool more_after = 5;
+}
+
+message HistoryHit {
+  HistoryEvent event = 1;
+  // The matching words in [brackets].
+  string snippet = 2;
+  // The chat the session is in, if any.
+  string chat = 3;
+}
+
+message HistorySearch {
+  repeated HistoryHit hits = 1;
+}
+
+// GET /api/v1/history/changes?since=: events stored after the cursor.
+message HistoryChanges {
+  repeated HistoryEvent events = 1;
+  uint64 cursor = 2;
+  bool more = 3;
+  // Files started over since the cursor: drop what you have of them.
+  repeated HistoryPosition resets = 4;
+}
+
+message HistoryNodeStatus {
+  string node = 1;
+  int64 synced_ms = 2;
+  int64 files = 3;
+  int64 bytes = 4;
+  int64 events = 5;
+}
+
+message HistoryStatus {
+  repeated HistoryNodeStatus nodes = 1;
+  int64 events = 2;
+  int64 bytes = 3;
 }
