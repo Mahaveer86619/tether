@@ -49,6 +49,11 @@ class HubRestApi {
   Future<String> continueOnHub(String session, String text) async =>
       (await _post('/sessions/${Uri.encodeComponent(session)}/continue', pb.SendMessage(text: text), pb.Ack())).session;
 
+  Future<pb.UpdateManifest> latestRelease() => _get('/updates/latest', pb.UpdateManifest());
+
+  /// A full URL for a path on the hub, or [url] itself if it's already one.
+  Uri resolve(String url) => url.startsWith('/') ? _endpoint.httpBase.replace(path: Uri.parse(url).path) : Uri.parse(url);
+
   Future<pb.Chat> createChat(pb.CreateChat body) => _post('/chats', body, pb.Chat());
 
   Future<pb.Chat> updateChat(String chat, pb.UpdateChat body) => _send(

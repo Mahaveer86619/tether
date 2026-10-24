@@ -170,6 +170,27 @@ func TestTheFeedBringsNewReleasesAndChecksTheirFiles(t *testing.T) {
 		t.Fatalf("latest.json kept: %s", b)
 	}
 
+	// The same release with the Windows app added is taken too.
+	win := []byte("windows zip")
+	gh.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/latest.json":
+			_, _ = w.Write(manifest)
+		case "/tether-0.19.0.apk":
+			_, _ = w.Write(apk)
+		case "/tether-windows-0.19.0.zip":
+			_, _ = w.Write(win)
+		}
+	})
+	manifest = []byte(strings.Replace(string(manifest), `}}}`, `},"windows":{"name":"tether-windows-0.19.0.zip","url":"`+gh.URL+`/tether-windows-0.19.0.zip","sha256":"`+sumOf(win)+`"}}}`, 1))
+	h.pollFeed(context.Background())
+	h.mu.Lock()
+	served = h.servedManifest()
+	h.mu.Unlock()
+	if served.Platforms["windows"] == nil || served.Platforms["windows"].Url != "/api/v1/updates/files/0.19.0/tether-windows-0.19.0.zip" {
+		t.Fatalf("the Windows app wasn't picked up: %v", served.Platforms)
+	}
+
 	// An older feed doesn't replace what's known.
 	manifest = []byte(`{"version":"0.18.0","platforms":{}}`)
 	h.pollFeed(context.Background())

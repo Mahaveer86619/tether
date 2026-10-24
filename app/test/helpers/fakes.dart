@@ -537,3 +537,57 @@ class MemoryHubCache implements HubCache {
 extension SessionCopy on Session {
   Session copyWithId(String id) => Session(id: id, node: node, title: 'Session $id', state: state, host: host, cwd: cwd, updated: updated);
 }
+
+/// Updates that download at once; the test reads what was done.
+class FakeUpdateRepository implements UpdateRepository {
+  FakeUpdateRepository({this.platform = 'android', this.release});
+
+  @override
+  final String? platform;
+  Release? release;
+  Result<String> downloadResult = const Ok('/tmp/update.bin');
+  final installed = <String>[];
+  final notifications = <(String, String)>[];
+  var skippedVersion = '';
+  var notifiedVersion = '';
+
+  @override
+  Future<Result<Release?>> latest() async => Ok(release);
+
+  @override
+  Future<Result<String>> download(UpdateAsset asset, {void Function(int received, int total)? onProgress}) async {
+    onProgress?.call(asset.size ~/ 2, asset.size);
+    return downloadResult;
+  }
+
+  @override
+  Future<Result<void>> install(String path) async {
+    installed.add(path);
+    return const Ok(null);
+  }
+
+  @override
+  Future<String> skipped() async => skippedVersion;
+
+  @override
+  Future<void> skip(String version) async => skippedVersion = version;
+
+  @override
+  Future<String> notified() async => notifiedVersion;
+
+  @override
+  Future<void> setNotified(String version) async => notifiedVersion = version;
+
+  @override
+  Future<void> notify(String title, String body) async => notifications.add((title, body));
+}
+
+Release release(String version, {String minSupported = '', String notes = '- Faster chats.\n- Fixes.'}) => Release(
+      version: version,
+      notes: notes,
+      minSupported: minSupported,
+      assets: {
+        'android': UpdateAsset(name: 'tether-$version.apk', url: '/api/v1/updates/files/$version/tether-$version.apk', sha256: 'ab', size: 100),
+        'windows': UpdateAsset(name: 'tether-windows-$version.zip', url: '/api/v1/updates/files/$version/tether-windows-$version.zip', sha256: 'cd', size: 100),
+      },
+    );

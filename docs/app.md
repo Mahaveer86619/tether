@@ -94,6 +94,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - **Sessions:** this week's sessions by tokens.
 
   It refreshes every 30 seconds while open.
+- **Updates** (`update/`): `UpdateCubit` checks the hub's `/api/v1/updates/latest` at start, every 6 hours and when the hub pushes `update_available`. A newer release shows a banner above the main pane (What's new, Skip this version, Update, then download progress), and Android also gets a system notification once per version. Android downloads the APK, checks its sha256 and opens the installer; Windows downloads the zip and applies it on **Restart to update**. Below the release's `min_supported`, `ForcedUpdatePage` replaces the app. The platform side is `data/datasources/update_platform.dart` and `MainActivity.kt`. See [releasing.md](releasing.md#how-apps-and-agents-update).
 - **Message box:** `PromptBox` is used by the composer and the new-chat box.
   - The text and the 40 px buttons share one row, so the hint sits level with the buttons.
   - It grows to 5 lines (8 on desktop) with the buttons on the last line.

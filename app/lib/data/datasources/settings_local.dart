@@ -95,6 +95,23 @@ class SettingsLocalDataSource {
     }
   }
 
+  /// A small value kept on the device, e.g. a skipped update.
+  Future<String> readValue(String key) async {
+    try {
+      return (await _prefs).getString(key) ?? '';
+    } on Exception {
+      return '';
+    }
+  }
+
+  Future<void> writeValue(String key, String value) async {
+    try {
+      await (await _prefs).setString(key, value);
+    } on Exception {
+      // Asked again next time; nothing is lost.
+    }
+  }
+
   /// A session's outbox as JSON, kept across restarts.
   Future<String> readOutbox(String session) async {
     try {

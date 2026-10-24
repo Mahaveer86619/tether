@@ -96,7 +96,7 @@ func readManifest(path string) (*v1.UpdateManifest, error) {
 // setUpdate makes m the known release if it's newer, tells every app and
 // starts agent updates. Caller holds h.mu.
 func (h *Hub) setUpdate(m *v1.UpdateManifest) {
-	if h.update != nil && versionAtLeast(h.update.Version, m.Version) {
+	if covers(h.update, m) {
 		return
 	}
 	h.update = m
@@ -197,7 +197,7 @@ func (h *Hub) pollFeed(ctx context.Context) {
 		return
 	}
 	h.mu.Lock()
-	known := h.update != nil && versionAtLeast(h.update.Version, m.Version)
+	known := covers(h.update, m)
 	h.mu.Unlock()
 	if known {
 		return
@@ -356,4 +356,17 @@ func (h *Hub) updateRoutes(mux *http.ServeMux) {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 		http.ServeFile(w, r, filepath.Join(h.updatesDir(), v, name))
 	})
+}
+
+// covers reports whether release a makes b redundant: newer, or the same
+// version with at least its files. The hub deploys a release before CI has
+// built the Windows app, then takes the published one with it.
+func covers(a, b *v1.UpdateManifest) bool {
+	if a == nil {
+		return false
+	}
+	if a.Version != b.Version {
+		return versionAtLeast(a.Version, b.Version)
+	}
+	return len(a.Platforms) >= len(b.Platforms)
 }

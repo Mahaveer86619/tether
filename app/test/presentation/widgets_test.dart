@@ -111,6 +111,7 @@ void main() {
     late FakeHubRepository repo;
     late FakeSettingsRepository settings;
     late FakeTransferRepository transfers;
+    late FakeUpdateRepository updates;
 
     setUp(() async {
       await sl.reset();
@@ -133,7 +134,8 @@ void main() {
       sl
         ..registerSingleton<HubRepository>(repo)
         ..registerSingleton<TransferRepository>(transfers)
-        ..registerSingleton<SettingsRepository>(settings);
+        ..registerSingleton<SettingsRepository>(settings)
+        ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository());
       configureDependencies(withData: false);
     });
 
@@ -942,6 +944,40 @@ void main() {
       await tester.tap(find.byKey(const Key('linked-sessions')));
       await settle(tester);
       expect(find.text('Started by Claude · laptop · app'), findsOneWidget);
+    });
+
+    testWidgets('updates: a banner with the notes, Skip, and Update through to Install', (tester) async {
+      updates.release = release('9.0.0');
+      await pumpApp(tester, const Size(1400, 900));
+      expect(find.byKey(const Key('update-banner')), findsOneWidget);
+      expect(find.textContaining('Tether 9.0.0 is available'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('update-notes')));
+      await settle(tester);
+      expect(find.textContaining('Faster chats'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await settle(tester);
+
+      await tester.tap(find.byKey(const Key('update-now')));
+      await settle(tester);
+      expect(updates.installed, ['/tmp/update.bin'], reason: 'android: downloaded, checked, then the installer');
+
+      updates.release = release('9.0.1');
+      repo.emitHub(repo.current.copyWith(update: () => release('9.0.1')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('update-skip')));
+      await settle(tester);
+      expect(find.byKey(const Key('update-banner')), findsNothing);
+      expect(updates.skippedVersion, '9.0.1');
+    });
+
+    testWidgets('updates: below the minimum, nothing but the update is offered', (tester) async {
+      updates.release = release('9.0.0', minSupported: '8.0.0');
+      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      expect(find.byKey(const Key('forced-update')), findsOneWidget);
+      expect(find.byKey(const Key('nav-chats')), findsNothing);
+      await tester.tap(find.byKey(const Key('forced-update-now')));
+      await settle(tester);
+      expect(updates.installed, isNotEmpty);
     });
 
     testWidgets('tablet widths get the icon rail', (tester) async {

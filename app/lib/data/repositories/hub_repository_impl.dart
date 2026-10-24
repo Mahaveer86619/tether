@@ -174,6 +174,7 @@ class HubRepositoryImpl implements HubRepository {
           nodes: {for (final n in w.nodes) n.node: nodeFromPb(n)},
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
           chats: {for (final c in w.chats) c.id: chatFromPb(c)},
+          update: () => w.hasUpdate() ? releaseFromPb(w.update) : null,
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
           preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
@@ -189,6 +190,8 @@ class HubRepositoryImpl implements HubRepository {
         _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
       case pb.Frame_Body.chat:
         _putChat(f.chat);
+      case pb.Frame_Body.updateAvailable:
+        _emit(_snap.copyWith(update: () => releaseFromPb(f.updateAvailable)));
       case pb.Frame_Body.preferences:
         _emit(_snap.copyWith(preferences: () => appearanceFromPb(f.preferences)));
       case pb.Frame_Body.nodeStatus:

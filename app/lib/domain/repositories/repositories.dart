@@ -181,3 +181,31 @@ abstract interface class SettingsRepository {
   Future<Appearance> loadAppearance();
   Future<Result<void>> saveAppearance(Appearance appearance);
 }
+
+/// Releases of the app: finding one, fetching it, installing it.
+abstract interface class UpdateRepository {
+  /// This platform's key in a release (android, windows), or null where
+  /// the app can't update itself.
+  String? get platform;
+
+  /// The newest release the hub knows of; null when there's none.
+  Future<Result<Release?>> latest();
+
+  /// Downloads [asset], checks its sha256, and returns the file's path.
+  /// A file already downloaded and intact is reused.
+  Future<Result<String>> download(UpdateAsset asset, {void Function(int received, int total)? onProgress});
+
+  /// Starts installing a downloaded file. On Windows the app must then exit
+  /// for the update to be applied.
+  Future<Result<void>> install(String path);
+
+  /// The version the user chose to skip, or empty.
+  Future<String> skipped();
+  Future<void> skip(String version);
+
+  /// The last version the user was notified about, so it's said once.
+  Future<String> notified();
+  Future<void> setNotified(String version);
+
+  Future<void> notify(String title, String body);
+}
