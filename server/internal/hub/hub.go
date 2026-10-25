@@ -445,7 +445,7 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 		attachments = append(attachments, long)
 	}
 	h.putSession(info)
-	h.noteSentAs(info.Id, prompt, from, extra.clientID)
+	h.noteSentAs(info.Id, prompt, from, extra.clientID, attachments...)
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 		Session: info.Id, Cwd: cs.Cwd, Prompt: prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name, CreateCwd: cs.CreateCwd,
 		Attachments: attachments, Scratch: cs.Scratch, SystemPrompt: extra.systemPrompt,
@@ -501,7 +501,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 	if long != nil {
 		attachments = append(attachments, long)
 	}
-	h.noteSentAs(info.Id, text, from, m.ClientId)
+	h.noteSentAs(info.Id, text, from, m.ClientId, attachments...)
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode),
 		SystemPrompt: h.chatSystemPrompt(info.Id)}}}))
 	return info.Id, nil

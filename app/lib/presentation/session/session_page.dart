@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
-import '../artifacts/artifact_widgets.dart' show fileSize;
+import '../artifacts/artifact_widgets.dart' show artifactIcon, fileSize;
 import '../artifacts/attachments.dart';
 import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
@@ -618,7 +618,7 @@ class _OutboxBubble extends StatelessWidget {
               ),
               child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
             ),
-            if (e.files.isNotEmpty)
+            if (e.files.isNotEmpty || e.attachments.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Wrap(
@@ -626,6 +626,13 @@ class _OutboxBubble extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
+                    for (final id in e.attachments)
+                      if (context.read<HubCubit>().state.hub.artifacts[id] case final a?)
+                        Chip(
+                          avatar: Icon(artifactIcon(a), size: 14),
+                          label: Text('${a.name} · ${fileSize(a.size)}', style: const TextStyle(fontSize: 11.5)),
+                          visualDensity: VisualDensity.compact,
+                        ),
                     for (final f in e.files)
                       Chip(
                         avatar: const Icon(Icons.attach_file_rounded, size: 14),

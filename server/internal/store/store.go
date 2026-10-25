@@ -611,6 +611,12 @@ func (s *Store) PutArtifact(a *v1.Artifact) error {
 	return err
 }
 
+// SetArtifactRef links an artifact to a timeline item or tool call.
+func (s *Store) SetArtifactRef(id, ref string) error {
+	_, err := s.db.Exec(`UPDATE artifacts SET tool_use_id = ? WHERE id = ?`, ref, id)
+	return err
+}
+
 // Artifact returns one artifact, or nil.
 func (s *Store) Artifact(id string) (*v1.Artifact, error) {
 	a, err := scanArtifact(s.db.QueryRow(`SELECT `+artifactCols+` FROM artifacts WHERE id = ?`, id))

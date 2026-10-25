@@ -185,3 +185,21 @@ func TestSameMessageIgnoresHowATerminalReflowedIt(t *testing.T) {
 		t.Fatal("different text matched")
 	}
 }
+
+func TestFilesSentWithAMessageAreLinkedToItsTimelineItem(t *testing.T) {
+	h, _ := newTestHubWith(t)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	shot := &v1.Artifact{Name: "screenshot.png", Mime: "image/png", Session: "s1", Origin: "attachment"}
+	if oerr := h.addArtifact(shot); oerr != nil {
+		t.Fatal(oerr)
+	}
+	h.noteSentAs("s1", "what is wrong here?", "Pixel (android)", "c1", shot)
+	b := render.NewBuilder()
+	p := b.Feed([]byte(`{"type":"user","uuid":"u1","message":{"role":"user","content":"what is wrong here?\n\nAttached files (in this folder):\n- screenshot.png"}}`))
+	h.commit("s1", p.Items)
+	got, err := h.store.Artifact(shot.Id)
+	if err != nil || got == nil || got.ToolUseId != "user:u1" {
+		t.Fatalf("artifact after the message: %v, %v", got, err)
+	}
+}

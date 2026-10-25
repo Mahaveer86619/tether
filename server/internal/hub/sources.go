@@ -19,6 +19,7 @@ const (
 
 type sentMsg struct {
 	text, from, clientID string
+	attachments          []string
 	at                   time.Time
 }
 
@@ -26,8 +27,12 @@ type sentMsg struct {
 func (h *Hub) noteSent(session, text, from string) { h.noteSentAs(session, text, from, "") }
 
 // noteSentAs also keeps the client's id for the message. Caller holds h.mu.
-func (h *Hub) noteSentAs(session, text, from, clientID string) {
-	h.sent[session] = append(h.sent[session], sentMsg{text: strings.TrimSpace(text), from: from, clientID: clientID, at: time.Now()})
+func (h *Hub) noteSentAs(session, text, from, clientID string, attachments ...*v1.Artifact) {
+	m := sentMsg{text: strings.TrimSpace(text), from: from, clientID: clientID, at: time.Now()}
+	for _, a := range attachments {
+		m.attachments = append(m.attachments, a.Id)
+	}
+	h.sent[session] = append(h.sent[session], m)
 }
 
 // alreadySent reports whether a message with this client id went to the
@@ -56,7 +61,11 @@ func (h *Hub) tagSources(session string, items []*v1.TimelineItem) {
 			u.Source = src
 			continue
 		}
-		u.Source, u.ClientId = h.sourceOf(session, u.Text)
+		var attachments []string
+		u.Source, u.ClientId, attachments = h.sourceOf(session, u.Text)
+		if !u.Queued {
+			h.linkAttachments(it.ItemId, attachments)
+		}
 	}
 }
 
@@ -69,20 +78,21 @@ func sameMessage(sent, got string) bool {
 	return sent == got || strings.HasPrefix(got, sent+" Attached files")
 }
 
-// sourceOf finds who sent text and the client's id for it, dropping notes
-// too old to match. A queued placeholder and the message that replaces it
-// both match the same note.
-func (h *Hub) sourceOf(session, text string) (string, string) {
+// sourceOf finds who sent text, the client's id for it and the files sent
+// with it, dropping notes too old to match. A queued placeholder and the
+// message that replaces it both match the same note.
+func (h *Hub) sourceOf(session, text string) (string, string, []string) {
 	cutoff := time.Now().Add(-sourceTTL)
 	kept := h.sent[session][:0]
 	from, clientID := "", ""
+	var attachments []string
 	for _, m := range h.sent[session] {
 		if m.at.Before(cutoff) {
 			continue
 		}
 		kept = append(kept, m)
 		if from == "" && sameMessage(m.text, text) {
-			from, clientID = m.from, m.clientID
+			from, clientID, attachments = m.from, m.clientID, m.attachments
 		}
 	}
 	if len(kept) == 0 {
@@ -91,9 +101,26 @@ func (h *Hub) sourceOf(session, text string) (string, string) {
 		h.sent[session] = kept
 	}
 	if from == "" {
-		return sourceTerminal, ""
+		return sourceTerminal, "", nil
 	}
-	return from, clientID
+	return from, clientID, attachments
+}
+
+// linkAttachments ties the files sent with a message to its timeline item,
+// which is how the app shows them on it. A queued placeholder isn't the
+// message yet, so it waits for the real item. Caller holds h.mu.
+func (h *Hub) linkAttachments(item string, ids []string) {
+	for _, id := range ids {
+		a, err := h.store.Artifact(id)
+		if err != nil || a == nil || a.ToolUseId != "" {
+			continue
+		}
+		a.ToolUseId = item
+		if err := h.store.SetArtifactRef(id, item); err != nil {
+			continue
+		}
+		h.broadcast(&v1.Frame{Body: &v1.Frame_ArtifactAdded{ArtifactAdded: a}})
+	}
 }
 
 // dropStaleQueued removes "queued" placeholders whose message has arrived
