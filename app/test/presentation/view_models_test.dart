@@ -26,6 +26,7 @@ SessionBloc sessionBloc(FakeHubRepository repo, String id) => SessionBloc(
       setGlobal: SetSessionGlobal(repo),
       continueOnHub: ContinueOnHub(repo),
       outbox: Outbox(FakeSettingsRepository()),
+      uploads: Transfers(FakeTransferRepository()),
     );
 
 void main() {
@@ -197,6 +198,7 @@ void main() {
           setGlobal: SetSessionGlobal(repo),
           continueOnHub: ContinueOnHub(repo),
           outbox: Outbox(settings),
+          uploads: Transfers(FakeTransferRepository()),
         );
     final bloc = open()..add(const SessionOpened());
     await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -240,6 +242,8 @@ void main() {
       repo = FakeHubRepository(snapshotWith([session('s1')]));
       settings = FakeSettingsRepository();
     });
+    late FakeTransferRepository transfers;
+    setUp(() => transfers = FakeTransferRepository());
     SessionBloc open() => SessionBloc(
           sessionId: 's1',
           watchHub: WatchHub(repo),
@@ -251,7 +255,39 @@ void main() {
           setGlobal: SetSessionGlobal(repo),
           continueOnHub: ContinueOnHub(repo),
           outbox: Outbox(settings),
+          uploads: Transfers(transfers),
         );
+
+    test('files go up in the background with their own ids, then the message carries the uploaded ids', () async {
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      b.add(const MessageSubmitted('see clip', files: [LocalFile(path: '/tmp/clip.mp4', name: 'clip.mp4', size: 9, uploadId: 'up-1')]));
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      expect(transfers.uploads.single.$1.uploadId, 'up-1');
+      expect(repo.attachmentsSent.single, ['art-1']);
+      expect(b.state.outbox.single.files, isEmpty);
+      expect(b.state.outbox.single.attachments, ['art-1']);
+      expect(b.state.outbox.single.state, OutboxState.sent);
+      await b.close();
+    });
+
+    test('a file still waiting when the app closed uploads and sends on the next start', () async {
+      settings.outboxes['s1'] = [
+        OutboxEntry(
+          id: 'm1',
+          session: 's1',
+          text: 'see clip',
+          created: DateTime(2026, 10, 25),
+          files: const [LocalFile(path: '/tmp/clip.mp4', name: 'clip.mp4', size: 9, uploadId: 'up-1')],
+        ),
+      ];
+      final b = open()..add(const SessionOpened());
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(transfers.uploads.single.$1.uploadId, 'up-1');
+      expect(repo.clientIds, ['m1']);
+      expect(repo.attachmentsSent.single, ['art-1']);
+      await b.close();
+    });
 
     test('a failed send stays in the outbox, saved, and Retry sends it with the same client id', () async {
       var fail = true;
@@ -335,6 +371,7 @@ void main() {
           setGlobal: SetSessionGlobal(repo),
           continueOnHub: ContinueOnHub(repo),
           outbox: Outbox(FakeSettingsRepository()),
+          uploads: Transfers(FakeTransferRepository()),
           interruptTimeout: const Duration(milliseconds: 40),
         );
 

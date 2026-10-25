@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
 import '../../core/error/exceptions.dart';
+import '../../core/upload_id.dart';
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../../domain/entities/entities.dart';
@@ -188,7 +188,7 @@ class TransferRepositoryImpl implements TransferRepository {
   Future<Artifact> _upload(String id, LocalFile file, {required String session, required String note, required bool deliver}) async {
     final sha = await fileSha256(file.path);
     // One id for every try, so a start whose answer got lost doesn't leave an empty upload behind.
-    final uploadId = _newUploadId();
+    final uploadId = file.uploadId.isEmpty ? newUploadId() : file.uploadId;
     final started = await _retrying(
       () => _api.startUpload(
         name: file.name,
@@ -272,16 +272,6 @@ class TransferRepositoryImpl implements TransferRepository {
     await _sub.cancel();
     await _changes.close();
   }
-}
-
-final _random = Random.secure();
-
-String _newUploadId() {
-  final b = List.generate(16, (_) => _random.nextInt(256));
-  b[6] = (b[6] & 0x0f) | 0x40;
-  b[8] = (b[8] & 0x3f) | 0x80;
-  final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
-  return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
 }
 
 /// Hashes a file in another isolate, a chunk at a time.

@@ -861,13 +861,17 @@ class Transfer extends Equatable {
 
 /// A file picked on this device, read from disk rather than memory.
 class LocalFile extends Equatable {
-  const LocalFile({required this.path, required this.name, required this.size});
+  const LocalFile({required this.path, required this.name, required this.size, this.uploadId = ''});
 
   final String path, name;
   final int size;
 
+  /// Chosen when the file is attached and kept for every try, so the hub
+  /// files a retried or resumed upload once.
+  final String uploadId;
+
   @override
-  List<Object?> get props => [path, name, size];
+  List<Object?> get props => [path, name, size, uploadId];
 }
 
 /// A folder on a machine that new projects are created in.
@@ -903,6 +907,7 @@ class OutboxEntry extends Equatable {
     required this.text,
     required this.created,
     this.attachments = const [],
+    this.files = const [],
     this.state = OutboxState.sending,
     this.sentAt,
     this.error = '',
@@ -911,6 +916,9 @@ class OutboxEntry extends Equatable {
   /// Also the message's client id on the hub, which sends a repeat once.
   final String id, session, text, error;
   final List<String> attachments;
+
+  /// Files still to upload; each moves to [attachments] once the hub has it.
+  final List<LocalFile> files;
   final DateTime created;
   final OutboxState state;
   final DateTime? sentAt;
@@ -918,19 +926,20 @@ class OutboxEntry extends Equatable {
   /// Sent a while ago and still not in the timeline.
   bool unconfirmed(DateTime now) => state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > const Duration(minutes: 10);
 
-  OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error}) => OutboxEntry(
+  OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error, List<String>? attachments, List<LocalFile>? files}) => OutboxEntry(
         id: id,
         session: session,
         text: text,
         created: created,
-        attachments: attachments,
+        attachments: attachments ?? this.attachments,
+        files: files ?? this.files,
         state: state ?? this.state,
         sentAt: sentAt ?? this.sentAt,
         error: error ?? this.error,
       );
 
   @override
-  List<Object?> get props => [id, session, text, attachments, created, state, sentAt, error];
+  List<Object?> get props => [id, session, text, attachments, files, created, state, sentAt, error];
 }
 
 /// An app connected to the hub right now.

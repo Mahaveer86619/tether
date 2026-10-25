@@ -133,6 +133,7 @@ void configureDependencies({bool withData = true}) {
         setGlobal: sl(),
         continueOnHub: sl(),
         outbox: sl(),
+        uploads: sl(),
       ),
     )
     ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(

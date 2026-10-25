@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
+import '../artifacts/artifact_widgets.dart' show fileSize;
 import '../artifacts/attachments.dart';
 import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
@@ -596,7 +597,7 @@ class _OutboxBubble extends StatelessWidget {
     final unconfirmed = e.unconfirmed(DateTime.now());
     final failed = e.state == OutboxState.failed;
     final (IconData icon, String status) = switch (e.state) {
-      OutboxState.sending => (Icons.upload_rounded, 'Sending…'),
+      OutboxState.sending => (Icons.upload_rounded, e.files.isEmpty ? 'Sending…' : 'Uploading ${e.files.length == 1 ? e.files.single.name : '${e.files.length} files'}…'),
       OutboxState.failed => (Icons.error_outline_rounded, e.error.isEmpty ? 'Not sent' : 'Not sent · ${e.error}'),
       OutboxState.sent when unconfirmed => (Icons.help_outline_rounded, 'Sent, but not in the session yet'),
       OutboxState.sent => (Icons.schedule_rounded, 'Queued · Claude reads it at its next step'),
@@ -617,6 +618,23 @@ class _OutboxBubble extends StatelessWidget {
               ),
               child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
             ),
+            if (e.files.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final f in e.files)
+                      Chip(
+                        avatar: const Icon(Icons.attach_file_rounded, size: 14),
+                        label: Text('${f.name} · ${fileSize(f.size)}', style: const TextStyle(fontSize: 11.5)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.only(top: 4, right: 6),
               child: Row(
@@ -967,12 +985,10 @@ class Composer extends StatefulWidget {
 class _ComposerState extends State<Composer> {
   final _text = TextEditingController();
   final _focus = FocusNode();
-  final _files = <Artifact>[];
-  int _uploading = 0;
+  final _files = <LocalFile>[];
 
   Future<void> _attach() async {
-    final added = await pickAndUpload(context,
-        session: widget.state.sessionId, forMessage: true, onUploading: (n) => mounted ? setState(() => _uploading = n) : null);
+    final added = await pickLocalFiles(context);
     if (mounted && added.isNotEmpty) setState(() => _files.addAll(added));
   }
 
@@ -1028,8 +1044,8 @@ class _ComposerState extends State<Composer> {
 
   void _submit() {
     final s = widget.state;
-    if (!s.canType || s.sending || _uploading > 0 || (_text.text.trim().isEmpty && _files.isEmpty)) return;
-    context.read<SessionBloc>().add(MessageSubmitted(_text.text, attachments: [for (final f in _files) f.id]));
+    if (!s.canType || s.sending || (_text.text.trim().isEmpty && _files.isEmpty)) return;
+    context.read<SessionBloc>().add(MessageSubmitted(_text.text, files: [..._files]));
   }
 
   @override
@@ -1040,7 +1056,7 @@ class _ComposerState extends State<Composer> {
     final hint = !s.nodeOnline
         ? '${s.session?.node ?? 'Device'} is offline'
         : (s.forking ? 'First message of the new fork…' : 'Reply to Claude…');
-    final canSubmit = s.canType && !s.sending && _uploading == 0 && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
+    final canSubmit = s.canType && !s.sending && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
     final canStop = s.session?.canInterrupt ?? false;
     return PromptBox(
       controller: _text,
@@ -1053,14 +1069,13 @@ class _ComposerState extends State<Composer> {
       highlight: s.forking,
       onSubmit: _submit,
       onEscape: canStop ? () => bloc.add(const InterruptRequested()) : null,
-      header: s.forking || _files.isNotEmpty || _uploading > 0
+      header: s.forking || _files.isNotEmpty
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (s.forking) _forkBanner(c, bloc),
-                if (_files.isNotEmpty || _uploading > 0)
-                  AttachmentChips(files: _files, uploading: _uploading, onRemove: (f) => setState(() => _files.remove(f))),
+                if (_files.isNotEmpty) PendingFileChips(files: _files, onRemove: (f) => setState(() => _files.remove(f))),
               ],
             )
           : null,

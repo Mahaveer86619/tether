@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/upload_id.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
@@ -47,6 +48,24 @@ Future<List<Artifact>> pickAndUpload(
   return out;
 }
 
+/// Lets the user pick files without sending them anywhere yet: each keeps
+/// its path on this device and gets the id its upload will use, so the
+/// message can go now and the file follow in the background.
+Future<List<LocalFile>> pickLocalFiles(BuildContext context) async {
+  final picked = await FilePicker.pickFiles();
+  final files = <LocalFile>[];
+  for (final f in picked) {
+    final path = f.path;
+    final size = await f.length();
+    if (path == null || size == null) {
+      if (context.mounted) showToast(context, "Couldn't read ${f.name}", icon: Icons.error_outline_rounded);
+      continue;
+    }
+    files.add(LocalFile(path: path, name: f.name, size: size, uploadId: newUploadId()));
+  }
+  return files;
+}
+
 /// Asks for a note to go with files attached to a session; null if the
 /// user backs out.
 Future<String?> askAttachNote(BuildContext context) {
@@ -87,6 +106,33 @@ Future<void> attachToSession(BuildContext context, String session) async {
   if (context.mounted && added.isNotEmpty) {
     showToast(context, added.length == 1 ? 'Attached ${added.single.name}' : 'Attached ${added.length} files', icon: Icons.attach_file_rounded);
   }
+}
+
+/// Files chosen for a message that haven't gone up yet, each removable.
+class PendingFileChips extends StatelessWidget {
+  const PendingFileChips({super.key, required this.files, required this.onRemove});
+
+  final List<LocalFile> files;
+  final ValueChanged<LocalFile> onRemove;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 2, bottom: 4, right: 4),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final f in files)
+              InputChip(
+                key: ValueKey('pending-${f.uploadId}'),
+                avatar: const Icon(Icons.attach_file_rounded, size: 16),
+                label: Text('${f.name} · ${fileSize(f.size)}', style: const TextStyle(fontSize: 12)),
+                visualDensity: VisualDensity.compact,
+                onDeleted: () => onRemove(f),
+              ),
+          ],
+        ),
+      );
 }
 
 /// Files waiting to go with a message, each removable.

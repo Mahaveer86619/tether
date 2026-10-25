@@ -23,13 +23,16 @@ class SessionOpened extends SessionEvent {
 }
 
 class MessageSubmitted extends SessionEvent {
-  const MessageSubmitted(this.text, {this.attachments = const []});
+  const MessageSubmitted(this.text, {this.attachments = const [], this.files = const []});
   final String text;
 
   /// Artifact ids sent with the message.
   final List<String> attachments;
+
+  /// Files on this device that go up in the background and join the message.
+  final List<LocalFile> files;
   @override
-  List<Object?> get props => [text, attachments];
+  List<Object?> get props => [text, attachments, files];
 }
 
 /// Have the hub keep a copy of this session (or stop).
@@ -216,6 +219,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     required this._setGlobal,
     required this._continueOnHub,
     required this._outbox,
+    required this._uploads,
     this.interruptTimeout = const Duration(seconds: 8),
   })  : _send = sendMessage,
         super(SessionViewState(sessionId: sessionId)) {
@@ -239,6 +243,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
   }
 
   final Outbox _outbox;
+  final Transfers _uploads;
   static final _rand = Random.secure();
 
   static String _newId() => List.generate(16, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
@@ -253,7 +258,20 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
 
   /// Sends an outbox entry, recording how it went on the entry itself.
   Future<void> _deliver(OutboxEntry entry, Emitter<SessionViewState> emit) async {
-    final result = await _send(state.sessionId, entry.text, attachments: entry.attachments, clientId: entry.id);
+    var attachments = entry.attachments;
+    for (final file in entry.files) {
+      final uploaded = await _uploads.upload(file, session: state.sessionId, forMessage: true);
+      if (uploaded.failureOrNull case final failure?) {
+        _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.failed, error: failure.userMessage));
+        emit(state.copyWith(failure: failure, failureId: state.failureId + 1));
+        return;
+      }
+      attachments = [...attachments, uploaded.valueOrNull!.id];
+      // A file that's up stays up: a retry only sends what is left.
+      _updateEntry(emit, entry.id, (o) => o.copyWith(attachments: attachments, files: [for (final f in o.files) if (f.uploadId != file.uploadId) f]));
+    }
+    if (!state.outbox.any((o) => o.id == entry.id)) return;
+    final result = await _send(state.sessionId, entry.text, attachments: attachments, clientId: entry.id);
     switch (result) {
       case Ok():
         _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sent, sentAt: DateTime.now(), error: ''));
@@ -306,6 +324,11 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     emit(state.copyWith(draft: await _drafts.load(state.sessionId)));
     final saved = await _outbox.load(state.sessionId);
     if (saved.isNotEmpty) _setOutbox(emit, saved);
+    // Files that were still going up when the app closed carry on by themselves.
+    for (final entry in saved.where((o) => o.files.isNotEmpty && o.state != OutboxState.sent)) {
+      _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sending, error: ''));
+      unawaited(_deliver(entry, emit));
+    }
     await Future.wait([
       emit.forEach<HubSnapshot>(_watchHub(), onData: (hub) {
         final session = hub.sessions[state.sessionId];
@@ -333,7 +356,16 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
     if (!state.forking) return _queue(e, emit);
     emit(state.copyWith(sending: true));
     final fork = state.forking;
-    final result = await _send(state.sessionId, e.text, fork: fork, attachments: e.attachments);
+    var attachments = e.attachments;
+    for (final file in e.files) {
+      final uploaded = await _uploads.upload(file, session: state.sessionId, forMessage: true);
+      if (uploaded.failureOrNull case final failure?) {
+        emit(state.copyWith(sending: false, failure: failure, failureId: state.failureId + 1));
+        return;
+      }
+      attachments = [...attachments, uploaded.valueOrNull!.id];
+    }
+    final result = await _send(state.sessionId, e.text, fork: fork, attachments: attachments);
     result.fold(
       (f) => emit(state.copyWith(sending: false, failure: f, failureId: state.failureId + 1)),
       (id) {
@@ -353,16 +385,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
   /// A message to this session goes into the outbox first, and the
   /// composer clears at once: the text is safe there whatever happens next.
   Future<void> _queue(MessageSubmitted e, Emitter<SessionViewState> emit) async {
-    if (_send.check(state.sessionId, e.text, attachments: e.attachments) case final f?) {
+    if (_send.check(state.sessionId, e.text, attachments: [...e.attachments, ...e.files.map((f) => f.uploadId)]) case final f?) {
       emit(state.copyWith(failure: f, failureId: state.failureId + 1));
       return;
     }
-    final entry = OutboxEntry(id: _newId(), session: state.sessionId, text: e.text.trim(), attachments: e.attachments, created: DateTime.now());
+    final entry = OutboxEntry(id: _newId(), session: state.sessionId, text: e.text.trim(), attachments: e.attachments, files: e.files, created: DateTime.now());
     _draftSave?.cancel();
     _pendingDraft = null;
     unawaited(_drafts.save(state.sessionId, ''));
     emit(state.copyWith(sending: true, sentId: state.sentId + 1));
     _setOutbox(emit, [...state.outbox, entry]);
+    // Files go up in the background; the composer is free for the next message.
+    if (entry.files.isNotEmpty) emit(state.copyWith(sending: false));
     await _deliver(entry, emit);
     emit(state.copyWith(sending: false));
   }

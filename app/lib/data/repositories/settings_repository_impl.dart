@@ -50,6 +50,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
         'id': e.id,
         'text': e.text,
         'attachments': e.attachments,
+        if (e.files.isNotEmpty) 'files': [for (final f in e.files) {'path': f.path, 'name': f.name, 'size': f.size, 'uploadId': f.uploadId}],
         'created': e.created.millisecondsSinceEpoch,
         'state': e.state.name,
         if (e.sentAt != null) 'sentAt': e.sentAt!.millisecondsSinceEpoch,
@@ -61,6 +62,10 @@ class SettingsRepositoryImpl implements SettingsRepository {
         session: session,
         text: m['text'] as String? ?? '',
         attachments: [for (final a in m['attachments'] as List<dynamic>? ?? const []) a as String],
+        files: [
+          for (final f in m['files'] as List<dynamic>? ?? const [])
+            LocalFile(path: f['path'] as String, name: f['name'] as String, size: f['size'] as int, uploadId: f['uploadId'] as String? ?? ''),
+        ],
         created: DateTime.fromMillisecondsSinceEpoch(m['created'] as int? ?? 0),
         state: OutboxState.values.asNameMap()[m['state']] ?? OutboxState.failed,
         sentAt: m['sentAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(m['sentAt'] as int),
