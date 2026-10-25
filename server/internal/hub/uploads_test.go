@@ -266,3 +266,31 @@ func TestStaleUploadsAreDropped(t *testing.T) {
 		t.Fatal("a stale upload's details were kept")
 	}
 }
+
+func TestStartingAnUploadTwiceWithOneIdGivesOneUpload(t *testing.T) {
+	_, srv := newTestHubWith(t)
+	data := randomBytes(1000)
+	id := "6f1d1c0e-8f1a-4f53-9a0b-0d5d2d5b7c11"
+	start := func(size int) (*http.Response, []byte) {
+		return request(t, "POST", srv.URL+"/api/v1/uploads", nil, map[string]string{
+			"X-Name": "clip.mp4", "X-Size": strconv.Itoa(size), "X-Sha256": shaHex(data), "X-Upload-Id": id,
+		})
+	}
+	res, body := start(len(data))
+	first := &v1.Upload{}
+	if res.StatusCode != 200 || protojson.Unmarshal(body, first) != nil || first.Id != id {
+		t.Fatalf("first start: %d %s", res.StatusCode, body)
+	}
+	res, body = start(len(data))
+	again := &v1.Upload{}
+	if res.StatusCode != 200 || protojson.Unmarshal(body, again) != nil || again.Id != id {
+		t.Fatalf("second start: %d %s", res.StatusCode, body)
+	}
+	if res, _ = start(len(data) + 1); res.StatusCode != http.StatusConflict {
+		t.Fatalf("another size: %d, want 409", res.StatusCode)
+	}
+	res, _ = request(t, "POST", srv.URL+"/api/v1/uploads", nil, map[string]string{"X-Name": "a", "X-Size": "1", "X-Upload-Id": "nope"})
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("bad id: %d, want 400", res.StatusCode)
+	}
+}

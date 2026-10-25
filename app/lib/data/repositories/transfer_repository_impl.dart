@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
@@ -186,14 +187,19 @@ class TransferRepositoryImpl implements TransferRepository {
 
   Future<Artifact> _upload(String id, LocalFile file, {required String session, required String note, required bool deliver}) async {
     final sha = await fileSha256(file.path);
-    final started = await _api.startUpload(
-      name: file.name,
-      size: file.size,
-      sha256: sha,
-      session: session,
-      origin: session.isEmpty ? 'upload' : 'attachment',
-      note: note,
-      deliver: deliver,
+    // One id for every try, so a start whose answer got lost doesn't leave an empty upload behind.
+    final uploadId = _newUploadId();
+    final started = await _retrying(
+      () => _api.startUpload(
+        name: file.name,
+        size: file.size,
+        sha256: sha,
+        uploadId: uploadId,
+        session: session,
+        origin: session.isEmpty ? 'upload' : 'attachment',
+        note: note,
+        deliver: deliver,
+      ),
     );
     if (started.hasArtifact()) return artifactFromPb(started.artifact);
     _update(id, (t) => t.copyWith(state: TransferState.running));
@@ -249,10 +255,33 @@ class TransferRepositoryImpl implements TransferRepository {
     }
   }
 
+  Future<T> _retrying<T>(Future<T> Function() call) async {
+    for (var failures = 1;; failures++) {
+      try {
+        return await call();
+      } on NetworkException {
+        if (failures >= _attempts) rethrow;
+      } on RequestTimeoutException {
+        if (failures >= _attempts) rethrow;
+      }
+      await Future<void>.delayed(retryDelay * failures);
+    }
+  }
+
   Future<void> dispose() async {
     await _sub.cancel();
     await _changes.close();
   }
+}
+
+final _random = Random.secure();
+
+String _newUploadId() {
+  final b = List.generate(16, (_) => _random.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+  return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
 }
 
 /// Hashes a file in another isolate, a chunk at a time.

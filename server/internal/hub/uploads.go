@@ -71,6 +71,8 @@ func (h *Hub) uploadRoutes(mux *http.ServeMux) {
 }
 
 // startUpload takes the same headers as POST /api/v1/artifacts, plus X-Size.
+// A client-chosen X-Upload-Id (a uuid) makes starting idempotent: asking again
+// after a lost answer returns the same upload, not an empty second one.
 func (h *Hub) startUpload(w http.ResponseWriter, r *http.Request, id identity) {
 	a, oerr := artifactFromHeaders(r, id)
 	if oerr != nil {
@@ -82,6 +84,27 @@ func (h *Hub) startUpload(w http.ResponseWriter, r *http.Request, id identity) {
 		writeError(w, invalid("X-Size is required"))
 		return
 	}
+	uid := uuid.NewString()
+	if want := r.Header.Get("X-Upload-Id"); want != "" {
+		if uuid.Validate(want) != nil {
+			writeError(w, invalid("X-Upload-Id is not a uuid"))
+			return
+		}
+		uid = strings.ToLower(want)
+		if !h.claimUpload(uid) {
+			writeError(w, &opError{"busy", "this upload is being started; ask again", http.StatusConflict})
+			return
+		}
+		defer h.releaseUpload(uid)
+		if u, p, oerr := h.loadUpload(uid); oerr == nil {
+			if p.Size != size {
+				writeError(w, &opError{"conflict", "this upload id was started with another size", http.StatusConflict})
+				return
+			}
+			writeJSON(w, http.StatusOK, u)
+			return
+		}
+	}
 	if err := os.MkdirAll(h.uploadDir(), 0o755); err != nil {
 		writeError(w, internalError(err))
 		return
@@ -91,7 +114,7 @@ func (h *Hub) startUpload(w http.ResponseWriter, r *http.Request, id identity) {
 		writeError(w, internalError(err))
 		return
 	}
-	u := &v1.Upload{Id: uuid.NewString(), Size: size}
+	u := &v1.Upload{Id: uid, Size: size}
 	meta, _ := json.Marshal(pendingUpload{Artifact: b, Size: size, Deliver: wantsDelivery(r)})
 	if err := os.WriteFile(h.uploadPath(u.Id)+".json", meta, 0o600); err != nil {
 		writeError(w, internalError(err))
