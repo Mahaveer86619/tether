@@ -148,7 +148,7 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 		Model: cc.Model, PermissionMode: cc.PermissionMode, Attachments: cc.Attachments}
 	// The chat must exist before the session so the system prompt can name it.
 	h.chats[c.Id] = c
-	system := h.chatPromptFor(c, cs.Node)
+	system := h.chatPromptFor(c, cs.Node, false)
 	if system == "" && target.State == targetDetecting {
 		// An agent too old for a system prompt gets the instructions inline.
 		cs.Prompt = detectPrompt(c.Id) + "\n\n---\n\n" + cs.Prompt
@@ -273,7 +273,7 @@ func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []
 	if s := h.sessions[c.ActiveSession]; s != nil {
 		cs.Model = s.Model
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptFor(c, cs.Node), clientID: clientID})
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptFor(c, cs.Node, false), clientID: clientID})
 	if err != nil {
 		return "", err
 	}
@@ -445,16 +445,48 @@ func chatMessages(session string, items []*v1.TimelineItem) []*v1.ChatMessage {
 
 // chatPromptFor is the system prompt for a new session of chat c on node,
 // or "" when the node's agent can't pass one on. Caller holds h.mu.
-func (h *Hub) chatPromptFor(c *v1.Chat, node string) string {
+func (h *Hub) chatPromptFor(c *v1.Chat, node string, worker bool) string {
 	if !h.agentAtLeast(node, systemPromptVersion) {
 		return ""
 	}
-	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app. " +
-		"When you start a session on another machine with the tether MCP tool start_session, pass chat=\"" + c.Id + "\" so it shows in this chat."
+	if worker {
+		return workerPrompt(c.Id)
+	}
+	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id)
 	if c.Target.GetState() == targetDetecting {
 		p += "\n\n" + detectPrompt(c.Id)
 	}
 	return p
+}
+
+// leadPrompt tells the session the user talks to that it leads the chat:
+// it can hand work to sessions on the connected machines and answer for
+// them. Caller holds h.mu.
+func (h *Hub) leadPrompt(chat string) string {
+	hub := h.hubNode()
+	var machines []string
+	for _, n := range h.nodes {
+		if !n.Online {
+			continue
+		}
+		m := n.Node + " (" + n.Os + ")"
+		if n.Node == hub {
+			m += ", the hub's own machine"
+		}
+		machines = append(machines, m)
+	}
+	sort.Strings(machines)
+	return "You lead this chat. Machines online now: " + strings.Join(machines, "; ") + ". " +
+		"Work that belongs on another machine, or that can run in parallel, goes to a session there: call the tether MCP tool start_session with node, cwd, " +
+		"chat=\"" + chat + "\" and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
+		"wait_for_session or read_session. Don't do a delegated task yourself. When sessions finish, tell the user in plain words what each did and what is left. " +
+		"Small tasks that need no other machine you simply do here."
+}
+
+// workerPrompt is for a session the lead started: do the one task and report.
+func workerPrompt(chat string) string {
+	return "You are a task session in Tether chat " + chat + ", started by the session that leads it. Do the task you were given and nothing more. " +
+		"Don't start other sessions. End with a short report for the lead: what you did, the files you changed, and anything it must decide or check."
 }
 
 // detectPrompt asks Claude to find out where a chat belongs and report it.
@@ -475,7 +507,17 @@ func (h *Hub) chatSystemPrompt(session string) string {
 	if c == nil || s == nil {
 		return ""
 	}
-	return h.chatPromptFor(c, s.Node)
+	return h.chatPromptFor(c, s.Node, h.workerOf(c, session))
+}
+
+// workerOf reports whether the chat's lead started session. Caller holds h.mu.
+func (h *Hub) workerOf(c *v1.Chat, session string) bool {
+	for _, l := range c.Sessions {
+		if l.Session == session {
+			return l.Role == "started"
+		}
+	}
+	return false
 }
 
 // agentAtLeast reports whether node's agent is version v or newer. Builds

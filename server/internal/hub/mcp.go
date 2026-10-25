@@ -296,9 +296,9 @@ func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
 	}
 	extra := startExtra{}
 	if chat != nil {
-		extra.systemPrompt = h.chatPromptFor(chat, cs.Node)
+		extra.systemPrompt = h.chatPromptFor(chat, cs.Node, true)
 		if cs.Scratch {
-			extra.systemPrompt = h.chatPromptFor(chat, h.hubNode())
+			extra.systemPrompt = h.chatPromptFor(chat, h.hubNode(), true)
 		}
 	}
 	id, err := h.startSession(cs, mcpSource, extra)

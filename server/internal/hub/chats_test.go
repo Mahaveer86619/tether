@@ -285,3 +285,20 @@ func TestTargetMatching(t *testing.T) {
 		t.Error("versionAtLeast")
 	}
 }
+
+func TestTheChatLeadKnowsTheMachinesAndItsTaskSessionsOnlyDoTheirTask(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	agent, ctx := dialAgent(t, h, srv.URL)
+	postChat(t, srv, "/api/v1/chats", `{"prompt":"ship the release","target":{"mode":"claude"}}`)
+	start := nextCommand(t, agent, ctx, isStart).GetStart()
+	if !strings.Contains(start.SystemPrompt, "You lead this chat") || !strings.Contains(start.SystemPrompt, "laptop") || !strings.Contains(start.SystemPrompt, "start_session") {
+		t.Fatalf("lead prompt: %q", start.SystemPrompt)
+	}
+	h.mu.Lock()
+	c := h.chats[h.chatOf[start.Session]]
+	lead, worker := h.chatPromptFor(c, "laptop", false), h.chatPromptFor(c, "laptop", true)
+	h.mu.Unlock()
+	if lead == worker || strings.Contains(worker, "You lead") || !strings.Contains(worker, "Don't start other sessions") {
+		t.Fatalf("worker prompt: %q", worker)
+	}
+}
