@@ -11,6 +11,7 @@ import '../widgets/common.dart';
 import '../widgets/format.dart';
 import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
+import 'chat_tasks.dart';
 import 'chats_cubit.dart';
 import 'chats_page.dart';
 import 'target_picker.dart';
@@ -43,7 +44,7 @@ class ChatPage extends StatelessWidget {
     }
     final nav = context.read<NavCubit>();
     final title = ChatTitle(chat: chat);
-    final bar = ChatTargetBar(chat: chat);
+    final bar = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [ChatTargetBar(chat: chat), ChatTasks(chat: chat)]);
     if (!hasSession) return _NoSession(chat: chat, leading: leading, title: title, bar: bar);
     return SessionScreen(
       key: ValueKey(chat.activeSession),

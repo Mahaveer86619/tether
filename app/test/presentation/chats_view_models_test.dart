@@ -27,7 +27,7 @@ void main() {
     });
 
     test('Back retraces destinations and screens in order', () {
-      nav.select(Destination.monitor);
+      nav.select(Destination.devices);
       nav.openSession('s2');
       nav.push(const NodeEntry('laptop'));
       expect(nav.state.stack, [const SessionEntry('s2'), const NodeEntry('laptop')]);
@@ -36,7 +36,7 @@ void main() {
       nav.back();
       expect(nav.state.top, const SessionEntry('s2'));
       nav.back();
-      expect((nav.state.destination, nav.state.stack), (Destination.monitor, const <NavEntry>[]));
+      expect((nav.state.destination, nav.state.stack), (Destination.devices, const <NavEntry>[]));
       nav.back();
       expect(nav.state.atRoot, isTrue);
     });

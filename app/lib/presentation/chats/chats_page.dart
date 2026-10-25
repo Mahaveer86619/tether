@@ -43,7 +43,10 @@ class _Entry {
 
 /// The history: start a chat, find one, pick up where you left off.
 class ChatsPage extends StatefulWidget {
-  const ChatsPage({super.key});
+  const ChatsPage({super.key, this.header});
+
+  /// Shown above the search box: the start-a-chat box on the home screen.
+  final Widget? header;
 
   @override
   State<ChatsPage> createState() => _ChatsPageState();
@@ -76,6 +79,7 @@ class _ChatsPageState extends State<ChatsPage> {
     return PageColumn(
       bottom: 96,
       children: [
+        ?widget.header,
         const SizedBox(height: 8),
         Row(
           children: [

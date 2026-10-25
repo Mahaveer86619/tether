@@ -202,9 +202,11 @@ class _NodeCard extends StatelessWidget {
             children: [
               Text(tokens(u.window.counted), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('in the last 5 hours', style: TextStyle(color: c.muted, fontSize: 13)),
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('in the last 5 hours', overflow: TextOverflow.ellipsis, style: TextStyle(color: c.muted, fontSize: 13)),
+                ),
               ),
             ],
           ),

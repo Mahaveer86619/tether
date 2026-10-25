@@ -15,23 +15,27 @@ import 'target_picker.dart';
 
 /// A blank chat: say what you want, optionally say where, and go.
 class NewChatPage extends StatelessWidget {
-  const NewChatPage({super.key, this.node = '', this.leading});
+  const NewChatPage({super.key, this.node = '', this.leading, this.embedded = false});
 
   /// Start on this device, when opened from its page.
   final String node;
   final Widget? leading;
 
+  /// Just the box, to sit at the top of another screen's list.
+  final bool embedded;
+
   @override
   Widget build(BuildContext context) => BlocProvider(
         create: (_) => sl<NewChatCubit>(param1: node),
-        child: _NewChat(leading: leading),
+        child: _NewChat(leading: leading, embedded: embedded),
       );
 }
 
 class _NewChat extends StatefulWidget {
-  const _NewChat({this.leading});
+  const _NewChat({this.leading, this.embedded = false});
 
   final Widget? leading;
+  final bool embedded;
 
   @override
   State<_NewChat> createState() => _NewChatState();
@@ -95,6 +99,55 @@ class _NewChatState extends State<_NewChat> {
         }
 
         final (label, hint) = _targetText(s);
+        Widget box() => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.hub_rounded, size: 30, color: c.accent),
+            const SizedBox(height: 12),
+            Text('What should Claude work on?',
+                textAlign: TextAlign.center, style: TextStyle(fontSize: narrow ? 21 : 25, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 22),
+            PromptBox(
+              controller: _text,
+              fieldKey: const Key('new-chat-input'),
+              hint: 'Ask anything, or describe a task',
+              autofocus: !narrow,
+              canSubmit: canSend,
+              onSubmit: send,
+              header: _files.isEmpty && _uploading == 0
+                  ? null
+                  : AttachmentChips(files: _files, uploading: _uploading, onRemove: (f) => setState(() => _files.remove(f))),
+              actions: [
+                PromptButton(tooltip: 'Attach files', icon: Icons.attach_file_rounded, plain: true, onPressed: connected ? _attach : null),
+                PromptButton(
+                  key: const Key('new-chat-send'),
+                  tooltip: 'Start chat',
+                  icon: Icons.arrow_upward_rounded,
+                  filled: true,
+                  busy: s.submitting,
+                  onPressed: canSend ? send : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                ActionChip(
+                  key: const Key('target-chip'),
+                  avatar: Icon(_targetIcon(s), size: 16, color: c.accent),
+                  label: Text(label, overflow: TextOverflow.ellipsis),
+                  onPressed: connected ? () => _pickTarget(s) : null,
+                ),
+                if (hint.isNotEmpty) Text(hint, style: TextStyle(fontSize: 12, color: c.muted)),
+              ],
+            ),
+          ],
+        );
+        if (widget.embedded) return Padding(padding: const EdgeInsets.only(top: 16, bottom: 4), child: box());
         return Column(
           children: [
             if (widget.leading != null) Align(alignment: Alignment.centerLeft, child: widget.leading!),
@@ -102,57 +155,7 @@ class _NewChatState extends State<_NewChat> {
               child: Center(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.symmetric(horizontal: narrow ? 14 : 24, vertical: 24),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Icon(Icons.hub_rounded, size: 30, color: c.accent),
-                        const SizedBox(height: 12),
-                        Text('What should Claude work on?',
-                            textAlign: TextAlign.center, style: TextStyle(fontSize: narrow ? 21 : 25, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 22),
-                        PromptBox(
-                          controller: _text,
-                          fieldKey: const Key('new-chat-input'),
-                          hint: 'Ask anything, or describe a task',
-                          autofocus: !narrow,
-                          canSubmit: canSend,
-                          onSubmit: send,
-                          header: _files.isEmpty && _uploading == 0
-                              ? null
-                              : AttachmentChips(files: _files, uploading: _uploading, onRemove: (f) => setState(() => _files.remove(f))),
-                          actions: [
-                            PromptButton(tooltip: 'Attach files', icon: Icons.attach_file_rounded, plain: true, onPressed: connected ? _attach : null),
-                            PromptButton(
-                              key: const Key('new-chat-send'),
-                              tooltip: 'Start chat',
-                              icon: Icons.arrow_upward_rounded,
-                              filled: true,
-                              busy: s.submitting,
-                              onPressed: canSend ? send : null,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            ActionChip(
-                              key: const Key('target-chip'),
-                              avatar: Icon(_targetIcon(s), size: 16, color: c.accent),
-                              label: Text(label, overflow: TextOverflow.ellipsis),
-                              onPressed: connected ? () => _pickTarget(s) : null,
-                            ),
-                            if (hint.isNotEmpty) Text(hint, style: TextStyle(fontSize: 12, color: c.muted)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: box()),
                 ),
               ),
             ),

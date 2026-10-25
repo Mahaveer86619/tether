@@ -5,7 +5,7 @@ import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 
 /// The app's top-level places, in the order navigation shows them.
-enum Destination { chats, monitor, sessions, devices, activity, files, usage, settings }
+enum Destination { chats, devices, activity, files, usage, settings }
 
 /// A screen opened on top of a destination.
 sealed class NavEntry extends Equatable {

@@ -7,10 +7,10 @@ import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/repositories/repositories.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 import 'package:tether/gen/tether/v1/render.pbenum.dart' as rpbe;
+import 'package:tether/presentation/chats/chats_page.dart';
 import 'package:tether/injection.dart';
 import 'package:tether/presentation/app.dart';
 import 'package:tether/presentation/home/cards.dart';
-import 'package:tether/presentation/home/session_navigator.dart';
 import 'package:tether/presentation/theme/syntax.dart';
 import 'package:tether/presentation/theme/theme.dart';
 import 'package:tether/presentation/widgets/timeline_item_view.dart';
@@ -21,8 +21,14 @@ Widget themed(Widget child) => MaterialApp(theme: buildTheme(Brightness.light), 
 
 /// Busy sessions pulse forever, so pumpAndSettle never returns; pump a
 /// fixed number of frames instead.
-/// A session's card on the overview, or its row in the sidebar.
-Finder sessionCard(String id) => find.ancestor(of: find.text('Session $id'), matching: find.byWidgetPredicate((w) => w is CardShell || w is SessionTile)).first;
+/// Opens a session from Home's history, which lists sessions on a hub
+/// without chats; it sits below the start box and the live cards.
+Future<void> openSession(WidgetTester tester, String id) async {
+  final row = find.descendant(of: find.byType(ChatsPage), matching: find.text('Session $id')).last;
+  await tester.ensureVisible(row);
+  await tester.pump();
+  await tester.tap(row);
+}
 
 Future<void> settle(WidgetTester tester) async {
   for (var i = 0; i < 10; i++) {
@@ -139,18 +145,13 @@ void main() {
       configureDependencies(withData: false);
     });
 
-    /// Opens the app on Monitor, where sessions are, unless [monitor] is
-    /// false: it starts on Chats.
-    Future<void> pumpApp(WidgetTester tester, Size size, {bool monitor = true}) async {
+    /// Opens the app on Home: the start-a-chat box, what's running and the chats.
+    Future<void> pumpApp(WidgetTester tester, Size size) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(const TetherApp());
       await settle(tester);
-      if (monitor) {
-        await tester.tap(find.byKey(const Key('nav-monitor')));
-        await settle(tester);
-      }
     }
 
     testWidgets('desktop: overview, approve from the dashboard, open a session and send', (tester) async {
@@ -163,7 +164,7 @@ void main() {
       await tester.pump();
       expect(repo.decided.single, ('ap', true));
 
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'earlier prompt'))]);
       await settle(tester);
@@ -189,7 +190,7 @@ void main() {
 
     testWidgets('desktop: a terminal session offers fork instead of typing', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('t1'));
+      await openSession(tester, 't1');
       await settle(tester);
       expect(find.textContaining('Open in a terminal on laptop'), findsOneWidget);
       expect(find.byKey(const Key('composer')), findsNothing);
@@ -209,7 +210,7 @@ void main() {
     testWidgets('desktop: interrupt a working session, end it after confirming', (tester) async {
       repo.emitHub(snapshotWith([session('s1', state: SessionState.running)]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.text('Claude is working'), findsOneWidget);
 
@@ -232,7 +233,7 @@ void main() {
         const Session(id: 'w1', node: 'laptop', title: 'Session w1', host: SessionHost.terminal, state: SessionState.ready, terminalInput: true),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('w1'));
+      await openSession(tester, 'w1');
       await settle(tester);
       expect(find.textContaining('typed into your terminal on laptop'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('composer')), 'from the app');
@@ -244,7 +245,7 @@ void main() {
 
     testWidgets('new messages animate in; history does not', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'old', ord: Int64(1), user: rpb.UserText(text: 'history'))]);
       await settle(tester);
@@ -263,7 +264,7 @@ void main() {
 
     testWidgets('consecutive tool calls fold into one group', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       rpb.TimelineItem tool(String id, String name) => rpb.TimelineItem(
             itemId: id,
@@ -288,7 +289,7 @@ void main() {
 
     testWidgets('a queued message stays at the end until taken in; removed items vanish', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       repo.emitTimeline('s1', [
         rpb.TimelineItem(itemId: 'q', ord: Int64(1), user: rpb.UserText(text: 'also check adb', queued: true)),
@@ -333,7 +334,7 @@ void main() {
         ),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.text('Claude Code is asking'), findsWidgets);
       expect(find.byKey(const Key('stuck-banner')), findsNothing, reason: 'the card says what it waits on');
@@ -347,7 +348,7 @@ void main() {
       repo.screenText = 'Some dialog Tether cannot read\n  [y/N]';
       repo.emitHub(snapshotWith([session('s1', state: SessionState.awaitingApproval)]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.byKey(const Key('stuck-banner')), findsOneWidget);
       await tester.tap(find.byKey(const Key('stuck-open-terminal')));
@@ -378,7 +379,7 @@ void main() {
         ),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.text('Plan · 12m left'), findsOneWidget);
       await tester.tap(find.byKey(const Key('mode-chip')));
@@ -396,7 +397,7 @@ void main() {
         Approval(id: 'pl', session: 's1', node: 'minipc', kind: ApprovalKind.tool, toolName: 'ExitPlanMode', inputJson: '{"plan":"1. do it"}', created: DateTime(2026)),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.text('Approve plan'), findsWidgets);
       await tester.tap(find.byKey(const Key('allow-accept-edits-pl')).last);
@@ -408,7 +409,7 @@ void main() {
     testWidgets('an interrupt shows it is stopping, and offers more if Claude keeps going', (tester) async {
       repo.emitHub(snapshotWith([session('s1', state: SessionState.running)]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       await tester.tap(find.byKey(const Key('interrupt')));
       await settle(tester);
@@ -452,7 +453,7 @@ void main() {
       expect(find.textContaining('Update it first'), findsOneWidget);
 
       repo.clientList = null;
-      await tester.tap(find.text('Sessions').first);
+      await tester.tap(find.byKey(const Key('nav-chats')));
       await settle(tester);
       await tester.tap(find.text('Devices').first);
       await settle(tester);
@@ -485,7 +486,7 @@ void main() {
       expect(repo.activity.last, isTrue);
       expect(repo.activity, contains(true), reason: 'an unfocused window still counts as in use');
 
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.textContaining('backed up 5m ago'), findsOneWidget);
     });
@@ -498,7 +499,7 @@ void main() {
         Approval(id: 'q', session: 's1', node: 'minipc', kind: ApprovalKind.question, toolName: 'AskUserQuestion', inputJson: input, created: DateTime(2026)),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.byKey(const Key('question-card')), findsWidgets);
       final card = find.byKey(const Key('question-card')).last;
@@ -557,7 +558,7 @@ void main() {
 
     testWidgets('a long message shows its first lines until expanded', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       final long = [for (var i = 1; i <= 30; i++) 'line $i'].join('\n');
       repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: long, attachmentId: 'a1'))]);
@@ -591,7 +592,7 @@ void main() {
 
     testWidgets('desktop: Back from settings returns to where you were', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsOneWidget);
       await tester.tap(find.byTooltip('Settings'));
@@ -608,7 +609,7 @@ void main() {
         Session(id: 'f1', node: 'minipc', title: 'Session f1', cwd: '/srv/app', parent: 's1', forkPoint: 'shared', lineage: 'fork', updated: DateTime(2026, 10, 12)),
       ]));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('f1'));
+      await openSession(tester, 'f1');
       await settle(tester);
       expect(find.text('Forked from Session s1'), findsOneWidget);
       repo.emitTimeline('f1', [
@@ -636,7 +637,7 @@ void main() {
 
     testWidgets('long messages can be written in the full editor and sent from there', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.byTooltip('Expand'), findsNothing);
       await tester.enterText(find.byKey(const Key('composer')), 'line one\nline two\nline three');
@@ -650,7 +651,7 @@ void main() {
       expect(repo.sent.single, ('s1', 'line one\nline two\nline three\nand a fourth', false));
     });
 
-    testWidgets('desktop: sessions filter, devices, activity and files', (tester) async {
+    testWidgets('desktop: devices, activity and files', (tester) async {
       repo.emitHub(snapshotWith([
         session('s1'),
         Session(id: 'e1', node: 'minipc', title: 'Session e1', state: SessionState.error, error: 'boom', updated: DateTime.now()),
@@ -659,13 +660,6 @@ void main() {
       }));
       await pumpApp(tester, const Size(1400, 1000));
       expect(find.descendant(of: find.byType(CardShell), matching: find.text('Session e1')), findsOneWidget, reason: 'a fresh failure needs you');
-
-      await tester.tap(find.text('Sessions').first);
-      await settle(tester);
-      await tester.tap(find.text('Failed 1'));
-      await settle(tester);
-      expect(find.text('boom'), findsOneWidget);
-      expect(find.descendant(of: find.byType(CardShell), matching: find.text('Session s1')), findsNothing);
 
       await tester.tap(find.text('Devices').first);
       await settle(tester);
@@ -785,24 +779,20 @@ void main() {
       expect(settings.appearance.accent, isNull);
     });
 
-    testWidgets('phone: monitor, the bottom tabs, a pushed session page, and Back through the nav state', (tester) async {
+    testWidgets('phone: home with the start box, the bottom tabs, a pushed session page, and Back through the nav state', (tester) async {
       await pumpApp(tester, const Size(400, 860));
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home starts with the box for a new chat');
       expect(find.text('RUNNING NOW'), findsOneWidget);
-      expect(find.byKey(const Key('quick-start')), findsNothing, reason: 'starting work moved to Chats');
+      expect(find.byKey(const Key('nav-monitor')), findsNothing);
+      expect(find.byKey(const Key('nav-sessions')), findsNothing, reason: 'sessions are opened from their chat, not from a tab');
 
-      await tester.tap(find.byKey(const Key('nav-sessions')));
+      await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
-      await tester.enterText(find.byKey(const Key('session-search')), 't1');
-      await settle(tester);
-      expect(find.text('Session s1'), findsNothing);
-      expect(find.text('Session t1'), findsOneWidget);
+      expect(find.byKey(const Key('new-chat-input')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('nav-monitor')));
+      await tester.tap(find.byKey(const Key('nav-chats')));
       await settle(tester);
-      final card = find.descendant(of: find.byType(CardShell), matching: find.text('Session s1')).first;
-      await tester.ensureVisible(card);
-      await settle(tester);
-      await tester.tap(card);
+      await openSession(tester, 's1');
       await settle(tester);
       expect(find.byType(BackButton), findsOneWidget);
       expect(find.byKey(const Key('composer')), findsOneWidget);
@@ -810,19 +800,19 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsNothing);
-      expect(find.text('RUNNING NOW'), findsOneWidget, reason: 'Back returns to Monitor');
+      expect(find.text('RUNNING NOW'), findsOneWidget, reason: 'Back returns to Home');
 
-      // The system back button walks the same history: Sessions, Monitor, Chats.
-      for (var i = 0; i < 3; i++) {
+      // The system back button walks the same history: Home, Devices, Home.
+      for (var i = 0; i < 2; i++) {
         await tester.binding.handlePopRoute();
         await settle(tester);
       }
-      expect(find.byKey(const Key('new-chat')), findsOneWidget, reason: 'back on Chats, with its New chat button');
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'back on Home, with the start box');
       expect(find.byType(NavigationBar), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('more-destinations')));
       await settle(tester);
-      await tester.tap(find.text('Activity').last);
+      await tester.tap(find.text('Usage').last);
       await settle(tester);
       expect(find.byType(NavigationBar), findsNothing, reason: 'pages from the menu sit on top, with a back arrow');
       await tester.tap(find.byType(BackButton));
@@ -836,7 +826,7 @@ void main() {
         candidates: [TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"')],
         pick: TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"'),
       );
-      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await pumpApp(tester, const Size(1400, 900));
       expect(find.text('No chats yet'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('new-chat')));
@@ -870,7 +860,7 @@ void main() {
         TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true),
         TargetCandidate(node: 'laptop', cwd: '/src/other', label: 'other', online: true),
       ]);
-      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await pumpApp(tester, const Size(1400, 900));
       await tester.tap(find.byKey(const Key('new-chat')));
       await settle(tester);
       await tester.enterText(find.byKey(const Key('new-chat-input')), 'hello');
@@ -901,7 +891,7 @@ void main() {
         'c1': Chat(id: 'c1', title: 'Fix login', activeSession: 's1', links: const [ChatLink(session: 's1')], updated: now),
         'c2': Chat(id: 'c2', title: 'Old idea', activeSession: 'gone', links: const [ChatLink(session: 'gone')], updated: now.subtract(const Duration(days: 40))),
       }));
-      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await pumpApp(tester, const Size(1400, 900));
       expect(find.text('TODAY'), findsOneWidget);
       expect(find.text('OLDER'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('chat-search')), 'idea');
@@ -937,9 +927,17 @@ void main() {
         'c1': Chat(id: 'c1', title: 'Chat about s1', activeSession: 's1', links: const [ChatLink(session: 's1'), ChatLink(session: 't1', role: 'started')]),
       }));
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(sessionCard('s1'));
+      final tile = find.byKey(const Key('chat-c1'));
+      await tester.ensureVisible(tile);
+      await tester.pump();
+      await tester.tap(tile);
       await settle(tester);
       expect(find.text('Chat about s1'), findsWidgets);
+      expect(find.text('1 working'), findsOneWidget);
+      expect(find.byKey(const Key('task-t1')), findsOneWidget, reason: 'the session Claude started shows as a task of the chat, open while it works');
+      await tester.tap(find.byKey(const Key('chat-tasks')));
+      await settle(tester);
+      expect(find.byKey(const Key('task-t1')), findsNothing, reason: 'the header folds the list away');
       expect(find.byKey(const Key('linked-sessions')), findsOneWidget);
       await tester.tap(find.byKey(const Key('linked-sessions')));
       await settle(tester);
@@ -972,7 +970,7 @@ void main() {
 
     testWidgets('updates: below the minimum, nothing but the update is offered', (tester) async {
       updates.release = release('9.0.0', minSupported: '8.0.0');
-      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await pumpApp(tester, const Size(1400, 900));
       expect(find.byKey(const Key('forced-update')), findsOneWidget);
       expect(find.byKey(const Key('nav-chats')), findsNothing);
       await tester.tap(find.byKey(const Key('forced-update-now')));
@@ -981,7 +979,7 @@ void main() {
     });
 
     testWidgets('offline: the countdown to the next try, the last error, and Retry', (tester) async {
-      await pumpApp(tester, const Size(1400, 900), monitor: false);
+      await pumpApp(tester, const Size(1400, 900));
       repo.emitHub(repo.current.copyWith(
         status: ConnectionStatus.offline,
         retryAt: () => DateTime.now().add(const Duration(seconds: 8)),

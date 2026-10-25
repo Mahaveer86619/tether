@@ -11,7 +11,6 @@ import '../chats/chats_page.dart';
 import '../chats/new_chat_page.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
-import '../new_session/new_session_sheet.dart';
 import '../session/session_page.dart';
 import '../settings/settings_cubit.dart';
 import '../settings/settings_page.dart';
@@ -24,7 +23,6 @@ import 'activity_page.dart';
 import 'devices_page.dart';
 import 'monitor_page.dart';
 import 'session_navigator.dart';
-import 'sessions_page.dart';
 
 /// Below this the app is a phone: one pane and a bottom bar.
 const double phoneBreakpoint = 600;
@@ -69,9 +67,7 @@ class Shell extends StatelessWidget {
 typedef _Dest = ({Destination d, IconData icon, IconData selected, String label});
 
 const List<_Dest> _destinations = [
-  (d: Destination.chats, icon: Icons.chat_bubble_outline_rounded, selected: Icons.chat_bubble_rounded, label: 'Chats'),
-  (d: Destination.monitor, icon: Icons.monitor_heart_outlined, selected: Icons.monitor_heart_rounded, label: 'Monitor'),
-  (d: Destination.sessions, icon: Icons.forum_outlined, selected: Icons.forum_rounded, label: 'Sessions'),
+  (d: Destination.chats, icon: Icons.home_outlined, selected: Icons.home_rounded, label: 'Home'),
   (d: Destination.devices, icon: Icons.devices_outlined, selected: Icons.devices_rounded, label: 'Devices'),
   (d: Destination.activity, icon: Icons.history_rounded, selected: Icons.history_rounded, label: 'Activity'),
   (d: Destination.files, icon: Icons.folder_open_outlined, selected: Icons.folder_open_rounded, label: 'Files'),
@@ -79,7 +75,7 @@ const List<_Dest> _destinations = [
 ];
 
 /// The phone's bottom bar; the rest sit in the header's menu.
-const _phoneBar = [Destination.chats, Destination.monitor, Destination.sessions, Destination.devices];
+const _phoneBar = [Destination.chats, Destination.devices, Destination.activity];
 
 String _title(Destination d) => switch (d) {
       Destination.settings => 'Settings',
@@ -90,13 +86,15 @@ String _title(Destination d) => switch (d) {
 Widget _destinationPage(BuildContext context, Destination d) {
   final nav = context.read<NavCubit>();
   return switch (d) {
-    Destination.chats => const ChatsPage(),
-    Destination.monitor => MonitorPage(
-        onSession: nav.openSession,
-        onDevices: () => nav.select(Destination.devices),
-        onAllSessions: () => nav.select(Destination.sessions),
+    Destination.chats => ChatsPage(
+        header: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const NewChatPage(embedded: true),
+            LiveSections(onSession: nav.openSession, onDevices: () => nav.select(Destination.devices)),
+          ],
+        ),
       ),
-    Destination.sessions => SessionsPage(onSession: nav.openSession),
     Destination.devices => DevicesPage(onNode: nav.openNode),
     Destination.activity => ActivityPage(onSession: nav.openSession),
     Destination.files => FilesPage(onSession: nav.openSession),
@@ -107,23 +105,7 @@ Widget _destinationPage(BuildContext context, Destination d) {
 
 /// What a destination's header offers, if anything.
 Widget? _destinationAction(BuildContext context, Destination d) {
-  final nav = context.read<NavCubit>();
-  return switch (d) {
-    Destination.chats => FilledButton.icon(onPressed: () => nav.newChat(), icon: const Icon(Icons.add_rounded, size: 18), label: const Text('New chat')),
-    Destination.sessions => OutlinedButton.icon(
-        onPressed: () => newSession(context),
-        icon: const Icon(Icons.add_rounded, size: 18),
-        label: const Text('New session'),
-      ),
-    _ => null,
-  };
-}
-
-/// The full new-session form, for when a chat isn't what's wanted.
-Future<void> newSession(BuildContext context, {String? node}) async {
-  final nav = context.read<NavCubit>();
-  final id = await showNewSession(context, node: node);
-  if (id != null) nav.push(SessionEntry(id));
+  return null;
 }
 
 // ---- tablet and desktop ----
@@ -253,7 +235,7 @@ class _SidebarState extends State<_Sidebar> {
                 icon: d.icon,
                 selectedIcon: d.selected,
                 label: d.label,
-                badge: d.d == Destination.monitor ? attention : 0,
+                badge: d.d == Destination.chats ? attention : 0,
                 selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
                 onTap: () => nav.select(d.d),
               ),
@@ -335,7 +317,7 @@ class _Rail extends StatelessWidget {
                         icon: d.icon,
                         selectedIcon: d.selected,
                         label: d.label,
-                        badge: d.d == Destination.monitor ? attention : 0,
+                        badge: d.d == Destination.chats ? attention : 0,
                         selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
                         onTap: () => nav.select(d.d),
                       ),
@@ -568,7 +550,6 @@ class _PhoneRoot extends StatelessWidget {
               )
             : Text(_title(d)),
         actions: [
-          if (d == Destination.sessions) IconButton(tooltip: 'New session', icon: const Icon(Icons.add_rounded), onPressed: () => newSession(context)),
           PopupMenuButton<Destination>(
             key: const Key('more-destinations'),
             tooltip: 'More',
@@ -588,20 +569,12 @@ class _PhoneRoot extends StatelessWidget {
         children: [
           const UpdateBanner(),
           Expanded(
-            child: d == Destination.monitor
+            child: d == Destination.chats
                 ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
                 : _destinationPage(context, d),
           ),
         ],
       ),
-      floatingActionButton: d == Destination.chats
-          ? FloatingActionButton.extended(
-              key: const Key('new-chat'),
-              onPressed: () => nav.newChat(),
-              icon: const Icon(Icons.edit_square),
-              label: const Text('New chat'),
-            )
-          : null,
       bottomNavigationBar: onBar
           ? NavigationBar(
               selectedIndex: _phoneBar.indexOf(d),
@@ -612,8 +585,8 @@ class _PhoneRoot extends StatelessWidget {
                 for (final x in _destinations.where((x) => _phoneBar.contains(x.d)))
                   NavigationDestination(
                     key: Key('nav-${x.d.name}'),
-                    icon: x.d == Destination.monitor ? badged(x.icon) : Icon(x.icon),
-                    selectedIcon: x.d == Destination.monitor ? badged(x.selected) : Icon(x.selected),
+                    icon: x.d == Destination.chats ? badged(x.icon) : Icon(x.icon),
+                    selectedIcon: x.d == Destination.chats ? badged(x.selected) : Icon(x.selected),
                     label: x.label,
                   ),
               ],
