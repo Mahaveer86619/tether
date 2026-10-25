@@ -16,6 +16,8 @@ A chat has one **active** session, where messages go, and any number of **linked
 
 A session is in at most one chat. Linking it to another moves it.
 
+The session the user talks to **leads** the chat. Its system prompt lists the machines online when the message is sent, and tells it to hand work that belongs elsewhere, or can run in parallel, to sessions on those machines (`start_session` with `chat`), follow them with `wait_for_session` or `read_session`, and tell the user in plain words what each did. A session it starts (role `started`) gets a **task** prompt instead: do the one task, don't start other sessions, end with a short report for the lead. The app shows these sessions as tasks inside the chat (see [app.md](app.md)).
+
 The hub tells sessions which chat they're in through Claude Code's `--append-system-prompt` (`StartRun.system_prompt`, and `SendInput.system_prompt` for a resume, since Claude Code doesn't keep it across `--resume`). It asks Claude to pass `chat` to `start_session`, so sessions it launches on other machines show up in the chat. Agents before 0.16 ignore the field, so the hub only sets it for newer ones.
 
 **Lifecycle.** Creating a chat starts its first session. Sending goes to the active session: the hub resumes it if no process is live, as for any session. If the active session no longer exists (a scratch folder cleaned up by retention, a transcript deleted), the chat moves to a new session at its target, carrying the conversation. Archiving a chat hides it from the recents; a new message brings it back.
