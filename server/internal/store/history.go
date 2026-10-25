@@ -141,7 +141,7 @@ func (s *Store) AppendHistory(f *HistoryFile, events []*v1.HistoryEvent) error {
 	if _, err := tx.Exec(`INSERT INTO history_files (session, file, node, offset, head, last_ts, raw_bytes, updated_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(session, file) DO UPDATE SET node = excluded.node, offset = excluded.offset, head = excluded.head,
 			last_ts = excluded.last_ts, raw_bytes = excluded.raw_bytes, updated_ms = excluded.updated_ms`,
-		f.Session, f.File, f.Node, f.Offset, f.Head, f.LastTs, f.RawBytes, f.UpdatedMs); err != nil {
+		f.Session, f.File, f.Node, f.Offset, head(f.Head), f.LastTs, f.RawBytes, f.UpdatedMs); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -403,4 +403,13 @@ func (s *Store) DeleteHistory(session string) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// head is never NULL in the table: a file the hub writes itself (its state
+// events) has no source bytes to remember.
+func head(b []byte) []byte {
+	if b == nil {
+		return []byte{}
+	}
+	return b
 }

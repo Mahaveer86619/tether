@@ -256,3 +256,15 @@ func TestHistoryRetentionDropsOldSessions(t *testing.T) {
 }
 
 func timeNow() time.Time { return time.Now() }
+
+func TestStateChangesGoIntoHistory(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	h.mu.Lock()
+	h.mergeSession(&v1.SessionInfo{Id: sessA, Node: "laptop", State: v1.SessionState_SESSION_STATE_IDLE})
+	h.mergeSession(&v1.SessionInfo{Id: sessA, Node: "laptop", State: v1.SessionState_SESSION_STATE_RUNNING})
+	h.mu.Unlock()
+	_, body := call(t, srv, "GET", "/api/v1/history/sessions/"+sessA+"?subagents=1", "secret", "")
+	if !strings.Contains(body, `"kind":"state"`) || !strings.Contains(body, `"running"`) {
+		t.Fatalf("no state event: %s", body)
+	}
+}
