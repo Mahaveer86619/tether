@@ -6,9 +6,12 @@
 | [protocol.md](protocol.md) | The wire contract between hub, agents and app: envelope, events, commands, render blocks, tool cards |
 | [hosting.md](hosting.md) | How sessions run (tmux, headless, your own terminal) and how hooks track their state and approvals |
 | [sessions.md](sessions.md) | How Claude Code sessions are discovered, started, mirrored, resumed and forked |
+| [releasing.md](releasing.md) | Versions, tagging a release, CI (self-hosted runner on the hub's machine), deploy with rollback, signing, and how apps and agents update |
+| [GITHUB-SETUP.md](GITHUB-SETUP.md) | One-time GitHub setup for the repo owner: collaborator, protection, environment, secrets, runner, with `deploy/ci/github-bootstrap.sh`; and the signing key decision |
 | [running.md](running.md) | Building, deploying the hub and agents, and using `tetherctl` |
 | [home-server.md](home-server.md) | Mini PC sandbox and NAS setup, plus the current state of that machine |
 | [security.md](security.md) | Trust boundaries, auth, sandboxing, approvals |
+| [chats.md](chats.md) | Chats: the conversations behind the app's chat UI, how they map to sessions, where they run (targets), and the context store with its post-processing jobs |
 | [app.md](app.md) | The Flutter app: layers, error handling, caching, background sync, views |
 | [roadmap.md](roadmap.md) | Milestones and what "done" means for each |
-| [plan.md](plan.md) | Next steps beyond M4: fork/branch/merge, the second brain, hub sessions, usage pooling, users and roles |
+| [plan.md](plan.md) | Next steps beyond M4: device pairing (QR, Tailscale or a public VM), fork/branch/merge, the second brain, hub sessions, usage tracking, users and roles |

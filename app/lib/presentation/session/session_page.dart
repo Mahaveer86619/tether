@@ -3,39 +3,53 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
+import '../artifacts/artifact_widgets.dart' show artifactIcon, fileSize;
+import '../artifacts/attachments.dart';
+import '../artifacts/files_page.dart';
+import '../artifacts/pages_view.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
+import 'mode_picker.dart';
+import 'prompt_card.dart';
+import 'question_card.dart';
+import 'terminal_sheet.dart';
 import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
 class SessionScreen extends StatelessWidget {
-  const SessionScreen({super.key, required this.sessionId, required this.onOpenSession, this.leading});
+  const SessionScreen({super.key, required this.sessionId, required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final String sessionId;
   final ValueChanged<String> onOpenSession;
   final Widget? leading;
+
+  /// In a chat: the chat's title in place of the session's, and a line
+  /// under the header (where it runs, linked sessions).
+  final Widget? title, subtitle;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       key: ValueKey(sessionId),
       create: (_) => sl<SessionBloc>(param1: sessionId)..add(const SessionOpened()),
-      child: _SessionBody(onOpenSession: onOpenSession, leading: leading),
+      child: _SessionBody(onOpenSession: onOpenSession, leading: leading, title: title, subtitle: subtitle),
     );
   }
 }
 
 class _SessionBody extends StatelessWidget {
-  const _SessionBody({required this.onOpenSession, this.leading});
+  const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final ValueChanged<String> onOpenSession;
-  final Widget? leading;
+  final Widget? leading, title, subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +74,8 @@ class _SessionBody extends StatelessWidget {
           }
           return Column(
             children: [
-              SessionHeader(session: session, leading: leading),
+              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession, title: title),
+              ?subtitle,
               Expanded(child: _Timeline(state: s)),
               Center(
                 child: ConstrainedBox(
@@ -71,7 +86,20 @@ class _SessionBody extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a)),
+                        if (s.approvals.isNotEmpty)
+                          // Cards can be taller than the screen (several questions); they scroll here, and the timeline keeps the rest.
+                          ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: (MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom) * 0.6),
+                            child: SingleChildScrollView(
+                              key: const Key('approvals-scroll'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a))],
+                              ),
+                            ),
+                          ),
+                        if (session.state == SessionState.awaitingApproval && s.approvals.isEmpty && session.hasScreen)
+                          StuckBanner(sessionId: session.id),
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
                         if (!session.acceptsInput && !s.forking)
                           _TerminalNotice(session: session)
@@ -94,21 +122,26 @@ class _SessionBody extends StatelessWidget {
 }
 
 class SessionHeader extends StatelessWidget {
-  const SessionHeader({super.key, required this.session, this.leading});
+  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title});
 
   final Session session;
-  final Widget? leading;
+  final Widget? leading, title;
+  final ValueChanged<String>? onOpenSession;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final bloc = context.read<SessionBloc>();
     final narrow = MediaQuery.sizeOf(context).width < 600;
+    final (parent, forks) = context.select<HubCubit, (Session?, List<Session>)>(
+      (h) => (h.state.hub.sessions[session.parent], h.state.hub.childrenOf(session.id)),
+    );
     final details = [
       session.node,
       if (session.cwd.isNotEmpty) baseName(session.cwd),
       if (!narrow && session.gitBranch.isNotEmpty) session.gitBranch,
       if (!narrow && session.model.isNotEmpty) shortModel(session.model),
+      if (!narrow && session.backedUp != null) ago(session.backedUp) == 'now' ? 'backed up just now' : 'backed up ${ago(session.backedUp)} ago',
     ];
     return Container(
       padding: EdgeInsets.fromLTRB(leading == null ? 16 : 0, narrow ? 4 : 10, 4, narrow ? 4 : 10),
@@ -120,8 +153,9 @@ class SessionHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                title ??
+                    Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -135,15 +169,68 @@ class SessionHeader extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (session.isFork)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: InkWell(
+                      key: const Key('forked-from'),
+                      borderRadius: BorderRadius.circular(4),
+                      onTap: parent == null || onOpenSession == null ? null : () => onOpenSession!(parent.id),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.call_split_rounded, size: 13, color: c.accent),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Forked from ${parent?.displayTitle ?? 'a session no longer here'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: c.accent),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
+          if (forks.isNotEmpty && onOpenSession != null)
+            PopupMenuButton<String>(
+              key: const Key('forks'),
+              tooltip: 'Forks of this session',
+              onSelected: onOpenSession,
+              itemBuilder: (_) => [
+                for (final f in forks)
+                  PopupMenuItem(
+                    value: f.id,
+                    child: Row(
+                      children: [
+                        StateDot(state: f.state, size: 7),
+                        const SizedBox(width: 10),
+                        Flexible(child: Text(f.displayTitle, overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Pill('${forks.length} ${forks.length == 1 ? 'fork' : 'forks'}', color: c.accent),
+              ),
+            ),
           if (session.canInterrupt)
-            IconButton(
-              key: const Key('interrupt'),
-              tooltip: 'Interrupt (Esc)',
-              icon: const Icon(Icons.stop_circle_outlined),
-              onPressed: () => bloc.add(const InterruptRequested()),
+            BlocSelector<SessionBloc, SessionViewState, bool>(
+              selector: (s) => s.interrupting,
+              builder: (context, interrupting) => IconButton(
+                key: const Key('interrupt'),
+                tooltip: interrupting ? 'Stopping…' : 'Interrupt (Esc)',
+                icon: interrupting
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.stop_circle_outlined),
+                onPressed: interrupting ? null : () => bloc.add(const InterruptRequested()),
+              ),
             ),
           if (!narrow)
             IconButton(
@@ -166,6 +253,32 @@ class SessionHeader extends StatelessWidget {
                 case 'end':
                   if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
                   return;
+                case 'global':
+                  bloc.add(GlobalToggled(!session.global));
+                  showToast(context, session.global ? 'The hub stops keeping a copy' : 'The hub keeps a copy after every turn',
+                      icon: Icons.cloud_done_outlined);
+                  return;
+                case 'continue':
+                  final text = await showDialog<String>(context: context, builder: (_) => const _ContinueDialog());
+                  if (text != null && text.trim().isNotEmpty) bloc.add(ContinueOnHubRequested(text.trim()));
+                  return;
+                case 'pages':
+                  await showSessionPages(context, session.id);
+                  return;
+                case 'attach-files':
+                  await attachToSession(context, session.id);
+                  return;
+                case 'terminal':
+                  await showTerminalSheet(context, session.id);
+                  return;
+                case 'files':
+                  await Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: Text('Files · ${session.displayTitle}', overflow: TextOverflow.ellipsis)),
+                      body: FilesPage(session: session.id),
+                    ),
+                  ));
+                  return;
               }
               final text = switch (v) {
                 'attach' => session.attachCommand,
@@ -179,6 +292,13 @@ class SessionHeader extends StatelessWidget {
               if (narrow) _menuItem('fork', Icons.call_split_rounded, 'Fork into a new session'),
               _menuItem('archive', session.archived ? Icons.unarchive_outlined : Icons.done_all_rounded,
                   session.archived ? 'Move back to "Pick up"' : 'Mark as done'),
+              _menuItem('global', session.global ? Icons.cloud_off_outlined : Icons.cloud_upload_outlined,
+                  session.global ? 'Stop keeping a copy on the hub' : 'Keep a copy on the hub'),
+              if (session.global) _menuItem('continue', Icons.cloud_sync_outlined, 'Continue on the hub'),
+              if (session.hasScreen) _menuItem('terminal', Icons.terminal_rounded, 'Screen & keys'),
+              _menuItem('attach-files', Icons.attach_file_rounded, 'Attach files to this session'),
+              _menuItem('files', Icons.folder_open_rounded, "This session's files"),
+              _menuItem('pages', Icons.web_rounded, 'Pages this session made'),
               const PopupMenuDivider(),
               if (session.attachCommand.isNotEmpty) _menuItem('attach', Icons.terminal_rounded, 'Copy tmux attach command'),
               _menuItem('resume', Icons.content_copy_rounded, 'Copy "claude --resume" command'),
@@ -316,6 +436,7 @@ List<_Entry> _entries(List<TimelineItem> items) {
 class _TimelineState extends State<_Timeline> {
   final _scroll = ScrollController();
   bool _awayFromLatest = false;
+  String _selected = '';
 
   /// Rows present when the history finished loading; only rows arriving
   /// after that animate in.
@@ -339,20 +460,35 @@ class _TimelineState extends State<_Timeline> {
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
-    final items = s.items;
+    // Items sent again without a kind were removed; queued messages stay at
+    // the end, as in the terminal, until Claude takes them in.
+    final shown = s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet);
+    final queued = shown.where((i) => i.whichKind() == TimelineItem_Kind.user && i.user.queued).toList();
+    final items = shown.where((i) => !(i.whichKind() == TimelineItem_Kind.user && i.user.queued)).toList();
     final busy = s.session?.isBusy ?? false;
     final approval = s.session?.state == SessionState.awaitingApproval;
-    final entries = _entries(items);
+    final entries = [..._entries(items), for (final q in queued) _Entry([q])];
+    // The hub's own "queued" item stands for a message once it has one.
+    final outbox = [
+      for (final o in s.outbox)
+        if (o.state != OutboxState.sent || !Outbox.queuedOnHub(o, s.items)) o,
+    ];
     if (_initial == null && (!s.loading || items.isNotEmpty)) {
       _initial = {for (final e in entries) e.key};
     }
-    if (items.isEmpty) {
+    if (entries.isEmpty && outbox.isEmpty) {
       if (busy) {
         return Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: _Working(waitingForApproval: approval)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: contentWidth),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                _Working(waitingForApproval: approval, stopping: s.interrupting),
+                if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
+              ]),
+            ),
           ),
         );
       }
@@ -360,16 +496,33 @@ class _TimelineState extends State<_Timeline> {
           ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)))
           : const EmptyState(icon: Icons.forum_outlined, title: 'No messages yet', body: 'History appears here as the session runs.');
     }
-    final last = items.last;
-    final streaming = last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
+    final last = items.lastOrNull;
+    final streaming = last != null && last.whichKind() == TimelineItem_Kind.markdown && last.markdown.streaming;
     final working = busy && !streaming;
     final keyIndex = {for (var i = 0; i < entries.length; i++) entries[i].key: entries.length - i};
     final side = MediaQuery.sizeOf(context).width < 600 ? 14.0 : 16.0;
     return Stack(
       children: [
-        // Reversed so the view stays pinned to the newest row. Rows are keyed
-        // so a new message doesn't shift every row's state down by one.
-        ListView.builder(
+        SelectionArea(
+          onSelectionChanged: (content) => _selected = content?.plainText ?? '',
+          contextMenuBuilder: (context, area) => AdaptiveTextSelectionToolbar.buttonItems(
+            anchors: area.contextMenuAnchors,
+            buttonItems: [
+              ...area.contextMenuButtonItems,
+              if (s.canType)
+                ContextMenuButtonItem(
+                  label: 'Quote',
+                  onPressed: () {
+                    context.read<SessionBloc>().add(QuoteRequested(_selected));
+                    area.clearSelection();
+                    ContextMenuController.removeAny();
+                  },
+                ),
+            ],
+          ),
+          // Reversed so the view stays pinned to the newest row. Rows are keyed
+          // so a new message doesn't shift every row's state down by one.
+          child: ListView.builder(
           controller: _scroll,
           reverse: true,
           padding: EdgeInsets.fromLTRB(side, 8, side, 12),
@@ -384,14 +537,30 @@ class _TimelineState extends State<_Timeline> {
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
                 alignment: Alignment.topCenter,
-                child: working ? _Working(waitingForApproval: approval) : const SizedBox(width: double.infinity),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final o in outbox) _OutboxBubble(key: ValueKey('outbox-${o.id}'), entry: o),
+                    working ? _Working(waitingForApproval: approval, stopping: s.interrupting) : const SizedBox(width: double.infinity),
+                    if (s.interruptSlow && s.session != null) _StillWorking(session: s.session!),
+                  ],
+                ),
               );
             } else {
               final e = entries[entries.length - i];
               key = ValueKey(e.key);
+              final splitHere = s.session?.forkPoint.isNotEmpty == true && e.items.any((i) => i.itemId == s.session!.forkPoint);
               child = _Appear(
                 animate: !(_initial?.contains(e.key) ?? true),
-                child: e.isGroup
+                child: splitHere
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          e.isGroup ? ActivityGroup(items: e.items) : TimelineItemView(item: e.items.first),
+                          const _ForkMarker(),
+                        ],
+                      )
+                    : e.isGroup
                     ? Padding(
                         padding: const EdgeInsets.only(top: 6),
                         child: ActivityGroup(items: e.items, active: working && i == 1),
@@ -404,6 +573,7 @@ class _TimelineState extends State<_Timeline> {
               child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child)),
             );
           },
+          ),
         ),
         Positioned(
           right: 16,
@@ -419,6 +589,130 @@ class _TimelineState extends State<_Timeline> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A message from this device the timeline doesn't show yet: on its way,
+/// waiting in Claude Code's queue, or not sent, with Retry.
+class _OutboxBubble extends StatelessWidget {
+  const _OutboxBubble({super.key, required this.entry});
+
+  final OutboxEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final e = entry;
+    final bloc = context.read<SessionBloc>();
+    final unconfirmed = e.unconfirmed(DateTime.now());
+    final failed = e.state == OutboxState.failed;
+    final (IconData icon, String status) = switch (e.state) {
+      OutboxState.sending => (Icons.upload_rounded, e.files.isEmpty ? 'Sending…' : 'Uploading ${e.files.length == 1 ? e.files.single.name : '${e.files.length} files'}…'),
+      OutboxState.failed => (Icons.error_outline_rounded, e.error.isEmpty ? 'Not sent' : 'Not sent · ${e.error}'),
+      OutboxState.sent when unconfirmed => (Icons.help_outline_rounded, 'Sent, but not in the session yet'),
+      OutboxState.sent => (Icons.schedule_rounded, 'Queued · Claude reads it at its next step'),
+    };
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10, left: 48),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: c.userBubble.withValues(alpha: failed ? 0.5 : 0.8),
+                borderRadius: BorderRadius.circular(16),
+                border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
+              ),
+              child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
+            ),
+            if (e.files.isNotEmpty || e.attachments.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final id in e.attachments)
+                      if (context.read<HubCubit>().state.hub.artifacts[id] case final a?)
+                        Chip(
+                          avatar: Icon(artifactIcon(a), size: 14),
+                          label: Text('${a.name} · ${fileSize(a.size)}', style: const TextStyle(fontSize: 11.5)),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    for (final f in e.files)
+                      Chip(
+                        avatar: const Icon(Icons.attach_file_rounded, size: 14),
+                        label: Text('${f.name} · ${fileSize(f.size)}', style: const TextStyle(fontSize: 11.5)),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.only(top: 4, right: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 13, color: failed ? c.danger : c.faint),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11.5, color: failed ? c.danger : c.faint)),
+                  ),
+                  if (failed || unconfirmed) ...[
+                    TextButton(
+                      key: Key('outbox-retry-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxRetried(e.id)),
+                      child: Text(failed ? 'Retry' : 'Resend'),
+                    ),
+                    TextButton(
+                      key: Key('outbox-discard-${e.id}'),
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () => bloc.add(OutboxDiscarded(e.id)),
+                      child: const Text('Discard'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where a fork split off: history above it is shared with the parent.
+class _ForkMarker extends StatelessWidget {
+  const _ForkMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 4),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: c.accent.withValues(alpha: 0.4))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.call_split_rounded, size: 14, color: c.accent),
+                const SizedBox(width: 6),
+                Text('Forked here · above is shared with the original', style: TextStyle(fontSize: 12, color: c.accent)),
+              ],
+            ),
+          ),
+          Expanded(child: Divider(color: c.accent.withValues(alpha: 0.4))),
+        ],
+      ),
     );
   }
 }
@@ -464,9 +758,9 @@ class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
 
 /// Shown at the end of the chat while Claude works between messages.
 class _Working extends StatefulWidget {
-  const _Working({required this.waitingForApproval});
+  const _Working({required this.waitingForApproval, this.stopping = false});
 
-  final bool waitingForApproval;
+  final bool waitingForApproval, stopping;
 
   @override
   State<_Working> createState() => _WorkingState();
@@ -507,7 +801,12 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
             ),
           ),
           const SizedBox(width: 6),
-          Text(widget.waitingForApproval ? 'Waiting for your approval' : 'Claude is working',
+          Text(
+              widget.stopping
+                  ? 'Stopping…'
+                  : widget.waitingForApproval
+                      ? 'Waiting for your approval'
+                      : 'Claude is working',
               style: TextStyle(fontSize: 12.5, color: c.muted)),
         ],
       ),
@@ -515,6 +814,45 @@ class _WorkingState extends State<_Working> with SingleTickerProviderStateMixin 
   }
 
   static double _pulse(double t) => t < 0.5 ? t * 2 : (1 - t) * 2;
+}
+
+/// An interrupt that didn't stop the turn: press Esc again, look at the
+/// screen, or end the session.
+class _StillWorking extends StatelessWidget {
+  const _StillWorking({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final bloc = context.read<SessionBloc>();
+    return Container(
+      key: const Key('still-working'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
+        children: [
+          Text(session.error.isNotEmpty ? session.error : "Claude hasn't stopped yet.", style: const TextStyle(fontSize: 13)),
+          TextButton(key: const Key('interrupt-again'), onPressed: () => bloc.add(const InterruptRequested()), child: const Text('Esc again')),
+          if (session.hasScreen)
+            TextButton(onPressed: () => showTerminalSheet(context, session.id), child: const Text('Show screen')),
+          if (session.canEnd)
+            TextButton(
+              key: const Key('interrupt-end'),
+              style: TextButton.styleFrom(foregroundColor: c.danger),
+              onPressed: () async {
+                if (await _confirmEnd(context, session)) bloc.add(const EndRequested());
+              },
+              child: const Text('End session'),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 Future<bool> _confirmEnd(BuildContext context, Session session) async =>
@@ -664,29 +1002,68 @@ class Composer extends StatefulWidget {
 
 class _ComposerState extends State<Composer> {
   final _text = TextEditingController();
+  final _focus = FocusNode();
+  final _files = <LocalFile>[];
+
+  Future<void> _attach() async {
+    final added = await pickLocalFiles(context);
+    if (mounted && added.isNotEmpty) setState(() => _files.addAll(added));
+  }
 
   @override
   void initState() {
     super.initState();
-    _text.addListener(() => setState(() {}));
+    _restore(widget.state.draft);
+    _text.addListener(() {
+      setState(() {});
+      if (_text.text != _lastReported) {
+        _lastReported = _text.text;
+        context.read<SessionBloc>().add(DraftChanged(_text.text));
+      }
+    });
+  }
+
+  String _lastReported = '';
+
+  void _restore(String? draft) {
+    if (draft == null || draft.isEmpty || _text.text.isNotEmpty) return;
+    _lastReported = draft;
+    _text.text = draft;
   }
 
   @override
   void didUpdateWidget(Composer old) {
     super.didUpdateWidget(old);
-    if (old.state.sentId != widget.state.sentId) _text.clear();
+    if (old.state.draft == null) _restore(widget.state.draft);
+    // After the frame: the full editor may still be listening while it closes.
+    if (old.state.sentId != widget.state.sentId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _text.clear();
+        if (mounted) setState(_files.clear);
+      });
+    }
+    if (old.state.quoteId != widget.state.quoteId) _insertQuote(widget.state.quote);
+  }
+
+  void _insertQuote(String quote) {
+    final quoted = quote.split('\n').map((l) => l.isEmpty ? '>' : '> $l').join('\n');
+    final before = _text.text.trimRight();
+    _text.text = '${before.isEmpty ? '' : '$before\n\n'}$quoted\n\n';
+    _text.selection = TextSelection.collapsed(offset: _text.text.length);
+    _focus.requestFocus();
   }
 
   @override
   void dispose() {
     _text.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
   void _submit() {
     final s = widget.state;
-    if (!s.canType || s.sending || _text.text.trim().isEmpty) return;
-    context.read<SessionBloc>().add(MessageSubmitted(_text.text));
+    if (!s.canType || s.sending || (_text.text.trim().isEmpty && _files.isEmpty)) return;
+    context.read<SessionBloc>().add(MessageSubmitted(_text.text, files: [..._files]));
   }
 
   @override
@@ -697,69 +1074,56 @@ class _ComposerState extends State<Composer> {
     final hint = !s.nodeOnline
         ? '${s.session?.node ?? 'Device'} is offline'
         : (s.forking ? 'First message of the new fork…' : 'Reply to Claude…');
-    final canSubmit = s.canType && !s.sending && _text.text.trim().isNotEmpty;
-    final compact = !isDesktop;
-    final stop = (s.session?.canInterrupt ?? false)
-        ? IconButton.outlined(
-            tooltip: 'Stop',
-            onPressed: () => bloc.add(const InterruptRequested()),
-            icon: const Icon(Icons.stop_rounded, size: 18),
-            style: IconButton.styleFrom(side: BorderSide(color: c.border)),
-          )
-        : null;
-    final send = IconButton.filled(
-      key: const Key('send'),
-      tooltip: 'Send',
-      onPressed: canSubmit ? _submit : null,
-      style: IconButton.styleFrom(
-        backgroundColor: c.accent,
-        disabledBackgroundColor: c.raised,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      icon: s.sending
-          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : const Icon(Icons.arrow_upward_rounded, size: 20),
-    );
-    final field = CallbackShortcuts(
-      bindings: {
-        if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _submit,
-        if (s.session?.canInterrupt ?? false) const SingleActivator(LogicalKeyboardKey.escape): () => bloc.add(const InterruptRequested()),
-      },
-      child: TextField(
-        key: const Key('composer'),
-        controller: _text,
-        enabled: s.canType,
-        autofocus: s.forking,
-        minLines: 1,
-        maxLines: compact ? 6 : 8,
-        textInputAction: TextInputAction.newline,
-        style: Theme.of(context).textTheme.bodyLarge,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: false,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          disabledBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: compact ? 10 : 8),
+    final canSubmit = s.canType && !s.sending && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
+    final canStop = s.session?.canInterrupt ?? false;
+    return PromptBox(
+      controller: _text,
+      focusNode: _focus,
+      fieldKey: const Key('composer'),
+      hint: hint,
+      enabled: s.canType,
+      canSubmit: s.canType && !s.sending,
+      autofocus: s.forking,
+      highlight: s.forking,
+      onSubmit: _submit,
+      onEscape: canStop ? () => bloc.add(const InterruptRequested()) : null,
+      header: s.forking || _files.isNotEmpty
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (s.forking) _forkBanner(c, bloc),
+                if (_files.isNotEmpty) PendingFileChips(files: _files, onRemove: (f) => setState(() => _files.remove(f))),
+              ],
+            )
+          : null,
+      actions: [
+        PromptButton(
+          key: const Key('attach'),
+          tooltip: 'Attach files',
+          icon: Icons.attach_file_rounded,
+          plain: true,
+          onPressed: s.canType ? _attach : null,
         ),
-      ),
+        if (canStop)
+          PromptButton(
+            tooltip: s.interrupting ? 'Stopping…' : 'Stop',
+            icon: Icons.stop_rounded,
+            onPressed: s.interrupting ? null : () => bloc.add(const InterruptRequested()),
+          ),
+        PromptButton(key: const Key('send'), tooltip: 'Send', icon: Icons.arrow_upward_rounded, filled: true, busy: s.sending, onPressed: canSubmit ? _submit : null),
+      ],
+      footer: isDesktop
+          ? Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('Enter to send · Shift+Enter for a new line', style: TextStyle(fontSize: 11, color: c.faint)),
+            )
+          : null,
     );
-    return Container(
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(compact ? 22 : 18),
-        border: Border.all(color: s.forking ? c.accent.withValues(alpha: 0.6) : c.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
-      ),
-      padding: compact ? const EdgeInsets.fromLTRB(16, 4, 5, 4) : const EdgeInsets.fromLTRB(14, 8, 8, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (s.forking)
-            Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 2),
+  }
+
+  Widget _forkBanner(TetherColors c, SessionBloc bloc) => Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 2, right: 4),
               child: Row(
                 children: [
                   Icon(Icons.call_split_rounded, size: 14, color: c.accent),
@@ -774,33 +1138,47 @@ class _ComposerState extends State<Composer> {
                   ),
                 ],
               ),
-            ),
-          if (compact)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(child: field),
-                if (stop != null) Padding(padding: const EdgeInsets.only(bottom: 2), child: stop),
-                Padding(padding: const EdgeInsets.only(left: 4, bottom: 2), child: send),
-              ],
-            )
-          else ...[
-            field,
-            Row(
-              children: [
-                Expanded(
-                  child: Text('Enter to send · Shift+Enter for a new line', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: c.faint)),
-                ),
-                if (stop != null) Padding(padding: const EdgeInsets.only(right: 6), child: stop),
-                send,
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+            );
+}
+
+class _ContinueDialog extends StatefulWidget {
+  const _ContinueDialog();
+
+  @override
+  State<_ContinueDialog> createState() => _ContinueDialogState();
+}
+
+class _ContinueDialogState extends State<_ContinueDialog> {
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Continue on the hub'),
+        content: SizedBox(
+          width: 420,
+          child: TextField(
+            key: const Key('continue-text'),
+            controller: _text,
+            autofocus: true,
+            minLines: 2,
+            maxLines: 6,
+            decoration: const InputDecoration(
+              labelText: 'First message',
+              helperText: 'Starts a new session on the hub with this conversation',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(key: const Key('continue-go'), onPressed: () => Navigator.pop(context, _text.text), child: const Text('Continue')),
+        ],
+      );
 }
 
 /// A pending permission prompt or folder-trust question, answered through
@@ -815,9 +1193,16 @@ class ApprovalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final a = approval;
+    if (a.kind == ApprovalKind.question) return QuestionCard(approval: a, sessionTitle: sessionTitle);
+    if (a.kind == ApprovalKind.prompt) return PromptCard(approval: a, sessionTitle: sessionTitle);
     final trust = a.kind == ApprovalKind.folderTrust;
     final busy = context.select<HubCubit, bool>((cubit) => cubit.state.deciding.contains(a.id));
-    void decide(bool allow) => context.read<HubCubit>().decide(a.id, allow: allow);
+    final hub = context.read<HubCubit>();
+    void decide(bool allow) => hub.decide(a.id, allow: allow);
+    final mode = context.select<HubCubit, String>((h) => h.state.hub.sessions[a.session]?.permissionMode ?? '');
+    final plan = a.toolName == 'ExitPlanMode';
+    // Edits asked one by one in the default mode: offer to stop asking.
+    final edit = !plan && mode != 'acceptEdits' && const {'Edit', 'Write', 'MultiEdit', 'NotebookEdit'}.contains(a.toolName);
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
@@ -849,12 +1234,21 @@ class ApprovalCard extends StatelessWidget {
           else
             Text(a.description, style: TextStyle(fontSize: 13, color: c.muted)),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          // Wraps on narrow cards (dashboard, phone) rather than overflowing.
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : 'Deny')),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : 'Allow')),
+              if (plan || edit)
+                TextButton(
+                  key: Key('allow-accept-edits-${a.id}'),
+                  onPressed: busy ? null : () => hub.decideWithMode(a.id, a.session, PermissionMode.acceptEdits),
+                  child: Text(plan ? 'Approve, accept edits' : 'Allow, accept edits'),
+                ),
+              OutlinedButton(onPressed: busy ? null : () => decide(false), child: Text(trust ? "Don't trust" : (plan ? 'Keep planning' : 'Deny'))),
+              FilledButton(onPressed: busy ? null : () => decide(true), child: Text(trust ? 'Trust folder' : (plan ? 'Approve plan' : 'Allow'))),
             ],
           ),
         ],

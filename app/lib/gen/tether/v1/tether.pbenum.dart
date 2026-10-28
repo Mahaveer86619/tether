@@ -127,14 +127,26 @@ class ApprovalRequest_Kind extends $pb.ProtobufEnum {
   static const ApprovalRequest_Kind KIND_FOLDER_TRUST =
       ApprovalRequest_Kind._(2, _omitEnumNames ? '' : 'KIND_FOLDER_TRUST');
 
+  /// Claude asks the user questions (AskUserQuestion); input_json holds
+  /// them, and the decision carries the answers.
+  static const ApprovalRequest_Kind KIND_QUESTION =
+      ApprovalRequest_Kind._(3, _omitEnumNames ? '' : 'KIND_QUESTION');
+
+  /// A dialog read off Claude Code's screen (a survey, a menu, a picker)
+  /// that no hook reported; options holds its choices.
+  static const ApprovalRequest_Kind KIND_PROMPT =
+      ApprovalRequest_Kind._(4, _omitEnumNames ? '' : 'KIND_PROMPT');
+
   static const $core.List<ApprovalRequest_Kind> values = <ApprovalRequest_Kind>[
     KIND_UNSPECIFIED,
     KIND_TOOL,
     KIND_FOLDER_TRUST,
+    KIND_QUESTION,
+    KIND_PROMPT,
   ];
 
   static final $core.List<ApprovalRequest_Kind?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 2);
+      $pb.ProtobufEnum.$_initByValueList(values, 4);
   static ApprovalRequest_Kind? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

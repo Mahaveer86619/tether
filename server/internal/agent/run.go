@@ -41,7 +41,13 @@ type run struct {
 
 type startOpts struct {
 	session, cwd, prompt, model, permissionMode, name, resume string
-	fork                                                      bool
+	fork, createCwd, scratch                                  bool
+	attachments                                               []*v1.Artifact
+	// An artifact holding the transcript to resume, from another machine.
+	restoreTranscript string
+	// A codebase snapshot to restore and run in; cwd is then relative to it.
+	restoreCodebase, restoreSnapshot string
+	systemPrompt                     string
 }
 
 func (a *Agent) startRun(o startOpts) (*run, error) {
@@ -111,7 +117,7 @@ func (r *run) interrupt() error {
 
 // answer resolves a permission prompt. It reports false if this run does
 // not own the approval.
-func (r *run) answer(approvalID string, allow bool, message string) bool {
+func (r *run) answer(approvalID string, allow bool, message string, answers map[string]string) bool {
 	r.mu.Lock()
 	input, ok := r.approvals[approvalID]
 	delete(r.approvals, approvalID)
@@ -121,7 +127,7 @@ func (r *run) answer(approvalID string, allow bool, message string) bool {
 	}
 	resp := map[string]any{"behavior": "deny", "message": firstNonEmpty(message, "Denied from Tether")}
 	if allow {
-		resp = map[string]any{"behavior": "allow", "updatedInput": input}
+		resp = map[string]any{"behavior": "allow", "updatedInput": withAnswers(input, answers)}
 	}
 	err := r.write(map[string]any{
 		"type": "control_response",
@@ -215,11 +221,11 @@ func (r *run) handleLine(line []byte) bool {
 		r.setState(v1.SessionState_SESSION_STATE_AWAITING_APPROVAL)
 		r.a.send(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequest{
 			ApprovalId: c.RequestID, Session: r.id, ToolName: c.Request.ToolName,
-			InputJson: string(input), Description: c.Request.Description,
+			InputJson: string(input), Description: c.Request.Description, Kind: approvalKind(c.Request.ToolName),
 		}}})
 		go func(id string) {
 			time.Sleep(approvalTimeout)
-			r.answer(id, false, "Approval timed out")
+			r.answer(id, false, "Approval timed out", nil)
 		}(c.RequestID)
 		return false
 	case "control_response", "keep_alive":
@@ -269,3 +275,29 @@ func (t *tailBuffer) String() string {
 }
 
 var errTerminalActive = errors.New("session is open in a terminal; fork it instead")
+
+func approvalKind(tool string) v1.ApprovalRequest_Kind {
+	if tool == "AskUserQuestion" {
+		return v1.ApprovalRequest_KIND_QUESTION
+	}
+	return v1.ApprovalRequest_KIND_TOOL
+}
+
+// withAnswers adds the user's answers to an AskUserQuestion input, which is
+// how a host answers it; questions stay as they were, since answers are
+// matched to them by text.
+func withAnswers(input json.RawMessage, answers map[string]string) json.RawMessage {
+	if len(answers) == 0 {
+		return input
+	}
+	var m map[string]any
+	if json.Unmarshal(input, &m) != nil || m == nil {
+		return input
+	}
+	m["answers"] = answers
+	b, err := json.Marshal(m)
+	if err != nil {
+		return input
+	}
+	return b
+}

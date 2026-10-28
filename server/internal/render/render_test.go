@@ -2,8 +2,10 @@ package render
 
 import (
 	"bufio"
+	"encoding/base64"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -204,6 +206,51 @@ func TestTodoWrite(t *testing.T) {
 	}
 }
 
+func TestQueuedPlaceholderUntilTakenIn(t *testing.T) {
+	b := NewBuilder()
+	enqueue := []byte(`{"type":"queue-operation","operation":"enqueue","timestamp":"2026-10-11T14:00:36.931Z","content":"check adb"}`)
+	absorbed := []byte(`{"type":"queue-operation","operation":"remove","reason":"absorbed_mid_turn","timestamp":"2026-10-11T14:00:56.308Z","content":"check adb"}`)
+	first := b.Feed(enqueue).Items
+	if len(first) != 1 || !first[0].GetUser().GetQueued() || first[0].GetUser().GetText() != "check adb" {
+		t.Fatalf("enqueue should show a queued placeholder, got %v", first)
+	}
+	gone := b.Feed(absorbed).Items
+	if len(gone) != 1 || gone[0].ItemId != first[0].ItemId || gone[0].Kind != nil {
+		t.Fatalf("taking it in should clear the placeholder, got %v", gone)
+	}
+	b.Feed(enqueue)
+	popped := b.Feed([]byte(`{"type":"queue-operation","operation":"popAll","timestamp":"2026-10-11T14:01:00Z"}`)).Items
+	if len(popped) != 1 || popped[0].Kind != nil {
+		t.Fatalf("popAll should clear every placeholder, got %v", popped)
+	}
+}
+
+func TestDequeueWithoutTextClearsOldestPlaceholder(t *testing.T) {
+	b := NewBuilder()
+	first := b.Feed([]byte(`{"type":"queue-operation","operation":"enqueue","timestamp":"2026-10-12T08:46:40.895Z","content":"check startup apps"}`)).Items
+	gone := b.Feed([]byte(`{"type":"queue-operation","operation":"dequeue","timestamp":"2026-10-12T08:46:41.029Z"}`)).Items
+	if len(gone) != 1 || gone[0].ItemId != first[0].ItemId || gone[0].Kind != nil {
+		t.Fatalf("a dequeue with no content should clear the oldest placeholder, got %v", gone)
+	}
+}
+
+func TestQueuedMessageMatchesStdoutReplay(t *testing.T) {
+	b := NewBuilder()
+	replay := b.Feed([]byte(`{"type":"user","uuid":"src1","message":{"role":"user","content":"also check adb"}}`)).Items
+	attached := b.Feed([]byte(`{"type":"attachment","uuid":"att1","attachment":{"type":"queued_command","prompt":"also check adb","commandMode":"prompt","source_uuid":"src1"}}`)).Items
+	if len(replay) != 1 || len(attached) != 1 || replay[0].ItemId != attached[0].ItemId {
+		t.Fatalf("the transcript copy should reuse the stdout replay's id, got %v and %v", replay, attached)
+	}
+}
+
+func TestTaskNotificationIsNotUserText(t *testing.T) {
+	b := NewBuilder()
+	line := []byte(`{"type":"user","uuid":"n1","promptSource":"system","message":{"role":"user","content":"<task-notification>\n<task-id>b1</task-id>\n<status>completed</status>\n</task-notification>"}}`)
+	if items := b.Feed(line).Items; len(items) != 0 {
+		t.Fatalf("a background task notification should not show as a message, got %v", items)
+	}
+}
+
 func TestQueuedMessageShowsAsUserText(t *testing.T) {
 	b := NewBuilder()
 	queued := []byte(`{"type":"attachment","uuid":"q1","attachment":{"type":"queued_command","prompt":"also check adb","commandMode":"prompt"}}`)
@@ -214,5 +261,59 @@ func TestQueuedMessageShowsAsUserText(t *testing.T) {
 	}
 	if len(items) != 2 || items[0].ItemId != items[1].ItemId || items[0].GetUser().GetText() != "also check adb" {
 		t.Fatalf("want the queued prompt once (re-emitted under one id), got %v", items)
+	}
+}
+
+func TestQueuedMessageWithAPicture(t *testing.T) {
+	b := NewBuilder()
+	png := base64.StdEncoding.EncodeToString([]byte("PNGDATA"))
+	line := []byte(`{"type":"attachment","uuid":"q9","attachment":{"type":"queued_command","commandMode":"prompt","prompt":[` +
+		`{"type":"text","text":"look at this screen"},` +
+		`{"type":"image","source":{"type":"base64","media_type":"image/png","data":"` + png + `"}}]}}`)
+	out := b.Feed(line)
+	if len(out.Items) != 1 || !strings.Contains(out.Items[0].GetUser().GetText(), "look at this screen") {
+		t.Fatalf("a message with a picture should still show its text, got %v", out.Items)
+	}
+	if len(out.Images) != 1 || string(out.Images[0].Data) != "PNGDATA" || out.Images[0].ItemID != out.Items[0].ItemId {
+		t.Fatalf("the picture should be handed over with its message's id, got %v", out.Images)
+	}
+}
+
+func TestPermissionModeComesFromTheTranscript(t *testing.T) {
+	b := NewBuilder()
+	out := b.Feed([]byte(`{"type":"user","uuid":"u1","permissionMode":"plan","message":{"role":"user","content":"look first"}}`))
+	if out.Patch.Mode != "plan" {
+		t.Fatalf("mode: %q", out.Patch.Mode)
+	}
+	out = b.Feed([]byte(`{"type":"user","uuid":"u2","isSidechain":true,"permissionMode":"default","message":{"role":"user","content":"sub"}}`))
+	if out.Patch.Mode != "" {
+		t.Fatalf("a subagent's line shouldn't set the session's mode: %q", out.Patch.Mode)
+	}
+}
+
+func TestPastedContentTagsAreTakenOutAndTheirIdsKept(t *testing.T) {
+	b := NewBuilder()
+	// What Claude Code writes for a message the agent pasted into a terminal.
+	line := []byte(`{"type":"user","uuid":"p1","message":{"role":"user","content":"\n\n<pasted_content id=\"c669\">\nMake sample files\n\nAttached files (in this folder):\n- .tether/attachments/a.xlsx\n</pasted_content id=\"c669\">\n"}}`)
+	items := b.Feed(line).Items
+	u := items[0].GetUser()
+	if len(items) != 1 || u.GetText() != "Make sample files\n\nAttached files (in this folder):\n- .tether/attachments/a.xlsx" || len(u.PastedIds) != 1 || u.PastedIds[0] != "c669" {
+		t.Fatalf("got %v", items)
+	}
+
+	mixed := []byte(`{"type":"user","uuid":"p2","message":{"role":"user","content":"look at this:\n<pasted_content id=\"a1\">\nline one\n</pasted_content id=\"a1\">\nand\n<pasted_content id=\"b2\">\nline two\n</pasted_content>"}}`)
+	u = b.Feed(mixed).Items[0].GetUser()
+	if u.GetText() != "look at this:\nline one\nand\nline two" || strings.Join(u.PastedIds, ",") != "a1,b2" {
+		t.Fatalf("got %q %v", u.GetText(), u.PastedIds)
+	}
+
+	// A pasted message sent mid-turn still shows as queued, and clears by its text.
+	q := b.Feed([]byte(`{"type":"queue-operation","operation":"enqueue","timestamp":"2026-10-22T04:54:30Z","content":"<pasted_content id=\"d4\">\nstop the probes\n</pasted_content id=\"d4\">"}`)).Items
+	if len(q) != 1 || !q[0].GetUser().GetQueued() || q[0].GetUser().GetText() != "stop the probes" {
+		t.Fatalf("queued: %v", q)
+	}
+	gone := b.Feed([]byte(`{"type":"queue-operation","operation":"remove","timestamp":"2026-10-22T04:54:31Z","content":"<pasted_content id=\"d4\">\nstop the probes\n</pasted_content id=\"d4\">"}`)).Items
+	if len(gone) != 1 || gone[0].ItemId != q[0].ItemId || gone[0].Kind != nil {
+		t.Fatalf("remove: %v", gone)
 	}
 }

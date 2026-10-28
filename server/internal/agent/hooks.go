@@ -1,35 +1,26 @@
 package agent
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/hooks"
 )
 
 const (
-	hookPath = "/tether/hook"
-	// Hook-tracked sessions with no events for this long are assumed closed;
-	// a terminal that crashed never sends SessionEnd.
-	hookStale = 12 * time.Hour
-	// How long a PermissionRequest hook may wait for an answer from the app.
-	// The terminal shows its own prompt meanwhile; whichever answers first wins.
-	approvalHookTimeout = 3600
+	hookPath            = hooks.Path
+	hookStale           = hooks.StaleTimeout
+	approvalHookTimeout = hooks.ApprovalTimeout
 )
 
-// hookEvents are the Claude Code hook events the agent listens to.
-var hookEvents = []string{"SessionStart", "UserPromptSubmit", "PermissionRequest", "PostToolUse", "Notification", "Stop", "StopFailure", "SessionEnd"}
+var hookEvents = hooks.Events
 
 type hookInput struct {
 	SessionID        string          `json:"session_id"`
@@ -37,6 +28,7 @@ type hookInput struct {
 	Event            string          `json:"hook_event_name"`
 	ToolName         string          `json:"tool_name"`
 	ToolInput        json.RawMessage `json:"tool_input"`
+	ToolUseID        string          `json:"tool_use_id"`
 	NotificationType string          `json:"notification_type"`
 	Message          string          `json:"message"`
 	Error            string          `json:"error"`
@@ -82,6 +74,7 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.noteHook(in, pid)
+	a.noteToolFile(in)
 	if in.Event != "PermissionRequest" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -114,12 +107,15 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 	_ = json.Unmarshal(input, &desc)
 	a.send(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: &v1.ApprovalRequest{
 		ApprovalId: id, Session: in.SessionID, ToolName: in.ToolName, InputJson: string(input),
-		Description: desc.Description, Kind: v1.ApprovalRequest_KIND_TOOL,
+		Description: desc.Description, Kind: approvalKind(in.ToolName),
 	}}})
 
 	select {
 	case d := <-ha.decision:
 		behavior := map[string]any{"behavior": "allow"}
+		if len(d.Answers) > 0 {
+			behavior["updatedInput"] = withAnswers(input, d.Answers)
+		}
 		if d.Decision != v1.Decision_DECISION_ALLOW {
 			behavior = map[string]any{"behavior": "deny", "message": firstNonEmpty(d.Message, "Denied from Tether")}
 		}
@@ -246,162 +242,10 @@ func (a *Agent) withdrawSessionApprovals(session string) {
 // InstallHooks adds Tether's HTTP hooks to a Claude Code settings file,
 // replacing any earlier Tether entries and leaving everything else as is.
 func InstallHooks(settingsPath, url string) error {
-	return editHooks(settingsPath, func(hooks map[string][]map[string]any) {
-		for _, ev := range hookEvents {
-			entry := map[string]any{"type": "http", "url": url, "timeout": 10}
-			if ev == "PermissionRequest" {
-				entry["timeout"] = approvalHookTimeout
-			}
-			hooks[ev] = append(hooks[ev], map[string]any{"hooks": []any{entry}})
-		}
-	})
+	return hooks.Install(settingsPath, url)
 }
 
 // UninstallHooks removes Tether's hooks from a Claude Code settings file.
 func UninstallHooks(settingsPath string) error {
-	return editHooks(settingsPath, func(map[string][]map[string]any) {})
-}
-
-func editHooks(path string, add func(map[string][]map[string]any)) error {
-	orig, err := os.ReadFile(path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if len(bytes.TrimSpace(orig)) == 0 {
-		orig = []byte("{}")
-	}
-	keys, values, err := orderedObject(orig)
-	if err != nil {
-		return fmt.Errorf("%s: %w", path, err)
-	}
-
-	hooks := map[string][]map[string]any{}
-	if raw, ok := values["hooks"]; ok {
-		if err := json.Unmarshal(raw, &hooks); err != nil {
-			return fmt.Errorf("%s: hooks: %w", path, err)
-		}
-	}
-	for ev, groups := range hooks {
-		var kept []map[string]any
-		for _, g := range groups {
-			list, _ := g["hooks"].([]any)
-			var rest []any
-			for _, h := range list {
-				if m, ok := h.(map[string]any); ok && isTetherHook(m) {
-					continue
-				}
-				rest = append(rest, h)
-			}
-			if len(list) == 0 {
-				kept = append(kept, g)
-				continue
-			}
-			if len(rest) == 0 {
-				continue
-			}
-			g["hooks"] = rest
-			kept = append(kept, g)
-		}
-		if len(kept) == 0 {
-			delete(hooks, ev)
-		} else {
-			hooks[ev] = kept
-		}
-	}
-	add(hooks)
-
-	if len(hooks) == 0 {
-		if _, ok := values["hooks"]; ok {
-			delete(values, "hooks")
-			keys = without(keys, "hooks")
-		}
-	} else {
-		raw, err := json.Marshal(hooks)
-		if err != nil {
-			return err
-		}
-		if _, ok := values["hooks"]; !ok {
-			keys = append(keys, "hooks")
-		}
-		values["hooks"] = raw
-	}
-
-	out := writeObject(keys, values)
-	if bytes.Equal(bytes.TrimSpace(out), bytes.TrimSpace(orig)) {
-		return nil
-	}
-	if _, err := os.Stat(path + ".tether-backup"); errors.Is(err, os.ErrNotExist) && len(orig) > 2 {
-		if err := os.WriteFile(path+".tether-backup", orig, 0o600); err != nil {
-			return err
-		}
-	}
-	tmp := path + ".tether-tmp"
-	if err := os.WriteFile(tmp, out, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
-}
-
-func isTetherHook(m map[string]any) bool {
-	url, _ := m["url"].(string)
-	return m["type"] == "http" && strings.HasSuffix(url, hookPath)
-}
-
-// orderedObject decodes a JSON object keeping its key order, so rewriting
-// the settings file doesn't shuffle the user's keys.
-func orderedObject(data []byte) ([]string, map[string]json.RawMessage, error) {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	tok, err := dec.Token()
-	if err != nil {
-		return nil, nil, err
-	}
-	if d, ok := tok.(json.Delim); !ok || d != '{' {
-		return nil, nil, errors.New("not a JSON object")
-	}
-	var keys []string
-	values := map[string]json.RawMessage{}
-	for dec.More() {
-		tok, err := dec.Token()
-		if err != nil {
-			return nil, nil, err
-		}
-		k, _ := tok.(string)
-		var raw json.RawMessage
-		if err := dec.Decode(&raw); err != nil {
-			return nil, nil, err
-		}
-		if _, dup := values[k]; !dup {
-			keys = append(keys, k)
-		}
-		values[k] = raw
-	}
-	return keys, values, nil
-}
-
-func writeObject(keys []string, values map[string]json.RawMessage) []byte {
-	var b bytes.Buffer
-	b.WriteString("{")
-	for i, k := range keys {
-		if i > 0 {
-			b.WriteString(",")
-		}
-		kb, _ := json.Marshal(k)
-		var v bytes.Buffer
-		if json.Indent(&v, values[k], "  ", "  ") != nil {
-			v.Write(values[k])
-		}
-		fmt.Fprintf(&b, "\n  %s: %s", kb, v.Bytes())
-	}
-	b.WriteString("\n}\n")
-	return b.Bytes()
-}
-
-func without(ss []string, s string) []string {
-	var out []string
-	for _, x := range ss {
-		if x != s {
-			out = append(out, x)
-		}
-	}
-	return out
+	return hooks.Uninstall(settingsPath)
 }

@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 EnvironmentFile=%h/tether/tether.env
-ExecStart=%h/tether/bin/tether-hub -addr ${TETHER_ADDR} -db %h/tether/hub.db
+ExecStart=%h/tether/bin/tether-hub -addr ${TETHER_ADDR} -db %h/tether/hub.db $TETHER_HUB_FLAGS
 Restart=always
 # The Tailscale address may not exist yet right after boot.
 RestartSec=5

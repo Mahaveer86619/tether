@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
 
+import '../../core/error/exceptions.dart';
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../../domain/entities/entities.dart';
@@ -24,9 +25,13 @@ class HubRepositoryImpl implements HubRepository {
     required this._cache,
     this.keepTimeline = const Duration(seconds: 30),
     this.keepBackground = const Duration(minutes: 2),
+    Stream<void>? networkChanges,
   }) {
     _socketSub = _socket.events.listen(_onSocket);
+    _networkSub = networkChanges?.listen((_) => _socket.networkChanged());
   }
+
+  StreamSubscription<void>? _networkSub;
 
   final HubRestApi _api;
   final HubSocket _socket;
@@ -47,6 +52,7 @@ class HubRepositoryImpl implements HubRepository {
   // Wire copies of the state, kept for the on-device cache.
   final _wireNodes = <String, pb.NodeStatus>{};
   final _wireSessions = <String, pb.SessionInfo>{};
+  final _wireChats = <String, pb.Chat>{};
   Timer? _saveState;
 
   @override
@@ -54,11 +60,23 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   void connect(HubConnection connection) {
-    final endpoint = HubEndpoint(connection.url, connection.token);
+    final endpoint = HubEndpoint(connection.url, connection.token, fingerprint: connection.fingerprint);
     _api.endpoint = endpoint;
     _emit(_snap.copyWith(status: ConnectionStatus.connecting, endpoint: connection.url, lastError: () => null));
     if (_snap.sessions.isEmpty) _restoreState();
     _socket.connect(endpoint);
+  }
+
+  @override
+  Future<void> disconnect() async {
+    _saveState?.cancel();
+    _socket.disconnect();
+    _api.endpoint = null;
+    _wireNodes.clear();
+    _wireSessions.clear();
+    _wireChats.clear();
+    _emit(const HubSnapshot());
+    await _cache.clear().catchError((Object _) {});
   }
 
   /// Shows the last known devices and sessions until the hub answers.
@@ -71,21 +89,40 @@ class HubRepositoryImpl implements HubRepository {
     for (final s in cached.sessions) {
       _wireSessions[s.id] = s;
     }
+    for (final c in cached.chats) {
+      _wireChats[c.id] = c;
+    }
     _emit(_snap.copyWith(
       nodes: {for (final n in _wireNodes.values) n.node: nodeFromPb(n)},
       sessions: {for (final s in _wireSessions.values) s.id: sessionFromPb(s)},
+      chats: {for (final c in _wireChats.values) c.id: chatFromPb(c)},
+      hubVersion: cached.hubVersion,
+      deviceId: cached.deviceId,
+      clientIp: cached.clientIp,
     ));
   }
 
   void _scheduleStateSave() {
     _saveState?.cancel();
     _saveState = Timer(const Duration(seconds: 2), () {
-      _cache.writeState(pb.Welcome(nodes: _wireNodes.values, sessions: _wireSessions.values)).catchError((Object _) {});
+      _cache
+          .writeState(pb.Welcome(
+            nodes: _wireNodes.values,
+            sessions: _wireSessions.values,
+            chats: _wireChats.values,
+            hubVersion: _snap.hubVersion,
+            deviceId: _snap.deviceId,
+            clientIp: _snap.clientIp,
+          ))
+          .catchError((Object _) {});
     });
   }
 
   @override
   void retryNow() => _socket.retryNow();
+
+  @override
+  void setActive({required bool active}) => _socket.setPresence(active: active);
 
   @override
   Stream<HubSnapshot> watchHub() async* {
@@ -103,13 +140,15 @@ class HubRepositoryImpl implements HubRepository {
 
   void _onSocket(SocketEvent ev) {
     switch (ev) {
-      case SocketConnecting():
-        if (_snap.status != ConnectionStatus.connected) _emit(_snap.copyWith(status: ConnectionStatus.connecting));
-      case SocketClosed(:final error, :final unauthorized):
+      case SocketConnecting(:final attempt):
+        _emit(_snap.copyWith(status: ConnectionStatus.connecting, retryAt: () => null, attempts: attempt - 1));
+      case SocketClosed(:final error, :final unauthorized, :final retryAt, :final attempts):
         _emit(_snap.copyWith(
           status: unauthorized ? ConnectionStatus.unauthorized : ConnectionStatus.offline,
           nodes: {for (final n in _snap.nodes.values) n.name: _offline(n)},
           lastError: () => unauthorized ? const UnauthorizedFailure().userMessage : error,
+          retryAt: () => retryAt,
+          attempts: attempts,
         ));
         for (final t in _timelines.values) {
           t.subscribed = false;
@@ -129,19 +168,40 @@ class HubRepositoryImpl implements HubRepository {
         _wireSessions
           ..clear()
           ..addEntries(w.sessions.map((s) => MapEntry(s.id, s)));
+        _wireChats
+          ..clear()
+          ..addEntries(w.chats.map((c) => MapEntry(c.id, c)));
         _emit(_snap.copyWith(
           status: ConnectionStatus.connected,
+          retryAt: () => null,
+          attempts: 0,
           hubVersion: w.hubVersion,
+          hubNode: w.hubNode,
+          deviceId: w.deviceId,
+          clientIp: w.clientIp,
           nodes: {for (final n in w.nodes) n.node: nodeFromPb(n)},
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
+          chats: {for (final c in w.chats) c.id: chatFromPb(c)},
+          update: () => w.hasUpdate() ? releaseFromPb(w.update) : null,
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
+          preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
         ));
         _scheduleStateSave();
+        _loadArtifacts();
         for (final t in _timelines.values) {
           if (t.refs > 0) t.started ? _subscribe(t) : _start(t);
         }
         _syncBackground();
+      case pb.Frame_Body.artifactAdded:
+        final a = artifactFromPb(f.artifactAdded);
+        _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
+      case pb.Frame_Body.chat:
+        _putChat(f.chat);
+      case pb.Frame_Body.updateAvailable:
+        _emit(_snap.copyWith(update: () => releaseFromPb(f.updateAvailable)));
+      case pb.Frame_Body.preferences:
+        _emit(_snap.copyWith(preferences: () => appearanceFromPb(f.preferences)));
       case pb.Frame_Body.nodeStatus:
         _wireNodes[f.nodeStatus.node] = f.nodeStatus;
         _emit(_snap.copyWith(nodes: {..._snap.nodes, f.nodeStatus.node: nodeFromPb(f.nodeStatus)}));
@@ -277,11 +337,104 @@ class HubRepositoryImpl implements HubRepository {
         prompt: r.prompt,
         model: r.model,
         permissionMode: r.permissionMode,
+        createCwd: r.createCwd,
+        scratch: r.scratch,
+        attachments: r.attachments,
       )));
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false}) =>
-      _command(() => _api.sendMessage(sessionId, text, fork: fork));
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) =>
+      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments, clientId: clientId));
+
+  @override
+  Future<Result<void>> setGlobal(String sessionId, {required bool global}) => _command(() => _api.setGlobal(sessionId, global: global));
+
+  @override
+  Future<Result<String>> continueOnHub(String sessionId, String text) => _command(() => _api.continueOnHub(sessionId, text));
+
+  @override
+  Future<Result<Chat>> createChat(NewChatRequest r) => _chat(() => _api.createChat(pb.CreateChat(
+        prompt: r.prompt,
+        target: r.target == null ? null : chatTargetToPb(r.target!),
+        attachments: r.attachments,
+        model: r.model,
+        permissionMode: r.permissionMode,
+        clientId: r.clientId.isEmpty ? null : r.clientId,
+      )));
+
+  @override
+  Future<Result<Chat>> chatForSession(String sessionId) => _chat(() => _api.createChat(pb.CreateChat(session: sessionId)));
+
+  @override
+  Future<Result<Chat>> renameChat(String chatId, String title) => _chat(() => _api.updateChat(chatId, pb.UpdateChat(title: title)));
+
+  @override
+  Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) =>
+      _chat(() => _api.updateChat(chatId, pb.UpdateChat(archived: archived)));
+
+  @override
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) =>
+      _command(() => _api.sendToChat(chatId, text, attachments: attachments, clientId: clientId));
+
+  @override
+  Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) =>
+      _chat(() => _api.setChatTarget(chatId, pb.SetChatTarget(target: chatTargetToPb(target), move: move, text: text)));
+
+  @override
+  Future<Result<Chat>> linkSession(String chatId, String sessionId, {bool unlink = false}) =>
+      _chat(() => _api.linkSession(chatId, pb.LinkSession(session: sessionId, unlink: unlink)));
+
+  @override
+  Future<Result<ChatContext>> chatContext(String chatId) async => (await _command(() => _api.chatContext(chatId))).map(chatContextFromPb);
+
+  @override
+  Future<Result<TargetSuggestions>> targetSuggestions(String prompt) async =>
+      (await _command(() => _api.targetSuggestions(prompt))).map(targetSuggestionsFromPb);
+
+  /// Runs a chat command and takes its answer in at once, ahead of the
+  /// hub's broadcast of the same change.
+  Future<Result<Chat>> _chat(Future<pb.Chat> Function() body) async {
+    final r = await _command(body);
+    if (r case Ok(:final value)) _putChat(value);
+    return r.map(chatFromPb);
+  }
+
+  void _putChat(pb.Chat c) {
+    _wireChats[c.id] = c;
+    _emit(_snap.copyWith(chats: {..._snap.chats, c.id: chatFromPb(c)}));
+    _scheduleStateSave();
+  }
+
+  @override
+  Future<Result<List<int>>> artifactBytes(String id) => _command(() => _api.artifactBytes(id));
+
+  @override
+  Future<Result<String>> artifactLink(String id) => _command(() => _api.artifactLink(id));
+
+  @override
+  Future<Result<List<Codebase>>> codebases() => _command(() async => [for (final c in (await _api.codebases()).codebases) codebaseFromPb(c)]);
+
+  @override
+  Future<Result<void>> snapshotCodebase(String id) => _command(() => _api.snapshotCodebase(id));
+
+  @override
+  Future<Result<List<HostedPage>>> pages({String session = ''}) => _command(() async => [for (final p in await _api.pages(session: session)) pageFromPb(p)]);
+
+  @override
+  Future<Result<void>> deleteArtifact(String id) => _command(() async {
+        await _api.deleteArtifact(id);
+        _emit(_snap.copyWith(artifacts: {..._snap.artifacts}..remove(id)));
+      });
+
+  /// Loads recent artifacts after (re)connecting; new ones arrive as frames.
+  Future<void> _loadArtifacts() async {
+    try {
+      final list = await _api.artifacts();
+      _emit(_snap.copyWith(artifacts: {for (final a in list.artifacts) a.id: artifactFromPb(a)}));
+    } on Exception {
+      // Not worth a toast: tool cards just show no thumbnails.
+    }
+  }
 
   @override
   Future<Result<void>> interrupt(String sessionId) => _command(() => _api.interrupt(sessionId));
@@ -290,12 +443,76 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<void>> endSession(String sessionId) => _command(() => _api.stop(sessionId));
 
   @override
+  Future<Result<void>> savePreferences(Appearance appearance) => _command(() => _api.savePreferences(appearanceToPb(appearance)));
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> workspaces() =>
+      _command(() async => [for (final r in (await _api.workspaces()).roots) WorkspaceRoot(node: r.node, path: r.path)]);
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> setWorkspaceRoot(WorkspaceRoot root, {required bool remove}) => _command(() async => [
+        for (final r in (await _api.setWorkspaceRoot(pb.WorkspaceRoot(node: root.node, path: root.path), remove: remove)).roots)
+          WorkspaceRoot(node: r.node, path: r.path),
+      ]);
+
+  @override
+  Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
+
+  @override
+  Future<Result<List<ConnectedClient>>> clients() => _command(() async => [for (final c in (await _api.clients()).clients) clientFromPb(c)]);
+
+  @override
+  Future<Result<List<TailnetDevice>>> tailnet() => _command(() async {
+        final t = await _api.tailnet();
+        if (t.error.isNotEmpty && t.devices.isEmpty) throw ApiException(statusCode: 500, code: 'tailscale', message: t.error);
+        return [for (final d in t.devices) tailnetDeviceFromPb(d)];
+      });
+
+  @override
+  Future<Result<PairingInvite>> createPairingInvite() => _command(() async {
+        final code = await _api.createPairingCode();
+        return PairingInvite(
+          code: code.code,
+          expires: DateTime.fromMillisecondsSinceEpoch(code.expiresMs.toInt()),
+          hubUrl: _api.endpoint!.ws.toString(),
+          fingerprint: code.certFingerprint.isNotEmpty ? code.certFingerprint : _api.endpoint!.fingerprint,
+        );
+      });
+
+  @override
+  Future<Result<List<PairedDevice>>> listDevices() =>
+      _command(() async => [for (final d in (await _api.devices()).devices) deviceFromPb(d)]);
+
+  @override
+  Future<Result<void>> revokeDevice(String id) => _command(() => _api.revokeDevice(id));
+
+  @override
+  Future<Result<String>> pair({
+    required String url,
+    required String code,
+    required String fingerprint,
+    required String name,
+    required String platform,
+  }) =>
+      guard(() async => (await _api.pair(url, fingerprint, pb.PairRequest(code: code, kind: 'client', name: name, platform: platform))).token);
+
+  @override
   Future<Result<void>> setArchived(String sessionId, {required bool archived}) =>
       _command(() => _api.archive(sessionId, archived: archived));
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {
-    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message));
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) =>
+      _command(() => _api.setMode(sessionId, mode.wire, revertAfter: revertAfter));
+
+  @override
+  Future<Result<ScreenSnapshot>> screen(String sessionId) => _command(() async => screenFromPb(await _api.screen(sessionId)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) => _command(() => _api.sendKeys(sessionId, keys, text: text));
+
+  @override
+  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
+    final r = await _command(() => _api.decide(approvalId, allow: allow, message: message, answers: answers, option: option));
     // Optimistic: the hub broadcasts the resolution, but don't wait for it.
     if (r.isOk) _emit(_snap.copyWith(approvals: {..._snap.approvals}..remove(approvalId)));
     return r;
@@ -316,6 +533,7 @@ class HubRepositoryImpl implements HubRepository {
       await s.cancel();
     }
     await _socketSub.cancel();
+    await _networkSub?.cancel();
     await _socket.close();
     for (final t in _timelines.values) {
       t.close();
@@ -349,7 +567,7 @@ class _Timeline {
 
   void apply(List<rpb.TimelineItem> items, Int64 frameSeq, {bool endOfReplay = false, bool persist = true}) {
     for (final it in items) {
-      _items[it.itemId] = it;
+      _items[it.itemId] = unpastedItem(it);
     }
     if (frameSeq > seq) seq = frameSeq;
     if (endOfReplay) loading = false;

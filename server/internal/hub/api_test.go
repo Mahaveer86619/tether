@@ -31,7 +31,7 @@ func newTestHubWith(t *testing.T) (*Hub, *httptest.Server) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	h, err := New(Config{Token: "secret", Version: "test", Log: slog.New(slog.NewTextHandler(io.Discard, nil))}, st)
+	h, err := New(Config{Token: "secret", Version: "test", Log: slog.New(slog.NewTextHandler(io.Discard, nil)), DataDir: t.TempDir()}, st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestWebSocketRejectsBadToken(t *testing.T) {
 	srv := newTestHub(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	conn, err := wire.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws")
+	conn, err := wire.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws", "")
 	if err != nil {
 		t.Fatal(err)
 	}

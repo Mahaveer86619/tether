@@ -32,13 +32,15 @@ The Claude Code TUI is great at one session in one terminal. Tether is for when 
 
 Details: [docs/architecture.md](docs/architecture.md).
 
+**Setting up:** the hub first, then the agent on each machine, then the apps; updates go in the same order. See [docs/running.md](docs/running.md#install-order).
+
 ## Tech
 
 | Part | Stack |
 |---|---|
 | `tether-hub`, `tether-agent`, `tetherctl` | Go, `coder/websocket`, `modernc.org/sqlite` (pure Go), `goldmark` (GFM) |
 | Wire contract | Protocol Buffers (`buf`) → Go + Dart code generation; JSON encoding on the wire |
-| App | Flutter for Android and Windows, Riverpod, generated Dart protobuf types |
+| App | Flutter for Android and Windows, BLoC/Cubit view models, `get_it`, generated Dart protobuf types |
 | Home server | Ubuntu 24.04 mini PC, Docker sandboxes, NAS over SMB |
 
 ## Repository layout
@@ -53,14 +55,28 @@ server/                 Go module
   internal/agent/       session index, headless runs, transcript mirror
   internal/store/       SQLite
   cmd/tetherctl/        terminal client for testing
-app/                    Flutter app (android, windows), not started
-deploy/                 systemd user units, Windows logon task
+  tools/release/        writes a release's latest.json and SHA256SUMS
+app/                    Flutter app (android, windows)
+deploy/                 systemd user units and deploy.sh, Windows install scripts, CI runner setup
+tools/release/          version.sh, build.sh, build-windows.ps1, manifest.sh
+.github/workflows/      ci (tests on every push and PR), release (on vX.Y.Z tags)
 docs/                   design docs
 ```
 
+## Building, releasing, deploying
+
+```sh
+cd server && go test ./... && go build -o bin/ ./cmd/...     # the Go side
+cd app && flutter test && flutter build apk                   # the app
+make release                                                  # on the hub's machine: test, build, deploy
+git tag -a vX.Y.Z -m "Tether X.Y.Z" && git push origin vX.Y.Z  # CI builds, publishes and deploys
+```
+
+Every part shares one version (`VERSION`). Apps and agents update themselves from the hub. See [docs/releasing.md](docs/releasing.md) for releases, signing, the self-hosted runner and updates, and [docs/running.md](docs/running.md) for a first install.
+
 ## Status
 
-The hub, agent and contract work end to end: sessions on the laptop and the home server are indexed, mirrored live, started (in tmux on Linux, headless on Windows), continued, forked and approved from `tetherctl`. Hooks give every Claude Code session, including ones you start yourself, live state and remote approvals; on Windows the app can even type into your own terminal sessions. The Flutter app ([app/](app/)) runs on Android and Windows. The Flutter app is next. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
+The hub, agent and contract work end to end: sessions on the laptop and the home server are indexed, mirrored live, started (in tmux on Linux, headless on Windows), continued, forked and approved from `tetherctl`. Hooks give every Claude Code session, including ones you start yourself, live state and remote approvals; on Windows the app can even type into your own terminal sessions. The Flutter app ([app/](app/)) runs on Android and Windows, chatbot-style, and updates itself. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
 
 ## Docs
 

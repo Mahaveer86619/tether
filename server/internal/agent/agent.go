@@ -8,9 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -36,11 +38,13 @@ const (
 )
 
 type Config struct {
-	HubURL      string
-	Token       string
-	Node        string
-	Claude      string
-	ProjectsDir string
+	HubURL string
+	// SHA-256 of the hub's self-signed certificate, if it uses one.
+	HubFingerprint string
+	Token          string
+	Node           string
+	Claude         string
+	ProjectsDir    string
 	// Host is "auto", "tmux" or "headless".
 	Host string
 	// HookAddr is where the hook receiver listens; empty disables it.
@@ -48,8 +52,17 @@ type Config struct {
 	// SettingsPath is the Claude Code settings file hooks are installed into;
 	// empty leaves settings alone.
 	SettingsPath string
-	Version      string
-	Log          *slog.Logger
+	// ScratchDir holds one folder per hub session.
+	ScratchDir string
+	// MCP registers the hub's MCP server with Claude Code.
+	MCP     bool
+	Version string
+	// Replace this binary (Exe) with a newer release when the hub asks,
+	// then call Restart.
+	SelfUpdate bool
+	Exe        string
+	Restart    func()
+	Log     *slog.Logger
 }
 
 type Agent struct {
@@ -63,8 +76,18 @@ type Agent struct {
 	runs          map[string]*run
 	panes         map[string]string
 	trust         map[string]string
+	trustUntil    map[string]time.Time     // session -> while watchTrust owns its folder dialog
+	prompts       map[string]*screenPrompt // session -> the dialog shown as a card
 	hooks         map[string]*hookSession
 	hookApprovals map[string]*hookApproval
+	uploaded      map[string]bool    // files already sent to the artifact store
+	hashes        map[hashKey]string // file hashes for snapshots, while unchanged
+	snapMu        sync.Mutex         // one snapshot at a time
+	backupMu      sync.Mutex         // one backup run at a time
+	historyMu     sync.Mutex         // one history sync at a time
+	historyAcks   chan *v1.AgentCommand_HistoryAck
+	historyNext   []*v1.HistoryPosition // the latest sync request, while one runs
+	historyAsked  bool
 	ended         map[string]*v1.SessionInfo
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
@@ -79,8 +102,13 @@ func New(cfg Config) (*Agent, error) {
 		runs:          map[string]*run{},
 		panes:         map[string]string{},
 		trust:         map[string]string{},
+		trustUntil:    map[string]time.Time{},
+		prompts:       map[string]*screenPrompt{},
 		hooks:         map[string]*hookSession{},
 		hookApprovals: map[string]*hookApproval{},
+		uploaded:      map[string]bool{},
+		historyAcks:   make(chan *v1.AgentCommand_HistoryAck, 1),
+		hashes:        map[hashKey]string{},
 		ended:         map[string]*v1.SessionInfo{},
 		mirrors:       map[string]context.CancelFunc{},
 		reported:      map[string]*v1.SessionInfo{},
@@ -123,6 +151,11 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 	a.log.Info("indexed sessions", "count", len(a.index.IDs()), "dir", a.cfg.ProjectsDir, "host", host)
 	go a.scanLoop(ctx)
+	go a.watchScreens(ctx)
+	go a.planLoop(ctx)
+	if a.cfg.MCP {
+		go a.registerMCP()
+	}
 
 	backoff := time.Second
 	for {
@@ -148,7 +181,7 @@ func (a *Agent) Run(ctx context.Context) error {
 
 func (a *Agent) session(ctx context.Context) error {
 	dctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	conn, err := wire.Dial(dctx, a.cfg.HubURL)
+	conn, err := wire.Dial(dctx, a.cfg.HubURL, a.cfg.HubFingerprint)
 	cancel()
 	if err != nil {
 		return err
@@ -160,7 +193,9 @@ func (a *Agent) session(ctx context.Context) error {
 	a.reported = map[string]*v1.SessionInfo{}
 	a.mu.Unlock()
 	a.log.Info("connected to hub", "url", a.cfg.HubURL)
+	a.commitUpdate()
 	a.publish(true)
+	go a.checkPlan(ctx)
 
 	go func() {
 		select {
@@ -208,13 +243,42 @@ func (a *Agent) onFrame(f *v1.Frame) {
 		case *v1.AgentCommand_Start:
 			s := op.Start
 			a.start(startOpts{session: s.Session, cwd: s.Cwd, prompt: s.Prompt, model: s.Model,
-				permissionMode: s.PermissionMode, name: s.Name, resume: s.Resume, fork: s.Fork})
+				permissionMode: s.PermissionMode, name: s.Name, resume: s.Resume, fork: s.Fork, createCwd: s.CreateCwd, attachments: s.Attachments,
+				scratch: s.Scratch, restoreTranscript: s.RestoreTranscript, restoreCodebase: s.RestoreCodebase, restoreSnapshot: s.RestoreSnapshot,
+				systemPrompt: s.SystemPrompt})
+		case *v1.AgentCommand_Snapshot:
+			go a.snapshotCodebase(op.Snapshot.Codebase, op.Snapshot.Session)
+		case *v1.AgentCommand_Scan:
+			go a.scanCodebases(op.Scan.Roots)
+		case *v1.AgentCommand_Fetch:
+			go a.fetchAttachment(op.Fetch)
+		case *v1.AgentCommand_Keys:
+			go a.sendKeys(op.Keys)
+		case *v1.AgentCommand_Capture:
+			go a.capture(op.Capture.Session)
+		case *v1.AgentCommand_SetMode_:
+			go a.setMode(op.SetMode)
+		case *v1.AgentCommand_Backup:
+			go a.backup(op.Backup.Stored)
+		case *v1.AgentCommand_SelfUpdate_:
+			go a.selfUpdate(op.SelfUpdate)
+		case *v1.AgentCommand_SyncHistory_:
+			go a.syncHistory(op.SyncHistory.Positions)
+		case *v1.AgentCommand_HistoryAck_:
+			select {
+			case a.historyAcks <- op.HistoryAck:
+			default:
+			}
 		case *v1.AgentCommand_Send:
-			a.sendInput(op.Send.Session, op.Send.Text)
+			a.sendInput(op.Send.Session, op.Send.Text, op.Send.Attachments, op.Send.PermissionMode, op.Send.SystemPrompt)
 		case *v1.AgentCommand_Interrupt_:
 			a.interrupt(op.Interrupt.Session)
 		case *v1.AgentCommand_Stop_:
 			a.stop(op.Stop.Session)
+		case *v1.AgentCommand_Forget_:
+			a.forgetScratch(op.Forget.Session)
+		case *v1.AgentCommand_UploadTranscript_:
+			go a.uploadTranscript(op.UploadTranscript.Session)
 		case *v1.AgentCommand_Mirror_:
 			a.startMirror(op.Mirror.Session, op.Mirror.FromOffset)
 		case *v1.AgentCommand_StopMirror_:
@@ -244,11 +308,14 @@ func (a *Agent) decide(d *v1.ApprovalDecision) {
 		go a.answerTrust(d.ApprovalId, pane, d.Decision == v1.Decision_DECISION_ALLOW)
 		return
 	}
+	if a.answerPrompt(d.ApprovalId, d) {
+		return
+	}
 	if a.answerHook(d) {
 		return
 	}
 	for _, r := range runs {
-		if r.answer(d.ApprovalId, d.Decision == v1.Decision_DECISION_ALLOW, d.Message) {
+		if r.answer(d.ApprovalId, d.Decision == v1.Decision_DECISION_ALLOW, d.Message, d.Answers) {
 			return
 		}
 	}
@@ -268,7 +335,7 @@ func (a *Agent) pane(session string) string {
 
 func (a *Agent) start(o startOpts) {
 	if a.pane(o.session) != "" || a.run(o.session) != nil {
-		a.sendInput(o.session, o.prompt)
+		a.sendInput(o.session, o.prompt, o.attachments, o.permissionMode, o.systemPrompt)
 		return
 	}
 	if o.resume != "" && o.cwd == "" {
@@ -278,12 +345,47 @@ func (a *Agent) start(o startOpts) {
 		a.fail(o.session, errTerminalActive)
 		return
 	}
+	if o.scratch {
+		o.cwd, o.createCwd = filepath.Join(a.cfg.ScratchDir, o.session), true
+	}
+	if o.restoreCodebase != "" {
+		dir := filepath.Join(a.codebasesDir(), o.restoreCodebase)
+		if err := a.restoreCodebase(o.restoreCodebase, o.restoreSnapshot, dir); err != nil {
+			a.fail(o.session, fmt.Errorf("restore the codebase: %w", err))
+			return
+		}
+		rel, err := within(dir, o.cwd)
+		if o.cwd == "" || err != nil {
+			rel = dir
+		}
+		o.cwd, o.createCwd = rel, true
+	}
 	if o.cwd == "" {
 		o.cwd, _ = os.UserHomeDir()
+	}
+	if o.createCwd {
+		if err := os.MkdirAll(o.cwd, 0o755); err != nil {
+			a.fail(o.session, fmt.Errorf("create project folder: %w", err))
+			return
+		}
 	}
 	if st, err := os.Stat(o.cwd); err != nil || !st.IsDir() {
 		a.fail(o.session, errors.New("working directory "+o.cwd+" does not exist"))
 		return
+	}
+	if o.restoreTranscript != "" {
+		if err := a.restoreTranscript(o.restoreTranscript, o.cwd, o.resume); err != nil {
+			a.fail(o.session, fmt.Errorf("restore the transcript: %w", err))
+			return
+		}
+	}
+	if len(o.attachments) > 0 {
+		extra, err := a.fetchAttachments(o.cwd, o.attachments)
+		if err != nil {
+			a.fail(o.session, err)
+			return
+		}
+		o.prompt += extra
 	}
 	if a.tmux != nil {
 		a.startTmux(o)
@@ -324,7 +426,10 @@ func (a *Agent) startTmux(o startOpts) {
 	a.mu.Unlock()
 	a.sendStatus()
 	a.report(o.session)
-	go a.watchTrust(o.session, o.cwd, pane)
+	a.mu.Lock()
+	a.trustUntil[o.session] = time.Now().Add(trustWatch)
+	a.mu.Unlock()
+	go a.watchTrust(o.session, o.cwd, pane, o.createCwd)
 }
 
 // sessionArgs are the Claude Code flags shared by tmux and headless runs.
@@ -347,12 +452,15 @@ func sessionArgs(o startOpts) []string {
 	if o.name != "" {
 		args = append(args, "--name", o.name)
 	}
+	if o.systemPrompt != "" {
+		args = append(args, "--append-system-prompt", o.systemPrompt)
+	}
 	return args
 }
 
 // watchTrust turns Claude Code's folder-trust dialog into an approval in the
 // app, since nothing else would answer it in a detached window.
-func (a *Agent) watchTrust(session, cwd, pane string) {
+func (a *Agent) watchTrust(session, cwd, pane string, created bool) {
 	deadline := time.Now().Add(trustWatch)
 	for time.Now().Before(deadline) {
 		time.Sleep(500 * time.Millisecond)
@@ -360,6 +468,12 @@ func (a *Agent) watchTrust(session, cwd, pane string) {
 			continue
 		}
 		id := uuid.NewString()
+		// The user just made this folder as a new project from the app;
+		// asking whether to trust it again would only be noise.
+		if created {
+			a.answerTrust(id, pane, true)
+			return
+		}
 		a.mu.Lock()
 		a.trust[id] = pane
 		a.mu.Unlock()
@@ -399,7 +513,19 @@ func (a *Agent) answerTrust(id, pane string, allow bool) {
 	a.log.Warn("trust dialog did not close", "approval", id)
 }
 
-func (a *Agent) sendInput(session, text string) {
+func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode, systemPrompt string) {
+	if len(attachments) > 0 {
+		cwd := a.index.Cwd(session)
+		if cwd == "" {
+			cwd, _ = os.UserHomeDir()
+		}
+		extra, err := a.fetchAttachments(cwd, attachments)
+		if err != nil {
+			a.fail(session, err)
+			return
+		}
+		text += extra
+	}
 	if pane := a.pane(session); pane != "" {
 		if err := a.tmux.paste(pane, text); err != nil {
 			a.fail(session, err)
@@ -416,7 +542,7 @@ func (a *Agent) sendInput(session, text string) {
 		a.typeIntoTerminal(session, hs.pid, text)
 		return
 	}
-	a.start(startOpts{session: session, resume: session, prompt: text})
+	a.start(startOpts{session: session, resume: session, prompt: text, permissionMode: mode, systemPrompt: systemPrompt})
 }
 
 // typeIntoTerminal sends a message to a session open in the user's own
@@ -451,16 +577,42 @@ func (a *Agent) interrupt(session string) {
 	}
 	if err != nil {
 		a.log.Warn("interrupt", "session", session, "err", err)
+		a.commandFailed(session, "interrupt", "Couldn't interrupt: "+err.Error())
 		return
 	}
 	// Claude Code fires no Stop hook when a turn is interrupted, so nothing
 	// else would move an interactive session out of "running".
 	if interactive {
-		go func() {
-			time.Sleep(time.Second)
-			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
-		}()
+		go a.awaitInterrupt(session)
 	}
+}
+
+// awaitInterrupt watches the screen until Claude Code stops showing it's at
+// work, then marks the session ready; without a screen it waits a moment.
+func (a *Agent) awaitInterrupt(session string) {
+	t, err := a.screenTarget(session)
+	if err != nil {
+		time.Sleep(time.Second)
+		a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+		return
+	}
+	deadline := time.Now().Add(interruptWait)
+	for time.Now().Before(deadline) {
+		time.Sleep(300 * time.Millisecond)
+		screen, err := a.readScreen(t)
+		if err != nil {
+			continue
+		}
+		if !working(screen) {
+			a.setHookState(session, v1.SessionState_SESSION_STATE_READY)
+			return
+		}
+	}
+	a.commandFailed(session, "interrupt", "Claude Code is still working; press Esc again, or end the session")
+}
+
+func (a *Agent) commandFailed(session, command, msg string) {
+	a.send(&v1.Frame{Body: &v1.Frame_CommandResult{CommandResult: &v1.CommandResult{Session: session, Command: command, Error: msg}}})
 }
 
 // stop ends a session the agent hosts: /exit for tmux, so Claude Code
@@ -611,6 +763,24 @@ func (a *Agent) publish(full bool) {
 		}
 	}
 	a.sendInfos(infos, full)
+	a.sendUsage(full)
+}
+
+// sendUsage passes on token usage read from transcripts: what's new, or all
+// of it on a new connection. The hub dedupes by message.
+func (a *Agent) sendUsage(all bool) {
+	a.mu.Lock()
+	connected := a.conn != nil
+	a.mu.Unlock()
+	if !connected {
+		return
+	}
+	entries := a.index.TakeUsage(all)
+	for len(entries) > 0 {
+		n := min(len(entries), 500)
+		a.send(&v1.Frame{Body: &v1.Frame_UsageReport{UsageReport: &v1.UsageReport{Entries: entries[:n]}}})
+		entries = entries[n:]
+	}
 }
 
 func (a *Agent) sendInfos(infos []*v1.SessionInfo, full bool) {
