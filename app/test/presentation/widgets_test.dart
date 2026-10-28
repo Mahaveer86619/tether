@@ -504,15 +504,41 @@ void main() {
       expect(find.byKey(const Key('question-card')), findsWidgets);
       final card = find.byKey(const Key('question-card')).last;
       final answer = find.descendant(of: card, matching: find.byKey(const Key('answer-questions')));
-      expect(tester.widget<FilledButton>(answer).onPressed, isNull, reason: 'every question needs an answer first');
-
+      expect(answer, findsNothing, reason: 'Answer comes with the last question');
+      expect(find.descendant(of: card, matching: find.text('Which parts?')), findsNothing, reason: 'one question at a time');
+      expect(find.descendant(of: card, matching: find.byKey(const Key('question-next'))), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.byKey(const Key('question-next'))).onPressed, isNull, reason: 'pick something to go on');
       await tester.tap(find.descendant(of: card, matching: find.text('Postgres')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('question-next')));
+      await tester.pump();
+      expect(find.descendant(of: card, matching: find.text('2 of 2')), findsOneWidget);
       await tester.tap(find.descendant(of: card, matching: find.text('API')));
       await tester.tap(find.descendant(of: card, matching: find.text('Web')));
       await tester.pump();
+      expect(tester.widget<FilledButton>(answer).onPressed, isNotNull);
       await tester.tap(answer);
       await tester.pump();
       expect(repo.answered.last, {'Which DB?': 'Postgres', 'Which parts?': 'API, Web'});
+    });
+
+    testWidgets('a question card taller than a phone screen scrolls and keeps the timeline', (tester) async {
+      final qs = [for (var i = 1; i <= 3; i++) '{"question":"Question $i?","header":"Q$i","multiSelect":false,"options":[{"label":"A$i","description":"first choice"},{"label":"B$i","description":"second choice"},{"label":"C$i","description":"third choice"},{"label":"D$i","description":"fourth choice"}]}'];
+      repo.emitHub(snapshotWith([session('s1')], approvals: [
+        Approval(id: 'q', session: 's1', node: 'minipc', kind: ApprovalKind.question, toolName: 'AskUserQuestion', inputJson: '{"questions":[${qs.join(',')}]}', created: DateTime(2026)),
+      ]));
+      await pumpApp(tester, const Size(400, 520));
+      await openSession(tester, 's1');
+      await settle(tester);
+      final scroll = find.byKey(const Key('approvals-scroll'));
+      expect(scroll, findsOneWidget);
+      expect(tester.getSize(scroll).height, lessThanOrEqualTo(520 * 0.6 + 0.1), reason: 'the card never takes more than its share of a short screen');
+      await tester.tap(find.text('A1'));
+      await tester.pump();
+      await tester.ensureVisible(find.byKey(const Key('question-next')));
+      await tester.tap(find.byKey(const Key('question-next')));
+      await tester.pump();
+      expect(find.text('2 of 3'), findsOneWidget);
     });
 
     testWidgets('pages sessions made are listed under Files → Pages, ready to open', (tester) async {

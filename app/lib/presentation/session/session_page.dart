@@ -86,7 +86,18 @@ class _SessionBody extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a)),
+                        if (s.approvals.isNotEmpty)
+                          // Cards can be taller than the screen (several questions); they scroll here, and the timeline keeps the rest.
+                          ConstrainedBox(
+                            constraints: BoxConstraints(maxHeight: (MediaQuery.sizeOf(context).height - MediaQuery.viewInsetsOf(context).bottom) * 0.6),
+                            child: SingleChildScrollView(
+                              key: const Key('approvals-scroll'),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [for (final a in s.approvals) Padding(padding: const EdgeInsets.only(bottom: 8), child: ApprovalCard(approval: a))],
+                              ),
+                            ),
+                          ),
                         if (session.state == SessionState.awaitingApproval && s.approvals.isEmpty && session.hasScreen)
                           StuckBanner(sessionId: session.id),
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
