@@ -324,6 +324,31 @@ void main() {
       }
     });
 
+    testWidgets('inline code has a see-through background, so a selection shows through it', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(
+          itemId: 'm',
+          ord: Int64(1),
+          markdown: rpb.Markdown(blocks: [
+            rpb.Block(paragraph: rpb.Paragraph(spans: [span('Run '), span('tetherctl wipe', code: true), span(' now')])),
+          ]),
+        ),
+      ]);
+      await settle(tester);
+      final paragraph = tester.widget<RichText>(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().startsWith('Run ')).first);
+      Color? background;
+      paragraph.text.visitChildren((s) {
+        if (s is TextSpan && s.text == 'tetherctl wipe') background = s.style?.backgroundColor;
+        return true;
+      });
+      // A background is painted over the selection highlight, so an opaque one would hide it.
+      expect(background, isNotNull);
+      expect(background!.a, lessThan(1));
+    });
+
     testWidgets('consecutive tool calls fold into one group', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
       await openSession(tester, 's1');

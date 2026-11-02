@@ -167,6 +167,11 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
     useMaterial3: true,
     brightness: brightness,
     colorScheme: scheme,
+    textSelectionTheme: TextSelectionThemeData(
+      selectionColor: c.accent.withValues(alpha: brightness == Brightness.dark ? 0.5 : 0.35),
+      selectionHandleColor: c.accent,
+      cursorColor: c.accent,
+    ),
     scaffoldBackgroundColor: c.canvas,
     extensions: [c],
     splashFactory: InkSparkle.splashFactory,
