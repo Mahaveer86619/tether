@@ -95,6 +95,13 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  Future<Result<List<SkillInfo>>> skills();
+  Future<Result<SkillDetail>> skill(String name);
+  Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0});
+
+  /// Starts a session that drafts a skill for the routine; returns its id.
+  Future<Result<String>> draftSkill(String example);
+
   /// Routines that keep coming back in the hub's history; [days] 0 means all of it.
   Future<Result<RoutineReport>> routines({int days = 30, int runs = 3});
 

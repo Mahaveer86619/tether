@@ -3,13 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
+import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'routines_cubit.dart';
 
-/// What you keep asking for, read from the hub's history: the routines that
-/// could become skills. It only lists them; nothing is created yet.
+/// What you keep asking for, read from the hub's history, and the skills made
+/// from it. A routine can be drafted into a skill; a draft waits here for your
+/// approval, and only an approved skill is used.
 class RoutinesPage extends StatelessWidget {
   const RoutinesPage({super.key});
 
@@ -27,8 +29,15 @@ class _RoutinesBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return BlocConsumer<RoutinesCubit, RoutinesState>(
-      listenWhen: (a, b) => a.failureId != b.failureId && b.failure != null,
-      listener: (context, s) => showFailure(context, s.failure!),
+      listenWhen: (a, b) => a.failureId != b.failureId && b.failure != null || a.draftedId != b.draftedId,
+      listener: (context, s) {
+        if (s.drafted.isNotEmpty && s.draftedId > 0) {
+          showToast(context, 'Drafting the skill. It shows under Skills when it is ready.', icon: Icons.auto_awesome_rounded);
+          context.read<NavCubit>().openSession(s.drafted);
+        } else if (s.failure != null) {
+          showFailure(context, s.failure!);
+        }
+      },
       builder: (context, s) {
         final cubit = context.read<RoutinesCubit>();
         final report = s.report;
@@ -42,13 +51,26 @@ class _RoutinesBody extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: Text(
-                        'Things you keep asking for. When a routine has come up often enough, Tether can turn it into a skill so Claude just runs it.',
-                        style: TextStyle(fontSize: 13, color: c.muted),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 4),
+                            child: Text(
+                              'Things you keep asking for. Draft a routine into a skill, check it, and Claude can run it instead of working it out each time.',
+                              style: TextStyle(fontSize: 13, color: c.muted),
+                            ),
+                          ),
+                        ),
+                        IconButton(key: const Key('routines-refresh'), tooltip: 'Refresh', icon: const Icon(Icons.refresh_rounded, size: 20), onPressed: s.loading ? null : cubit.load),
+                      ],
                     ),
+                    if (s.skills.isNotEmpty) ...[
+                      SectionLabel('Skills', trailing: Pill('${s.skills.length}', color: c.accent)),
+                      for (final skill in s.skills) _SkillCard(skill: skill, busy: s.busy.contains(skill.name)),
+                      const SizedBox(height: 8),
+                    ],
+                    const SectionLabel('Routines'),
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
@@ -79,7 +101,12 @@ class _RoutinesBody extends StatelessWidget {
                           ),
                         )
                       else
-                        for (final r in report.routines) _RoutineCard(routine: r),
+                        for (final r in report.routines)
+                          _RoutineCard(
+                            routine: r,
+                            skill: s.skills.where((k) => k.source == r.example).firstOrNull,
+                            drafting: s.busy.contains(r.example),
+                          ),
                     ],
                   ],
                 ),
@@ -91,6 +118,233 @@ class _RoutinesBody extends StatelessWidget {
     );
   }
 }
+
+// ---- skills ----
+
+class _SkillCard extends StatelessWidget {
+  const _SkillCard({required this.skill, required this.busy});
+
+  final SkillInfo skill;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final k = skill;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Material(
+        color: c.surface,
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: k.proposed ? c.warning.withValues(alpha: 0.6) : c.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: Key('skill-${k.name}'),
+          onTap: () => showSkill(context, k.name),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(k.proposed ? Icons.hourglass_top_rounded : Icons.check_circle_rounded, size: 17, color: k.proposed ? c.warning : c.success),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(k.name, style: monoStyle(context, size: 14, color: c.text).copyWith(fontWeight: FontWeight.w600))),
+                    if (busy) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) else Icon(Icons.chevron_right_rounded, size: 20, color: c.faint),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(k.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Pill(k.proposed ? 'Waiting for your approval' : 'In use', color: k.proposed ? c.warning : c.success),
+                    Pill(k.mutating ? 'changes things' : 'read-only', color: k.mutating ? c.warning : null),
+                    if (k.version > 1) Pill('version ${k.version}'),
+                    if (k.updated != null) Pill('${ago(k.updated)} ago'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opens a skill: its text, why and how it changed, and the decisions.
+Future<void> showSkill(BuildContext context, String name) {
+  final cubit = context.read<RoutinesCubit>();
+  return showDialog<void>(
+    context: context,
+    builder: (_) => BlocProvider.value(value: cubit, child: _SkillDialog(name: name)),
+  );
+}
+
+class _SkillDialog extends StatefulWidget {
+  const _SkillDialog({required this.name});
+
+  final String name;
+
+  @override
+  State<_SkillDialog> createState() => _SkillDialogState();
+}
+
+class _SkillDialogState extends State<_SkillDialog> {
+  late Future<SkillDetail?> _detail = context.read<RoutinesCubit>().detail(widget.name);
+  int _shown = 0;
+
+  void _reload() => setState(() {
+        _shown = 0;
+        _detail = context.read<RoutinesCubit>().detail(widget.name);
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final cubit = context.read<RoutinesCubit>();
+    final busy = context.select<RoutinesCubit, bool>((x) => x.state.busy.contains(widget.name));
+    return AlertDialog(
+      key: const Key('skill-dialog'),
+      title: Text(widget.name, style: monoStyle(context, size: 16, color: c.text).copyWith(fontWeight: FontWeight.w600)),
+      content: SizedBox(
+        width: 640,
+        child: FutureBuilder<SkillDetail?>(
+          future: _detail,
+          builder: (context, snap) {
+            final d = snap.data;
+            if (snap.connectionState != ConnectionState.done) return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+            if (d == null) return const Text('This skill is no longer here.');
+            final v = d.versions.isEmpty ? null : d.versions[(_shown == 0 ? d.versions.length : _shown) - 1];
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Pill(d.info.proposed ? 'Waiting for your approval' : 'In use', color: d.info.proposed ? c.warning : c.success),
+                      Pill(d.info.mutating ? 'changes things' : 'read-only', color: d.info.mutating ? c.warning : null),
+                    ],
+                  ),
+                  if (d.info.source.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('Learned from "${d.info.source}"', style: TextStyle(fontSize: 12.5, color: c.muted)),
+                    ),
+                  if (d.info.mutating)
+                    Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                      child: Text('Some steps change things. Claude is told to confirm with you before it runs them.', style: TextStyle(fontSize: 12.5, color: c.text)),
+                    ),
+                  const SizedBox(height: 12),
+                  if (v != null)
+                    Container(
+                      key: const Key('skill-text'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+                      child: SelectableText(v.text, style: monoStyle(context, size: 12, color: c.text)),
+                    ),
+                  if (d.versions.length > 1) ...[
+                    const SizedBox(height: 12),
+                    Text('Versions', style: TextStyle(fontSize: 11.5, color: c.faint, fontWeight: FontWeight.w600)),
+                    for (final ver in d.versions.reversed)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                key: Key('skill-version-${ver.n}'),
+                                onTap: () => setState(() => _shown = ver.n == d.versions.length ? 0 : ver.n),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Version ${ver.n}${ver.n == d.versions.length ? ' (in use)' : ''} · ${ver.by}${ver.at == null ? '' : ' · ${ago(ver.at)} ago'}',
+                                      style: TextStyle(fontSize: 12.5, fontWeight: (_shown == 0 ? d.versions.length : _shown) == ver.n ? FontWeight.w600 : FontWeight.w500),
+                                    ),
+                                    if (ver.note.isNotEmpty) Text(ver.note, style: TextStyle(fontSize: 12, color: c.muted)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (ver.n != d.versions.length && d.info.active)
+                              TextButton(
+                                key: Key('skill-rollback-${ver.n}'),
+                                onPressed: busy
+                                    ? null
+                                    : () async {
+                                        await cubit.rollback(widget.name, ver.n);
+                                        if (mounted) _reload();
+                                      },
+                                child: const Text('Go back to this'),
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      actions: [
+        FutureBuilder<SkillDetail?>(
+          future: _detail,
+          builder: (context, snap) {
+            final d = snap.data;
+            if (d == null) return const SizedBox.shrink();
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  key: const Key('skill-dismiss'),
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          final nav = Navigator.of(context);
+                          await cubit.dismiss(widget.name);
+                          nav.pop();
+                        },
+                  child: Text(d.info.proposed ? 'Dismiss' : 'Remove'),
+                ),
+                if (d.info.proposed)
+                  FilledButton(
+                    key: const Key('skill-approve'),
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            final nav = Navigator.of(context);
+                            await cubit.approve(widget.name);
+                            nav.pop();
+                          },
+                    child: const Text('Approve'),
+                  ),
+              ],
+            );
+          },
+        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+      ],
+    );
+  }
+}
+
+// ---- routines ----
 
 /// A step by its short name; tap to see the whole command.
 class _StepText extends StatefulWidget {
@@ -130,9 +384,13 @@ class _StepTextState extends State<_StepText> {
 }
 
 class _RoutineCard extends StatefulWidget {
-  const _RoutineCard({required this.routine});
+  const _RoutineCard({required this.routine, required this.skill, required this.drafting});
 
   final Routine routine;
+
+  /// The skill already drafted from this routine, if any.
+  final SkillInfo? skill;
+  final bool drafting;
 
   @override
   State<_RoutineCard> createState() => _RoutineCardState();
@@ -187,6 +445,24 @@ class _RoutineCardState extends State<_RoutineCard> {
                       style: TextStyle(fontSize: 12, color: c.muted),
                     ),
                   ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: widget.skill != null
+                      ? OutlinedButton.icon(
+                          key: Key('open-skill-${widget.skill!.name}'),
+                          onPressed: () => showSkill(context, widget.skill!.name),
+                          icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                          label: Text(widget.skill!.proposed ? 'Review the draft' : 'Skill: ${widget.skill!.name}'),
+                        )
+                      : FilledButton.tonalIcon(
+                          key: Key('draft-${r.example.hashCode}'),
+                          onPressed: widget.drafting ? null : () => context.read<RoutinesCubit>().draft(r.example),
+                          icon: widget.drafting
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.auto_awesome_outlined, size: 16),
+                          label: const Text('Draft a skill'),
+                        ),
+                ),
                 if (_open) ...[
                   if (r.requests.length > 1) ...[
                     const SizedBox(height: 10),

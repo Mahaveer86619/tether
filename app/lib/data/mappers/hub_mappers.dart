@@ -316,3 +316,42 @@ RoutineReport routineReportFromJson(Map<String, dynamic> m) => RoutineReport(
           ),
       ],
     );
+
+SkillInfo skillInfoFromJson(Map<String, dynamic> m) => SkillInfo(
+      name: m['name'] as String? ?? '',
+      description: m['description'] as String? ?? '',
+      status: m['status'] as String? ?? 'proposed',
+      mutating: m['mutating'] as bool? ?? false,
+      source: m['source'] as String? ?? '',
+      version: (m['version'] as num?)?.toInt() ?? 1,
+      updated: _ms(m['updatedMs']),
+    );
+
+List<SkillInfo> skillsFromJson(Map<String, dynamic> m) => [
+      for (final s in m['skills'] as List<dynamic>? ?? const []) skillInfoFromJson(s as Map<String, dynamic>),
+    ];
+
+SkillDetail skillDetailFromJson(Map<String, dynamic> m) {
+  final versions = [
+    for (final v in m['versions'] as List<dynamic>? ?? const [])
+      SkillVersion(
+        n: ((v as Map<String, dynamic>)['n'] as num?)?.toInt() ?? 0,
+        text: v['md'] as String? ?? '',
+        note: v['note'] as String? ?? '',
+        by: v['by'] as String? ?? '',
+        at: _ms(v['atMs']),
+      ),
+  ];
+  return SkillDetail(
+    info: SkillInfo(
+      name: m['name'] as String? ?? '',
+      description: m['description'] as String? ?? '',
+      status: m['status'] as String? ?? 'proposed',
+      mutating: m['mutating'] as bool? ?? false,
+      source: m['source'] as String? ?? '',
+      version: versions.lastOrNull?.n ?? 1,
+      updated: _ms(m['updatedMs']),
+    ),
+    versions: versions,
+  );
+}

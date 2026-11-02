@@ -202,6 +202,36 @@ class HubRestApi {
 
   Future<pb.UsageSummary> usage() => _get('/usage', pb.UsageSummary());
 
+  /// The skills library: proposals waiting for approval and approved skills.
+  Future<Map<String, dynamic>> skills() => _jsonMap(() => _client.get(_endpoint.api('/skills'), headers: _headers));
+
+  /// One skill with the text of every version.
+  Future<Map<String, dynamic>> skill(String name) =>
+      _jsonMap(() => _client.get(_endpoint.api('/skills/${Uri.encodeComponent(name)}'), headers: _headers));
+
+  /// An owner's decision on a skill: `approve`, `dismiss` or `rollback` (with a body).
+  Future<Map<String, dynamic>> skillAction(String name, String action, {Map<String, Object?> body = const {}}) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/skills/${Uri.encodeComponent(name)}/$action'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
+  /// Starts a session that drafts a skill for the routine; returns its id.
+  Future<String> draftSkill(String example) async {
+    final json = await _jsonMap(
+      () => _client.post(_endpoint.api('/skills/draft'), headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode({'example': example})),
+    );
+    return json['session'] as String? ?? '';
+  }
+
+  Future<Map<String, dynamic>> _jsonMap(Future<http.Response> Function() request) async {
+    final json = await _sendJson(request);
+    if (json is! Map<String, dynamic>) throw const ProtocolException('unexpected response shape');
+    return json;
+  }
+
   /// The routines found in the hub's history (see docs/skills.md). Plain JSON,
   /// not a protobuf message.
   Future<Map<String, dynamic>> routines({required int days, required int runs}) async {
