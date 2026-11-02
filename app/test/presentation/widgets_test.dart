@@ -727,11 +727,15 @@ void main() {
       expect(find.text('5 runs in 3 sessions'), findsOneWidget);
       expect(find.text('read-only'), findsOneWidget);
       expect(find.text('80% without failures'), findsOneWidget);
-      expect(find.text('curl -s http://<ip>/api/state'), findsNothing, reason: 'steps show when a card is opened');
+      expect(find.text('curl http://<ip>/api/state'), findsNothing, reason: 'steps show when a card is opened');
       await tester.tap(find.text('progress?'));
       await settle(tester);
-      expect(find.text('curl -s http://<ip>/api/state'), findsOneWidget);
+      expect(find.text('curl http://<ip>/api/state'), findsOneWidget, reason: 'a step is named by what it runs');
+      expect(find.text('curl -s http://<ip>/api/state'), findsNothing, reason: 'the whole command only on tap');
       expect(find.text('60%'), findsOneWidget);
+      await tester.tap(find.text('curl http://<ip>/api/state'));
+      await settle(tester);
+      expect(find.text('curl -s http://<ip>/api/state'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('routines-all')));
       await settle(tester);

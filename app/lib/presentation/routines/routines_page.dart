@@ -92,6 +92,43 @@ class _RoutinesBody extends StatelessWidget {
   }
 }
 
+/// A step by its short name; tap to see the whole command.
+class _StepText extends StatefulWidget {
+  const _StepText({required this.step});
+
+  final RoutineStep step;
+
+  @override
+  State<_StepText> createState() => _StepTextState();
+}
+
+class _StepTextState extends State<_StepText> {
+  bool _full = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = widget.step;
+    final isShell = s.key.startsWith('Bash:');
+    final short = isShell && s.detail.isNotEmpty ? shellSummary(s.detail) : (s.detail.isEmpty ? s.key : s.detail);
+    final canExpand = isShell && s.detail.trim() != short;
+    return InkWell(
+      onTap: canExpand ? () => setState(() => _full = !_full) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(short, maxLines: 1, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12, color: c.muted)),
+          if (_full)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: SelectableText(s.detail, style: monoStyle(context, size: 11.5, color: c.faint)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RoutineCard extends StatefulWidget {
   const _RoutineCard({required this.routine});
 
@@ -167,7 +204,7 @@ class _RoutineCardState extends State<_RoutineCard> {
                           children: [
                             Icon(s.mutating ? Icons.edit_outlined : Icons.visibility_outlined, size: 14, color: s.mutating ? c.warning : c.faint),
                             const SizedBox(width: 6),
-                            Expanded(child: Text(s.detail.isEmpty ? s.key : s.detail, maxLines: 3, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 12, color: c.muted))),
+                            Expanded(child: _StepText(step: s)),
                             const SizedBox(width: 8),
                             Text('${(s.share * 100).round()}%', style: TextStyle(fontSize: 11.5, color: c.faint)),
                           ],

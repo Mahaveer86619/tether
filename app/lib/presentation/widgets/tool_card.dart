@@ -96,6 +96,11 @@ class _ToolCardViewState extends State<ToolCardView> {
   }
 
   String _title(pb.ToolCard card) {
+    if (card.whichDetail() == pb.ToolCard_Detail.shell) {
+      // The command is in the body; the header says what it does.
+      final d = card.shell.description.trim();
+      return d.isNotEmpty ? d : shellSummary(card.shell.command);
+    }
     if (card.title == card.name) return '';
     return card.whichDetail() == pb.ToolCard_Detail.edit ||
             card.whichDetail() == pb.ToolCard_Detail.write ||
