@@ -1,6 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tether/domain/entities/entities.dart';
@@ -260,6 +263,65 @@ void main() {
       final old = tester.widget<Opacity>(find.ancestor(of: find.text('history'), matching: find.byType(Opacity)).first);
       expect(old.opacity, 1);
       await settle(tester);
+    });
+
+    testWidgets('selecting text in the timeline paints a highlight that survives new messages', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'select these words please')),
+        rpb.TimelineItem(
+          itemId: 'm',
+          ord: Int64(2),
+          markdown: rpb.Markdown(blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('an assistant reply with several words')]))]),
+        ),
+      ]);
+      await settle(tester);
+      Future<List<int>> shot(Finder f) async {
+        final ro = tester.renderObject(f);
+        RenderObject? n = ro;
+        while (n != null && n is! RenderRepaintBoundary) {
+          n = n.parent;
+        }
+        final image = (await tester.runAsync(() => (n! as RenderRepaintBoundary).toImage()))!;
+        final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+        return data.buffer.asUint8List().toList();
+      }
+
+      for (final text in ['select these words please', 'an assistant reply with several words']) {
+        final target = find.text(text).first;
+        final before = await shot(target);
+        final r = tester.getRect(target);
+        final g = await tester.startGesture(r.centerLeft + const Offset(2, 0), kind: PointerDeviceKind.mouse);
+        await g.moveTo(r.centerRight - const Offset(2, 0));
+        await g.up();
+        await tester.pump();
+        final after = await shot(target);
+        var changed = 0;
+        for (var i = 0; i < before.length; i += 4) {
+          if (before[i] != after[i] || before[i + 1] != after[i + 1] || before[i + 2] != after[i + 2]) changed++;
+        }
+        expect(changed, greaterThan(500), reason: 'the selected words get a highlight band');
+        // The session keeps working: new items arrive while the text is selected.
+        repo.emitTimeline('s1', [
+          rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'select these words please')),
+          rpb.TimelineItem(
+            itemId: 'm',
+            ord: Int64(2),
+            markdown: rpb.Markdown(blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('an assistant reply with several words')]))]),
+          ),
+          rpb.TimelineItem(itemId: 'n${text.length}', ord: Int64(3), user: rpb.UserText(text: 'another message ${text.length}')),
+        ], version: 5 + text.length);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+        final later = await shot(find.text(text).first);
+        var kept = 0;
+        for (var i = 0; i < before.length && i < later.length; i += 4) {
+          if (before[i] != later[i] || before[i + 1] != later[i + 1] || before[i + 2] != later[i + 2]) kept++;
+        }
+        expect(kept, greaterThan(500), reason: 'new items arriving do not clear the selection');
+      }
     });
 
     testWidgets('consecutive tool calls fold into one group', (tester) async {
