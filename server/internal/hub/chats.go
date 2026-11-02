@@ -480,7 +480,7 @@ func (h *Hub) leadPrompt(chat string) string {
 		"Work that belongs on another machine, or that can run in parallel, goes to a session there: call the tether MCP tool start_session with node, cwd, " +
 		"chat=\"" + chat + "\" and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
 		"wait_for_session or read_session. Don't do a delegated task yourself. When sessions finish, tell the user in plain words what each did and what is left. " +
-		"Small tasks that need no other machine you simply do here."
+		"Small tasks that need no other machine you simply do here." + h.activeSkillsPrompt()
 }
 
 // workerPrompt is for a session the lead started: do the one task and report.

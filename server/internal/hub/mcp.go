@@ -59,6 +59,39 @@ func schema(required []string, props map[string]string) map[string]any {
 
 var mcpTools = []mcpTool{
 	{
+		Name:        "list_skills",
+		Description: "The skills Tether has learned from the user's repeated requests: name and when to use each. Read one with read_skill before doing a task it fits.",
+		InputSchema: schema(nil, nil),
+		call:        (*Hub).mcpListSkills,
+	},
+	{
+		Name:        "read_skill",
+		Description: "The text of a skill: what to run, in what order, and what to report. Follow it. If a step fails or is wrong, fix the skill with update_skill.",
+		InputSchema: schema([]string{"name"}, map[string]string{"name": "string: the skill's name from list_skills"}),
+		call:        (*Hub).mcpReadSkill,
+	},
+	{
+		Name: "propose_skill",
+		Description: "Save a new skill for the user to approve in the Tether app. skill_md is a whole SKILL.md: front matter with name and description, then the steps. " +
+			"It is checked, and refused if it holds anything that looks like a secret.",
+		InputSchema: schema([]string{"skill_md", "mutating"}, map[string]string{
+			"skill_md": "string: the whole SKILL.md",
+			"mutating": "boolean: true if any step changes something",
+			"source":   "string: the request it was learned from",
+		}),
+		call: (*Hub).mcpProposeSkill,
+	},
+	{
+		Name:        "update_skill",
+		Description: "Correct an approved skill: a step failed, the output was not what it said, or the user told you. This makes a new version; the old one is kept and the user can go back to it.",
+		InputSchema: schema([]string{"name", "skill_md", "note"}, map[string]string{
+			"name":     "string: the skill's name",
+			"skill_md": "string: the whole corrected SKILL.md, with the same name",
+			"note":     "string: what was wrong, in a sentence",
+		}),
+		call: (*Hub).mcpUpdateSkill,
+	},
+	{
 		Name:        "list_nodes",
 		Description: "The machines connected to Tether: name, OS, whether online, and which one is the hub's own machine (where hub sessions run).",
 		InputSchema: schema(nil, nil),

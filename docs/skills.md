@@ -32,8 +32,8 @@ The sync sessions show what a skill would hold. Each one ended up running the sa
 3. **Detect repeats.** Cluster by **what was asked**: two tasks are the same routine when their requests share enough words, and the steps they share (counted by how rare they are, so `grep` and `sed` count for little) add to that. A group with at least 3 runs in 2 or more sessions in the last 30 days, mostly without failures, becomes a candidate. Follow-ups ("yes start", "check again"), pasted reports, summaries and messages over 300 characters are not asks. A request copied into a fork or a moved chat counts once. One-off tasks never become candidates.
 4. **Draft.** A session on the right device writes the skill from the successful runs: the parameters (what varied), the steps, the expected output shape, and what to check first. Read-only steps and mutating steps are labelled apart.
 5. **Ask.** The app shows the suggestion: the name, what it does, the runs it came from, and a dry run. Approve, edit or dismiss. Read-only skills can be set to create themselves; anything that changes data always asks. (Default: ask, as in plan.md.)
-6. **Keep and sync.** The hub stores the skill as the source of truth (artifact store, with versions). Agents copy it into `~/.claude/skills/<name>/` or the project's `.claude/skills/`, by scope: global, project or device.
-7. **Use.** When a chat starts, the hub matches your words against the skills in scope and lists the matches in the lead's system prompt ("skill `v2-sync-progress` fits this"). Chat target detection and skills use the same folder signals, so a skill tied to `fk-ims-wvs` also helps pick that folder.
+6. **Keep.** The hub stores the skill as the source of truth, with versions (`skills.Library`, in the hub's key-value store). Delivery is through the hub's MCP server, not files: `list_skills` and `read_skill` give Claude the text, so every machine has the same skills with no sync to fall behind and no change to the agent protocol. Copying them into `~/.claude/skills/` for Claude Code to load natively is a later option.
+7. **Use.** The lead's system prompt lists the approved skills with their descriptions, and tells it to `read_skill` before a task one fits. Matching a skill to a new request's words, and using a skill to help pick the folder, come later.
 8. **Correct.** A hub MCP tool, `update_skill`, lets Claude fix a skill when a step fails or you correct it. Each change is a new version with a note on why. The app shows the diff and can roll back. A skill that fails twice in a row is flagged for review rather than quietly kept.
 
 ## What the first run on the real history showed
@@ -66,7 +66,7 @@ Real sessions are never touched by tests. The corpus is the owner's patterns rew
 
 1. Task records from the existing history (collect and fingerprint), with the test corpus. No UI. **Built.**
 2. Clustering and a read-only list of candidates in the app (Routines), to check against what the owner would want. **Built**; see what the first run showed, above.
-3. Drafting, approval, storage and sync to agents.
+3. Drafting, approval and storage. **Built on the hub**: `POST /api/v1/skills/draft` starts a hub session with the brief (`skills.DraftBrief`); it saves its draft with the `propose_skill` tool; `GET /api/v1/skills` lists proposals and approved skills; `.../approve`, `.../dismiss` and `.../rollback` are the owner's decisions. A skill is validated before it is kept (front matter, size, no secrets). The app's side (draft button, review screen) is next.
 4. Matching in chat start; `update_skill` and versions; the diff view.
 5. Auto-create for read-only skills.
 
