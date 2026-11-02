@@ -61,6 +61,10 @@ func commandKey(cmd string) string {
 		if verb == "cd" || verb == "set" {
 			continue
 		}
+		if !plainWord.MatchString(verb) {
+			// A shell function, a variable or a stray quote: nothing to name it by.
+			return "shell"
+		}
 		if subcommandTools[verb] {
 			for _, f := range fields[1:] {
 				if !strings.HasPrefix(f, "-") {
@@ -72,6 +76,8 @@ func commandKey(cmd string) string {
 	}
 	return ""
 }
+
+var plainWord = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9._-]*$`)
 
 func isAssignment(f string) bool {
 	i := strings.Index(f, "=")
@@ -199,11 +205,30 @@ func subcommand(fields []string) string {
 	return ""
 }
 
+// unquoted blanks out what is inside quotes: a > in an SQL comparison or an
+// echoed string is not a redirect.
+func unquoted(s string) string {
+	var b strings.Builder
+	var quote rune
+	for _, r := range s {
+		switch {
+		case quote != 0 && r == quote:
+			quote = 0
+		case quote != 0:
+		case r == '\'' || r == '"':
+			quote = r
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // redirectsToFile is true for > and >> into anything but /dev/null or a file
 // descriptor, and for tee.
 func redirectsToFile(cmd string) bool {
-	c := strings.NewReplacer("2>&1", "", "1>&2", "", ">&2", "", "&>/dev/null", "", "&> /dev/null", "", "2>/dev/null", "", "2> /dev/null", "", ">/dev/null", "", "> /dev/null", "").Replace(cmd)
-	if strings.Contains(c, ">") {
+	c := strings.NewReplacer("=>", "", "->", "", "2>&1", "", "1>&2", "", ">&2", "", "&>/dev/null", "", "&> /dev/null", "", "2>/dev/null", "", "2> /dev/null", "", ">/dev/null", "", "> /dev/null", "").Replace(cmd)
+	if strings.Contains(unquoted(c), ">") {
 		return true
 	}
 	for _, seg := range segments(c) {

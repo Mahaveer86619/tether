@@ -1,6 +1,7 @@
 package skills
 
 import (
+	"strings"
 	"testing"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
@@ -38,6 +39,32 @@ func TestTasksSkipWhatIsNotARequestOrARoutine(t *testing.T) {
 	}
 	if got := tasks[1].Steps; len(got) != 1 || got[0].Key != "Bash:ls" {
 		t.Fatalf("sub-agent items and to-do updates stay out: %+v", got)
+	}
+}
+
+func TestStandalone(t *testing.T) {
+	yes := []string{"progress?", "check the v2 sync progress", "What is the progress of sync??", "check the localops, to see if the v2 sync running correctly or not."}
+	no := []string{
+		"yes start", "check again.", "ok", "<agent-message from=x> report", "[Image: original 1080x2400]", "This session is being continued from a previous conversation",
+		"My message is long, so it is in the attached file message-1.md", strings.Repeat("a long brief ", 40),
+	}
+	for _, r := range yes {
+		if !(Task{Request: r}).Standalone() {
+			t.Errorf("%q is a request", r)
+		}
+	}
+	for _, r := range no {
+		if (Task{Request: r}).Standalone() {
+			t.Errorf("%q is not a request", r)
+		}
+	}
+}
+
+func TestTheAttachedFilesListIsNotPartOfTheRequest(t *testing.T) {
+	b := &builder{}
+	b.user("check the sync progress\n\nAttached files (in this folder):\n- .tether/attachments/shot.png").bash("tmux ls", true)
+	if got := Tasks(Meta{}, b.items)[0].Request; got != "check the sync progress" {
+		t.Fatalf("request %q", got)
 	}
 }
 

@@ -4,7 +4,10 @@
 package skills
 
 import (
+	"cmp"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
@@ -30,6 +33,41 @@ type Task struct {
 	StartMs            int64
 }
 
+// Standalone reports whether the request says what is wanted. Follow-ups such
+// as "yes start" or "check again", pasted wrappers and image notes only make
+// sense inside their conversation, so they are never a routine.
+func (t Task) Standalone() bool {
+	r := strings.TrimSpace(t.Request)
+	for _, p := range notRequests {
+		if strings.HasPrefix(r, p) {
+			return false
+		}
+	}
+	if strings.Contains(r, "is in the attached file") || utf8.RuneCountInString(r) > maxRequest {
+		return false
+	}
+	for _, w := range tokens(r) {
+		if !followUpWords[w] {
+			return true
+		}
+	}
+	return false
+}
+
+// maxRequest is the longest message that can be a routine ask. A routine is
+// asked in a line; a long message is a brief, a pasted report or a summary.
+const maxRequest = 300
+
+// notRequests start messages Claude Code or Tether wrote, not the user.
+var notRequests = []string{"<", "[Image", "This session is being continued", continued}
+
+// followUpWords are what is left of a message that only answers or nudges.
+var followUpWords = map[string]bool{
+	"yes": true, "ok": true, "okay": true, "sure": true, "go": true, "start": true, "continue": true, "proceed": true,
+	"thanks": true, "thank": true, "no": true, "done": true, "check": true, "retry": true, "next": true, "run": true,
+	"fine": true, "good": true, "great": true, "yep": true, "nope": true, "ahead": true, "do": true, "it": true,
+}
+
 // Routine reports whether Claude used any tools: a task answered in words
 // alone has nothing to repeat.
 func (t Task) Routine() bool { return len(t.Steps) > 0 }
@@ -45,6 +83,9 @@ const continued = "This continues an earlier conversation"
 // placeholders, sub-agent items and the tool calls that only keep a to-do list
 // are left out.
 func Tasks(m Meta, items []*v1.TimelineItem) []Task {
+	// The store hands items back in the order they changed, not the order they
+	// happened, and a removed item stays as an empty tombstone.
+	items = slices.SortedStableFunc(slices.Values(items), func(a, b *v1.TimelineItem) int { return cmp.Compare(a.GetOrd(), b.GetOrd()) })
 	var out []Task
 	var cur *Task
 	flush := func() {
@@ -54,7 +95,7 @@ func Tasks(m Meta, items []*v1.TimelineItem) []Task {
 		cur = nil
 	}
 	for _, it := range items {
-		if it.GetParentToolUseId() != "" {
+		if it.GetKind() == nil || it.GetParentToolUseId() != "" {
 			continue
 		}
 		if u := it.GetUser(); u != nil {
@@ -62,7 +103,7 @@ func Tasks(m Meta, items []*v1.TimelineItem) []Task {
 				continue
 			}
 			flush()
-			text := strings.TrimSpace(u.Text)
+			text := requestText(u.Text)
 			if text == "" || strings.HasPrefix(text, continued) {
 				continue
 			}
@@ -79,6 +120,15 @@ func Tasks(m Meta, items []*v1.TimelineItem) []Task {
 	return out
 }
 
+// requestText is what the user typed: the list of attached files that the
+// agent adds after it is not theirs.
+func requestText(s string) string {
+	if i := strings.Index(s, "Attached files (in this folder)"); i >= 0 {
+		s = s[:i]
+	}
+	return strings.TrimSpace(s)
+}
+
 func stepOf(tc *v1.ToolCard) (Step, bool) {
 	if tc.GetName() == "TodoWrite" || tc.GetTodos() != nil {
 		return Step{}, false
@@ -86,8 +136,10 @@ func stepOf(tc *v1.ToolCard) (Step, bool) {
 	s := Step{Tool: tc.GetName(), Failed: tc.GetStatus() == v1.ToolCard_STATUS_FAILED || tc.GetOutput().GetIsError()}
 	switch {
 	case tc.GetShell() != nil:
-		cmd := Mask(tc.GetShell().GetCommand())
-		s.Detail, s.Key, s.Mutating = cmd, "Bash:"+commandKey(cmd), mutatingCommand(cmd)
+		raw := tc.GetShell().GetCommand()
+		cmd := Mask(raw)
+		// Whether it changes anything is judged on the real command, before masking adds <>.
+		s.Detail, s.Key, s.Mutating = cmd, "Bash:"+commandKey(cmd), mutatingCommand(raw)
 	case tc.GetEdit() != nil:
 		s.Detail, s.Key, s.Mutating = Mask(tc.GetEdit().GetPath()), s.Tool+":"+ext(tc.GetEdit().GetPath()), true
 	case tc.GetWrite() != nil:

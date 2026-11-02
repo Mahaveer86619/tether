@@ -64,19 +64,89 @@ func FingerprintOf(t Task) Fingerprint {
 	return f
 }
 
-// Similarity is 0 to 1. When both tasks used tools, the words and the steps
-// count equally: the same routine is asked for in different words, and
-// different routines can share a word. Without steps only the words count.
-func Similarity(a, b Fingerprint) float64 {
+// Similarity is 0 to 1, on the unweighted steps. See related.
+func Similarity(a, b Fingerprint) float64 { return related(a, b, nil) }
+
+// minWords is the least the words of two requests must have in common for
+// them to be the same routine, whatever else is alike: "grep" and "sed" turn
+// up in everything. What was asked decides; the steps only add to it, because
+// the same question is answered by different commands on different days.
+const minWords = 0.3
+
+// stepBonus is how much of the score the steps can add.
+const stepBonus = 0.25
+
+// related is how alike two tasks are. The words of the request must overlap
+// (the cosine of the two word vectors, at least minWords); when both used
+// tools, steps they share add up to stepBonus, each counted by how rare it is
+// across all tasks (w; nil counts every step the same), so grep or cat add
+// little.
+func related(a, b Fingerprint, w map[string]float64) float64 {
 	var dot float64
 	for i := range a.Words {
 		dot += float64(a.Words[i]) * float64(b.Words[i])
 	}
-	cos := math.Max(dot, 0)
-	if len(a.Steps) == 0 || len(b.Steps) == 0 {
-		return cos
+	if dot < minWords {
+		return 0
 	}
-	return 0.5*cos + 0.5*jaccard(a.Steps, b.Steps)
+	if len(a.Steps) == 0 || len(b.Steps) == 0 {
+		return dot
+	}
+	return math.Min(1, dot+stepBonus*weightedJaccard(a.Steps, b.Steps, w))
+}
+
+func weightedJaccard(a, b []string, w map[string]float64) float64 {
+	in := map[string]bool{}
+	for _, s := range a {
+		in[s] = true
+	}
+	var both, all float64
+	seen := map[string]bool{}
+	for _, s := range b {
+		seen[s] = true
+		if in[s] {
+			both += weight(w, s)
+		}
+	}
+	for s := range in {
+		all += weight(w, s)
+	}
+	for s := range seen {
+		if !in[s] {
+			all += weight(w, s)
+		}
+	}
+	if all == 0 {
+		return 0
+	}
+	return both / all
+}
+
+func weight(w map[string]float64, key string) float64 {
+	if v, ok := w[key]; ok {
+		return v
+	}
+	return 1
+}
+
+// stepWeights gives each step key a weight that falls as more tasks use it:
+// ln(tasks / tasks using it), never below 0.05.
+func stepWeights(tasks []Task) map[string]float64 {
+	df := map[string]int{}
+	for _, t := range tasks {
+		seen := map[string]bool{}
+		for _, s := range t.Steps {
+			if s.Key != "" && !seen[s.Key] {
+				seen[s.Key] = true
+				df[s.Key]++
+			}
+		}
+	}
+	w := make(map[string]float64, len(df))
+	for k, n := range df {
+		w[k] = math.Max(math.Log(float64(len(tasks))/float64(n)), 0.05)
+	}
+	return w
 }
 
 func jaccard(a, b []string) float64 {

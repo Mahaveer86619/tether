@@ -110,6 +110,7 @@ type Hub struct {
 	sent        map[string][]sentMsg         // session -> messages sent through the hub
 	keptSources map[string]map[string]string // session -> item -> source, across a rebuild
 
+	skills    skillCache
 	uploadMu  sync.Mutex
 	uploading map[string]bool // upload id -> a request is writing it
 

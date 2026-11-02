@@ -37,6 +37,8 @@ func TestCommandKey(t *testing.T) {
 		"export FOO=bar":                           "",
 		"/usr/bin/curl -s http://x":                "curl",
 		"docker compose ps":                        "docker compose",
+		"g(){ curl -s $1; }; g http://x":           "shell",
+		`$s = Get-Process; $s`:                     "shell",
 	}
 	for in, want := range cases {
 		if got := commandKey(in); got != want {
@@ -51,6 +53,7 @@ func TestMutatingCommand(t *testing.T) {
 		"cd /srv && ls -la", "curl -s http://127.0.0.1:8790/api/state", "docker ps", "systemctl --user is-active tether-hub",
 		`psql -c "select count(*) from rows"`, "cat a.log | grep error | wc -l", "journalctl --user -u tether-hub -n 20",
 		"tailscale status", "go test ./...", "tail -f app.log 2>&1", "grep -rn foo . 2>/dev/null", "tmux capture-pane -p -t wvs-v2",
+		`psql -c "select count(*) from rows where updated > '2026-10-18'"`, `echo "a > b"`, `git log --format="%h => %s"`,
 	}
 	for _, c := range readOnly {
 		if mutatingCommand(c) {

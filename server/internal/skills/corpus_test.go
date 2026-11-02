@@ -63,12 +63,14 @@ func (b *builder) grep(pattern string) *builder {
 // run finds the same things: the tmux session and its log (dated), the
 // per-machine table, the dashboard.
 func syncProgress(run int) []Task {
+	// Worded the way the real asks are: different each time, but always about
+	// the progress of the sync.
 	asks := []string{
 		"check the v2 sync progress",
-		"how far is the localops v2 sync?",
-		"progress??",
-		"what is the status of the wvs v2 sync",
-		"is the v2 sync still running, how many rows are done",
+		"what is the progress of the v2 sync??",
+		"progress? and how long will the v2 sync take",
+		"progress of sync",
+		"v2 sync progress, is it still running",
 	}
 	day := 18 + run
 	b := &builder{}
