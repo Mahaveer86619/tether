@@ -12,6 +12,8 @@ Lines include `user`, `assistant`, `system`, `attachment`, `ai-title`, `last-pro
 
 A message you send while Claude is busy is written as an `attachment` line of type `queued_command` when the running turn absorbs it. The agent forwards those (and no other attachments, which can be large), and the hub shows them as your messages.
 
+While it waits, Claude Code writes `queue-operation` lines (enqueue, then dequeue, remove or popAll). The renderer turns an enqueue into a "queued" user item and removes it on the matching dequeue. The renderer's memory of them doesn't survive a hub restart or a mirror resumed mid-transcript, so the hub also removes any stored queued item once a real user message with the same text arrives. "Same text" ignores CRs and the list of attached files the agent appends.
+
 A session's `cwd` is the folder it started in, from the first transcript line that has one. The shell may `cd` elsewhere later, but the transcript stays in the first folder's project directory, and `claude --resume` has to run from there.
 
 This format is internal to Claude Code and not a public API. The agent only relies on a small set of fields, ignores everything else, and records the Claude Code version per session. Headless runs use the documented `stream-json` output instead, which is the stable path.

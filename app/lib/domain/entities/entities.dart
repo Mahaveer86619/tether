@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
+import 'package:flutter/material.dart' show ThemeMode;
+
+import '../../core/version.dart';
 import '../../gen/tether/v1/render.pb.dart' as render;
 
 // The timeline's render types (items, Markdown blocks, tool cards) are the
@@ -20,6 +25,7 @@ class Node extends Equatable {
     this.agentVersion = '',
     this.lastSeen,
     this.runningSessions = 0,
+    this.ip = '',
   });
 
   final String name;
@@ -28,8 +34,11 @@ class Node extends Equatable {
   final DateTime? lastSeen;
   final int runningSessions;
 
+  /// The address its agent connects from, as the hub saw it.
+  final String ip;
+
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }
@@ -73,9 +82,28 @@ class Session extends Equatable {
     this.error = '',
     this.terminalInput = false,
     this.archived = false,
+    this.parent = '',
+    this.forkPoint = '',
+    this.lineage = '',
+    this.scratch = false,
+    this.global = false,
+    this.permissionMode = '',
+    this.modeRevert,
+    this.modeRevertTo = '',
+    this.backedUp,
+    this.backedUpBytes = 0,
   });
 
+  /// The hub's latest background backup of the transcript.
+  final DateTime? backedUp;
+  final int backedUpBytes;
+
   final String id, node, title, cwd, gitBranch;
+
+  /// Claude Code's permission mode (default, acceptEdits, plan, auto); empty
+  /// until known. Set for a while, it goes back to [modeRevertTo] at [modeRevert].
+  final String permissionMode, modeRevertTo;
+  final DateTime? modeRevert;
   final DateTime? created, updated;
   final int messageCount;
   final SessionState state;
@@ -90,6 +118,18 @@ class Session extends Equatable {
 
   /// The user marked it done; it stays out of "pick up" lists until it works again.
   final bool archived;
+
+  /// The session this one split off from, the parent's last item at that
+  /// moment, and how ("fork"; later "branch"). Empty for an original.
+  final String parent, forkPoint, lineage;
+
+  bool get isFork => parent.isNotEmpty;
+
+  /// A hub session, in its own scratch folder on the hub's machine.
+  final bool scratch;
+
+  /// The hub keeps a copy of the transcript so it can be continued there.
+  final bool global;
 
   String get displayTitle => title.isNotEmpty ? title : 'Untitled session';
 
@@ -113,17 +153,56 @@ class Session extends Equatable {
   /// Claude can be interrupted wherever it runs, Windows terminals included.
   bool get canInterrupt => isBusy && (host != SessionHost.terminal || terminalInput);
 
+  /// Has a terminal Tether can read and press keys in.
+  bool get hasScreen => isLive && (host == SessionHost.tmux || (host == SessionHost.terminal && terminalInput));
+
   int get todosDone => todos.where((t) => t.status == TodoStatus.completed).length;
   TodoItem? get currentTodo => todos.where((t) => t.status == TodoStatus.inProgress).firstOrNull;
 
   @override
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
-        lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived,
+        lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived, parent, forkPoint, lineage, scratch, global,
+        permissionMode, modeRevert, modeRevertTo, backedUp, backedUpBytes,
       ];
 }
 
-enum ApprovalKind { tool, folderTrust }
+/// Claude Code's permission modes the app can switch between, as Shift+Tab
+/// cycles them.
+enum PermissionMode {
+  normal('default', 'Ask first', 'Claude asks before editing files or running commands.'),
+  acceptEdits('acceptEdits', 'Accept edits', 'File edits go ahead; commands still ask.'),
+  plan('plan', 'Plan', 'Claude reads and plans, and changes nothing until you approve.'),
+  auto('auto', 'Auto', 'Claude Code decides what needs asking.');
+
+  const PermissionMode(this.wire, this.label, this.blurb);
+  final String wire, label, blurb;
+
+  static PermissionMode? of(String wire) => values.where((m) => m.wire == wire).firstOrNull;
+}
+
+enum ApprovalKind { tool, folderTrust, question, prompt }
+
+/// One of the questions Claude asks with AskUserQuestion.
+class Question extends Equatable {
+  const Question({required this.question, this.header = '', this.options = const [], this.multiSelect = false});
+
+  final String question, header;
+  final List<QuestionOption> options;
+  final bool multiSelect;
+
+  @override
+  List<Object?> get props => [question, header, options, multiSelect];
+}
+
+class QuestionOption extends Equatable {
+  const QuestionOption({required this.label, this.description = ''});
+
+  final String label, description;
+
+  @override
+  List<Object?> get props => [label, description];
+}
 
 class Approval extends Equatable {
   const Approval({
@@ -136,6 +215,9 @@ class Approval extends Equatable {
     this.description = '',
     this.created,
     this.preview,
+    this.options = const [],
+    this.selected = -1,
+    this.screen = '',
   });
 
   final String id, session, node;
@@ -143,11 +225,39 @@ class Approval extends Equatable {
   final String toolName, inputJson, description;
   final DateTime? created;
 
+  /// A prompt's choices as on screen, the one the cursor is on, and the
+  /// screen they were read from.
+  final List<String> options;
+  final int selected;
+  final String screen;
+
   /// The tool call rendered as a card, for tool approvals.
   final render.ToolCard? preview;
 
+  /// What Claude asks, for a question.
+  List<Question> get questions {
+    if (kind != ApprovalKind.question) return const [];
+    try {
+      final qs = (jsonDecode(inputJson) as Map<String, dynamic>)['questions'] as List<dynamic>? ?? const [];
+      return [
+        for (final q in qs.cast<Map<String, dynamic>>())
+          Question(
+            question: q['question'] as String? ?? '',
+            header: q['header'] as String? ?? '',
+            multiSelect: q['multiSelect'] as bool? ?? false,
+            options: [
+              for (final o in (q['options'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
+                QuestionOption(label: o['label'] as String? ?? '', description: o['description'] as String? ?? ''),
+            ],
+          ),
+      ];
+    } on Object {
+      return const [];
+    }
+  }
+
   @override
-  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created];
+  List<Object?> get props => [id, session, node, kind, toolName, inputJson, description, created, options, selected, screen];
 }
 
 /// Everything the dashboard shows, as of now.
@@ -160,7 +270,22 @@ class HubSnapshot extends Equatable {
     this.hubVersion = '',
     this.endpoint = '',
     this.lastError,
+    this.preferences,
+    this.hubNode = '',
+    this.deviceId = '',
+    this.clientIp = '',
+    this.artifacts = const {},
+    this.chats = const {},
+    this.update,
+    this.retryAt,
+    this.attempts = 0,
   });
+
+  /// While offline: when the next connection attempt is due.
+  final DateTime? retryAt;
+
+  /// Attempts since the connection was last up.
+  final int attempts;
 
   final ConnectionStatus status;
   final Map<String, Node> nodes;
@@ -169,12 +294,71 @@ class HubSnapshot extends Equatable {
   final String hubVersion, endpoint;
   final String? lastError;
 
+  /// App settings shared by every client; null until one has saved them.
+  final Appearance? preferences;
+
+  /// The node on the hub's own machine, where hub sessions run.
+  final String hubNode;
+
+  /// This app's paired device id; empty when it connects with the admin
+  /// token or through a trusted tailnet.
+  final String deviceId;
+
+  /// The address this app connects to the hub from.
+  final String clientIp;
+
+  /// The node running on this app's own machine, if any (never on a phone).
+  String get selfNode => clientIp.isEmpty ? '' : nodes.values.where((n) => n.ip == clientIp).firstOrNull?.name ?? '';
+
+  /// Other machines' nodes: the ones a remote session would run on.
+  List<Node> get otherNodes => [for (final n in sortedNodes) if (n.name != selfNode) n];
+
+  /// Recent files in the hub's artifact store, by id.
+  final Map<String, Artifact> artifacts;
+
+  /// Conversations, by id; empty on a hub before 0.16.
+  final Map<String, Chat> chats;
+
+  /// The newest release the hub has; null when it has none or is older
+  /// than 0.17.
+  final Release? update;
+
+  /// Whether the hub keeps chats; older ones only know sessions.
+  bool get chatsSupported => hubVersion.isNotEmpty && !isOlderVersion(hubVersion, '0.16.0');
+
+  /// Chats not archived, most recently active first.
+  List<Chat> get recentChats => chats.values.where((c) => !c.archived).toList()..sort(compareChats);
+
+  /// The chat a session belongs to, if any.
+  Chat? chatOf(String session) => chats.values.where((c) => c.links.any((l) => l.session == session)).firstOrNull;
+
+  /// When a chat last moved: its own time or its active session's.
+  DateTime? chatUpdated(Chat c) {
+    final s = sessions[c.activeSession]?.updated;
+    final u = c.updated;
+    if (s == null) return u;
+    if (u == null) return s;
+    return s.isAfter(u) ? s : u;
+  }
+
+  int compareChats(Chat a, Chat b) => (chatUpdated(b) ?? DateTime(0)).compareTo(chatUpdated(a) ?? DateTime(0));
+
+  /// Files linked to a tool call or message.
+  List<Artifact> artifactsFor(String ref) => [for (final a in artifacts.values) if (a.ref == ref && a.ref.isNotEmpty) a];
+
+  List<Artifact> get sortedArtifacts =>
+      artifacts.values.toList()..sort((a, b) => (b.created ?? DateTime(0)).compareTo(a.created ?? DateTime(0)));
+
   bool get connected => status == ConnectionStatus.connected;
 
   List<Node> get sortedNodes =>
       nodes.values.toList()..sort((a, b) => a.online == b.online ? a.name.compareTo(b.name) : (a.online ? -1 : 1));
 
   List<Session> sessionsOf(String node) => sessions.values.where((s) => s.node == node).toList()..sort(compareSessions);
+
+  /// Sessions that split off from [id], newest first.
+  List<Session> childrenOf(String id) =>
+      sessions.values.where((s) => s.parent == id).toList()..sort((a, b) => (b.created ?? DateTime(0)).compareTo(a.created ?? DateTime(0)));
 
   List<Session> get liveSessions => sessions.values.where((s) => s.isLive).toList()..sort(compareSessions);
 
@@ -196,6 +380,16 @@ class HubSnapshot extends Equatable {
     return out..sort((a, b) => (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0)));
   }
 
+  /// Parent folders of the projects used on a node: likely workspace roots.
+  List<String> suggestedRoots(String node) {
+    final seen = <String>{};
+    for (final f in recentFolders(node)) {
+      final i = f.lastIndexOf(RegExp(r'[\\/]'));
+      if (i > 0) seen.add(f.substring(0, i));
+    }
+    return seen.take(5).toList();
+  }
+
   /// Folders used recently on a node, newest first.
   List<String> recentFolders(String node) {
     final seen = <String>{};
@@ -212,6 +406,15 @@ class HubSnapshot extends Equatable {
     String? hubVersion,
     String? endpoint,
     String? Function()? lastError,
+    Appearance? Function()? preferences,
+    String? hubNode,
+    String? deviceId,
+    String? clientIp,
+    Map<String, Artifact>? artifacts,
+    Map<String, Chat>? chats,
+    Release? Function()? update,
+    DateTime? Function()? retryAt,
+    int? attempts,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -221,10 +424,19 @@ class HubSnapshot extends Equatable {
         hubVersion: hubVersion ?? this.hubVersion,
         endpoint: endpoint ?? this.endpoint,
         lastError: lastError != null ? lastError() : this.lastError,
+        preferences: preferences != null ? preferences() : this.preferences,
+        hubNode: hubNode ?? this.hubNode,
+        deviceId: deviceId ?? this.deviceId,
+        clientIp: clientIp ?? this.clientIp,
+        artifacts: artifacts ?? this.artifacts,
+        chats: chats ?? this.chats,
+        update: update != null ? update() : this.update,
+        retryAt: retryAt != null ? retryAt() : this.retryAt,
+        attempts: attempts ?? this.attempts,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -271,21 +483,663 @@ class TimelineSnapshot extends Equatable {
 }
 
 class HubConnection extends Equatable {
-  const HubConnection({required this.url, required this.token});
+  const HubConnection({required this.url, required this.token, this.fingerprint = '', this.viaTailnet = false});
 
   final String url, token;
 
-  bool get isComplete => url.isNotEmpty && token.isNotEmpty;
+  /// SHA-256 of the hub's self-signed certificate, learnt when pairing.
+  final String fingerprint;
+
+  /// No token: the hub trusts this machine because it's the owner's on the
+  /// tailnet.
+  final bool viaTailnet;
+
+  bool get isComplete => url.isNotEmpty && (token.isNotEmpty || viaTailnet);
 
   @override
-  List<Object?> get props => [url, token];
+  List<Object?> get props => [url, token, fingerprint, viaTailnet];
+}
+
+/// How the app looks: light or dark, which theme, and an optional accent.
+class Appearance extends Equatable {
+  const Appearance({this.mode = ThemeMode.system, this.palette = 'claude', this.accent});
+
+  final ThemeMode mode;
+  final String palette;
+
+  /// ARGB; null keeps the theme's own accent.
+  final int? accent;
+
+  Appearance copyWith({ThemeMode? mode, String? palette, int? Function()? accent}) =>
+      Appearance(mode: mode ?? this.mode, palette: palette ?? this.palette, accent: accent == null ? this.accent : accent());
+
+  @override
+  List<Object?> get props => [mode, palette, accent];
+}
+
+/// A one-time pairing code, and the link a QR code carries to another device.
+class PairingInvite extends Equatable {
+  const PairingInvite({required this.code, required this.expires, required this.hubUrl, this.fingerprint = ''});
+
+  final String code, hubUrl, fingerprint;
+  final DateTime expires;
+
+  String get link => Uri(scheme: 'tether', host: 'pair', queryParameters: {
+        'hub': hubUrl,
+        'code': code,
+        if (fingerprint.isNotEmpty) 'fp': fingerprint,
+      }).toString();
+
+  @override
+  List<Object?> get props => [code, expires, hubUrl, fingerprint];
+}
+
+/// Tokens used, as Claude Code reports them per message.
+class UsageTotals extends Equatable {
+  const UsageTotals({this.input = 0, this.output = 0, this.cacheWrite = 0, this.cacheRead = 0, this.messages = 0});
+
+  final int input, output, cacheWrite, cacheRead, messages;
+
+  /// What counts toward a budget: cache reads are cheap and left out.
+  int get counted => input + output + cacheWrite;
+
+  @override
+  List<Object?> get props => [input, output, cacheWrite, cacheRead, messages];
+}
+
+class NodeUsage extends Equatable {
+  const NodeUsage({required this.node, this.window = const UsageTotals(), this.today = const UsageTotals(), this.week = const UsageTotals(), this.plan});
+
+  final String node;
+
+  /// The last 5 hours, since midnight, and the last 7 days.
+  final UsageTotals window, today, week;
+
+  /// The plan's limits as this machine's Claude login reports them.
+  final PlanUsage? plan;
+
+  @override
+  List<Object?> get props => [node, window, today, week, plan];
+}
+
+/// One plan limit from Claude Code's /usage, e.g. "session" at 9%.
+class PlanLimit extends Equatable {
+  const PlanLimit({required this.label, required this.percent, this.resets = ''});
+
+  final String label, resets;
+  final int percent;
+
+  @override
+  List<Object?> get props => [label, percent, resets];
+}
+
+class PlanUsage extends Equatable {
+  const PlanUsage({this.limits = const [], this.raw = '', this.checked, this.error = ''});
+
+  final List<PlanLimit> limits;
+
+  /// The command's output, shown when the limits couldn't be read from it.
+  final String raw;
+  final DateTime? checked;
+  final String error;
+
+  /// Machines on the same Claude account report the same limits, resetting
+  /// at the same time give or take the minute each machine rounds to.
+  bool sameAccountAs(PlanUsage other) {
+    if (limits.isEmpty || limits.length != other.limits.length) return false;
+    for (var i = 0; i < limits.length; i++) {
+      final a = limits[i], b = other.limits[i];
+      if (a.label != b.label) return false;
+      final ta = _resetMinutes(a.resets), tb = _resetMinutes(b.resets);
+      if (ta == null || tb == null ? a.resets != b.resets : (ta - tb).abs() > 5) return false;
+    }
+    return true;
+  }
+
+  // "Oct 12, 3:19am (Asia/Kolkata)" as minutes, enough to compare two resets.
+  static int? _resetMinutes(String resets) {
+    final m = RegExp(r'(\w{3}) (\d+), (\d+):(\d+)\s*(am|pm)', caseSensitive: false).firstMatch(resets);
+    if (m == null) return null;
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    final month = months.indexOf(m.group(1)!.toLowerCase());
+    final hour = int.parse(m.group(3)!) % 12 + (m.group(5)!.toLowerCase() == 'pm' ? 12 : 0);
+    return ((month * 31 + int.parse(m.group(2)!)) * 24 + hour) * 60 + int.parse(m.group(4)!);
+  }
+
+  @override
+  List<Object?> get props => [limits, raw, checked, error];
+}
+
+class SessionUsage extends Equatable {
+  const SessionUsage({required this.session, required this.total, this.last});
+
+  final String session;
+  final UsageTotals total;
+  final DateTime? last;
+
+  @override
+  List<Object?> get props => [session, total, last];
+}
+
+class UsageSummary extends Equatable {
+  const UsageSummary({this.nodes = const [], this.sessions = const []});
+
+  final List<NodeUsage> nodes;
+
+  /// This week's sessions, most tokens first.
+  final List<SessionUsage> sessions;
+
+  @override
+  List<Object?> get props => [nodes, sessions];
+}
+
+/// A machine on the hub's tailnet and what of Tether runs on it.
+class TailnetDevice extends Equatable {
+  const TailnetDevice({
+    required this.name,
+    this.hostname = '',
+    this.os = '',
+    this.online = false,
+    this.ips = const [],
+    this.isHub = false,
+    this.node = '',
+    this.clients = const [],
+    this.lastSeen,
+  });
+
+  final String name, hostname, os;
+  final bool online;
+  final List<String> ips;
+
+  /// The hub's own machine.
+  final bool isHub;
+
+  /// The Tether node connected from it, if any.
+  final String node;
+
+  /// Apps connected from it.
+  final List<String> clients;
+  final DateTime? lastSeen;
+
+  bool get runsTether => node.isNotEmpty || clients.isNotEmpty;
+
+  @override
+  List<Object?> get props => [name, hostname, os, online, ips, isHub, node, clients, lastSeen];
+}
+
+/// An app or agent paired with its own token.
+class PairedDevice extends Equatable {
+  const PairedDevice({required this.id, required this.kind, required this.name, this.platform = '', this.created, this.lastSeen});
+
+  final String id, kind, name, platform;
+  final DateTime? created, lastSeen;
+
+  bool get isNode => kind == 'node';
+
+  @override
+  List<Object?> get props => [id, kind, name, platform, created, lastSeen];
 }
 
 class NewSessionRequest extends Equatable {
-  const NewSessionRequest({required this.node, required this.prompt, this.cwd = '', this.model = '', this.permissionMode = ''});
+  const NewSessionRequest({
+    required this.node,
+    required this.prompt,
+    this.cwd = '',
+    this.model = '',
+    this.permissionMode = '',
+    this.createCwd = false,
+    this.scratch = false,
+    this.attachments = const [],
+  });
 
   final String node, prompt, cwd, model, permissionMode;
 
+  /// Create [cwd] first: a new project folder in a workspace root.
+  final bool createCwd;
+
+  /// A hub session: on the hub's machine, in a scratch folder.
+  final bool scratch;
+
+  /// Artifact ids to hand to the session.
+  final List<String> attachments;
+
   @override
-  List<Object?> get props => [node, prompt, cwd, model, permissionMode];
+  List<Object?> get props => [node, prompt, cwd, model, permissionMode, createCwd, scratch, attachments];
+}
+
+/// A file in the hub's central artifact store.
+/// A folder on a device the hub keeps copies of; see docs/plan.md#codebases-on-the-hub.
+class Codebase extends Equatable {
+  const Codebase({
+    required this.id,
+    required this.node,
+    required this.path,
+    required this.name,
+    this.gitRemote = '',
+    this.gitBranch = '',
+    this.lastSnapshot,
+    this.files = 0,
+    this.bytes = 0,
+    this.env = const [],
+    this.error = '',
+  });
+
+  final String id, node, path, name, gitRemote, gitBranch;
+
+  /// When the hub last took a copy; null if it never has.
+  final DateTime? lastSnapshot;
+  final int files, bytes;
+
+  /// .env files in the hub's vault: names only, never values.
+  final List<EnvFileInfo> env;
+
+  /// Why the last snapshot failed, if it did.
+  final String error;
+
+  @override
+  List<Object?> get props => [id, node, path, name, gitRemote, gitBranch, lastSnapshot, files, bytes, env, error];
+}
+
+class EnvFileInfo extends Equatable {
+  const EnvFileInfo({required this.path, this.keys = const []});
+
+  /// Where it goes in the codebase, e.g. "server/.env".
+  final String path;
+  final List<String> keys;
+
+  @override
+  List<Object?> get props => [path, keys];
+}
+
+/// A small site a session made, hosted by the hub; see docs/plan.md#generated-pages.
+class HostedPage extends Equatable {
+  const HostedPage({required this.session, required this.name, this.files = 0, this.size = 0, this.updated, this.url = ''});
+
+  final String session, name;
+  final int files, size;
+  final DateTime? updated;
+
+  /// A link to it that works in any browser until it expires.
+  final String url;
+
+  @override
+  List<Object?> get props => [session, name, files, size, updated, url];
+}
+
+class Artifact extends Equatable {
+  const Artifact({
+    required this.id,
+    required this.name,
+    this.mime = '',
+    this.size = 0,
+    this.session = '',
+    this.node = '',
+    this.origin = '',
+    this.path = '',
+    this.ref = '',
+    this.created,
+    this.sha256 = '',
+    this.note = '',
+  });
+
+  final String id, name, mime, session, node, origin, path, sha256, note;
+
+  /// The tool call or message it belongs to.
+  final String ref;
+  final int size;
+  final DateTime? created;
+
+  bool get isImage => mime.startsWith('image/') && mime != 'image/svg+xml';
+  bool get isText => mime.startsWith('text/') || mime.contains('json') || name.endsWith('.md');
+  bool get isMedia => mime.startsWith('audio/') || mime.startsWith('video/');
+  bool get isData =>
+      mime == 'text/csv' || mime.contains('spreadsheet') || mime.contains('excel') || mime.contains('json') || name.endsWith('.parquet');
+
+  /// Small enough to show inside the app; anything bigger is downloaded.
+  bool get previewable => size <= 20 * 1024 * 1024;
+
+  @override
+  List<Object?> get props => [id, name, mime, size, session, node, origin, path, ref, created, sha256, note];
+}
+
+enum TransferKind { download, upload }
+
+enum TransferState { queued, preparing, running, paused, verifying, done, failed, canceled }
+
+/// A file on its way to or from the hub. Downloads are keyed by artifact
+/// id, uploads by a local id until the hub gives them one.
+class Transfer extends Equatable {
+  const Transfer({
+    required this.id,
+    required this.kind,
+    required this.name,
+    this.state = TransferState.queued,
+    this.bytes = 0,
+    this.total = 0,
+    this.speed = 0,
+    this.session = '',
+    this.error = '',
+    this.savedTo = '',
+    this.artifact,
+  });
+
+  final String id, name, session, error;
+  final TransferKind kind;
+  final TransferState state;
+  final int bytes, total;
+
+  /// Bytes per second, or 0 if unknown.
+  final double speed;
+
+  /// Where a finished download was saved.
+  final String savedTo;
+
+  /// What a finished upload became.
+  final Artifact? artifact;
+
+  double? get progress => total > 0 ? (bytes / total).clamp(0, 1).toDouble() : null;
+  bool get active => state == TransferState.queued || state == TransferState.preparing || state == TransferState.running || state == TransferState.verifying;
+  bool get finished => state == TransferState.done || state == TransferState.failed || state == TransferState.canceled;
+
+  Transfer copyWith({TransferState? state, int? bytes, int? total, double? speed, String? error, String? savedTo, Artifact? artifact}) => Transfer(
+        id: id,
+        kind: kind,
+        name: name,
+        session: session,
+        state: state ?? this.state,
+        bytes: bytes ?? this.bytes,
+        total: total ?? this.total,
+        speed: speed ?? this.speed,
+        error: error ?? this.error,
+        savedTo: savedTo ?? this.savedTo,
+        artifact: artifact ?? this.artifact,
+      );
+
+  @override
+  List<Object?> get props => [id, kind, name, session, state, bytes, total, speed, error, savedTo, artifact];
+}
+
+/// A file picked on this device, read from disk rather than memory.
+class LocalFile extends Equatable {
+  const LocalFile({required this.path, required this.name, required this.size, this.uploadId = ''});
+
+  final String path, name;
+  final int size;
+
+  /// Chosen when the file is attached and kept for every try, so the hub
+  /// files a retried or resumed upload once.
+  final String uploadId;
+
+  @override
+  List<Object?> get props => [path, name, size, uploadId];
+}
+
+/// A folder on a machine that new projects are created in.
+class WorkspaceRoot extends Equatable {
+  const WorkspaceRoot({required this.node, required this.path});
+
+  final String node, path;
+
+  @override
+  List<Object?> get props => [node, path];
+}
+
+/// A session's terminal as text, read on its machine.
+class ScreenSnapshot extends Equatable {
+  const ScreenSnapshot({required this.session, this.text = '', this.captured, this.error = ''});
+
+  final String session, text, error;
+  final DateTime? captured;
+
+  @override
+  List<Object?> get props => [session, text, captured, error];
+}
+
+enum OutboxState { sending, sent, failed }
+
+/// A message from this device that the session's timeline doesn't show yet.
+/// It's kept on the device until it does, so a restart, a dropped send or a
+/// message Claude Code holds in its queue can't lose it.
+class OutboxEntry extends Equatable {
+  const OutboxEntry({
+    required this.id,
+    required this.session,
+    required this.text,
+    required this.created,
+    this.attachments = const [],
+    this.files = const [],
+    this.state = OutboxState.sending,
+    this.sentAt,
+    this.error = '',
+  });
+
+  /// Also the message's client id on the hub, which sends a repeat once.
+  final String id, session, text, error;
+  final List<String> attachments;
+
+  /// Files still to upload; each moves to [attachments] once the hub has it.
+  final List<LocalFile> files;
+  final DateTime created;
+  final OutboxState state;
+  final DateTime? sentAt;
+
+  /// Sent a while ago and still not in the timeline.
+  bool unconfirmed(DateTime now) => state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > const Duration(minutes: 10);
+
+  OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error, List<String>? attachments, List<LocalFile>? files}) => OutboxEntry(
+        id: id,
+        session: session,
+        text: text,
+        created: created,
+        attachments: attachments ?? this.attachments,
+        files: files ?? this.files,
+        state: state ?? this.state,
+        sentAt: sentAt ?? this.sentAt,
+        error: error ?? this.error,
+      );
+
+  @override
+  List<Object?> get props => [id, session, text, attachments, files, created, state, sentAt, error];
+}
+
+/// An app connected to the hub right now.
+class ConnectedClient extends Equatable {
+  const ConnectedClient({required this.name, this.platform = '', this.appVersion = '', this.deviceId = '', this.ip = '', this.connected});
+
+  final String name, platform, appVersion, deviceId, ip;
+  final DateTime? connected;
+
+  @override
+  List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
+}
+
+/// How a chat's target was chosen; see docs/chats.md#targets.
+enum TargetMode {
+  /// The hub matched it from the prompt and recent work.
+  auto('auto'),
+
+  /// The user picked it.
+  manual('manual'),
+
+  /// Claude works it out in a scratch folder.
+  claude('claude');
+
+  const TargetMode(this.wire);
+  final String wire;
+
+  static TargetMode fromWire(String s) => values.firstWhere((m) => m.wire == s, orElse: () => auto);
+}
+
+/// Where a chat's work runs.
+class ChatTarget extends Equatable {
+  const ChatTarget({this.mode = TargetMode.auto, this.node = '', this.cwd = '', this.scratch = false, this.detecting = false, this.reason = ''});
+
+  const ChatTarget.scratch() : this(mode: TargetMode.manual, scratch: true);
+
+  final TargetMode mode;
+  final String node, cwd;
+
+  /// A fresh scratch folder on the hub's machine.
+  final bool scratch;
+
+  /// Claude is still working it out.
+  final bool detecting;
+  final String reason;
+
+  bool get isSet => scratch || node.isNotEmpty;
+
+  @override
+  List<Object?> get props => [mode, node, cwd, scratch, detecting, reason];
+}
+
+/// A session behind a chat, and why it's there: main, moved, fork,
+/// started (by Claude) or linked (by hand).
+class ChatLink extends Equatable {
+  const ChatLink({required this.session, this.role = 'main', this.linked});
+
+  final String session, role;
+  final DateTime? linked;
+
+  @override
+  List<Object?> get props => [session, role, linked];
+}
+
+/// A conversation: what the user sees, with the sessions doing the work
+/// behind it.
+class Chat extends Equatable {
+  const Chat({
+    required this.id,
+    this.title = '',
+    this.titleByUser = false,
+    this.created,
+    this.updated,
+    this.archived = false,
+    this.target = const ChatTarget(),
+    this.activeSession = '',
+    this.links = const [],
+  });
+
+  final String id, title;
+
+  /// The user named it, so it isn't renamed automatically.
+  final bool titleByUser;
+  final DateTime? created, updated;
+  final bool archived;
+  final ChatTarget target;
+
+  /// Where messages go now.
+  final String activeSession;
+
+  /// Oldest first, the active one included.
+  final List<ChatLink> links;
+
+  String get displayTitle => title.trim().isEmpty ? 'New chat' : title;
+
+  @override
+  List<Object?> get props => [id, title, titleByUser, created, updated, archived, target, activeSession, links];
+}
+
+class NewChatRequest extends Equatable {
+  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = ''});
+
+  final String prompt;
+
+  /// Null leaves it to the hub (auto).
+  final ChatTarget? target;
+  final List<String> attachments;
+  final String model, permissionMode, clientId;
+
+  @override
+  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId];
+}
+
+/// A folder a chat could run in, as the hub ranks it.
+class TargetCandidate extends Equatable {
+  const TargetCandidate({required this.node, required this.cwd, this.label = '', this.online = false, this.score = 0, this.reason = '', this.lastUsed});
+
+  final String node, cwd, label, reason;
+  final bool online;
+
+  /// Higher is a better match for the prompt; 0 means no clue from it.
+  final double score;
+  final DateTime? lastUsed;
+
+  @override
+  List<Object?> get props => [node, cwd, label, online, score, reason, lastUsed];
+}
+
+class TargetSuggestions extends Equatable {
+  const TargetSuggestions({this.candidates = const [], this.pick});
+
+  /// Best match first, then most recently used.
+  final List<TargetCandidate> candidates;
+
+  /// What auto would pick; null when it would hand over to Claude.
+  final TargetCandidate? pick;
+
+  @override
+  List<Object?> get props => [candidates, pick];
+}
+
+/// One message of a chat's stored context.
+class ChatMessage extends Equatable {
+  const ChatMessage({required this.role, required this.text, this.session = '', this.at});
+
+  /// "user" or "assistant".
+  final String role, text, session;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [role, text, session, at];
+}
+
+/// Everything said in a chat across its sessions, plus what the hub's
+/// post-processing made of it (notes by kind, e.g. "title").
+class ChatContext extends Equatable {
+  const ChatContext({required this.chat, this.messages = const [], this.notes = const {}});
+
+  final Chat chat;
+  final List<ChatMessage> messages;
+  final Map<String, String> notes;
+
+  /// The conversation as Markdown, for copying.
+  String get markdown => [
+        '# ${chat.displayTitle}',
+        for (final m in messages) '**${m.role == 'user' ? 'You' : 'Claude'}:** ${m.text}',
+      ].join('\n\n');
+
+  @override
+  List<Object?> get props => [chat, messages, notes];
+}
+
+/// A file of a release, for one platform.
+class UpdateAsset extends Equatable {
+  const UpdateAsset({required this.name, required this.url, required this.sha256, this.size = 0});
+
+  /// [url] is a path on the hub when the hub has the file, else a full URL.
+  final String name, url, sha256;
+  final int size;
+
+  @override
+  List<Object?> get props => [name, url, sha256, size];
+}
+
+/// The newest release the hub knows of; see docs/releasing.md.
+class Release extends Equatable {
+  const Release({required this.version, this.notes = '', this.minSupported = '', this.published, this.assets = const {}});
+
+  final String version;
+
+  /// Markdown.
+  final String notes;
+
+  /// Apps older than this must update before they carry on.
+  final String minSupported;
+  final DateTime? published;
+
+  /// By platform: android, windows, agent-linux-amd64...
+  final Map<String, UpdateAsset> assets;
+
+  @override
+  List<Object?> get props => [version, notes, minSupported, published, assets];
 }

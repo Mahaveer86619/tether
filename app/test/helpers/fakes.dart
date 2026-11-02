@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart' show ThemeMode;
+import 'package:tether/core/error/failures.dart';
 import 'package:tether/core/result.dart';
 import 'package:tether/data/datasources/hub_cache.dart';
 import 'package:tether/data/datasources/hub_endpoint.dart';
@@ -23,7 +23,19 @@ class FakeHubRepository implements HubRepository {
   final decided = <(String, bool)>[];
   final interrupted = <String>[];
   final archivedCalls = <(String, bool)>[];
+  final globalCalls = <(String, bool)>[];
+  final attachmentsSent = <List<String>>[];
+  final paired = <(String, String, String)>[];
+  final sharedPreferences = <Appearance>[];
+  var devices = <PairedDevice>[const PairedDevice(id: 'd1', kind: 'client', name: 'Pixel', platform: 'android')];
   final ended = <String>[];
+  final answered = <Map<String, String>>[];
+  final options = <int>[];
+  final clientIds = <String>[];
+  final modes = <(String, PermissionMode, Duration?)>[];
+  final keysSent = <(String, List<String>, String)>[];
+  var screenText = '';
+  var disconnected = false;
 
   Result<String> Function(String session, bool fork)? onSend;
   Result<String>? createResult;
@@ -43,8 +55,21 @@ class FakeHubRepository implements HubRepository {
   @override
   void connect(HubConnection connection) {}
 
+  final activity = <bool>[];
+
   @override
-  void retryNow() {}
+  void setActive({required bool active}) => activity.add(active);
+
+  @override
+  Future<void> disconnect() async {
+    disconnected = true;
+    emitHub(const HubSnapshot());
+  }
+
+  var retries = 0;
+
+  @override
+  void retryNow() => retries++;
 
   @override
   Stream<HubSnapshot> watchHub() async* {
@@ -66,8 +91,11 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false}) async {
+  Future<Result<String>> sendMessage(String sessionId, String text,
+      {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
     sent.add((sessionId, text, fork));
+    clientIds.add(clientId);
+    attachmentsSent.add(attachments);
     return onSend?.call(sessionId, fork) ?? Ok(fork ? 'fork-of-$sessionId' : sessionId);
   }
 
@@ -84,15 +112,242 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
+  Future<Result<void>> savePreferences(Appearance appearance) async {
+    sharedPreferences.add(appearance);
+    return const Ok(null);
+  }
+
+  UsageSummary usageSummary = const UsageSummary(
+    nodes: [
+      NodeUsage(
+        node: 'minipc',
+        window: UsageTotals(input: 1000, output: 500, messages: 3),
+        plan: PlanUsage(limits: [PlanLimit(label: 'session', percent: 9, resets: 'Oct 12, 3:20am'), PlanLimit(label: 'week (all models)', percent: 10)]),
+      ),
+      NodeUsage(
+        node: 'laptop',
+        plan: PlanUsage(limits: [PlanLimit(label: 'session', percent: 9, resets: 'Oct 12, 3:19am'), PlanLimit(label: 'week (all models)', percent: 10)]),
+      ),
+    ],
+    sessions: [SessionUsage(session: 's1', total: UsageTotals(input: 1000, output: 500, messages: 3))],
+  );
+
+  var roots = <WorkspaceRoot>[const WorkspaceRoot(node: 'minipc', path: '/srv')];
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> workspaces() async => Ok(roots);
+
+  @override
+  Future<Result<List<WorkspaceRoot>>> setWorkspaceRoot(WorkspaceRoot root, {required bool remove}) async {
+    roots = [...roots.where((r) => r != root), if (!remove) root];
+    return Ok(roots);
+  }
+
+  @override
+  Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
+
+  List<ConnectedClient>? clientList = const [
+    ConnectedClient(name: 'Pixel (android)', platform: 'android', appVersion: '0.14.0', deviceId: 'd1'),
+  ];
+
+  @override
+  Future<Result<List<ConnectedClient>>> clients() async => clientList == null ? const Err(NotFoundFailure('clients')) : Ok(clientList!);
+
+  @override
+  Future<Result<List<TailnetDevice>>> tailnet() async => const Ok([
+        TailnetDevice(name: 'minipc', os: 'linux', online: true, isHub: true, node: 'minipc'),
+        TailnetDevice(name: 'mobile', os: 'android', online: true, clients: ['Pixel']),
+        TailnetDevice(name: 'old-laptop', os: 'windows'),
+      ]);
+
+  @override
+  Future<Result<PairingInvite>> createPairingInvite() async =>
+      Ok(PairingInvite(code: 'ABCDE-FGHJK', expires: DateTime(2030), hubUrl: 'ws://100.64.0.1:7420/ws'));
+
+  @override
+  Future<Result<List<PairedDevice>>> listDevices() async => Ok(devices);
+
+  var hostedPages = <HostedPage>[];
+  var codebaseList = <Codebase>[];
+  final snapshotted = <String>[];
+
+  @override
+  Future<Result<List<Codebase>>> codebases() async => Ok(codebaseList);
+
+  @override
+  Future<Result<void>> snapshotCodebase(String id) async {
+    snapshotted.add(id);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<List<HostedPage>>> pages({String session = ''}) async =>
+      Ok([for (final p in hostedPages) if (session.isEmpty || p.session == session) p]);
+
+  @override
+  Future<Result<void>> revokeDevice(String id) async {
+    devices = devices.where((d) => d.id != id).toList();
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String>> pair({
+    required String url,
+    required String code,
+    required String fingerprint,
+    required String name,
+    required String platform,
+  }) async {
+    paired.add((url, code, fingerprint));
+    return code == 'ABCDE-FGHJK' ? const Ok('device-token') : const Err(UnauthorizedFailure());
+  }
+
+  @override
+  Future<Result<void>> setGlobal(String sessionId, {required bool global}) async {
+    globalCalls.add((sessionId, global));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String>> continueOnHub(String sessionId, String text) async {
+    sent.add((sessionId, text, true));
+    return Ok('continued-$sessionId');
+  }
+
+  final chatsCreated = <NewChatRequest>[];
+  final retargets = <(String, ChatTarget, bool)>[];
+  final chatSends = <(String, String)>[];
+  var suggestions = const TargetSuggestions();
+  final suggestionPrompts = <String>[];
+
+  Result<Chat> _updateChat(String id, Chat Function(Chat c) change) {
+    final c = _snap.chats[id];
+    if (c == null) return Err(NotFoundFailure('chat $id'));
+    final next = change(c);
+    emitHub(_snap.copyWith(chats: {..._snap.chats, id: next}));
+    return Ok(next);
+  }
+
+  @override
+  Future<Result<Chat>> createChat(NewChatRequest request) async {
+    chatsCreated.add(request);
+    final id = 'chat-${chatsCreated.length}';
+    final session = 'new-session-${chatsCreated.length}';
+    final chat = Chat(
+      id: id,
+      title: request.prompt.split('\n').first,
+      target: request.target ?? const ChatTarget(mode: TargetMode.auto, node: 'minipc', cwd: '/srv/app', reason: 'matched "app"'),
+      activeSession: session,
+      links: [ChatLink(session: session)],
+      updated: DateTime.now(),
+    );
+    emitHub(_snap.copyWith(
+      chats: {..._snap.chats, id: chat},
+      sessions: {..._snap.sessions, session: Session(id: session, node: 'minipc', title: chat.title, state: SessionState.running, host: SessionHost.headless, updated: DateTime.now())},
+    ));
+    return Ok(chat);
+  }
+
+  @override
+  Future<Result<Chat>> chatForSession(String sessionId) async {
+    final existing = _snap.chatOf(sessionId);
+    if (existing != null) return Ok(existing);
+    final chat = Chat(id: 'chat-of-$sessionId', title: _snap.sessions[sessionId]?.title ?? '', activeSession: sessionId, links: [ChatLink(session: sessionId)]);
+    emitHub(_snap.copyWith(chats: {..._snap.chats, chat.id: chat}));
+    return Ok(chat);
+  }
+
+  @override
+  Future<Result<Chat>> renameChat(String chatId, String title) async => _updateChat(
+        chatId,
+        (c) => Chat(id: c.id, title: title.isEmpty ? 'Auto title' : title, titleByUser: title.isNotEmpty, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated),
+      );
+
+  @override
+  Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) async => _updateChat(
+        chatId,
+        (c) => Chat(id: c.id, title: c.title, titleByUser: c.titleByUser, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated, archived: archived),
+      );
+
+  @override
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
+    chatSends.add((chatId, text));
+    return Ok(_snap.chats[chatId]?.activeSession ?? '');
+  }
+
+  @override
+  Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) async {
+    retargets.add((chatId, target, move));
+    return _updateChat(
+      chatId,
+      (c) => Chat(id: c.id, title: c.title, titleByUser: c.titleByUser, target: target, activeSession: c.activeSession, links: c.links, updated: c.updated),
+    );
+  }
+
+  @override
+  Future<Result<Chat>> linkSession(String chatId, String sessionId, {bool unlink = false}) async => _updateChat(
+        chatId,
+        (c) => Chat(
+          id: c.id,
+          title: c.title,
+          target: c.target,
+          activeSession: c.activeSession,
+          updated: c.updated,
+          links: unlink ? [for (final l in c.links) if (l.session != sessionId) l] : [...c.links, ChatLink(session: sessionId, role: 'linked')],
+        ),
+      );
+
+  @override
+  Future<Result<ChatContext>> chatContext(String chatId) async {
+    final c = _snap.chats[chatId];
+    if (c == null) return Err(NotFoundFailure('chat $chatId'));
+    return Ok(ChatContext(chat: c, messages: const [ChatMessage(role: 'user', text: 'hello'), ChatMessage(role: 'assistant', text: 'hi there')]));
+  }
+
+  @override
+  Future<Result<TargetSuggestions>> targetSuggestions(String prompt) async {
+    suggestionPrompts.add(prompt);
+    return Ok(suggestions);
+  }
+
+  @override
+  Future<Result<List<int>>> artifactBytes(String id) async => const Ok([]);
+
+  @override
+  Future<Result<String>> artifactLink(String id) async => Ok('http://hub/link/$id');
+
+  @override
+  Future<Result<void>> deleteArtifact(String id) async => const Ok(null);
+
+  @override
   Future<Result<void>> setArchived(String sessionId, {required bool archived}) async {
     archivedCalls.add((sessionId, archived));
     return const Ok(null);
   }
 
   @override
-  Future<Result<void>> decideApproval(String approvalId, {required bool allow, String message = ''}) async {
+  Future<Result<void>> decideApproval(String approvalId,
+      {required bool allow, String message = '', Map<String, String> answers = const {}, int option = 0}) async {
     decided.add((approvalId, allow));
+    answered.add(answers);
+    options.add(option);
     return decideResult ?? const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> setMode(String sessionId, PermissionMode mode, {Duration? revertAfter}) async {
+    modes.add((sessionId, mode, revertAfter));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<ScreenSnapshot>> screen(String sessionId) async =>
+      Ok(ScreenSnapshot(session: sessionId, text: screenText, captured: DateTime(2026)));
+
+  @override
+  Future<Result<void>> sendKeys(String sessionId, List<String> keys, {String text = ''}) async {
+    keysSent.add((sessionId, keys, text));
+    return const Ok(null);
   }
 
   @override
@@ -100,8 +355,16 @@ class FakeHubRepository implements HubRepository {
 }
 
 class FakeSettingsRepository implements SettingsRepository {
+  final outboxes = <String, List<OutboxEntry>>{};
+
+  @override
+  Future<List<OutboxEntry>> loadOutbox(String session) async => outboxes[session] ?? const [];
+
+  @override
+  Future<void> saveOutbox(String session, List<OutboxEntry> entries) async => outboxes[session] = entries;
+
   HubConnection saved = const HubConnection(url: '', token: '');
-  ThemeMode theme = ThemeMode.system;
+  Appearance appearance = const Appearance();
 
   @override
   Future<Result<HubConnection>> loadConnection() async => Ok(saved);
@@ -113,11 +376,25 @@ class FakeSettingsRepository implements SettingsRepository {
   }
 
   @override
-  Future<ThemeMode> loadThemeMode() async => theme;
+  Future<Result<void>> clearConnection() async {
+    saved = const HubConnection(url: '', token: '');
+    return const Ok(null);
+  }
+
+  final drafts = <String, String>{};
 
   @override
-  Future<Result<void>> saveThemeMode(ThemeMode mode) async {
-    theme = mode;
+  Future<String> loadDraft(String key) async => drafts[key] ?? '';
+
+  @override
+  Future<void> saveDraft(String key, String text) async => text.trim().isEmpty ? drafts.remove(key) : drafts[key] = text;
+
+  @override
+  Future<Appearance> loadAppearance() async => appearance;
+
+  @override
+  Future<Result<void>> saveAppearance(Appearance a) async {
+    appearance = a;
     return const Ok(null);
   }
 }
@@ -138,13 +415,26 @@ class FakeHubSocket implements HubSocket {
   void connect(HubEndpoint endpoint) => this.endpoint = endpoint;
 
   @override
+  void disconnect() => endpoint = null;
+
+  @override
   void retryNow() {}
 
   @override
   void subscribe(String session, Int64 afterSeq) => subscribed.add((session, afterSeq));
 
+  final presence = <bool>[];
+
+  @override
+  void setPresence({required bool active}) => presence.add(active);
+
   @override
   void unsubscribe(String session) => unsubscribed.add(session);
+
+  var networkChanges = 0;
+
+  @override
+  void networkChanged() => networkChanges++;
 
   @override
   Future<void> close() => _events.close();
@@ -164,6 +454,65 @@ HubSnapshot snapshotWith(List<Session> sessions, {List<Approval> approvals = con
       sessions: {for (final s in sessions) s.id: s},
       approvals: {for (final a in approvals) a.id: a},
     );
+
+/// Transfers that finish at once; the test reads what was asked for.
+class FakeTransferRepository implements TransferRepository {
+  final _changes = StreamController<Map<String, Transfer>>.broadcast();
+  Map<String, Transfer> _now = const {};
+  final uploads = <(LocalFile, String, String, bool)>[];
+  final downloads = <Artifact>[];
+
+  void emit(Transfer t) {
+    _now = {..._now, t.id: t};
+    _changes.add(_now);
+  }
+
+  @override
+  Map<String, Transfer> get current => _now;
+
+  @override
+  Stream<Map<String, Transfer>> watch() async* {
+    yield _now;
+    yield* _changes.stream;
+  }
+
+  @override
+  Future<Result<void>> download(Artifact artifact) async {
+    downloads.add(artifact);
+    emit(Transfer(id: artifact.id, kind: TransferKind.download, name: artifact.name, total: artifact.size, state: TransferState.running));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> pause(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.paused));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> resume(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.running));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> cancel(String id) async {
+    if (_now[id] case final t?) emit(t.copyWith(state: TransferState.canceled));
+    return const Ok(null);
+  }
+
+  @override
+  void dismiss(String id) {
+    _now = {..._now}..remove(id);
+    _changes.add(_now);
+  }
+
+  @override
+  Future<Result<Artifact>> upload(LocalFile file, {String session = '', String note = '', bool deliver = false}) async {
+    uploads.add((file, session, note, deliver));
+    return Ok(Artifact(id: 'art-${uploads.length}', name: file.name, size: file.size, session: session, note: note));
+  }
+}
 
 /// An on-device cache that lives in memory.
 class MemoryHubCache implements HubCache {
@@ -195,3 +544,57 @@ class MemoryHubCache implements HubCache {
 extension SessionCopy on Session {
   Session copyWithId(String id) => Session(id: id, node: node, title: 'Session $id', state: state, host: host, cwd: cwd, updated: updated);
 }
+
+/// Updates that download at once; the test reads what was done.
+class FakeUpdateRepository implements UpdateRepository {
+  FakeUpdateRepository({this.platform = 'android', this.release});
+
+  @override
+  final String? platform;
+  Release? release;
+  Result<String> downloadResult = const Ok('/tmp/update.bin');
+  final installed = <String>[];
+  final notifications = <(String, String)>[];
+  var skippedVersion = '';
+  var notifiedVersion = '';
+
+  @override
+  Future<Result<Release?>> latest() async => Ok(release);
+
+  @override
+  Future<Result<String>> download(UpdateAsset asset, {void Function(int received, int total)? onProgress}) async {
+    onProgress?.call(asset.size ~/ 2, asset.size);
+    return downloadResult;
+  }
+
+  @override
+  Future<Result<void>> install(String path) async {
+    installed.add(path);
+    return const Ok(null);
+  }
+
+  @override
+  Future<String> skipped() async => skippedVersion;
+
+  @override
+  Future<void> skip(String version) async => skippedVersion = version;
+
+  @override
+  Future<String> notified() async => notifiedVersion;
+
+  @override
+  Future<void> setNotified(String version) async => notifiedVersion = version;
+
+  @override
+  Future<void> notify(String title, String body) async => notifications.add((title, body));
+}
+
+Release release(String version, {String minSupported = '', String notes = '- Faster chats.\n- Fixes.'}) => Release(
+      version: version,
+      notes: notes,
+      minSupported: minSupported,
+      assets: {
+        'android': UpdateAsset(name: 'tether-$version.apk', url: '/api/v1/updates/files/$version/tether-$version.apk', sha256: 'ab', size: 100),
+        'windows': UpdateAsset(name: 'tether-windows-$version.zip', url: '/api/v1/updates/files/$version/tether-windows-$version.zip', sha256: 'cd', size: 100),
+      },
+    );

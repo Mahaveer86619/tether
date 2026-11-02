@@ -23,6 +23,30 @@ Messages are delivered as one bracketed paste followed by Enter, so multi-line t
 
 Interactive Claude Code asks "Do you trust this folder?" the first time it opens a directory (headless mode doesn't). The agent watches new tmux windows for that dialog and turns it into an approval of kind `FOLDER_TRUST`. When answered, it moves the selection and confirms while watching the screen. Keys sent while the TUI is still starting are dropped, so a blind keypress isn't reliable.
 
+### Dialogs on screen
+
+Some of Claude Code's dialogs fire no hook: feedback surveys (like the auto-mode survey), pickers, and menus. Unanswered, they leave a session waiting with nothing in the app to act on, and a message typed then lands in the dialog. To catch them, the agent reads the screen of every interactive session it can reach every 2 seconds: tmux panes with `capture-pane`, and Windows consoles with `AttachConsole` plus `ReadConsoleOutputCharacter`.
+
+- **Parsing** (`agent/prompt.go`):
+  - It strips box borders, then looks at the last 24 lines for one of two shapes. The first is a vertical menu with the `❯` cursor on one option, numbered or not. Description lines may sit between numbered options, and a `✔` mark is dropped. The second is a one-line survey like `1: Bad  2: Fine  3: Good  0: Dismiss`.
+  - The title is the nearest text above the options.
+  - Lists without a cursor, such as a numbered list in Claude's answer, aren't dialogs.
+- **Cards:** a dialog becomes an approval of kind `PROMPT`, with its options, the cursor's option and the screen. It is withdrawn when the dialog leaves the screen, and replaced when a different one appears. Dialogs a hook already reported (tool permissions) aren't asked twice. The folder-trust watcher keeps its first 20 seconds.
+- **Answers:** an option is picked by moving the cursor (re-reading the screen after each key, since the TUI drops keys while redrawing) and pressing Enter. A survey option is picked by pressing its key. Deny presses Esc. `ApprovalDecision.option` is 1-based, and 0 takes the option under the cursor, so an older app's Allow picks the highlighted option.
+- **The way out:** for anything the parser misses, `GET /api/v1/sessions/{id}/screen` returns the current screen. The hub asks the node and waits up to 4 seconds. `POST /api/v1/sessions/{id}/keys` presses keys (Enter, Escape, arrows, Tab, Shift+Tab, Space, Backspace, digits) and types text. The app has "Screen & keys" in the session menu and on every prompt card, and a banner when a session waits for approval with no card. Headless runs have no terminal; their questions come through the control protocol.
+
+### Permission modes
+
+Every session shows its permission mode: default ("Ask first"), acceptEdits, plan or auto.
+- **Where the mode comes from:** the transcript's `permissionMode` field (the init line and user lines, not subagents'), or the last switch made from an app. It's kept on `SessionInfo.permission_mode`, which agents' own reports don't touch.
+- **Switching:** `POST /api/v1/sessions/{id}/mode` with `{mode, revertAfterMs}`. The hub shows the new mode at once and sends the node `AgentCommand.set_mode`, then the node does one of three things:
+  - A headless run gets a `set_permission_mode` control request.
+  - An interactive session (tmux, or a Windows console the agent can attach to) gets Shift+Tab presses, Claude Code's own mode cycle. The agent presses until the mode line at the bottom of the screen shows the mode, up to 6 times. It refuses while a dialog is open.
+  - With no live process, nothing happens yet. The next resume (`SendInput.permission_mode`) and every fork start in the mode the session shows.
+- **When a switch fails:** the agent answers with `ModeResult`. On an error, the hub puts the old mode back and shows why on the session. While a switch is unanswered, older transcript lines can't put the old mode back. That lasts up to 30 seconds, because an agent from before modes never answers.
+- **For a while:** with `revertAfterMs`, the hub stores when to go back, and what to, on the session. It's kept with the session, so it survives a restart. Every 15 seconds the hub checks for modes that are due and switches them back. A node that's offline is tried again later.
+- **In the app:** a chip in the session header shows the mode, and "· 12m left" when it goes back. It opens a picker (Ask first, Accept edits, Plan, Auto; for good, 15 min or 1 hour). Edit approvals in the default mode offer "Allow, accept edits". A plan approval (`ExitPlanMode`) offers "Approve plan", "Approve, accept edits" and "Keep planning".
+
 ## Typing into your own terminal (Windows)
 
 On Windows the agent finds the Claude Code process behind each hook request (the hook's loopback connection → `GetExtendedTcpTable` → owning PID). It can then type into that process's console with `AttachConsole` + `WriteConsoleInput`, exactly as if you had typed there. Such sessions report `terminalInput: true`, and the app's composer works for them.
@@ -41,7 +65,9 @@ On Windows the agent finds the Claude Code process behind each hook request (the
 | `headless` | stdio control `interrupt` | Closes stdin; kills the process after 5 s |
 | `terminal` | Escape typed into the console (Windows only) | Refused: it's your terminal; close it there |
 
-Claude Code fires no Stop hook when a turn is interrupted, so the agent marks interactive sessions `ready` itself a second after interrupting.
+Claude Code fires no Stop hook when a turn is interrupted, so the agent marks interactive sessions `ready` itself.
+- **Confirming the stop:** after Escape, the agent re-reads the screen every 300 ms until the spinner's "esc to interrupt" is gone. If that hasn't happened within 6 seconds, it reports `CommandResult{command: "interrupt"}` with an error, which the hub shows on the session. A session without a readable screen is marked ready after a second, as before. Failing to deliver the interrupt at all is reported the same way.
+- **In the app:** the interrupt button turns into a spinner, and the working row reads "Stopping…" until the session stops. If it's still busy after 8 seconds, a banner offers Esc again, Show screen (for sessions with a terminal) and End session (confirmed first, for sessions the agent hosts).
 
 ## Removing sessions
 
@@ -70,6 +96,8 @@ A `PermissionRequest` hook is held open while the request goes to the app. Claud
 - Answered in the terminal: the next hook event from that session (or the hook request being cancelled) withdraws the approval from the app.
 
 If the agent isn't running, the hook request fails, Claude Code treats that as a non-blocking error, and the terminal prompt works as usual. Headless sessions answer prompts through the stdio control protocol instead, and the hook steps aside for them.
+
+Claude's questions (`AskUserQuestion`) arrive the same way, as a permission request for that tool, and are sent to the app as `kind: QUESTION`. The answer goes back as `allow` with `updatedInput`: the original questions plus `answers`. Claude Code then carries on as if they had been picked in its own picker.
 
 ## Without hooks
 

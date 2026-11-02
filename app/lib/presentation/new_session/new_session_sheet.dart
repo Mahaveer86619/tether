@@ -12,11 +12,12 @@ const _models = {'': 'Default', 'opus': 'Opus', 'sonnet': 'Sonnet', 'haiku': 'Ha
 const _modes = {'': 'Default', 'acceptEdits': 'Accept edits', 'plan': 'Plan', 'auto': 'Auto'};
 
 /// Shows the new-session form; returns the created session's id.
-Future<String?> showNewSession(BuildContext context, {String? node, String? cwd, String prompt = ''}) {
+Future<String?> showNewSession(BuildContext context, {String? node, String? cwd, String prompt = '', bool newProject = false}) {
   final form = BlocProvider(
     create: (_) {
       final cubit = sl<NewSessionCubit>(param1: context.read<HubCubit>().state.hub, param2: node);
       if (cwd != null && cubit.state.node == node) cubit.setCwd(cwd);
+      if (newProject) cubit.setNewProject(true);
       return cubit;
     },
     child: NewSessionForm(prompt: prompt),
@@ -84,30 +85,88 @@ class _NewSessionFormState extends State<NewSessionForm> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  if (s.hubNode.isNotEmpty)
+                    ChoiceChip(
+                      key: const Key('hub-scratch'),
+                      label: const Text('Hub · scratch'),
+                      avatar: const Icon(Icons.hub_outlined, size: 16),
+                      tooltip: 'On ${s.hubNode}, in a scratch folder the hub cleans up later',
+                      selected: s.scratch,
+                      onSelected: (_) => cubit.selectScratch(),
+                    ),
                   for (final n in s.nodes)
                     ChoiceChip(
                       label: Text(n.name),
                       avatar: Icon(osIcon(n.os), size: 16),
-                      selected: s.node == n.name,
+                      selected: !s.scratch && s.node == n.name,
                       onSelected: (_) => cubit.selectNode(n.name),
                     ),
                 ],
               ),
             const SizedBox(height: 14),
-            _label(context, 'Folder on ${s.node ?? 'the device'}'),
-            Autocomplete<String>(
-              key: ValueKey('cwd-${s.node}'),
-              initialValue: TextEditingValue(text: s.cwd),
-              optionsBuilder: (v) => s.folders.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
-              onSelected: cubit.setCwd,
-              fieldViewBuilder: (context, controller, focus, onSubmit) => TextField(
-                controller: controller,
-                focusNode: focus,
-                onChanged: cubit.setCwd,
-                style: monoStyle(context, size: 13),
-                decoration: const InputDecoration(hintText: 'Home folder if empty'),
-              ),
+            if (s.scratch)
+              Text('A fresh folder on ${s.hubNode}. Files it makes are kept in the hub; the folder is archived after two weeks idle.',
+                  style: TextStyle(color: c.muted, fontSize: 13))
+            else ...[
+            SegmentedButton<bool>(
+              key: const Key('project-mode'),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: false, label: Text('Existing project'), icon: Icon(Icons.folder_outlined, size: 16)),
+                ButtonSegment(value: true, label: Text('New project'), icon: Icon(Icons.create_new_folder_outlined, size: 16)),
+              ],
+              selected: {s.newProject},
+              onSelectionChanged: (v) => cubit.setNewProject(v.first),
             ),
+            const SizedBox(height: 12),
+            if (!s.newProject) ...[
+              _label(context, 'Folder on ${s.node ?? 'the device'}'),
+              Autocomplete<String>(
+                key: ValueKey('cwd-${s.node}'),
+                initialValue: TextEditingValue(text: s.cwd),
+                optionsBuilder: (v) => s.folders.where((d) => d.toLowerCase().contains(v.text.toLowerCase())).take(8),
+                onSelected: cubit.setCwd,
+                fieldViewBuilder: (context, controller, focus, onSubmit) => TextField(
+                  controller: controller,
+                  focusNode: focus,
+                  onChanged: cubit.setCwd,
+                  style: monoStyle(context, size: 13),
+                  decoration: const InputDecoration(hintText: 'Home folder if empty'),
+                ),
+              ),
+            ] else ...[
+              _label(context, 'Workspace on ${s.node ?? 'the device'}'),
+              if (s.roots.isEmpty && s.suggestedRoots.isEmpty)
+                Text('No workspaces on this device yet. Add one in Settings → Workspaces.', style: TextStyle(color: c.muted, fontSize: 13))
+              else
+                DropdownButtonFormField<String>(
+                  key: ValueKey('root-${s.node}'),
+                  initialValue: s.root.isEmpty ? null : s.root,
+                  isExpanded: true,
+                  items: [
+                    for (final r in s.roots) DropdownMenuItem(value: r, child: Text(r, overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 13))),
+                    for (final r in s.suggestedRoots)
+                      DropdownMenuItem(
+                        value: r,
+                        child: Text('$r  (suggested)', overflow: TextOverflow.ellipsis, style: monoStyle(context, size: 13, color: c.muted)),
+                      ),
+                  ],
+                  onChanged: (v) => cubit.setRoot(v ?? ''),
+                ),
+              const SizedBox(height: 10),
+              TextField(
+                key: const Key('project-name'),
+                onChanged: cubit.setProjectName,
+                style: monoStyle(context, size: 13),
+                decoration: const InputDecoration(labelText: 'Project name', hintText: 'my-new-app'),
+              ),
+              if (cubit.newProjectPath case final path?)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('Creates $path', style: TextStyle(fontSize: 12, color: c.faint)),
+                ),
+            ],
+            ],
             const SizedBox(height: 14),
             Row(
               children: [

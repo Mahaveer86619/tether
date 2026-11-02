@@ -1,0 +1,19 @@
+[Unit]
+Description=GitHub Actions runner for Tether releases
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=@RUNNER@
+ExecStart=@RUNNER@/run.sh
+Restart=always
+RestartSec=10
+# Builds share the machine with the hub and staging services.
+Nice=10
+CPUWeight=50
+MemoryHigh=5G
+# Stopping the runner mustn't take a deploy's restarted hub with it.
+KillMode=process
+
+[Install]
+WantedBy=default.target

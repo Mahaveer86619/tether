@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../gen/tether/v1/render.pb.dart' as pb;
 import '../../gen/tether/v1/render.pbenum.dart' as pbe;
 import '../../domain/entities/entities.dart' show TodoItem, TodoStatus;
+import '../artifacts/artifact_widgets.dart';
 import 'common.dart';
 import 'format.dart';
 import 'markdown_view.dart';
@@ -83,6 +84,8 @@ class _ToolCardViewState extends State<ToolCardView> {
               ),
             ),
           ),
+          if (linkedArtifacts(context, card.toolUseId) case final files when files.isNotEmpty)
+            Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 10), child: ArtifactStrip(artifacts: files)),
           if (_open) ...[
             if (!widget.flat) Divider(height: 1, color: c.border),
             Padding(padding: EdgeInsets.fromLTRB(12, widget.flat ? 0 : 12, 12, 12), child: ToolDetail(card: card)),

@@ -1,0 +1,38 @@
+# What Tether never copies to the hub. Gitignore syntax.
+# .env files are kept separately, encrypted on the hub; see docs/plan.md.
+.git/
+.tether/attachments/
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# Dependencies and build output: rebuilt on the other side.
+node_modules/
+.dart_tool/
+.gradle/
+build/
+dist/
+out/
+target/
+.next/
+.nuxt/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.terraform/
+vendor/bundle/
+
+# Editors and OS clutter.
+.idea/
+.vs/
+.DS_Store
+Thumbs.db
+*.log
+
+# This repo: compiled hub and agent binaries.
+server/bin/

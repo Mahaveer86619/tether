@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -236,37 +237,90 @@ class SectionLabel extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
         child: Row(
           children: [
-            Text(text.toUpperCase(),
-                style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: context.colors.faint)),
-            const Spacer(),
+            Expanded(
+              child: Text(text.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: context.colors.faint)),
+            ),
             ?trailing,
           ],
         ),
       );
 }
 
-class ConnectionLine extends StatelessWidget {
-  const ConnectionLine({super.key, required this.status});
+/// The connection's state in a few words: connected, connecting (with the
+/// attempt), or offline with a countdown to the next try. Tapping it
+/// retries now; the last error shows on hover or long press.
+class ConnectionLine extends StatefulWidget {
+  const ConnectionLine({super.key, required this.status, this.retryAt, this.attempts = 0, this.error, this.onRetry});
 
   final ConnectionStatus status;
+  final DateTime? retryAt;
+  final int attempts;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  @override
+  State<ConnectionLine> createState() => _ConnectionLineState();
+}
+
+class _ConnectionLineState extends State<ConnectionLine> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedule();
+  }
+
+  @override
+  void didUpdateWidget(ConnectionLine old) {
+    super.didUpdateWidget(old);
+    _schedule();
+  }
+
+  // A countdown needs a redraw every second; nothing else does.
+  void _schedule() {
+    _tick?.cancel();
+    _tick = widget.retryAt == null ? null : Timer.periodic(const Duration(seconds: 1), (_) => mounted ? setState(() {}) : null);
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (color, text) = switch (status) {
+    final w = widget;
+    final wait = w.retryAt?.difference(DateTime.now());
+    final (color, text) = switch (w.status) {
       ConnectionStatus.connected => (c.success, 'Connected'),
-      ConnectionStatus.connecting => (c.warning, 'Connecting…'),
+      ConnectionStatus.connecting => (c.warning, w.attempts > 0 ? 'Reconnecting… (try ${w.attempts + 1})' : 'Connecting…'),
       ConnectionStatus.unauthorized => (c.danger, 'Token rejected'),
       ConnectionStatus.notConfigured => (c.faint, 'Not set up'),
+      ConnectionStatus.offline when wait != null && wait.inSeconds > 0 => (c.danger, 'Offline · retrying in ${wait.inSeconds + 1}s'),
       ConnectionStatus.offline => (c.danger, 'Offline · retrying'),
     };
-    return Row(
+    final retryable = w.onRetry != null && w.status != ConnectionStatus.connected && w.status != ConnectionStatus.notConfigured;
+    final line = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
         Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.muted))),
+        if (retryable) ...[
+          const SizedBox(width: 6),
+          Text('Retry', style: TextStyle(fontSize: 12, color: c.accent, fontWeight: FontWeight.w600)),
+        ],
       ],
     );
+    final tip = [
+      if (w.error != null && w.status != ConnectionStatus.connected) w.error!,
+      if (w.attempts > 0 && w.status != ConnectionStatus.connected) '${w.attempts} failed ${w.attempts == 1 ? 'try' : 'tries'}',
+    ].join('\n');
+    final body = retryable ? InkWell(key: const Key('connection-retry'), borderRadius: BorderRadius.circular(6), onTap: w.onRetry, child: line) : line;
+    return tip.isEmpty ? body : Tooltip(message: tip, child: body);
   }
 }

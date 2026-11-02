@@ -51,8 +51,15 @@ func Accept(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 	return newConn(ws), nil
 }
 
-func Dial(ctx context.Context, url string) (*Conn, error) {
-	ws, _, err := websocket.Dial(ctx, url, nil)
+// Dial connects to the hub, pinning its certificate when fingerprint is set.
+func Dial(ctx context.Context, url, fingerprint string) (*Conn, error) {
+	var opts *websocket.DialOptions
+	if fingerprint != "" {
+		c := HTTPClient(fingerprint)
+		c.Timeout = 0 // the WebSocket outlives any request timeout
+		opts = &websocket.DialOptions{HTTPClient: c}
+	}
+	ws, _, err := websocket.Dial(ctx, url, opts)
 	if err != nil {
 		return nil, err
 	}

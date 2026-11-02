@@ -9,6 +9,11 @@ sealed class Result<T> {
         Err<T>(:final failure) => onFailure(failure),
       };
 
+  Result<R> map<R>(R Function(T value) f) => switch (this) {
+        Ok<T>(:final value) => Ok(f(value)),
+        Err<T>(:final failure) => Err(failure),
+      };
+
   bool get isOk => this is Ok<T>;
   T? get valueOrNull => switch (this) { Ok<T>(:final value) => value, Err<T>() => null };
   Failure? get failureOrNull => switch (this) { Ok<T>() => null, Err<T>(:final failure) => failure };

@@ -234,6 +234,8 @@ func (Todo_Status) EnumDescriptor() ([]byte, []int) {
 
 // One entry in a session's timeline. Clients key items by item_id, replace
 // them on every upsert, and order them by ord.
+// An item sent again with no kind has been removed (e.g. a queued message
+// that was taken back).
 type TimelineItem struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	ItemId string                 `protobuf:"bytes,1,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
@@ -414,8 +416,23 @@ func (*TimelineItem_Notice) isTimelineItem_Kind() {}
 func (*TimelineItem_Result) isTimelineItem_Kind() {}
 
 type UserText struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Text  string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// Sent while Claude was busy and not taken in yet. Clients keep it at the
+	// end of the timeline until it is replaced by the real message.
+	Queued bool `protobuf:"varint,2,opt,name=queued,proto3" json:"queued,omitempty"`
+	// Where it came from, set by the hub: the name of the app or tool that
+	// sent it, or "terminal" when it was typed in the session's terminal.
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	// Set when the message went to the session as a file because it was long;
+	// text then holds the whole message, set by the hub.
+	AttachmentId string `protobuf:"bytes,4,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	// SendMessage.client_id of the message this is, when the hub sent it.
+	ClientId string `protobuf:"bytes,5,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// Claude Code wraps pasted text (including what the agent pastes into a
+	// terminal) in <pasted_content id="..."> tags. The hub takes the tags
+	// out of text and keeps their ids here, in order.
+	PastedIds     []string `protobuf:"bytes,6,rep,name=pasted_ids,json=pastedIds,proto3" json:"pasted_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -455,6 +472,41 @@ func (x *UserText) GetText() string {
 		return x.Text
 	}
 	return ""
+}
+
+func (x *UserText) GetQueued() bool {
+	if x != nil {
+		return x.Queued
+	}
+	return false
+}
+
+func (x *UserText) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *UserText) GetAttachmentId() string {
+	if x != nil {
+		return x.AttachmentId
+	}
+	return ""
+}
+
+func (x *UserText) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *UserText) GetPastedIds() []string {
+	if x != nil {
+		return x.PastedIds
+	}
+	return nil
 }
 
 type Markdown struct {
@@ -2374,9 +2426,15 @@ const file_tether_v1_render_proto_rawDesc = "" +
 	"\bthinking\x18\r \x01(\v2\x13.tether.v1.ThinkingH\x00R\bthinking\x12+\n" +
 	"\x06notice\x18\x0e \x01(\v2\x11.tether.v1.NoticeH\x00R\x06notice\x122\n" +
 	"\x06result\x18\x0f \x01(\v2\x18.tether.v1.ResultSummaryH\x00R\x06resultB\x06\n" +
-	"\x04kind\"\x1e\n" +
+	"\x04kind\"\xaf\x01\n" +
 	"\bUserText\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"R\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x16\n" +
+	"\x06queued\x18\x02 \x01(\bR\x06queued\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12#\n" +
+	"\rattachment_id\x18\x04 \x01(\tR\fattachmentId\x12\x1b\n" +
+	"\tclient_id\x18\x05 \x01(\tR\bclientId\x12\x1d\n" +
+	"\n" +
+	"pasted_ids\x18\x06 \x03(\tR\tpastedIds\"R\n" +
 	"\bMarkdown\x12(\n" +
 	"\x06blocks\x18\x01 \x03(\v2\x10.tether.v1.BlockR\x06blocks\x12\x1c\n" +
 	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"<\n" +

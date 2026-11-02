@@ -73,6 +73,13 @@ class StorageFailure extends Failure {
   String get userMessage => "Couldn't save settings on this device: $message";
 }
 
+/// A download or upload that couldn't finish; the message says why.
+class TransferFailure extends Failure {
+  const TransferFailure(super.message);
+  @override
+  String get userMessage => message;
+}
+
 class NotConnectedFailure extends Failure {
   const NotConnectedFailure([super.message = 'not connected']);
   @override

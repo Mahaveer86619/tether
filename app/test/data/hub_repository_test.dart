@@ -105,6 +105,48 @@ void main() {
     expect(repo.current.approvals, isEmpty);
   });
 
+  test('a dialog read off the screen arrives as a prompt with its options', () async {
+    socket.push(SocketFrame(welcome()));
+    socket.push(SocketFrame(pb.Frame(
+      approvalRequested: pb.ApprovalRequest(
+        approvalId: 'p1',
+        session: 's1',
+        kind: pbe.ApprovalRequest_Kind.KIND_PROMPT,
+        description: 'How is Claude doing?',
+        options: ['Bad', 'Fine', 'Good'],
+        selected: 1,
+        screen: '1: Bad  2: Fine  3: Good',
+      ),
+    )));
+    final a = repo.current.approvalsFor('s1').single;
+    expect(a.kind, ApprovalKind.prompt);
+    expect(a.options, ['Bad', 'Fine', 'Good']);
+    expect(a.selected, 1);
+    expect(a.screen, contains('2: Fine'));
+  });
+
+  test('a session carries its permission mode and when a timed mode goes back', () async {
+    socket.push(SocketFrame(welcome()));
+    socket.push(SocketFrame(pb.Frame(
+      sessionInfo: pb.SessionInfo(id: 's9', node: 'minipc', permissionMode: 'acceptEdits', modeRevertMs: Int64(1792400000000), modeRevertTo: 'default'),
+    )));
+    final s = repo.current.sessions['s9']!;
+    expect(PermissionMode.of(s.permissionMode), PermissionMode.acceptEdits);
+    expect(s.modeRevert, DateTime.fromMillisecondsSinceEpoch(1792400000000));
+    expect(s.modeRevertTo, 'default');
+  });
+
+  test('presence goes to the socket, and a session carries its last backup', () async {
+    socket.push(SocketFrame(welcome()));
+    repo.setActive(active: false);
+    repo.setActive(active: true);
+    expect(socket.presence, [false, true]);
+    socket.push(SocketFrame(pb.Frame(sessionInfo: pb.SessionInfo(id: 'b1', node: 'minipc', backedUpMs: Int64(1792400000000), backedUpBytes: Int64(4096)))));
+    final s = repo.current.sessions['b1']!;
+    expect(s.backedUp, DateTime.fromMillisecondsSinceEpoch(1792400000000));
+    expect(s.backedUpBytes, 4096);
+  });
+
   test('losing the socket marks everything offline, unauthorized stops', () async {
     socket.push(SocketFrame(welcome()));
     socket.push(const SocketClosed(error: 'reset'));
@@ -119,7 +161,7 @@ void main() {
     final snapshots = <TimelineSnapshot>[];
     final sub = repo.watchTimeline('s1').listen(snapshots.add);
     await eventually(() => expect(snapshots.last.items.map((i) => i.itemId), ['a', 'b']));
-    expect(requests.single.url.path, '/api/v1/sessions/s1/timeline');
+    expect(requests.where((r) => r.url.path.contains('/timeline')).single.url.path, '/api/v1/sessions/s1/timeline');
     expect(socket.subscribed.single, ('s1', Int64(2)));
 
     // A live update replaces "b" and adds "c"; the end-of-replay marker ends loading.
@@ -174,7 +216,7 @@ void main() {
     final offline = await repo2.watchTimeline('s1').firstWhere((t) => t.items.length == 2).timeout(const Duration(seconds: 2));
     expect(offline.items.first.user.text, 'first');
     socket2.push(SocketFrame(welcome()));
-    await eventually(() => expect(requests2.single.url.queryParameters['after'], '2'));
+    await eventually(() => expect(requests2.where((r) => r.url.path.contains('/timeline')).single.url.queryParameters['after'], '2'));
     await repo2.dispose();
   });
 

@@ -28,3 +28,17 @@ Thumbs.db
 
 # Machine-specific notes (addresses, users, credentials)
 /.local/
+
+# What an agent puts in a project: attachments and pages
+.tether/
+
+# Release builds
+/dist/
+
+# Signing keys and server secrets: never committed (see docs/releasing.md)
+*.jks
+*.keystore
+/app/android/key.properties
+secrets.key
+tether.env
+*.pem

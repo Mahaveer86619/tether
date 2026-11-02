@@ -33,6 +33,8 @@ enum TimelineItem_Kind {
 
 /// One entry in a session's timeline. Clients key items by item_id, replace
 /// them on every upsert, and order them by ord.
+/// An item sent again with no kind has been removed (e.g. a queued message
+/// that was taken back).
 class TimelineItem extends $pb.GeneratedMessage {
   factory TimelineItem({
     $core.String? itemId,
@@ -247,9 +249,19 @@ class TimelineItem extends $pb.GeneratedMessage {
 class UserText extends $pb.GeneratedMessage {
   factory UserText({
     $core.String? text,
+    $core.bool? queued,
+    $core.String? source,
+    $core.String? attachmentId,
+    $core.String? clientId,
+    $core.Iterable<$core.String>? pastedIds,
   }) {
     final result = UserText._();
     if (text != null) result.text = text;
+    if (queued != null) result.queued = queued;
+    if (source != null) result.source = source;
+    if (attachmentId != null) result.attachmentId = attachmentId;
+    if (clientId != null) result.clientId = clientId;
+    if (pastedIds != null) result.pastedIds.addAll(pastedIds);
     return result;
   }
 
@@ -267,6 +279,11 @@ class UserText extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: UserText.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'text')
+    ..aOB(2, _omitFieldNames ? '' : 'queued')
+    ..aOS(3, _omitFieldNames ? '' : 'source')
+    ..aOS(4, _omitFieldNames ? '' : 'attachmentId')
+    ..aOS(5, _omitFieldNames ? '' : 'clientId')
+    ..pPS(6, _omitFieldNames ? '' : 'pastedIds')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -297,6 +314,55 @@ class UserText extends $pb.GeneratedMessage {
   $core.bool hasText() => $_has(0);
   @$pb.TagNumber(1)
   void clearText() => $_clearField(1);
+
+  /// Sent while Claude was busy and not taken in yet. Clients keep it at the
+  /// end of the timeline until it is replaced by the real message.
+  @$pb.TagNumber(2)
+  $core.bool get queued => $_getBF(1);
+  @$pb.TagNumber(2)
+  set queued($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasQueued() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearQueued() => $_clearField(2);
+
+  /// Where it came from, set by the hub: the name of the app or tool that
+  /// sent it, or "terminal" when it was typed in the session's terminal.
+  @$pb.TagNumber(3)
+  $core.String get source => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set source($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSource() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSource() => $_clearField(3);
+
+  /// Set when the message went to the session as a file because it was long;
+  /// text then holds the whole message, set by the hub.
+  @$pb.TagNumber(4)
+  $core.String get attachmentId => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set attachmentId($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAttachmentId() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAttachmentId() => $_clearField(4);
+
+  /// SendMessage.client_id of the message this is, when the hub sent it.
+  @$pb.TagNumber(5)
+  $core.String get clientId => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set clientId($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasClientId() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearClientId() => $_clearField(5);
+
+  /// Claude Code wraps pasted text (including what the agent pastes into a
+  /// terminal) in <pasted_content id="..."> tags. The hub takes the tags
+  /// out of text and keeps their ids here, in order.
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.String> get pastedIds => $_getList(5);
 }
 
 class Markdown extends $pb.GeneratedMessage {

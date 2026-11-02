@@ -64,7 +64,8 @@ Done so far: session indexing, live mirroring, resume and fork; tmux hosting on 
 - **Shared access:** a user can grant others access to a whole node, or just to one service on it.
   - A service is something like a script watcher with an agent attached, for example one that spots GitHub issues and fixes them automatically.
   - Grants can be view-only, can allow answering approvals, or can allow starting runs.
-- **Credentials:** every session runs on the Claude login (or API key) of the user who owns the node it runs on. Claude subscriptions are per person, so the hub never pools one user's login for others. Collaboration means sending commands to someone's node with their permission, as the app does today.
+- **Credentials:** every session runs on the Claude login of the node it runs on, and uses only that login's usage. Collaborating means sending commands to someone's node with their permission, as the app does today. Usage is never pooled or moved between accounts.
+- **Pairing:** devices join with a QR code and get their own revocable token. See [plan.md](plan.md#connecting-devices).
 - **Shared memory:** the knowledge graph and session history act as a knowledge base that users opt in to, so sessions can draw on what others have learned.
 
 **Done when:** a second user can watch and approve runs of a shared watcher service on the first user's mini PC, and start sessions on their own laptop, from one hub.

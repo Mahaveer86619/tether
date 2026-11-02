@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
@@ -35,10 +37,14 @@ commands:
   interrupt <session>                         stop the current turn
   stop <session>                              end a tmux or headless session
   rebuild <session>                           re-render a session's timeline from its transcript
+  pair                                        print a one-time code to pair an app or agent
+  devices                                     list paired devices
+  revoke <device id>                          revoke a paired device
   approvals                                   list pending approvals
   approve [-deny] <approval id>               answer one
 
-TETHER_TOKEN must be set. -hub defaults to $TETHER_HUB.`
+TETHER_TOKEN must be set. -hub defaults to $TETHER_HUB. For a hub with a
+self-signed certificate, set TETHER_HUB_FINGERPRINT to its SHA-256.`
 
 func main() {
 	hubURL := flag.String("hub", os.Getenv("TETHER_HUB"), "hub WebSocket URL")
@@ -76,6 +82,12 @@ func main() {
 		err = c.control(flag.Arg(0), args)
 	case "rebuild":
 		err = c.rebuild(*hubURL, args)
+	case "pair":
+		err = pairCode(*hubURL)
+	case "devices":
+		err = devices(*hubURL)
+	case "revoke":
+		err = revoke(*hubURL, args)
 	default:
 		flag.Usage()
 		os.Exit(2)
@@ -100,7 +112,7 @@ type ctl struct {
 func connect(url, token string) (*ctl, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	conn, err := wire.Dial(ctx, url)
+	conn, err := wire.Dial(ctx, url, os.Getenv("TETHER_HUB_FINGERPRINT"))
 	if err != nil {
 		return nil, err
 	}
@@ -351,22 +363,14 @@ func (c *ctl) control(cmd string, args []string) error {
 	return err
 }
 
-// rebuild goes over REST: it's an admin action with no WebSocket command.
-func (c *ctl) rebuild(hubURL string, args []string) error {
-	if len(args) != 1 {
-		return errors.New("rebuild <session>")
-	}
-	s, err := c.resolve(args[0])
-	if err != nil {
-		return err
-	}
-	base := strings.TrimSuffix(strings.Replace(strings.Replace(hubURL, "wss://", "https://", 1), "ws://", "http://", 1), "/ws")
-	req, err := http.NewRequest("POST", base+"/api/v1/sessions/"+s.Id+"/rebuild", nil)
+// rest calls the hub's REST API, for admin actions with no WebSocket command.
+func rest(hubURL, method, path string, out proto.Message) error {
+	req, err := http.NewRequest(method, wire.HTTPBase(hubURL)+"/api/v1"+path, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("TETHER_TOKEN"))
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := wire.HTTPClient(os.Getenv("TETHER_HUB_FINGERPRINT")).Do(req)
 	if err != nil {
 		return err
 	}
@@ -375,8 +379,72 @@ func (c *ctl) rebuild(hubURL string, args []string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("%s: %s", resp.Status, body)
 	}
+	if out == nil {
+		return nil
+	}
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(body, out)
+}
+
+func (c *ctl) rebuild(hubURL string, args []string) error {
+	if len(args) != 1 {
+		return errors.New("rebuild <session>")
+	}
+	s, err := c.resolve(args[0])
+	if err != nil {
+		return err
+	}
+	if err := rest(hubURL, "POST", "/sessions/"+s.Id+"/rebuild", nil); err != nil {
+		return err
+	}
 	fmt.Println("rebuilding", s.Id[:8], "- it re-renders when next opened")
 	return nil
+}
+
+// pair prints a one-time code another device can pair with.
+func pairCode(hubURL string) error {
+	code := &v1.PairingCode{}
+	if err := rest(hubURL, "POST", "/pairing-codes", code); err != nil {
+		return err
+	}
+	link := "tether://pair?hub=" + url.QueryEscape(hubURL) + "&code=" + code.Code
+	if code.CertFingerprint != "" {
+		link += "&fp=" + code.CertFingerprint
+	}
+	fmt.Printf("code: %s (valid until %s)\nlink: %s\n", code.Code, time.UnixMilli(code.ExpiresMs).Format("15:04"), link)
+	fmt.Println("\nApp: on the setup screen, type the hub address and code (or scan the QR code from another app's Add a device).")
+	fmt.Println("Agent: tether-agent pair -hub " + hubURL + " -token-file <path> " + code.Code)
+	return nil
+}
+
+func devices(hubURL string) error {
+	list := &v1.DeviceList{}
+	if err := rest(hubURL, "GET", "/devices", list); err != nil {
+		return err
+	}
+	for _, d := range list.Devices {
+		fmt.Printf("%s  %-6s %-16s %-8s seen %s\n", d.Id[:8], d.Kind, d.Name, d.Platform, time.UnixMilli(d.LastSeenMs).Format("2006-01-02 15:04"))
+	}
+	return nil
+}
+
+func revoke(hubURL string, args []string) error {
+	if len(args) != 1 {
+		return errors.New("revoke <device id>")
+	}
+	list := &v1.DeviceList{}
+	if err := rest(hubURL, "GET", "/devices", list); err != nil {
+		return err
+	}
+	for _, d := range list.Devices {
+		if strings.HasPrefix(d.Id, args[0]) {
+			if err := rest(hubURL, "DELETE", "/devices/"+d.Id, nil); err != nil {
+				return err
+			}
+			fmt.Println("revoked", d.Name)
+			return nil
+		}
+	}
+	return fmt.Errorf("no device matches %q", args[0])
 }
 
 func (c *ctl) approve(args []string) error {
