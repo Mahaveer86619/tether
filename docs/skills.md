@@ -28,13 +28,21 @@ The sync sessions show what a skill would hold. Each one ended up running the sa
 ## How Tether would learn
 
 1. **Collect.** The hub already keeps each chat's messages and every session's timeline. A job reads finished turns: your request, the tool calls (command lines, files touched), the result, whether you accepted it or corrected it, the device and folder.
-2. **Fingerprint.** Reduce each task to a signature: the request as a bag of words (the local hashing and TF-IDF embedder already decided in [plan.md](plan.md)), plus the tool sequence with the variable parts masked (paths, ids, dates, hostnames become placeholders), plus the device and folder.
-3. **Detect repeats.** Cluster signatures. A cluster with at least 3 members in 30 days, mostly successful, becomes a candidate. One-off tasks never do.
+2. **Fingerprint.** Reduce each task to a signature: the request as a bag of words and word pairs (the local hashing embedder already decided in [plan.md](plan.md)), plus the set of steps with the variable parts masked (paths, ids, dates, addresses become placeholders), plus the device and folder.
+3. **Detect repeats.** Cluster by **what was asked**: two tasks are the same routine when their requests share enough words, and the steps they share (counted by how rare they are, so `grep` and `sed` count for little) add to that. A group with at least 3 runs in 2 or more sessions in the last 30 days, mostly without failures, becomes a candidate. Follow-ups ("yes start", "check again"), pasted reports, summaries and messages over 300 characters are not asks. A request copied into a fork or a moved chat counts once. One-off tasks never become candidates.
 4. **Draft.** A session on the right device writes the skill from the successful runs: the parameters (what varied), the steps, the expected output shape, and what to check first. Read-only steps and mutating steps are labelled apart.
 5. **Ask.** The app shows the suggestion: the name, what it does, the runs it came from, and a dry run. Approve, edit or dismiss. Read-only skills can be set to create themselves; anything that changes data always asks. (Default: ask, as in plan.md.)
 6. **Keep and sync.** The hub stores the skill as the source of truth (artifact store, with versions). Agents copy it into `~/.claude/skills/<name>/` or the project's `.claude/skills/`, by scope: global, project or device.
 7. **Use.** When a chat starts, the hub matches your words against the skills in scope and lists the matches in the lead's system prompt ("skill `v2-sync-progress` fits this"). Chat target detection and skills use the same folder signals, so a skill tied to `fk-ims-wvs` also helps pick that folder.
 8. **Correct.** A hub MCP tool, `update_skill`, lets Claude fix a skill when a step fails or you correct it. Each change is a new version with a note on why. The app shows the diff and can roll back. A skill that fails twice in a row is flagged for review rather than quietly kept.
+
+## What the first run on the real history showed
+
+Step 2 is built (`skills.Cluster`, `GET /api/v1/skills/candidates`, and `tools/skillscan` for a copy of a hub database). Run on 74 sessions and 546 tasks, it changed the design:
+
+- **Steps are not the same each time.** The first version clustered on the commands and found fifteen "routines" that were mostly unrelated work sharing `grep`, `sed` and `python`, plus follow-ups and pasted text. A real "progress?" is answered by `date`, a shell function, `curl` of the dashboard or a `tail`, differently each day. So the request decides, and the steps are evidence for the skill's draft, not the test for a routine.
+- **The result is small and right.** With 3 runs in 2 sessions: one routine, "progress?", 5 runs in 3 sessions, whose shared step is the query of the dashboard's `/api/state`. At 2 runs a few more show: "install latest apps" (adb pairing then install), "save everything to memory", "run this on the mini PC in tmux".
+- **Real history is noisier than the test corpus.** Forks copy history, so the same request appears in several sessions; shell helper functions and PowerShell variables made unusable step names (they now read as `shell`); some tasks run to 50 steps. The corpus now reflects these.
 
 ## Safety
 
