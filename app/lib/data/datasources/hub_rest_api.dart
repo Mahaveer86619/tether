@@ -202,6 +202,14 @@ class HubRestApi {
 
   Future<pb.UsageSummary> usage() => _get('/usage', pb.UsageSummary());
 
+  /// The routines found in the hub's history (see docs/skills.md). Plain JSON,
+  /// not a protobuf message.
+  Future<Map<String, dynamic>> routines({required int days, required int runs}) async {
+    final json = await _sendJson(() => _client.get(_endpoint.api('/skills/candidates', {'days': '$days', 'runs': '$runs'}), headers: _headers));
+    if (json is! Map<String, dynamic>) throw const ProtocolException('unexpected response shape: routines');
+    return json;
+  }
+
 
   Future<pb.PairingCode> createPairingCode() => _post('/pairing-codes', null, pb.PairingCode());
 
@@ -268,6 +276,16 @@ class HubRestApi {
       };
 
   Future<T> _send<T extends GeneratedMessage>(Future<http.Response> Function() request, T into, {Duration? timeout}) async {
+    final json = await _sendJson(request, timeout: timeout);
+    try {
+      return into..mergeFromProto3Json(json, ignoreUnknownFields: true);
+    } catch (e) {
+      throw ProtocolException('unexpected response shape: $e');
+    }
+  }
+
+  /// The decoded JSON of a successful answer; failures become exceptions.
+  Future<Object?> _sendJson(Future<http.Response> Function() request, {Duration? timeout}) async {
     final limit = timeout ?? this.timeout;
     final http.Response res;
     try {
@@ -304,10 +322,6 @@ class HubRestApi {
         message: err.message.isEmpty ? (res.reasonPhrase ?? 'HTTP ${res.statusCode}') : err.message,
       );
     }
-    try {
-      return into..mergeFromProto3Json(json, ignoreUnknownFields: true);
-    } catch (e) {
-      throw ProtocolException('unexpected response shape: $e');
-    }
+    return json;
   }
 }

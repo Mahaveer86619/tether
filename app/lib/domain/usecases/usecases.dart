@@ -419,6 +419,12 @@ class LoadUsage {
   Future<Result<UsageSummary>> call() => _hub.usage();
 }
 
+class LoadRoutines {
+  const LoadRoutines(this._hub);
+  final HubRepository _hub;
+  Future<Result<RoutineReport>> call({int days = 30, int runs = 3}) => _hub.routines(days: days, runs: runs);
+}
+
 class ListClients {
   const ListClients(this._hub);
   final HubRepository _hub;

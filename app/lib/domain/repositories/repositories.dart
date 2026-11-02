@@ -95,6 +95,9 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  /// Routines that keep coming back in the hub's history; [days] 0 means all of it.
+  Future<Result<RoutineReport>> routines({int days = 30, int runs = 3});
+
   /// The apps connected to the hub now. A hub from before 0.15 has no list.
   Future<Result<List<ConnectedClient>>> clients();
 

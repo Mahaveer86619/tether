@@ -44,7 +44,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 
 ## Views
 
-- **Navigation** (`nav/nav_cubit.dart`): one `NavCubit` holds where the app is: the destination (Home, Devices, Activity, Files, Usage, Settings), the screens open on top of it (a chat, a new chat, a session, a device), and a history for Back (up to 50 steps). Every layout renders from it, and every screen moves through it; no screen keeps navigation state of its own.
+- **Navigation** (`nav/nav_cubit.dart`): one `NavCubit` holds where the app is: the destination (Home, Devices, Activity, Files, Routines, Usage, Settings), the screens open on top of it (a chat, a new chat, a session, a device), and a history for Back (up to 50 steps). Every layout renders from it, and every screen moves through it; no screen keeps navigation state of its own.
   - Back (the phone's back button, a back arrow, Esc outside a chat or session, the mouse's back button) restores the previous state. With no history it closes the top screen, then returns to Chats; on Chats with nothing open, the phone's back leaves the app.
   - Opening a session that is a chat's active session opens the chat, so you stay in the conversation. Other sessions open on their own.
   - A new chat becomes its chat in place, so Back skips the empty composer.
@@ -71,6 +71,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   3. **Apps:** the apps connected now (`GET /api/v1/clients`), with their versions, "this app" on the app's own entry, and "update" when older than the hub. An older hub says it can't list them.
 
   Then an "Adding a device" guide (hub, agents, apps; see [running.md](running.md#install-order)) and the rest of the tailnet.
+- **Routines** (`routines/`): what keeps being asked, read from the hub's history (`GET /api/v1/skills/candidates`, see [skills.md](skills.md)). Each card shows the usual wording, how many runs in how many sessions, whether it only looks or changes things, how clean the runs were, where it ran and when it last came up; tap it for how it was asked and the steps most runs take. Filters: the last 30 days or all history, and whether to include routines with only 2 runs. It only lists; nothing is created.
 - **Activity:** a feed grouped by day: sessions started, forked, continued on the hub, finished or failed, and files saved.
 - **Files** (`artifacts/files_page.dart`): the hub's artifact store as a list. Search covers names and notes. It filters by type (images, documents, data, media, attached), session and size, and sorts by date, size or name. Each row shows its size, session and note, and has download, copy link, open session and delete. Downloads and uploads show as progress bars with speed, pause, resume and cancel (see [plan.md](plan.md#large-files)). Opened from a session's menu ("This session's files"), the page shows only that session's files, and its Attach button attaches to it. The **Pages** filter lists the pages sessions made (`artifacts/pages_view.dart`), each with Open, which opens it in the browser, and Copy link; a session's own pages are also in its menu.
 - **Mark as done:** the session menu archives a session on the hub, so it leaves the "pick up" lists on every client. It comes back by itself if it starts working again.

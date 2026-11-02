@@ -459,6 +459,10 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<RoutineReport>> routines({int days = 30, int runs = 3}) =>
+      _command(() async => routineReportFromJson(await _api.routines(days: days, runs: runs)));
+
+  @override
   Future<Result<List<ConnectedClient>>> clients() => _command(() async => [for (final c in (await _api.clients()).clients) clientFromPb(c)]);
 
   @override

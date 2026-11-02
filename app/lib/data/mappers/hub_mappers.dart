@@ -283,3 +283,36 @@ Release? releaseFromPb(pb.UpdateManifest m) => m.version.isEmpty
         published: DateTime.tryParse(m.published),
         assets: {for (final e in m.platforms.entries) e.key: UpdateAsset(name: e.value.name, url: e.value.url, sha256: e.value.sha256, size: e.value.size.toInt())},
       );
+
+DateTime? _ms(Object? v) => v is num && v > 0 ? DateTime.fromMillisecondsSinceEpoch(v.toInt()) : null;
+
+List<String> _strings(Object? v) => [for (final s in v as List<dynamic>? ?? const []) '$s'];
+
+RoutineReport routineReportFromJson(Map<String, dynamic> m) => RoutineReport(
+      sessions: (m['sessions'] as num?)?.toInt() ?? 0,
+      tasks: (m['tasks'] as num?)?.toInt() ?? 0,
+      routines: [
+        for (final r in m['candidates'] as List<dynamic>? ?? const [])
+          Routine(
+            example: (r as Map<String, dynamic>)['example'] as String? ?? '',
+            requests: _strings(r['requests']),
+            runs: (r['runs'] as num?)?.toInt() ?? 0,
+            sessions: (r['sessions'] as num?)?.toInt() ?? 0,
+            nodes: _strings(r['nodes']),
+            cwds: _strings(r['cwds']),
+            mutating: r['mutating'] as bool? ?? false,
+            clean: (r['clean'] as num?)?.toDouble() ?? 1,
+            first: _ms(r['firstMs']),
+            last: _ms(r['lastMs']),
+            steps: [
+              for (final s in r['steps'] as List<dynamic>? ?? const [])
+                RoutineStep(
+                  key: (s as Map<String, dynamic>)['key'] as String? ?? '',
+                  detail: s['detail'] as String? ?? '',
+                  mutating: s['mutating'] as bool? ?? false,
+                  share: (s['share'] as num?)?.toDouble() ?? 0,
+                ),
+            ],
+          ),
+      ],
+    );

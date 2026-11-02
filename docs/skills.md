@@ -64,8 +64,8 @@ Real sessions are never touched by tests. The corpus is the owner's patterns rew
 
 ## Build order
 
-1. Task records from the existing history (collect and fingerprint), with the test corpus. No UI.
-2. Clustering and a read-only list of candidates in the app, to check against what the owner would want.
+1. Task records from the existing history (collect and fingerprint), with the test corpus. No UI. **Built.**
+2. Clustering and a read-only list of candidates in the app (Routines), to check against what the owner would want. **Built**; see what the first run showed, above.
 3. Drafting, approval, storage and sync to agents.
 4. Matching in chat start; `update_skill` and versions; the diff view.
 5. Auto-create for read-only skills.

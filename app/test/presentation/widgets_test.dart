@@ -704,6 +704,42 @@ void main() {
       expect(find.text('1 file · 2 KB'), findsOneWidget);
     });
 
+    testWidgets('routines: what keeps being asked, read-only, with the steps most runs take', (tester) async {
+      repo.routineReport = RoutineReport(sessions: 74, tasks: 546, routines: [
+        Routine(
+          example: 'progress?',
+          requests: const ['progress?', 'What is the progress of sync??', 'check the v2 sync progress'],
+          runs: 5,
+          sessions: 3,
+          nodes: const ['minipc'],
+          cwds: const ['/home/synlabs/development/fk-ims-wvs'],
+          clean: 0.8,
+          last: DateTime.now().subtract(const Duration(days: 2)),
+          steps: const [RoutineStep(key: 'Bash:curl', detail: 'curl -s http://<ip>/api/state', share: 0.6)],
+        ),
+      ]);
+      await pumpApp(tester, const Size(1400, 1000));
+      await tester.tap(find.byKey(const Key('nav-routines')));
+      await settle(tester);
+      expect(repo.routineRequests.last, (30, 3));
+      expect(find.textContaining('Read 546 requests from 74 sessions'), findsOneWidget);
+      expect(find.text('progress?'), findsOneWidget);
+      expect(find.text('5 runs in 3 sessions'), findsOneWidget);
+      expect(find.text('read-only'), findsOneWidget);
+      expect(find.text('80% without failures'), findsOneWidget);
+      expect(find.text('curl -s http://<ip>/api/state'), findsNothing, reason: 'steps show when a card is opened');
+      await tester.tap(find.text('progress?'));
+      await settle(tester);
+      expect(find.text('curl -s http://<ip>/api/state'), findsOneWidget);
+      expect(find.text('60%'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routines-all')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('routines-two')));
+      await settle(tester);
+      expect(repo.routineRequests.last, (0, 2), reason: 'all history, at least 2 runs');
+    });
+
     testWidgets('files: search, filters, sort, and a download with its progress and controls', (tester) async {
       final now = DateTime.now();
       repo.emitHub(snapshotWith([session('s1'), session('s2')]).copyWith(artifacts: {

@@ -34,6 +34,7 @@ import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
+import 'presentation/routines/routines_cubit.dart';
 import 'presentation/usage/usage_cubit.dart';
 
 final sl = GetIt.instance;
@@ -90,6 +91,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => LoadTailnet(sl()))
     ..registerLazySingleton(() => ListClients(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
+    ..registerLazySingleton(() => LoadRoutines(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))
@@ -114,6 +116,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
+    ..registerFactory(() => RoutinesCubit(load: sl()))
     ..registerFactory(() => ArtifactsCubit(artifacts: sl(), transfers: sl()))
     ..registerFactory(() => PagesCubit(artifacts: sl()))
     ..registerLazySingleton(() => Codebases(sl()))
