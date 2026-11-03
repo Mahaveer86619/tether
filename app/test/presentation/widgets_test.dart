@@ -144,7 +144,8 @@ void main() {
         ..registerSingleton<HubRepository>(repo)
         ..registerSingleton<TransferRepository>(transfers)
         ..registerSingleton<SettingsRepository>(settings)
-        ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository());
+        ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository())
+        ..registerSingleton<TailscaleRepository>(FakeTailscale());
       configureDependencies(withData: false);
     });
 

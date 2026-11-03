@@ -174,6 +174,23 @@ abstract interface class TransferRepository {
   Future<Result<Artifact>> upload(LocalFile file, {String session = '', String note = '', bool deliver = false});
 }
 
+/// This device's Tailscale: checking it, and bringing it up where the device
+/// allows (the desktop can; a phone can only be asked to, or opened).
+abstract interface class TailscaleRepository {
+  /// Whether the app can start Tailscale itself rather than only open it.
+  bool get canStart;
+
+  Future<TailscaleStatus> status();
+
+  /// Brings Tailscale up and reports each change on the way, ending with the
+  /// last status: running, or why it isn't. It can take minutes when the owner
+  /// has to sign in.
+  Stream<TailscaleStatus> start();
+
+  /// Opens the Tailscale app, where there is one.
+  Future<void> openApp();
+}
+
 abstract interface class SettingsRepository {
   Future<Result<HubConnection>> loadConnection();
   Future<Result<void>> saveConnection(HubConnection connection);

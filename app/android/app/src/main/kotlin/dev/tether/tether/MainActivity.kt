@@ -19,6 +19,16 @@ import java.io.File
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Tailscale: is it here, ask it to connect, open it. See
+        // lib/data/datasources/tailscale_android.dart.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tether/tailscale").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "installed" -> result.success(tailscaleInstalled())
+                "connect" -> result.success(tailscaleConnect())
+                "open" -> result.success(tailscaleOpen())
+                else -> result.notImplemented()
+            }
+        }
         // App updates: hand a downloaded, checked APK to the system installer,
         // and say a release is out. See lib/data/datasources/update_platform.dart.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tether/update").setMethodCallHandler { call, result ->
@@ -31,6 +41,28 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private val tailscalePackage = "com.tailscale.ipn"
+
+    private fun tailscaleInstalled(): Boolean = try {
+        packageManager.getPackageInfo(tailscalePackage, 0)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
+    }
+
+    /** Asks Tailscale to connect, through the intent its receiver listens for. */
+    private fun tailscaleConnect(): Boolean {
+        if (!tailscaleInstalled()) return false
+        sendBroadcast(Intent("com.tailscale.ipn.CONNECT_VPN").setPackage(tailscalePackage))
+        return true
+    }
+
+    private fun tailscaleOpen(): Boolean {
+        val launch = packageManager.getLaunchIntentForPackage(tailscalePackage) ?: return false
+        startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return true
     }
 
     private fun installApk(path: String, result: MethodChannel.Result) {

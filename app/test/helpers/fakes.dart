@@ -643,3 +643,35 @@ Release release(String version, {String minSupported = '', String notes = '- Fas
         'windows': UpdateAsset(name: 'tether-windows-$version.zip', url: '/api/v1/updates/files/$version/tether-windows-$version.zip', sha256: 'cd', size: 100),
       },
     );
+
+/// Tailscale that does what the test says; nothing touches the real one.
+class FakeTailscale implements TailscaleRepository {
+  FakeTailscale({this.startable = true});
+
+  final bool startable;
+  var current = const TailscaleStatus(TailscaleState.running);
+
+  /// What [start] reports, in order.
+  var steps = <TailscaleStatus>[];
+  var checks = 0, starts = 0, opened = 0;
+
+  @override
+  bool get canStart => startable;
+
+  @override
+  Future<TailscaleStatus> status() async {
+    checks++;
+    return current;
+  }
+
+  @override
+  Stream<TailscaleStatus> start() async* {
+    starts++;
+    for (final s in steps) {
+      yield s;
+    }
+  }
+
+  @override
+  Future<void> openApp() async => opened++;
+}

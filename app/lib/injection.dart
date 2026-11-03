@@ -11,6 +11,8 @@ import 'data/datasources/hub_rest_api.dart';
 import 'data/datasources/hub_socket.dart';
 import 'data/datasources/hub_tls.dart';
 import 'data/datasources/settings_local.dart';
+import 'data/datasources/tailscale_android.dart';
+import 'data/datasources/tailscale_desktop.dart';
 import 'data/repositories/hub_repository_impl.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
@@ -35,6 +37,7 @@ import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
+import 'presentation/tailscale/tailscale_cubit.dart';
 import 'presentation/usage/usage_cubit.dart';
 
 final sl = GetIt.instance;
@@ -64,6 +67,7 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
       ..registerLazySingleton<FileDownloads>(BackgroundFileDownloads.new)
       ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
+      ..registerLazySingleton<TailscaleRepository>(_tailscale)
       ..registerLazySingleton<UpdateRepository>(() => UpdateRepositoryImpl(api: sl(), client: sl(), platform: sl(), local: sl()))
       ..registerLazySingleton<TransferRepository>(() => TransferRepositoryImpl(api: sl(), downloads: sl()), dispose: (r) => (r as TransferRepositoryImpl).dispose());
   }
@@ -92,6 +96,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => ListClients(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
     ..registerLazySingleton(() => LoadRoutines(sl()))
+    ..registerLazySingleton(() => EnsureTailscale(sl()))
     ..registerLazySingleton(() => Skills(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
@@ -118,6 +123,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
+    ..registerFactory(() => TailscaleCubit(ensure: sl(), watchHub: sl(), retryHub: sl()))
     ..registerFactory(() => ArtifactsCubit(artifacts: sl(), transfers: sl()))
     ..registerFactory(() => PagesCubit(artifacts: sl()))
     ..registerLazySingleton(() => Codebases(sl()))
@@ -156,4 +162,10 @@ String _title(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 /// The device's network changing (Wi-Fi, mobile data, a VPN coming up),
 /// without the state it starts in.
+/// Tailscale as this kind of device allows: the desktop starts it itself, a
+/// phone is asked and pointed at the app.
+TailscaleRepository _tailscale() => Platform.isAndroid
+    ? AndroidTailscale()
+    : (Platform.isWindows || Platform.isMacOS || Platform.isLinux ? DesktopTailscale() : const NoTailscale());
+
 Stream<void> _networkChanges() => Connectivity().onConnectivityChanged.map((r) => (r.map((e) => e.name).toList()..sort()).join(',')).distinct().skip(1);

@@ -1260,3 +1260,41 @@ class SkillDetail extends Equatable {
   @override
   List<Object?> get props => [info, versions];
 }
+
+/// Where this device's Tailscale stands.
+enum TailscaleState {
+  /// Not looked at yet, or it can't be told.
+  unknown,
+  notInstalled,
+
+  /// The Tailscale service or app isn't running.
+  serviceStopped,
+
+  /// Running but switched off.
+  stopped,
+
+  /// Needs the owner to sign in; [TailscaleStatus.loginUrl] is where.
+  needsLogin,
+  starting,
+  running,
+
+  /// This kind of device can't be checked (the app does nothing then).
+  unsupported,
+}
+
+class TailscaleStatus extends Equatable {
+  const TailscaleStatus(this.state, {this.loginUrl = '', this.message = ''});
+
+  final TailscaleState state;
+
+  /// The sign-in page, when [state] is [TailscaleState.needsLogin].
+  final String loginUrl;
+
+  /// What went wrong or what the owner has to do, in a sentence.
+  final String message;
+
+  bool get running => state == TailscaleState.running;
+
+  @override
+  List<Object?> get props => [state, loginUrl, message];
+}

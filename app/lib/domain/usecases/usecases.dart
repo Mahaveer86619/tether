@@ -437,6 +437,17 @@ class Skills {
   Future<Result<String>> draft(String example) => _hub.draftSkill(example);
 }
 
+/// Brings Tailscale up in the background and says how it is going.
+class EnsureTailscale {
+  const EnsureTailscale(this._tailscale);
+  final TailscaleRepository _tailscale;
+
+  bool get canStart => _tailscale.canStart;
+  Future<TailscaleStatus> check() => _tailscale.status();
+  Stream<TailscaleStatus> start() => _tailscale.start();
+  Future<void> openApp() => _tailscale.openApp();
+}
+
 class ListClients {
   const ListClients(this._hub);
   final HubRepository _hub;
