@@ -14,7 +14,7 @@ What is left to build, in the order that makes sense, so the next development ca
 | 6 | **Follow a remote session live in its chat, and message it** | M | A linked session's timeline streams into the chat; a message can go to it from there | 4 |
 | 7 | **History views in the app** | M | The hub keeps all history and exports it; the app has no screen for a chat's combined history, search or "synced up to" | |
 | 8 | **Skills, the unfinished parts** | M | Run a real draft and look at what comes out; match a skill to a new request; copy approved skills into `~/.claude/skills`; auto-create read-only skills | Real use of 1-3 steps already built |
-| 9 | **Confirm Tailscale on the phone** | S | Whether the Android connect intent is honoured (`adb shell dumpsys package com.tailscale.ipn`), and what to do if it is not | The phone on adb |
+| 9 | ~~Confirm Tailscale on the phone~~ | Done | The Android connect intent works: Tailscale turns on by itself when Tether needs the hub | |
 | 10 | **Loose ends** | S | The phone flapping seen on 2 Nov (unexplained); "backup import points at a missing artifact file"; messages before 0.17.x have no file link; remove `new_session/` | |
 
 ## 2. Before 1.0

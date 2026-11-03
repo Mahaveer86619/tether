@@ -47,7 +47,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 |---|---|---|---|---|
 | Hub, agents and apps, install order, updates from the hub | Built | Devices | [running.md](running.md), [releasing.md](releasing.md) | CI on GitHub not switched on |
 | Pairing with a code or QR; per-device tokens; revoke | Built | Settings, Devices | [plan.md](plan.md#connecting-devices), [security.md](security.md) | |
-| Tailscale looked after in the background | Built (this change) | Banner under the header | [app.md](app.md#tailscale-in-the-background) | Android intent not confirmed on a phone |
+| Tailscale looked after in the background | Built; confirmed on the phone (auto-connect works) and the laptop | Banner under the header | [app.md](app.md#tailscale-in-the-background) | Desktop start and sign-in paths are tested against a fake command line only |
 | Usage and plan limits per machine | Built | Usage | [plan.md](plan.md#usage-tracking) | |
 | Users, roles, sharing | Planned | | [plan.md](plan.md#users-roles-and-visibility) | |
 | Remove data or Tether, per scope and per device | Planned | Settings | [uninstall.md](uninstall.md) | |
