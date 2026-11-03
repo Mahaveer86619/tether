@@ -85,3 +85,36 @@ String clockTime(DateTime t) {
   final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
   return '$h:${t.minute.toString().padLeft(2, '0')}${t.hour < 12 ? 'am' : 'pm'}';
 }
+
+/// A short name for a shell command, for a card's header: what it runs, not
+/// the whole line ("go test ./…", "git status +2"). The full command is in the
+/// card's body. A leading `cd dir &&` is skipped, only the first command is
+/// named, and `+N` says how many more are chained after it.
+String shellSummary(String command, {int max = 44}) {
+  final line = command.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => '').trim();
+  var parts = line.split(RegExp(r'&&|\|\||;|\|')).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+  while (parts.isNotEmpty && RegExp(r'^cd(\s|$)').hasMatch(parts.first)) {
+    parts = parts.sublist(1);
+  }
+  if (parts.isEmpty) return line.length <= max ? line : '${line.substring(0, max - 1)}…';
+  // Quoted text and everything from the first redirection or heredoc on say little.
+  final head = parts.first.replaceAll(RegExp(r'"[^"]*"|' "'[^']*'"), ' ').split(RegExp(r'(^|\s)\d*[<>]')).first.trim();
+  var words = head.split(RegExp(r'\s+'));
+  while (words.isNotEmpty && (RegExp(r'^[A-Za-z_][A-Za-z0-9_]*=').hasMatch(words.first) || words.first == 'sudo' || words.first == 'export')) {
+    words = words.sublist(1);
+  }
+  if (words.isEmpty) return line.length <= max ? line : '${line.substring(0, max - 1)}…';
+  final more = parts.length - 1;
+  final suffix = more > 0 ? ' +$more' : '';
+  // The command's own name, then up to two plain words after it: a subcommand and a target.
+  final shown = <String>[baseName(words.first).replaceAll(RegExp(r'\.exe$'), '')];
+  for (final w in words.skip(1)) {
+    // Flags and their numbers, quoted text and redirections or heredocs say little.
+    if (w.startsWith('-') || w.startsWith('"') || w.startsWith("'") || RegExp(r'^\d*[<>]').hasMatch(w) || RegExp(r'^\d+$').hasMatch(w) || w.contains('=')) continue;
+    shown.add(w.length > 24 ? '${w.substring(0, 23)}…' : w);
+    if (shown.length == 3) break;
+  }
+  final text = shown.join(' ');
+  final room = max - suffix.length;
+  return (text.length <= room ? text : '${text.substring(0, room - 1)}…') + suffix;
+}

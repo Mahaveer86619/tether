@@ -140,6 +140,8 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)
+	h.skillRoutes(mux)
+	h.skillLibraryRoutes(mux)
 	h.screenRoutes(mux)
 	h.modeRoutes(mux)
 	mux.HandleFunc("GET /api/v1/clients", h.api(func(r *http.Request) (proto.Message, *opError) { return h.clientList(), nil }))

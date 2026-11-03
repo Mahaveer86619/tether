@@ -1143,3 +1143,63 @@ class Release extends Equatable {
   @override
   List<Object?> get props => [version, notes, minSupported, published, assets];
 }
+
+/// A step most runs of a routine take.
+class RoutineStep extends Equatable {
+  const RoutineStep({required this.key, required this.detail, this.mutating = false, this.share = 0});
+
+  final String key, detail;
+
+  /// It changes something rather than only looking.
+  final bool mutating;
+
+  /// The share of runs that take it, 0 to 1.
+  final double share;
+
+  @override
+  List<Object?> get props => [key, detail, mutating, share];
+}
+
+/// Something asked again and again, found in the hub's history.
+class Routine extends Equatable {
+  const Routine({
+    required this.example,
+    this.requests = const [],
+    this.runs = 0,
+    this.sessions = 0,
+    this.nodes = const [],
+    this.cwds = const [],
+    this.mutating = false,
+    this.clean = 1,
+    this.first,
+    this.last,
+    this.steps = const [],
+  });
+
+  final String example;
+
+  /// The latest requests, to show how it's worded.
+  final List<String> requests;
+  final int runs, sessions;
+  final List<String> nodes, cwds;
+  final bool mutating;
+
+  /// The share of runs with no failed step, 0 to 1.
+  final double clean;
+  final DateTime? first, last;
+  final List<RoutineStep> steps;
+
+  @override
+  List<Object?> get props => [example, requests, runs, sessions, nodes, cwds, mutating, clean, first, last, steps];
+}
+
+class RoutineReport extends Equatable {
+  const RoutineReport({this.sessions = 0, this.tasks = 0, this.routines = const []});
+
+  /// How much history was read.
+  final int sessions, tasks;
+  final List<Routine> routines;
+
+  @override
+  List<Object?> get props => [sessions, tasks, routines];
+}

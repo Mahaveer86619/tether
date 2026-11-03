@@ -90,6 +90,8 @@ class SpanText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // Translucent: a background is painted over the selection highlight, so an opaque one hides the selection.
+    final codeBg = Theme.of(context).brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.28) : Colors.black.withValues(alpha: 0.07);
     final children = <InlineSpan>[
       for (final s in spans)
         TextSpan(
@@ -103,7 +105,7 @@ class SpanText extends StatelessWidget {
             fontFamily: s.code ? monoFont : null,
             fontFamilyFallback: s.code ? monoFallback : null,
             fontSize: s.code ? style.fontSize! * 0.88 : null,
-            backgroundColor: s.code ? c.codeBg : null,
+            backgroundColor: s.code ? codeBg : null,
           ),
           recognizer: s.link.isNotEmpty ? (TapGestureRecognizer()..onTap = () => _open(s.link)) : null,
         ),

@@ -18,6 +18,7 @@ import (
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 	"github.com/Mahaveer86619/tether/server/internal/render"
+	"github.com/Mahaveer86619/tether/server/internal/skills"
 	"github.com/Mahaveer86619/tether/server/internal/store"
 	"github.com/Mahaveer86619/tether/server/internal/tailnet"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
@@ -110,6 +111,9 @@ type Hub struct {
 	sent        map[string][]sentMsg         // session -> messages sent through the hub
 	keptSources map[string]map[string]string // session -> item -> source, across a rebuild
 
+	skills    skillCache
+	libOnce   sync.Once
+	library   *skills.Library
 	uploadMu  sync.Mutex
 	uploading map[string]bool // upload id -> a request is writing it
 

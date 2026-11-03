@@ -17,6 +17,7 @@ import '../settings/settings_page.dart';
 import '../theme/theme.dart';
 import '../update/update_banner.dart';
 import '../update/update_cubit.dart';
+import '../routines/routines_page.dart';
 import '../usage/usage_page.dart';
 import '../widgets/common.dart';
 import 'activity_page.dart';
@@ -71,6 +72,7 @@ const List<_Dest> _destinations = [
   (d: Destination.devices, icon: Icons.devices_outlined, selected: Icons.devices_rounded, label: 'Devices'),
   (d: Destination.activity, icon: Icons.history_rounded, selected: Icons.history_rounded, label: 'Activity'),
   (d: Destination.files, icon: Icons.folder_open_outlined, selected: Icons.folder_open_rounded, label: 'Files'),
+  (d: Destination.routines, icon: Icons.auto_awesome_outlined, selected: Icons.auto_awesome_rounded, label: 'Routines'),
   (d: Destination.usage, icon: Icons.insights_outlined, selected: Icons.insights_rounded, label: 'Usage'),
 ];
 
@@ -98,6 +100,7 @@ Widget _destinationPage(BuildContext context, Destination d) {
     Destination.devices => DevicesPage(onNode: nav.openNode),
     Destination.activity => ActivityPage(onSession: nav.openSession),
     Destination.files => FilesPage(onSession: nav.openSession),
+    Destination.routines => const RoutinesPage(),
     Destination.usage => UsagePage(onSession: nav.openSession),
     Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.chats)),
   };

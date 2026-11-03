@@ -1,6 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tether/domain/entities/entities.dart';
@@ -260,6 +263,90 @@ void main() {
       final old = tester.widget<Opacity>(find.ancestor(of: find.text('history'), matching: find.byType(Opacity)).first);
       expect(old.opacity, 1);
       await settle(tester);
+    });
+
+    testWidgets('selecting text in the timeline paints a highlight that survives new messages', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'select these words please')),
+        rpb.TimelineItem(
+          itemId: 'm',
+          ord: Int64(2),
+          markdown: rpb.Markdown(blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('an assistant reply with several words')]))]),
+        ),
+      ]);
+      await settle(tester);
+      Future<List<int>> shot(Finder f) async {
+        final ro = tester.renderObject(f);
+        RenderObject? n = ro;
+        while (n != null && n is! RenderRepaintBoundary) {
+          n = n.parent;
+        }
+        final image = (await tester.runAsync(() => (n! as RenderRepaintBoundary).toImage()))!;
+        final data = (await tester.runAsync(() => image.toByteData(format: ui.ImageByteFormat.rawRgba)))!;
+        return data.buffer.asUint8List().toList();
+      }
+
+      for (final text in ['select these words please', 'an assistant reply with several words']) {
+        final target = find.text(text).first;
+        final before = await shot(target);
+        final r = tester.getRect(target);
+        final g = await tester.startGesture(r.centerLeft + const Offset(2, 0), kind: PointerDeviceKind.mouse);
+        await g.moveTo(r.centerRight - const Offset(2, 0));
+        await g.up();
+        await tester.pump();
+        final after = await shot(target);
+        var changed = 0;
+        for (var i = 0; i < before.length; i += 4) {
+          if (before[i] != after[i] || before[i + 1] != after[i + 1] || before[i + 2] != after[i + 2]) changed++;
+        }
+        expect(changed, greaterThan(500), reason: 'the selected words get a highlight band');
+        // The session keeps working: new items arrive while the text is selected.
+        repo.emitTimeline('s1', [
+          rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'select these words please')),
+          rpb.TimelineItem(
+            itemId: 'm',
+            ord: Int64(2),
+            markdown: rpb.Markdown(blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('an assistant reply with several words')]))]),
+          ),
+          rpb.TimelineItem(itemId: 'n${text.length}', ord: Int64(3), user: rpb.UserText(text: 'another message ${text.length}')),
+        ], version: 5 + text.length);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+        final later = await shot(find.text(text).first);
+        var kept = 0;
+        for (var i = 0; i < before.length && i < later.length; i += 4) {
+          if (before[i] != later[i] || before[i + 1] != later[i + 1] || before[i + 2] != later[i + 2]) kept++;
+        }
+        expect(kept, greaterThan(500), reason: 'new items arriving do not clear the selection');
+      }
+    });
+
+    testWidgets('inline code has a see-through background, so a selection shows through it', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(
+          itemId: 'm',
+          ord: Int64(1),
+          markdown: rpb.Markdown(blocks: [
+            rpb.Block(paragraph: rpb.Paragraph(spans: [span('Run '), span('tetherctl wipe', code: true), span(' now')])),
+          ]),
+        ),
+      ]);
+      await settle(tester);
+      final paragraph = tester.widget<RichText>(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().startsWith('Run ')).first);
+      Color? background;
+      paragraph.text.visitChildren((s) {
+        if (s is TextSpan && s.text == 'tetherctl wipe') background = s.style?.backgroundColor;
+        return true;
+      });
+      // A background is painted over the selection highlight, so an opaque one would hide it.
+      expect(background, isNotNull);
+      expect(background!.a, lessThan(1));
     });
 
     testWidgets('consecutive tool calls fold into one group', (tester) async {
@@ -702,6 +789,46 @@ void main() {
       await settle(tester);
       expect(find.text('notes.md'), findsOneWidget);
       expect(find.text('1 file · 2 KB'), findsOneWidget);
+    });
+
+    testWidgets('routines: what keeps being asked, read-only, with the steps most runs take', (tester) async {
+      repo.routineReport = RoutineReport(sessions: 74, tasks: 546, routines: [
+        Routine(
+          example: 'progress?',
+          requests: const ['progress?', 'What is the progress of sync??', 'check the v2 sync progress'],
+          runs: 5,
+          sessions: 3,
+          nodes: const ['minipc'],
+          cwds: const ['/home/synlabs/development/fk-ims-wvs'],
+          clean: 0.8,
+          last: DateTime.now().subtract(const Duration(days: 2)),
+          steps: const [RoutineStep(key: 'Bash:curl', detail: 'curl -s http://<ip>/api/state', share: 0.6)],
+        ),
+      ]);
+      await pumpApp(tester, const Size(1400, 1000));
+      await tester.tap(find.byKey(const Key('nav-routines')));
+      await settle(tester);
+      expect(repo.routineRequests.last, (30, 3));
+      expect(find.textContaining('Read 546 requests from 74 sessions'), findsOneWidget);
+      expect(find.text('progress?'), findsOneWidget);
+      expect(find.text('5 runs in 3 sessions'), findsOneWidget);
+      expect(find.text('read-only'), findsOneWidget);
+      expect(find.text('80% without failures'), findsOneWidget);
+      expect(find.text('curl http://<ip>/api/state'), findsNothing, reason: 'steps show when a card is opened');
+      await tester.tap(find.text('progress?'));
+      await settle(tester);
+      expect(find.text('curl http://<ip>/api/state'), findsOneWidget, reason: 'a step is named by what it runs');
+      expect(find.text('curl -s http://<ip>/api/state'), findsNothing, reason: 'the whole command only on tap');
+      expect(find.text('60%'), findsOneWidget);
+      await tester.tap(find.text('curl http://<ip>/api/state'));
+      await settle(tester);
+      expect(find.text('curl -s http://<ip>/api/state'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('routines-all')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('routines-two')));
+      await settle(tester);
+      expect(repo.routineRequests.last, (0, 2), reason: 'all history, at least 2 runs');
     });
 
     testWidgets('files: search, filters, sort, and a download with its progress and controls', (tester) async {

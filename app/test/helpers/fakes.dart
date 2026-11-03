@@ -146,6 +146,15 @@ class FakeHubRepository implements HubRepository {
   @override
   Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
 
+  RoutineReport routineReport = const RoutineReport();
+  final routineRequests = <(int, int)>[];
+
+  @override
+  Future<Result<RoutineReport>> routines({int days = 30, int runs = 3}) async {
+    routineRequests.add((days, runs));
+    return Ok(routineReport);
+  }
+
   List<ConnectedClient>? clientList = const [
     ConnectedClient(name: 'Pixel (android)', platform: 'android', appVersion: '0.14.0', deviceId: 'd1'),
   ];
