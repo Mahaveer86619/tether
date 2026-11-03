@@ -6,13 +6,16 @@ The Claude Code TUI is great at one session in one terminal. Tether is for when 
 
 ## What it does
 
-- **One place for every session.** Lists sessions on every node, including ones you started in a terminal, with title, folder, branch, status and cost.
-- **Live, properly rendered output.** Claude Code's raw event stream is parsed on the server into typed blocks (Markdown → headings, lists, tables, code; tool calls → diff, shell, checklist and file cards). Claude is never told how to format its answers.
-- **Continue anywhere.** Resume a laptop session from your phone, or fork it into the home-server sandbox.
-- **Approvals from anywhere.** Claude's permission prompts are routed to the app. Allow or deny from the phone or desktop.
-- **Home server sandbox.** The mini PC runs sessions in isolated containers, with the NAS as their shared drive.
-- **Nodes talk to each other.** A session on one machine can start or query a session on another through Tether's MCP tools.
-- **Live dashboard.** Nodes, running sessions, current to-do lists, pending approvals, scheduled runs, spend.
+- **Chat first.** Say what you want in one box. Tether picks the machine and folder (or you do), starts the work there, and keeps the conversation in one chat, even when the work spans several machines.
+- **One place for every session.** Sessions on every node, including ones you started in a terminal, live and properly rendered: Claude Code's raw event stream is parsed into typed blocks (Markdown, tables, code, diffs, checklists, tool cards). Claude is never told how to format its answers.
+- **A chat that leads.** The session you talk to can hand work to task sessions on your other machines and report back; they show as tasks in the chat.
+- **Approvals and questions from anywhere.** Permission prompts, plans and Claude's questions come to the app; answer from the phone or the desktop.
+- **Continue anywhere.** Resume a laptop session from your phone, fork it, or carry it on to the home server.
+- **Files both ways.** Attach anything, any size, from the phone; files and results Claude makes are kept on the hub and open from any device.
+- **It learns your routines.** Requests you keep making are found in your history and can become skills Claude runs instead of working them out again, only with your approval.
+- **Your own server.** The hub runs on a machine you own, over Tailscale. Nothing is public and nothing leaves your tailnet.
+
+What exists, what is pending and where each part is described: [docs/features.md](docs/features.md).
 
 ## How it fits together
 
@@ -76,7 +79,7 @@ Every part shares one version (`VERSION`). Apps and agents update themselves fro
 
 ## Status
 
-The hub, agent and contract work end to end: sessions on the laptop and the home server are indexed, mirrored live, started (in tmux on Linux, headless on Windows), continued, forked and approved from `tetherctl`. Hooks give every Claude Code session, including ones you start yourself, live state and remote approvals; on Windows the app can even type into your own terminal sessions. The Flutter app ([app/](app/)) runs on Android and Windows, chatbot-style, and updates itself. See [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
+Version 0.17. The hub, agents and app work end to end on the author's setup: a laptop, a home server and a phone. Chats, sessions across machines, approvals, files of any size, generated pages, usage, in-app updates and skill learning are built; see [docs/features.md](docs/features.md) for the exact state and the pending list. The next big piece is a pass over every screen before 1.0, planned in [docs/ui-overhaul.md](docs/ui-overhaul.md). See also [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
 
 ## Docs
 

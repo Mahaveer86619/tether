@@ -119,3 +119,19 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 - **Fork:** first shows what a fork is (a new session with a copy of this conversation; the original is untouched), then puts the composer in fork mode.
 - **Composer:** Enter sends on desktop, Shift+Enter adds a new line, Esc interrupts. For sessions open in your own terminal, the composer is replaced by a notice with **Fork**, except on Windows, where messages are typed into the terminal.
 - **Animation:** only items that arrive after the history has loaded animate in. While Claude works between messages, a "Claude is working" indicator shows.
+
+## Tailscale in the background
+
+The hub is reached over Tailscale, so the app looks after it instead of leaving that to you. All of it runs in the background after the app starts and never blocks a screen. It acts only when the hub's address is on the tailnet (a `100.64.0.0/10` address, a `.ts.net` name or a bare MagicDNS name) and the hub can't be reached; a hub on the local network is left alone. `TailscaleCubit` (`tailscale/`) decides; the platform classes do the work.
+
+- **When:** the hub has been unreachable for 4 seconds. After an attempt it waits at least 45 seconds before the next unless you tap **Try again**. Once Tailscale is up it tells the hub connection to retry at once instead of waiting out its backoff.
+- **Desktop** (`DesktopTailscale`, Windows, macOS and Linux): it uses the Tailscale command line (`tailscale status --json`).
+  - Running: nothing to do.
+  - The service is down: it starts it (`sc start Tailscale` on Windows; if that needs administrator rights the banner says so; `open -a Tailscale` on a Mac; the Linux message names `sudo systemctl start tailscaled`).
+  - Switched off: it runs `tailscale up`. If Tailscale refuses because the setup has settings `up` would change, it runs again with the exact command Tailscale suggests, so nothing about your setup is altered.
+  - Needs a sign-in: it takes the sign-in address that `up` prints and shows a **Sign in** button, then waits up to 5 minutes for you to finish.
+  - Not installed: the banner says so, with a link to get it.
+- **Android** (`AndroidTailscale`): Android doesn't let one app switch another's VPN on, so the app notices whether a VPN is up, asks Tailscale to connect through the intent it listens for (`com.tailscale.ipn.CONNECT_VPN`), waits a few seconds, and otherwise shows **Open Tailscale**. It never opens Tailscale by itself. Whether the intent is honoured depends on the Tailscale version and its settings, and is the part not yet confirmed on a phone.
+- **Anywhere else** (iOS, web): nothing is done and nothing is shown.
+- **What you see:** a slim banner under the header, only while the hub can't be reached and Tailscale is the likely reason: "Starting Tailscale so the hub can be reached…", "Tailscale needs you to sign in" with a button, or what is wrong with **Try again** and **Open Tailscale**. It goes away when the hub answers.
+- **Tests** use a fake process runner and a fake repository; nothing in the tests touches the real Tailscale.
