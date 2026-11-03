@@ -8,6 +8,7 @@ Start with [overview.md](overview.md) for what Tether is made of and how a chat 
 |---|---|
 | [features.md](features.md) | Every feature, its status, the screens it touches, what is pending. The page to point at when you want a change |
 | [ui-overhaul.md](ui-overhaul.md) | The pass over every screen before 1.0: the rules, the screen list, the shared parts, the run card |
+| [pipeline.md](pipeline.md) | What to build next, in order, with sizes, dependencies and the decisions needed from you |
 | [roadmap.md](roadmap.md) | Milestones and what "done" means for each |
 
 ## How it works
