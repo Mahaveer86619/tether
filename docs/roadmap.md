@@ -1,6 +1,16 @@
 # Roadmap
 
-Each milestone ends with something usable.
+Each milestone ends with something usable. For the state of every feature today, see [features.md](features.md); this page is the order and the meaning of "done".
+
+## Before 1.0
+
+M0 to M5 below are mostly built. What stands between here and 1.0 is, in order:
+
+1. **Finish what is half done:** the run card, following a remote session live in its chat, history views in the app, uploads from the Home box in the background (the list is in [features.md](features.md)).
+2. **The UI overhaul:** every screen, one pass, against shared rules ([ui-overhaul.md](ui-overhaul.md)).
+3. **Previews and interactive guides** ([previews-and-guides.md](previews-and-guides.md)), designed alongside the overhaul so the chat has room for them.
+4. **Clean removal** of data and of Tether ([uninstall.md](uninstall.md)).
+5. **CI switched on** on GitHub, so a tag builds and deploys ([releasing.md](releasing.md)).
 
 ## M0: Contract and fixtures
 

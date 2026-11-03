@@ -144,7 +144,8 @@ void main() {
         ..registerSingleton<HubRepository>(repo)
         ..registerSingleton<TransferRepository>(transfers)
         ..registerSingleton<SettingsRepository>(settings)
-        ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository());
+        ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository())
+        ..registerSingleton<TailscaleRepository>(FakeTailscale());
       configureDependencies(withData: false);
     });
 
@@ -829,6 +830,73 @@ void main() {
       await tester.tap(find.byKey(const Key('routines-two')));
       await settle(tester);
       expect(repo.routineRequests.last, (0, 2), reason: 'all history, at least 2 runs');
+    });
+
+    testWidgets('skills: draft one from a routine, check it, approve it, and go back a version', (tester) async {
+      const example = 'progress?';
+      repo.routineReport = const RoutineReport(sessions: 74, tasks: 546, routines: [
+        Routine(example: example, requests: [example], runs: 5, sessions: 3, nodes: ['minipc']),
+      ]);
+      await pumpApp(tester, const Size(1400, 1000));
+      await tester.tap(find.byKey(const Key('nav-routines')));
+      await settle(tester);
+      expect(find.text('Waiting for your approval'), findsNothing);
+
+      // Ask for a draft: the hub starts a session, and the app opens it.
+      await tester.tap(find.text('Draft a skill'));
+      await settle(tester);
+      expect(repo.skillDrafts, [example]);
+      expect(find.byKey(const Key('composer')), findsNothing, reason: 'it opens the drafting session, which is not known to this fake hub');
+
+      // The session saves a proposal; it appears when the page refreshes.
+      repo.skillList = [
+        SkillInfo(name: 'v2-sync-progress', description: 'Use when asked how far the v2 sync is.', source: example, updated: DateTime.now()),
+      ];
+      repo.skillDetails['v2-sync-progress'] = SkillDetail(
+        info: repo.skillList.single,
+        versions: [SkillVersion(n: 1, text: '---\nname: v2-sync-progress\n---\n1. Read-only: tmux ls', note: 'first draft', by: 'Claude', at: DateTime.now())],
+      );
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('nav-routines')));
+      await settle(tester);
+      expect(find.text('Waiting for your approval'), findsOneWidget);
+      expect(find.text('Review the draft'), findsOneWidget, reason: 'the routine now points at its draft');
+      expect(find.text('Draft a skill'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('skill-v2-sync-progress')));
+      await settle(tester);
+      expect(find.byKey(const Key('skill-dialog')), findsOneWidget);
+      expect(find.textContaining('1. Read-only: tmux ls'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('skill-approve')));
+      await settle(tester);
+      expect(repo.skillDecisions.last, ('v2-sync-progress', SkillDecision.approve, 0));
+      expect(find.text('In use'), findsOneWidget);
+      expect(find.byKey(const Key('skill-dialog')), findsNothing);
+
+      // A correction made a second version; the owner can go back to the first.
+      repo.skillDetails['v2-sync-progress'] = SkillDetail(
+        info: repo.skillList.single,
+        versions: [
+          SkillVersion(n: 1, text: 'first text', note: 'first draft', by: 'Claude', at: DateTime.now()),
+          SkillVersion(n: 2, text: 'second text', note: 'tail showed too little', by: 'Claude', at: DateTime.now()),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('skill-v2-sync-progress')));
+      await settle(tester);
+      expect(find.text('second text'), findsOneWidget);
+      expect(find.text('tail showed too little'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('skill-version-1')));
+      await settle(tester);
+      expect(find.text('first text'), findsOneWidget, reason: 'tap a version to read it');
+      await tester.tap(find.byKey(const Key('skill-rollback-1')));
+      await settle(tester);
+      expect(repo.skillDecisions.last, ('v2-sync-progress', SkillDecision.rollback, 1));
+
+      await tester.tap(find.byKey(const Key('skill-dismiss')));
+      await settle(tester);
+      expect(repo.skillDecisions.last.$2, SkillDecision.dismiss);
+      expect(find.byKey(const Key('skill-v2-sync-progress')), findsNothing, reason: 'removed skills leave the list');
     });
 
     testWidgets('files: search, filters, sort, and a download with its progress and controls', (tester) async {

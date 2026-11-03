@@ -95,6 +95,13 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  Future<Result<List<SkillInfo>>> skills();
+  Future<Result<SkillDetail>> skill(String name);
+  Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0});
+
+  /// Starts a session that drafts a skill for the routine; returns its id.
+  Future<Result<String>> draftSkill(String example);
+
   /// Routines that keep coming back in the hub's history; [days] 0 means all of it.
   Future<Result<RoutineReport>> routines({int days = 30, int runs = 3});
 
@@ -165,6 +172,23 @@ abstract interface class TransferRepository {
   /// it's attached to that session; [deliver] also puts it in the session's
   /// folder now rather than with the next message.
   Future<Result<Artifact>> upload(LocalFile file, {String session = '', String note = '', bool deliver = false});
+}
+
+/// This device's Tailscale: checking it, and bringing it up where the device
+/// allows (the desktop can; a phone can only be asked to, or opened).
+abstract interface class TailscaleRepository {
+  /// Whether the app can start Tailscale itself rather than only open it.
+  bool get canStart;
+
+  Future<TailscaleStatus> status();
+
+  /// Brings Tailscale up and reports each change on the way, ending with the
+  /// last status: running, or why it isn't. It can take minutes when the owner
+  /// has to sign in.
+  Stream<TailscaleStatus> start();
+
+  /// Opens the Tailscale app, where there is one.
+  Future<void> openApp();
 }
 
 abstract interface class SettingsRepository {

@@ -15,6 +15,7 @@ import '../session/session_page.dart';
 import '../settings/settings_cubit.dart';
 import '../settings/settings_page.dart';
 import '../theme/theme.dart';
+import '../tailscale/tailscale_banner.dart';
 import '../update/update_banner.dart';
 import '../update/update_cubit.dart';
 import '../routines/routines_page.dart';
@@ -146,7 +147,7 @@ class _WideShell extends StatelessWidget {
                   child: ScaffoldMessenger(
                     child: Scaffold(
                       backgroundColor: Colors.transparent,
-                      body: SafeArea(child: Column(children: [const UpdateBanner(), Expanded(child: _WidePane(state: s))])),
+                      body: SafeArea(child: Column(children: [const TailscaleBanner(), const UpdateBanner(), Expanded(child: _WidePane(state: s))])),
                     ),
                   ),
                 ),
@@ -570,6 +571,7 @@ class _PhoneRoot extends StatelessWidget {
       ),
       body: Column(
         children: [
+          const TailscaleBanner(),
           const UpdateBanner(),
           Expanded(
             child: d == Destination.chats

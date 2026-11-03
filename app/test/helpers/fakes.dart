@@ -146,6 +146,42 @@ class FakeHubRepository implements HubRepository {
   @override
   Future<Result<UsageSummary>> usage() async => Ok(usageSummary);
 
+  var skillList = <SkillInfo>[];
+  final skillDetails = <String, SkillDetail>{};
+  final skillDecisions = <(String, SkillDecision, int)>[];
+  final skillDrafts = <String>[];
+
+  @override
+  Future<Result<List<SkillInfo>>> skills() async => Ok(skillList);
+
+  @override
+  Future<Result<SkillDetail>> skill(String name) async => skillDetails[name] == null ? const Err(NotFoundFailure('skill')) : Ok(skillDetails[name]!);
+
+  @override
+  Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0}) async {
+    skillDecisions.add((name, decision, version));
+    final i = skillList.indexWhere((s) => s.name == name);
+    if (i < 0) return const Err(NotFoundFailure('skill'));
+    final old = skillList[i];
+    final next = SkillInfo(
+      name: old.name,
+      description: old.description,
+      status: decision == SkillDecision.approve ? 'active' : old.status,
+      mutating: old.mutating,
+      source: old.source,
+      version: decision == SkillDecision.rollback ? old.version + 1 : old.version,
+      updated: old.updated,
+    );
+    skillList = decision == SkillDecision.dismiss ? ([...skillList]..removeAt(i)) : ([...skillList]..[i] = next);
+    return Ok(next);
+  }
+
+  @override
+  Future<Result<String>> draftSkill(String example) async {
+    skillDrafts.add(example);
+    return const Ok('draft-session');
+  }
+
   RoutineReport routineReport = const RoutineReport();
   final routineRequests = <(int, int)>[];
 
@@ -607,3 +643,35 @@ Release release(String version, {String minSupported = '', String notes = '- Fas
         'windows': UpdateAsset(name: 'tether-windows-$version.zip', url: '/api/v1/updates/files/$version/tether-windows-$version.zip', sha256: 'cd', size: 100),
       },
     );
+
+/// Tailscale that does what the test says; nothing touches the real one.
+class FakeTailscale implements TailscaleRepository {
+  FakeTailscale({this.startable = true});
+
+  final bool startable;
+  var current = const TailscaleStatus(TailscaleState.running);
+
+  /// What [start] reports, in order.
+  var steps = <TailscaleStatus>[];
+  var checks = 0, starts = 0, opened = 0;
+
+  @override
+  bool get canStart => startable;
+
+  @override
+  Future<TailscaleStatus> status() async {
+    checks++;
+    return current;
+  }
+
+  @override
+  Stream<TailscaleStatus> start() async* {
+    starts++;
+    for (final s in steps) {
+      yield s;
+    }
+  }
+
+  @override
+  Future<void> openApp() async => opened++;
+}

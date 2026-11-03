@@ -425,6 +425,29 @@ class LoadRoutines {
   Future<Result<RoutineReport>> call({int days = 30, int runs = 3}) => _hub.routines(days: days, runs: runs);
 }
 
+/// The skills library: read it, decide on a proposal, go back a version, ask for a draft.
+class Skills {
+  const Skills(this._hub);
+  final HubRepository _hub;
+  Future<Result<List<SkillInfo>>> list() => _hub.skills();
+  Future<Result<SkillDetail>> detail(String name) => _hub.skill(name);
+  Future<Result<SkillInfo>> approve(String name) => _hub.decideSkill(name, decision: SkillDecision.approve);
+  Future<Result<SkillInfo>> dismiss(String name) => _hub.decideSkill(name, decision: SkillDecision.dismiss);
+  Future<Result<SkillInfo>> rollback(String name, int version) => _hub.decideSkill(name, decision: SkillDecision.rollback, version: version);
+  Future<Result<String>> draft(String example) => _hub.draftSkill(example);
+}
+
+/// Brings Tailscale up in the background and says how it is going.
+class EnsureTailscale {
+  const EnsureTailscale(this._tailscale);
+  final TailscaleRepository _tailscale;
+
+  bool get canStart => _tailscale.canStart;
+  Future<TailscaleStatus> check() => _tailscale.status();
+  Stream<TailscaleStatus> start() => _tailscale.start();
+  Future<void> openApp() => _tailscale.openApp();
+}
+
 class ListClients {
   const ListClients(this._hub);
   final HubRepository _hub;

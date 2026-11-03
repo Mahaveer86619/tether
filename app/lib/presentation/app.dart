@@ -6,6 +6,7 @@ import 'home/shell.dart';
 import 'artifacts/artifacts_cubit.dart';
 import 'chats/chats_cubit.dart';
 import 'nav/nav_cubit.dart';
+import 'tailscale/tailscale_cubit.dart';
 import 'update/update_cubit.dart';
 import 'hub/hub_cubit.dart';
 import 'settings/settings_cubit.dart';
@@ -25,6 +26,8 @@ class TetherApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<NavCubit>()),
         BlocProvider(create: (_) => sl<ChatsCubit>()),
         BlocProvider(create: (_) => sl<UpdateCubit>()..start()),
+        // Looks after Tailscale in the background when the hub is on the tailnet.
+        BlocProvider(create: (_) => sl<TailscaleCubit>(), lazy: false),
       ],
       // Settings are shared through the hub: take what another device saved,
       // or offer ours when the hub has none yet.

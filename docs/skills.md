@@ -66,7 +66,7 @@ Real sessions are never touched by tests. The corpus is the owner's patterns rew
 
 1. Task records from the existing history (collect and fingerprint), with the test corpus. No UI. **Built.**
 2. Clustering and a read-only list of candidates in the app (Routines), to check against what the owner would want. **Built**; see what the first run showed, above.
-3. Drafting, approval and storage. **Built on the hub**: `POST /api/v1/skills/draft` starts a hub session with the brief (`skills.DraftBrief`); it saves its draft with the `propose_skill` tool; `GET /api/v1/skills` lists proposals and approved skills; `.../approve`, `.../dismiss` and `.../rollback` are the owner's decisions. A skill is validated before it is kept (front matter, size, no secrets). The app's side (draft button, review screen) is next.
+3. Drafting, approval and storage. **Built on the hub**: `POST /api/v1/skills/draft` starts a hub session with the brief (`skills.DraftBrief`); it saves its draft with the `propose_skill` tool; `GET /api/v1/skills` lists proposals and approved skills; `.../approve`, `.../dismiss` and `.../rollback` are the owner's decisions. A skill is validated before it is kept (front matter, size, no secrets). The app side is built: a **Draft a skill** button on each routine, a Skills section with the review screen (text, versions, approve, dismiss, go back a version).
 4. Matching in chat start; `update_skill` and versions; the diff view.
 5. Auto-create for read-only skills.
 

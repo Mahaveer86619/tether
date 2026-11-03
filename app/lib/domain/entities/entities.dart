@@ -1203,3 +1203,98 @@ class RoutineReport extends Equatable {
   @override
   List<Object?> get props => [sessions, tasks, routines];
 }
+
+/// What the owner decides about a skill.
+enum SkillDecision { approve, dismiss, rollback }
+
+/// A skill without its texts: a proposal waiting for approval, or one Claude can use.
+class SkillInfo extends Equatable {
+  const SkillInfo({
+    required this.name,
+    this.description = '',
+    this.status = 'proposed',
+    this.mutating = false,
+    this.source = '',
+    this.version = 1,
+    this.updated,
+  });
+
+  final String name, description, status, source;
+
+  /// A step changes something rather than only looking.
+  final bool mutating;
+  final int version;
+  final DateTime? updated;
+
+  bool get proposed => status == 'proposed';
+  bool get active => status == 'active';
+
+  @override
+  List<Object?> get props => [name, description, status, mutating, source, version, updated];
+}
+
+/// One text of a skill, and why it changed.
+class SkillVersion extends Equatable {
+  const SkillVersion({required this.n, required this.text, this.note = '', this.by = '', this.at});
+
+  final int n;
+
+  /// The whole SKILL.md.
+  final String text, note, by;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [n, text, note, by, at];
+}
+
+class SkillDetail extends Equatable {
+  const SkillDetail({required this.info, this.versions = const []});
+
+  final SkillInfo info;
+
+  /// Oldest first.
+  final List<SkillVersion> versions;
+
+  SkillVersion? get latest => versions.lastOrNull;
+
+  @override
+  List<Object?> get props => [info, versions];
+}
+
+/// Where this device's Tailscale stands.
+enum TailscaleState {
+  /// Not looked at yet, or it can't be told.
+  unknown,
+  notInstalled,
+
+  /// The Tailscale service or app isn't running.
+  serviceStopped,
+
+  /// Running but switched off.
+  stopped,
+
+  /// Needs the owner to sign in; [TailscaleStatus.loginUrl] is where.
+  needsLogin,
+  starting,
+  running,
+
+  /// This kind of device can't be checked (the app does nothing then).
+  unsupported,
+}
+
+class TailscaleStatus extends Equatable {
+  const TailscaleStatus(this.state, {this.loginUrl = '', this.message = ''});
+
+  final TailscaleState state;
+
+  /// The sign-in page, when [state] is [TailscaleState.needsLogin].
+  final String loginUrl;
+
+  /// What went wrong or what the owner has to do, in a sentence.
+  final String message;
+
+  bool get running => state == TailscaleState.running;
+
+  @override
+  List<Object?> get props => [state, loginUrl, message];
+}

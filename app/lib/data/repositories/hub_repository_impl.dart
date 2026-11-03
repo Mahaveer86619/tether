@@ -459,6 +459,21 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<List<SkillInfo>>> skills() => _command(() async => skillsFromJson(await _api.skills()));
+
+  @override
+  Future<Result<SkillDetail>> skill(String name) => _command(() async => skillDetailFromJson(await _api.skill(name)));
+
+  @override
+  Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0}) => _command(() async {
+        final json = await _api.skillAction(name, decision.name, body: decision == SkillDecision.rollback ? {'version': version} : const {});
+        return skillInfoFromJson(json);
+      });
+
+  @override
+  Future<Result<String>> draftSkill(String example) => _command(() => _api.draftSkill(example));
+
+  @override
   Future<Result<RoutineReport>> routines({int days = 30, int runs = 3}) =>
       _command(() async => routineReportFromJson(await _api.routines(days: days, runs: runs)));
 
