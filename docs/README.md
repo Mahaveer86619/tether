@@ -8,6 +8,7 @@ Start with [overview.md](overview.md) for what Tether is made of and how a chat 
 |---|---|
 | [v1-spec.md](v1-spec.md) | **The feature specification for the design team**: every 1.0 feature, what the person sees and decides, key journeys, screens, states, open questions |
 | [features.md](features.md) | Every feature, its status, the screens it touches, what is pending. The page to point at when you want a change |
+| [ui-design.md](ui-design.md) | Review of the design team's first designs: what we adopt, change and drop, the structure we build, the decisions needed, and the brief to send back |
 | [ui-overhaul.md](ui-overhaul.md) | The pass over every screen before 1.0: the rules, the screen list, the shared parts, the run card |
 | [pipeline.md](pipeline.md) | What to build next, in order, with sizes, dependencies and the decisions needed from you |
 | [roadmap.md](roadmap.md) | Milestones and what "done" means for each |

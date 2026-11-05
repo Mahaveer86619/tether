@@ -455,7 +455,7 @@ Per machine: the plan's limits (the window and the week, from the assistant itse
 
 #### J1. Appearance *(Built)*
 
-Light, dark or system; six palettes and an accent colour; code colours follow the palette. Shared across the person's devices.
+Light, dark or system; seven palettes (including the design system's own, "Tether") and an accent colour; code colours follow the palette. Shared across the person's devices.
 
 #### J2. Connection and devices *(Built)*
 

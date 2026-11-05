@@ -23,6 +23,7 @@ const accentChoices = <Color>[
 
 final palettes = <Palette>[
   const Palette('claude', 'Claude', TetherColors.light, TetherColors.dark),
+  _tetherPalette,
   _tinted('ocean', 'Ocean', hue: 212, saturation: 0.18, accentLight: const Color(0xFF2A6FB0), accentDark: const Color(0xFF6AA8E8),
       syntaxHues: [275, 140, 28, 205, 175, 335, 220]),
   _tinted('forest', 'Forest', hue: 140, saturation: 0.12, accentLight: const Color(0xFF2F7D4F), accentDark: const Color(0xFF6CC08A),
@@ -33,6 +34,73 @@ final palettes = <Palette>[
       syntaxHues: [265, 150, 35, 210, 185, 340, 230], syntaxSaturation: 0.35),
   _solarized,
 ];
+
+/// The design system's identity (docs/ui-design.md): a cool, dense, dark-first
+/// palette with emerald for what you can act on. The dark side follows the
+/// design's tokens, with the tertiary text and the red lightened to reach
+/// 4.5:1; the light side is new, since the design has none.
+const _tetherPalette = Palette(
+  'tether',
+  'Tether',
+  TetherColors(
+    canvas: Color(0xFFF6F8FA),
+    sidebar: Color(0xFFEAEEF2),
+    surface: Color(0xFFFFFFFF),
+    raised: Color(0xFFEAEEF2),
+    border: Color(0xFFD0D7DE),
+    text: Color(0xFF1F2328),
+    muted: Color(0xFF59636E),
+    faint: Color(0xFF636C76),
+    accent: Color(0xFF047857),
+    success: Color(0xFF1A7F37),
+    warning: Color(0xFF9A6700),
+    danger: Color(0xFFCF222E),
+    info: Color(0xFF0969DA),
+    codeBg: Color(0xFFEFF2F5),
+    userBubble: Color(0xFFE6EBF1),
+    diffAdd: Color(0x331A7F37),
+    diffRemove: Color(0x33CF222E),
+    syntax: SyntaxColors(
+      keyword: Color(0xFFCF222E),
+      string: Color(0xFF0A3069),
+      number: Color(0xFF0550AE),
+      comment: Color(0xFF636C76),
+      function: Color(0xFF8250DF),
+      type: Color(0xFF953800),
+      variable: Color(0xFF0550AE),
+      meta: Color(0xFF59636E),
+    ),
+  ),
+  TetherColors(
+    canvas: Color(0xFF0D1117),
+    sidebar: Color(0xFF0A0D12),
+    surface: Color(0xFF161B22),
+    raised: Color(0xFF21262D),
+    border: Color(0xFF30363D),
+    text: Color(0xFFF0F6FC),
+    muted: Color(0xFF8B949E),
+    faint: Color(0xFF7D8590),
+    accent: Color(0xFF10B981),
+    success: Color(0xFF10B981),
+    warning: Color(0xFFF59E0B),
+    danger: Color(0xFFF87171),
+    info: Color(0xFF38BDF8),
+    codeBg: Color(0xFF0A0E14),
+    userBubble: Color(0xFF21262D),
+    diffAdd: Color(0x3310B981),
+    diffRemove: Color(0x33EF4444),
+    syntax: SyntaxColors(
+      keyword: Color(0xFFFF7B72),
+      string: Color(0xFF7EE787),
+      number: Color(0xFF79C0FF),
+      comment: Color(0xFF7D8590),
+      function: Color(0xFFD2A8FF),
+      type: Color(0xFFFFA657),
+      variable: Color(0xFF79C0FF),
+      meta: Color(0xFF8B949E),
+    ),
+  ),
+);
 
 /// A palette whose neutrals are one hue at low saturation.
 Palette _tinted(

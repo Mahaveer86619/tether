@@ -84,5 +84,6 @@ It reads from the session's tool events and to-dos; no protocol change is needed
 - Every row above ticked.
 - Every screen checked at 400, 800 and 1400 px with the longest realistic content (a 3-question card, a 60-step run, a 40-character chat title, a device with 12 sessions).
 - No `RenderFlex overflowed` in the widget tests.
-- All text selectable where it should be; contrast checked on all six palettes in light and dark.
+- All text selectable where it should be; contrast checked on every palette in light and dark (the Tether palette has a test; the older ones do not meet 4.5:1 everywhere).
+- The structure and decisions in [ui-design.md](ui-design.md) are built, phase by phase.
 - [app.md](app.md) describes what is there, and [features.md](features.md) agrees.

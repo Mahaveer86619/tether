@@ -66,7 +66,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 |---|---|---|---|---|
 | One home: start-a-chat box, what's running, your chats | Built | Home | [app.md](app.md) | Visual overhaul |
 | Navigation: one cubit, sidebar, rail, bottom bar, back | Built | All | [app.md](app.md) | |
-| Six palettes, accent colour, syntax colours | Built | Settings | [app.md](app.md) | |
+| Seven palettes (the new **Tether** one from the design system, dark-first with a light side), accent colour, syntax colours | Built | Settings | [app.md](app.md), [ui-design.md](ui-design.md) | Tether becomes the default after the design decisions
 | In-app updates with notes and skip | Built | Banner, Devices | [releasing.md](releasing.md) | |
 | Selecting text, quoting into the composer | Built | Timeline | [app.md](app.md) | |
 | The full visual overhaul before 1.0 | Planned | Every screen | [ui-overhaul.md](ui-overhaul.md) | All of it |
