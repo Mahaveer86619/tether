@@ -2,6 +2,24 @@
 
 What is left to build, in the order that makes sense, so the next development can be planned. [features.md](features.md) says where every feature stands; this page says what to do next and what each step depends on. Sizes: **S** is under a day, **M** a few days, **L** about a week or more, **XL** several weeks or needs its own design first.
 
+## While the design team works
+
+[v1-spec.md](v1-spec.md) is the document for the design team. Their work is the screens; the engine underneath each feature does not wait for them. These can be built now with no UI decisions, in this order, and each ends with something the design can rely on:
+
+| Order | Item | Why now | Doc |
+|---|---|---|---|
+| a | Hub posts a finished task's result into its chat (5) | The chat's result cards need it | [chats.md](chats.md) |
+| b | `present_file`, the drop folder, the chat's artifacts endpoint, result items (new) | Deliverables need it; the file card and Files panel are drawn against it | [deliverables.md](deliverables.md) |
+| c | Node capabilities and the agent's doctor, reported in the node status (new) | The checklist screen, Auto picking the machine that can build | [first-run.md](first-run.md) |
+| d | The skill router and usage recording (8) | "Used skill X" and a prompt that stays small | [agent-tools.md](agent-tools.md#3-choosing-skills-well) |
+| e | Notification rules, preferences and the `Notify` frame on the hub (new) | Every notification screen and setting | [notifications.md](notifications.md) |
+| f | Scoped MCP credentials, the audit log, rate limits (new) | Security for 1.0; the audit log has a screen | [agent-tools.md](agent-tools.md#4-security) |
+| g | Terminal output with colour, then streaming frames (new) | Terminal mode | [terminal-mode.md](terminal-mode.md) |
+| h | Wipe orders and per-scope deletion on the hub (15) | The remove-data screen | [uninstall.md](uninstall.md) |
+| i | The hub installer (new) | First run | [first-run.md](first-run.md) |
+
+Anything needing the phone or a screen (run card, history views, terminal widget, Android notifications) waits for the designs.
+
 ## 1. Finish what is half done (do these first)
 
 | # | Item | Size | What is missing | Depends on |
@@ -27,8 +45,11 @@ What is left to build, in the order that makes sense, so the next development ca
 | 14 | **Interactive guides** | L | Page card in the chat, `present_page`, the shared kit, versions, an in-app viewer ([previews-and-guides.md](previews-and-guides.md#interactive-guides)). Uses the existing generated pages; the page card needs 11 |
 | 15 | **Remove data, or Tether** | L | Wipe orders that reach every device, even offline ones, per scope ([uninstall.md](uninstall.md)) |
 | 16 | **Other LLM providers** | XL | The Claude CLI, your own API keys and base URLs, local servers, custom CLI agents; keys encrypted on the hub; a settings screen. Needs a design doc first (what a "session" means for a provider with no CLI) |
-| 17 | **Notifications** | M | Approvals and finished work when the app is in the background. [roadmap.md](roadmap.md) planned ntfy; the state of it needs checking before anything is built |
-| 18 | **First-run and setup** | M | Pairing, Tailscale and the hub address in one guided flow, for a person who is not the author |
+| 17 | **Notifications** | L | Needs you, finished, ready, something wrong; reaching a sleeping phone is the hard part. Only update and download notifications exist today ([notifications.md](notifications.md)) |
+| 18 | **First-run and setup** | L | The doctor, the hub installer, a guided flow that assumes nothing about the author's machine ([first-run.md](first-run.md)) |
+| 18a | **Terminal mode** | L | The assistant's own interface live beside chat mode, with a key row on the phone ([terminal-mode.md](terminal-mode.md)) |
+| 18b | **Deliverables** | L | Ask for a build or an export and get the file in the chat with Download and Install ([deliverables.md](deliverables.md)) |
+| 18c | **Skill choice, the engine contract and security for 1.0** | L | ([agent-tools.md](agent-tools.md)) |
 | 19 | **Hardening for other people's setups** | M | Windows and Linux paths and permissions, a hub without Docker, the agent on a Mac, upgrade paths from every 0.x |
 
 ## 3. After 1.0
