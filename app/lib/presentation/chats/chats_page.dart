@@ -43,10 +43,13 @@ class _Entry {
 
 /// The history: start a chat, find one, pick up where you left off.
 class ChatsPage extends StatefulWidget {
-  const ChatsPage({super.key, this.header});
+  const ChatsPage({super.key, this.header, this.limit});
 
   /// Shown above the search box: the start-a-chat box on the home screen.
   final Widget? header;
+
+  /// On Home: show only this many of the latest, without search, and a way to all of them.
+  final int? limit;
 
   @override
   State<ChatsPage> createState() => _ChatsPageState();
@@ -70,7 +73,8 @@ class _ChatsPageState extends State<ChatsPage> {
     final hub = context.select<HubCubit, HubSnapshot>((c) => c.state.hub);
     final c = context.colors;
     final nav = context.read<NavCubit>();
-    final entries = _historyOf(hub, archived: _archived).where(_found).toList();
+    final all = _historyOf(hub, archived: _archived).where(_found).toList();
+    final entries = widget.limit == null ? all : all.take(widget.limit!).toList();
     final groups = <String, List<_Entry>>{};
     for (final e in entries) {
       groups.putIfAbsent(_period(e.updated), () => []).add(e);
@@ -81,6 +85,7 @@ class _ChatsPageState extends State<ChatsPage> {
       children: [
         ?widget.header,
         const SizedBox(height: 8),
+        if (widget.limit == null)
         Row(
           children: [
             Expanded(
@@ -102,7 +107,7 @@ class _ChatsPageState extends State<ChatsPage> {
             ],
           ],
         ),
-        if (!hub.chatsSupported && hub.connected)
+        if (!hub.chatsSupported && hub.connected && widget.limit == null)
           Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Text('This hub is older than 0.16, so it keeps sessions rather than chats. They are listed here instead.',
@@ -139,6 +144,11 @@ class _ChatsPageState extends State<ChatsPage> {
               ),
             ),
           ],
+        if (widget.limit != null && all.length > entries.length)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(key: const Key('all-chats'), onPressed: () => nav.select(Destination.chats), child: Text('All ${all.length} chats')),
+          ),
       ],
     );
   }

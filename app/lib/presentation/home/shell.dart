@@ -69,16 +69,17 @@ class Shell extends StatelessWidget {
 typedef _Dest = ({Destination d, IconData icon, IconData selected, String label});
 
 const List<_Dest> _destinations = [
-  (d: Destination.chats, icon: Icons.home_outlined, selected: Icons.home_rounded, label: 'Home'),
+  (d: Destination.home, icon: Icons.home_outlined, selected: Icons.home_rounded, label: 'Home'),
+  (d: Destination.chats, icon: Icons.forum_outlined, selected: Icons.forum_rounded, label: 'Chats'),
   (d: Destination.devices, icon: Icons.devices_outlined, selected: Icons.devices_rounded, label: 'Devices'),
-  (d: Destination.activity, icon: Icons.history_rounded, selected: Icons.history_rounded, label: 'Activity'),
+  (d: Destination.activity, icon: Icons.history_rounded, selected: Icons.history_rounded, label: 'History'),
   (d: Destination.files, icon: Icons.folder_open_outlined, selected: Icons.folder_open_rounded, label: 'Files'),
   (d: Destination.routines, icon: Icons.auto_awesome_outlined, selected: Icons.auto_awesome_rounded, label: 'Routines'),
   (d: Destination.usage, icon: Icons.insights_outlined, selected: Icons.insights_rounded, label: 'Usage'),
 ];
 
 /// The phone's bottom bar; the rest sit in the header's menu.
-const _phoneBar = [Destination.chats, Destination.devices, Destination.activity];
+const _phoneBar = [Destination.home, Destination.chats, Destination.devices];
 
 String _title(Destination d) => switch (d) {
       Destination.settings => 'Settings',
@@ -89,7 +90,9 @@ String _title(Destination d) => switch (d) {
 Widget _destinationPage(BuildContext context, Destination d) {
   final nav = context.read<NavCubit>();
   return switch (d) {
-    Destination.chats => ChatsPage(
+    Destination.chats => const ChatsPage(),
+    Destination.home => ChatsPage(
+        limit: 6,
         header: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -103,7 +106,7 @@ Widget _destinationPage(BuildContext context, Destination d) {
     Destination.files => FilesPage(onSession: nav.openSession),
     Destination.routines => const RoutinesPage(),
     Destination.usage => UsagePage(onSession: nav.openSession),
-    Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.chats)),
+    Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.home)),
   };
 }
 
@@ -239,7 +242,7 @@ class _SidebarState extends State<_Sidebar> {
                 icon: d.icon,
                 selectedIcon: d.selected,
                 label: d.label,
-                badge: d.d == Destination.chats ? attention : 0,
+                badge: d.d == Destination.home ? attention : 0,
                 selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
                 onTap: () => nav.select(d.d),
               ),
@@ -321,7 +324,7 @@ class _Rail extends StatelessWidget {
                         icon: d.icon,
                         selectedIcon: d.selected,
                         label: d.label,
-                        badge: d.d == Destination.chats ? attention : 0,
+                        badge: d.d == Destination.home ? attention : 0,
                         selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
                         onTap: () => nav.select(d.d),
                       ),
@@ -542,7 +545,7 @@ class _PhoneRoot extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: onBar ? null : BackButton(onPressed: nav.back),
-        title: d == Destination.chats
+        title: d == Destination.home
             ? Row(
                 children: [
                   Icon(Icons.hub_rounded, size: 20, color: context.colors.accent),
@@ -553,52 +556,61 @@ class _PhoneRoot extends StatelessWidget {
                 ],
               )
             : Text(_title(d)),
-        actions: [
-          PopupMenuButton<Destination>(
-            key: const Key('more-destinations'),
-            tooltip: 'More',
-            onSelected: nav.select,
-            itemBuilder: (_) => [
-              for (final x in _destinations.where((x) => !_phoneBar.contains(x.d)))
-                PopupMenuItem(value: x.d, child: Row(children: [Icon(x.icon, size: 18), const SizedBox(width: 12), Text(x.label)])),
-              const PopupMenuItem(
-                value: Destination.settings,
-                child: Row(children: [Icon(Icons.settings_outlined, size: 18), SizedBox(width: 12), Text('Settings')]),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
           const TailscaleBanner(),
           const UpdateBanner(),
           Expanded(
-            child: d == Destination.chats
+            child: d == Destination.home
                 ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
                 : _destinationPage(context, d),
           ),
         ],
       ),
-      bottomNavigationBar: onBar
-          ? NavigationBar(
-              selectedIndex: _phoneBar.indexOf(d),
-              onDestinationSelected: (i) => nav.select(_phoneBar[i]),
-              height: 64,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: [
-                for (final x in _destinations.where((x) => _phoneBar.contains(x.d)))
-                  NavigationDestination(
-                    key: Key('nav-${x.d.name}'),
-                    icon: x.d == Destination.chats ? badged(x.icon) : Icon(x.icon),
-                    selectedIcon: x.d == Destination.chats ? badged(x.selected) : Icon(x.selected),
-                    label: x.label,
-                  ),
-              ],
-            )
-          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: onBar ? _phoneBar.indexOf(d) : _phoneBar.length,
+        onDestinationSelected: (i) => i < _phoneBar.length ? nav.select(_phoneBar[i]) : _showMore(context),
+        height: 64,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: [
+          for (final x in _destinations.where((x) => _phoneBar.contains(x.d)))
+            NavigationDestination(
+              key: Key('nav-${x.d.name}'),
+              icon: x.d == Destination.home ? badged(x.icon) : Icon(x.icon),
+              selectedIcon: x.d == Destination.home ? badged(x.selected) : Icon(x.selected),
+              label: x.label,
+            ),
+          const NavigationDestination(key: Key('nav-more'), icon: Icon(Icons.more_horiz_rounded), selectedIcon: Icon(Icons.more_horiz_rounded), label: 'More'),
+        ],
+      ),
     );
   }
+}
+
+/// The places that aren't on the phone's bar.
+void _showMore(BuildContext context) {
+  final nav = context.read<NavCubit>();
+  showModalBottomSheet<void>(
+    context: context,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final x in [..._destinations.where((x) => !_phoneBar.contains(x.d)), (d: Destination.settings, icon: Icons.settings_outlined, selected: Icons.settings_rounded, label: 'Settings')])
+            ListTile(
+              key: Key('more-${x.d.name}'),
+              leading: Icon(x.icon),
+              title: Text(x.label),
+              onTap: () {
+                Navigator.pop(sheet);
+                nav.select(x.d);
+              },
+            ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _PhonePage extends StatelessWidget {

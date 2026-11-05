@@ -5,7 +5,7 @@ import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 
 /// The app's top-level places, in the order navigation shows them.
-enum Destination { chats, devices, activity, files, routines, usage, settings }
+enum Destination { home, chats, devices, activity, files, routines, usage, settings }
 
 /// A screen opened on top of a destination.
 sealed class NavEntry extends Equatable {
@@ -48,7 +48,7 @@ class NodeEntry extends NavEntry {
 }
 
 class NavState extends Equatable {
-  const NavState({this.destination = Destination.chats, this.stack = const [], this.history = const []});
+  const NavState({this.destination = Destination.home, this.stack = const [], this.history = const []});
 
   final Destination destination;
 
@@ -66,7 +66,7 @@ class NavState extends Equatable {
   String get selectedNode => switch (top) { NodeEntry(:final node) => node, _ => '' };
 
   /// Nothing left to go back to: Back leaves the app.
-  bool get atRoot => history.isEmpty && stack.isEmpty && destination == Destination.chats;
+  bool get atRoot => history.isEmpty && stack.isEmpty && destination == Destination.home;
 
   NavState _without() => NavState(destination: destination, stack: stack);
 
@@ -128,7 +128,7 @@ class NavCubit extends Cubit<NavState> {
       emit(NavState(destination: state.destination, stack: state.stack.sublist(0, state.stack.length - 1)));
       return true;
     }
-    if (state.destination != Destination.chats) {
+    if (state.destination != Destination.home) {
       emit(const NavState());
       return true;
     }

@@ -21,7 +21,7 @@ void main() {
     tearDown(() => nav.close());
 
     test('starts on Chats with nothing to go back to', () {
-      expect(nav.state.destination, Destination.chats);
+      expect(nav.state.destination, Destination.home);
       expect(nav.state.atRoot, isTrue);
       expect(nav.back(), isFalse);
     });

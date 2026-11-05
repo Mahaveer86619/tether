@@ -541,7 +541,7 @@ void main() {
       expect(find.textContaining('Update it first'), findsOneWidget);
 
       repo.clientList = null;
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byKey(const Key('nav-home')));
       await settle(tester);
       await tester.tap(find.text('Devices').first);
       await settle(tester);
@@ -781,7 +781,7 @@ void main() {
       expect(find.text('2 · DEVICES RUNNING THE AGENT'), findsOneWidget);
       expect(find.text('3 · APPS'), findsOneWidget);
 
-      await tester.tap(find.text('Activity').first);
+      await tester.tap(find.text('History').first);
       await settle(tester);
       expect(find.text('Saved notes.md'), findsOneWidget);
       expect(find.text('Failed: Session e1'), findsOneWidget);
@@ -856,7 +856,7 @@ void main() {
         info: repo.skillList.single,
         versions: [SkillVersion(n: 1, text: '---\nname: v2-sync-progress\n---\n1. Read-only: tmux ls', note: 'first draft', by: 'Claude', at: DateTime.now())],
       );
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byKey(const Key('nav-home')));
       await settle(tester);
       await tester.tap(find.byKey(const Key('nav-routines')));
       await settle(tester);
@@ -1011,7 +1011,7 @@ void main() {
       await settle(tester);
       expect(find.byKey(const Key('new-chat-input')), findsNothing);
 
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byKey(const Key('nav-home')));
       await settle(tester);
       await openSession(tester, 's1');
       await settle(tester);
@@ -1031,14 +1031,14 @@ void main() {
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'back on Home, with the start box');
       expect(find.byType(NavigationBar), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('more-destinations')));
+      await tester.tap(find.byKey(const Key('nav-more')));
       await settle(tester);
-      await tester.tap(find.text('Usage').last);
+      await tester.tap(find.byKey(const Key('more-usage')));
       await settle(tester);
-      expect(find.byType(NavigationBar), findsNothing, reason: 'pages from the menu sit on top, with a back arrow');
+      expect(find.byType(BackButton), findsOneWidget, reason: 'a page from More has a back arrow, and More stays marked');
       await tester.tap(find.byType(BackButton));
       await settle(tester);
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget);
     });
 
     testWidgets('chats: start one with an auto target, rename it inline, and see where it runs', (tester) async {
@@ -1113,6 +1113,9 @@ void main() {
         'c2': Chat(id: 'c2', title: 'Old idea', activeSession: 'gone', links: const [ChatLink(session: 'gone')], updated: now.subtract(const Duration(days: 40))),
       }));
       await pumpApp(tester, const Size(1400, 900));
+      expect(find.text('TODAY'), findsOneWidget, reason: 'Home shows the latest chats');
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
       expect(find.text('TODAY'), findsOneWidget);
       expect(find.text('OLDER'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('chat-search')), 'idea');
@@ -1193,7 +1196,7 @@ void main() {
       updates.release = release('9.0.0', minSupported: '8.0.0');
       await pumpApp(tester, const Size(1400, 900));
       expect(find.byKey(const Key('forced-update')), findsOneWidget);
-      expect(find.byKey(const Key('nav-chats')), findsNothing);
+      expect(find.byKey(const Key('nav-home')), findsNothing);
       await tester.tap(find.byKey(const Key('forced-update-now')));
       await settle(tester);
       expect(updates.installed, isNotEmpty);
@@ -1218,7 +1221,7 @@ void main() {
     testWidgets('tablet widths get the icon rail', (tester) async {
       await pumpApp(tester, const Size(800, 900));
       expect(find.text('RUNNING NOW'), findsOneWidget);
-      expect(find.byKey(const Key('nav-chats')), findsOneWidget);
+      expect(find.byKey(const Key('nav-home')), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
       expect(find.text('RECENTS'), findsNothing, reason: 'recents need the full sidebar');
     });
