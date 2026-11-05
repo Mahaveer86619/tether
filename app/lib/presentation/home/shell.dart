@@ -404,9 +404,9 @@ class _NavItemState extends State<_NavItem> {
         onExit: (_) => setState(() => _hover = false),
         child: Material(
           color: on ? c.accent.withValues(alpha: 0.12) : (_hover ? c.raised : Colors.transparent),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: context.round(9),
           child: InkWell(
-            borderRadius: BorderRadius.circular(9),
+            borderRadius: context.round(9),
             onTap: widget.onTap,
             child: SizedBox(
               height: 38,
@@ -448,7 +448,7 @@ class _RailItem extends StatelessWidget {
       waitDuration: const Duration(milliseconds: 600),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: context.round(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
@@ -456,7 +456,7 @@ class _RailItem extends StatelessWidget {
               Container(
                 width: 52,
                 height: 30,
-                decoration: BoxDecoration(color: selected ? c.accent.withValues(alpha: 0.14) : Colors.transparent, borderRadius: BorderRadius.circular(15)),
+                decoration: BoxDecoration(color: selected ? c.accent.withValues(alpha: 0.14) : Colors.transparent, borderRadius: context.round(15)),
                 child: Badge(
                   isLabelVisible: badge > 0,
                   label: Text('$badge'),
@@ -484,7 +484,7 @@ class _ListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return InkWell(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: context.round(6),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),

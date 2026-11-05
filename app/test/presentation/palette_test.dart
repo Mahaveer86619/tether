@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/presentation/theme/palettes.dart';
-import 'package:tether/presentation/theme/theme.dart';
 
 double _ratio(Color a, Color b) {
   final la = a.computeLuminance(), lb = b.computeLuminance();
@@ -39,6 +38,11 @@ void main() {
         }
       });
     }
+
+    test('squares the corners, while the others keep theirs', () {
+      expect(p.of(Brightness.dark).shape, lessThan(0.5));
+      expect(paletteById('claude').of(Brightness.dark).shape, 1);
+    });
 
     test('the dark side keeps the design grounds', () {
       final c = p.of(Brightness.dark);

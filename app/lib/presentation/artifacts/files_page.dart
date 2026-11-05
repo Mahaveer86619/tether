@@ -129,7 +129,7 @@ class _FilesPageState extends State<FilesPage> {
       itemBuilder: (_) => [for (final (v, text) in options) PopupMenuItem(value: v, child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis))],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(8)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 160),
@@ -184,7 +184,7 @@ class _FilesPageState extends State<FilesPage> {
                           isDense: true,
                           prefixIcon: const Icon(Icons.search_rounded, size: 18),
                           hintText: 'Search names and notes',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: context.round(10)),
                         ),
                       ),
                     ),
@@ -278,7 +278,7 @@ class _FilesPageState extends State<FilesPage> {
                   child: Container(
                     key: const Key('transfers'),
                     padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(12)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -361,7 +361,7 @@ class _FileRow extends StatelessWidget {
     final busy = t?.active ?? false;
     return Material(
       color: c.surface,
-      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => openArtifact(context, a),
@@ -378,7 +378,7 @@ class _FileRow extends StatelessWidget {
                     child: a.isImage && a.previewable
                         ? IgnorePointer(child: ArtifactImage(artifact: a, height: 44))
                         : Container(
-                            decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: c.raised, borderRadius: context.round(8)),
                             child: Icon(artifactIcon(a), size: 22, color: c.faint),
                           ),
                   ),

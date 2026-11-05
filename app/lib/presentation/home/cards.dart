@@ -21,7 +21,7 @@ class CardShell extends StatelessWidget {
     final body = Padding(padding: const EdgeInsets.all(14), child: child);
     return Material(
       color: c.surface,
-      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(14)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -125,7 +125,7 @@ class SessionCard extends StatelessWidget {
           if (s.isBusy && s.todos.isNotEmpty) ...[
             const SizedBox(height: 8),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: context.round(4),
               child: LinearProgressIndicator(value: s.todosDone / s.todos.length, minHeight: 3, backgroundColor: c.raised, color: look.color),
             ),
           ],
@@ -178,7 +178,7 @@ class DeviceCard extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: c.raised, borderRadius: context.round(10)),
             child: Icon(osIcon(node.os), color: node.online ? c.muted : c.faint, size: 20),
           ),
           const SizedBox(width: 12),

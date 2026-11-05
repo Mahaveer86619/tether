@@ -48,7 +48,7 @@ void showToast(BuildContext context, String message, {IconData icon = Icons.chec
         elevation: 8,
         duration: Duration(seconds: error ? 4 : 2),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.round(12),
           side: BorderSide(color: error ? c.danger.withValues(alpha: 0.5) : c.border),
         ),
         content: Row(
@@ -188,7 +188,7 @@ class Pill extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(color: (color ?? c.muted).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(5)),
+      decoration: BoxDecoration(color: (color ?? c.muted).withValues(alpha: 0.12), borderRadius: context.round(5)),
       child: Text(text, style: TextStyle(fontSize: 11, color: color ?? c.muted, fontWeight: FontWeight.w500)),
     );
   }
@@ -320,7 +320,7 @@ class _ConnectionLineState extends State<ConnectionLine> {
       if (w.error != null && w.status != ConnectionStatus.connected) w.error!,
       if (w.attempts > 0 && w.status != ConnectionStatus.connected) '${w.attempts} failed ${w.attempts == 1 ? 'try' : 'tries'}',
     ].join('\n');
-    final body = retryable ? InkWell(key: const Key('connection-retry'), borderRadius: BorderRadius.circular(6), onTap: w.onRetry, child: line) : line;
+    final body = retryable ? InkWell(key: const Key('connection-retry'), borderRadius: context.round(6), onTap: w.onRetry, child: line) : line;
     return tip.isEmpty ? body : Tooltip(message: tip, child: body);
   }
 }

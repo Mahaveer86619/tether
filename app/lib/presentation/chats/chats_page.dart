@@ -125,7 +125,7 @@ class _ChatsPageState extends State<ChatsPage> {
             SectionLabel(period),
             Material(
               color: c.surface,
-              shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
@@ -411,9 +411,9 @@ class _RecentRowState extends State<_RecentRow> {
       onExit: (_) => setState(() => _hover = false),
       child: Material(
         color: widget.selected ? c.accent.withValues(alpha: 0.12) : (_hover ? c.raised : Colors.transparent),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.round(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           onTap: widget.onTap,
           child: SizedBox(
             height: 34,

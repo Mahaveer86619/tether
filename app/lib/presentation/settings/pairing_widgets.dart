@@ -369,7 +369,7 @@ class _InviteDialogState extends State<_InviteDialog> {
                 opacity: expired ? 0.2 : 1,
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: context.round(12)),
                   child: QrImageView(data: inv.link, size: 220, backgroundColor: Colors.white),
                 ),
               ),
@@ -390,7 +390,7 @@ class _InviteDialogState extends State<_InviteDialog> {
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
-              decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+              decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8), border: Border.all(color: c.border)),
               child: Row(
                 children: [
                   Expanded(child: SelectableText(agent, style: monoStyle(context, size: 11.5))),

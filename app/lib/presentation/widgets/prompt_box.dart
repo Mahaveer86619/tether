@@ -198,7 +198,7 @@ class PromptButton extends StatelessWidget {
       disabledBackgroundColor: filled ? c.raised : null,
       foregroundColor: filled ? Colors.white : c.muted,
       side: filled || plain ? null : BorderSide(color: c.border),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: context.round(12)),
     );
     final child = busy
         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

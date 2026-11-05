@@ -174,7 +174,7 @@ class SessionHeader extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: InkWell(
                       key: const Key('forked-from'),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: context.round(4),
                       onTap: parent == null || onOpenSession == null ? null : () => onOpenSession!(parent.id),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -624,7 +624,7 @@ class _OutboxBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: c.userBubble.withValues(alpha: failed ? 0.5 : 0.8),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: context.round(16),
                 border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
               ),
               child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
@@ -831,7 +831,7 @@ class _StillWorking extends StatelessWidget {
       key: const Key('still-working'),
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: context.round(10)),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 4,
@@ -919,12 +919,12 @@ class _ProgressState extends State<_Progress> {
     final c = context.colors;
     final s = widget.session;
     return Container(
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: context.round(12),
             onTap: () => setState(() => _open = !_open),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -941,7 +941,7 @@ class _ProgressState extends State<_Progress> {
                   SizedBox(
                     width: 60,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: context.round(4),
                       child: LinearProgressIndicator(value: s.todosDone / s.todos.length, minHeight: 4, backgroundColor: c.raised, color: c.accent),
                     ),
                   ),
@@ -967,7 +967,7 @@ class _TerminalNotice extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(16)),
       child: Row(
         children: [
           Icon(Icons.terminal_rounded, size: 18, color: c.info),
@@ -1207,7 +1207,7 @@ class ApprovalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.warning.withValues(alpha: 0.55)),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: context.round(14),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(

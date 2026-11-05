@@ -125,7 +125,7 @@ class _ChatTitleState extends State<ChatTitle> {
     }
     return InkWell(
       key: const Key('chat-title'),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: context.round(4),
       onTap: _edit,
       child: Row(
         mainAxisSize: MainAxisSize.min,

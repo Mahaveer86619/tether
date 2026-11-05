@@ -240,9 +240,9 @@ class _Option extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: selected ? c.accent.withValues(alpha: 0.10) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: context.round(10),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: context.round(10),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),

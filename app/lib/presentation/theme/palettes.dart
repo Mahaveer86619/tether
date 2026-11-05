@@ -60,6 +60,7 @@ const _tetherPalette = Palette(
     userBubble: Color(0xFFE6EBF1),
     diffAdd: Color(0x331A7F37),
     diffRemove: Color(0x33CF222E),
+    shape: 0.4,
     syntax: SyntaxColors(
       keyword: Color(0xFFCF222E),
       string: Color(0xFF0A3069),
@@ -89,6 +90,7 @@ const _tetherPalette = Palette(
     userBubble: Color(0xFF21262D),
     diffAdd: Color(0x3310B981),
     diffRemove: Color(0x33EF4444),
+    shape: 0.4,
     syntax: SyntaxColors(
       keyword: Color(0xFFFF7B72),
       string: Color(0xFF7EE787),

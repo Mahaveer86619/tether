@@ -91,7 +91,7 @@ class _DevicesStrip extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8),
       child: Material(
         color: c.surface,
-        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: const Key('devices-strip'),

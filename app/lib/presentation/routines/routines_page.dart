@@ -137,7 +137,7 @@ class _SkillCard extends StatelessWidget {
         color: c.surface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: k.proposed ? c.warning.withValues(alpha: 0.6) : c.border),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.round(12),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -244,7 +244,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                     Container(
                       margin: const EdgeInsets.only(top: 10),
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: context.round(8)),
                       child: Text('Some steps change things. Claude is told to confirm with you before it runs them.', style: TextStyle(fontSize: 12.5, color: c.text)),
                     ),
                   const SizedBox(height: 12),
@@ -253,7 +253,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                       key: const Key('skill-text'),
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+                      decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8), border: Border.all(color: c.border)),
                       child: SelectableText(v.text, style: monoStyle(context, size: 12, color: c.text)),
                     ),
                   if (d.versions.length > 1) ...[
@@ -411,7 +411,7 @@ class _RoutineCardState extends State<_RoutineCard> {
       padding: const EdgeInsets.only(top: 10),
       child: Material(
         color: c.surface,
-        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: Key('routine-${r.example.hashCode}'),

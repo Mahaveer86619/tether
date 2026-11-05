@@ -123,7 +123,7 @@ class _SessionNavigatorState extends State<SessionNavigator> {
       if (done.isNotEmpty) ...[
         const SizedBox(height: 8),
         InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           onTap: () => setState(() => _showDone = !_showDone),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
@@ -178,7 +178,7 @@ class _ProjectRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 2),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.round(8),
         onTap: onToggle,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
@@ -221,16 +221,16 @@ class _NodeRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 10, bottom: 2),
       child: Material(
         color: selected ? c.raised : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.round(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
             child: Row(
               children: [
                 InkWell(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: context.round(6),
                   onTap: onToggle,
                   child: Icon(collapsed ? Icons.chevron_right_rounded : Icons.expand_more_rounded, size: 18, color: c.faint),
                 ),
@@ -267,9 +267,9 @@ class SessionTile extends StatelessWidget {
     final sub = [if (s.cwd.isNotEmpty) baseName(s.cwd), ago(s.updated)].where((x) => x.isNotEmpty).join(' · ');
     return Material(
       color: selected ? c.raised : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.round(8),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.round(8),
         onTap: onTap,
         child: Padding(
           padding: EdgeInsets.fromLTRB(dense ? 28 : 12, dense ? 7 : 10, 8, dense ? 7 : 10),

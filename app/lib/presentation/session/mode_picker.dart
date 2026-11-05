@@ -40,14 +40,14 @@ class ModeChip extends StatelessWidget {
       message: 'Permission mode: ${mode.label}. Tap to change.',
       child: InkWell(
         key: const Key('mode-chip'),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: context.round(20),
         onTap: () => showModePicker(context, session),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.10),
             border: Border.all(color: color.withValues(alpha: 0.45)),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: context.round(20),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

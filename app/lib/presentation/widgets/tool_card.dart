@@ -42,7 +42,7 @@ class _ToolCardViewState extends State<ToolCardView> {
           : BoxDecoration(
               color: c.surface,
               border: Border.all(color: failed ? c.danger.withValues(alpha: 0.5) : c.border),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: context.round(10),
             ),
       clipBehavior: widget.flat ? Clip.none : Clip.antiAlias,
       child: Column(
@@ -206,7 +206,7 @@ class _OutputBox extends StatelessWidget {
       builder: (limit) => Container(
         decoration: BoxDecoration(
           color: c.codeBg,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           border: Border.all(color: output.isError ? c.danger.withValues(alpha: 0.4) : c.border),
         ),
         child: SingleChildScrollView(
@@ -235,7 +235,7 @@ class DiffView extends StatelessWidget {
       lines: lines.length,
       maxLines: 24,
       builder: (limit) => Container(
-        decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+        decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8), border: Border.all(color: c.border)),
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,

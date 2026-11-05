@@ -73,7 +73,7 @@ class _QuestionCardState extends State<QuestionCard> {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.accent.withValues(alpha: 0.55)),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: context.round(14),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
@@ -142,7 +142,7 @@ class _QuestionCardState extends State<QuestionCard> {
             alignment: Alignment.centerLeft,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(color: c.raised, borderRadius: context.round(6)),
               child: Text(q.header, style: TextStyle(fontSize: 11.5, color: c.muted, fontWeight: FontWeight.w600)),
             ),
           ),
@@ -176,7 +176,7 @@ class _QuestionCardState extends State<QuestionCard> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
         color: on ? c.accent.withValues(alpha: 0.1) : Colors.transparent,
-        shape: RoundedRectangleBorder(side: BorderSide(color: on ? c.accent : c.border), borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(side: BorderSide(color: on ? c.accent : c.border), borderRadius: context.round(10)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => _toggle(q, o.label),
@@ -239,7 +239,7 @@ class _Steps extends StatelessWidget {
                     height: 4,
                     decoration: BoxDecoration(
                       color: i == current ? c.accent : (done[i] ? c.accent.withValues(alpha: 0.45) : c.border),
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: context.round(2),
                     ),
                   ),
                 ),
