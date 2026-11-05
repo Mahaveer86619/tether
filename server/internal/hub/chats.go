@@ -149,7 +149,7 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 		Model: cc.Model, PermissionMode: cc.PermissionMode, Attachments: cc.Attachments}
 	// The chat must exist before the session so the system prompt can name it.
 	h.chats[c.Id] = c
-	system := h.chatPromptFor(c, cs.Node, false)
+	system := h.chatPromptWith(c, cs.Node, false, cc.Prompt)
 	if system == "" && target.State == targetDetecting {
 		// An agent too old for a system prompt gets the instructions inline.
 		cs.Prompt = detectPrompt(c.Id) + "\n\n---\n\n" + cs.Prompt
@@ -274,7 +274,7 @@ func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []
 	if s := h.sessions[c.ActiveSession]; s != nil {
 		cs.Model = s.Model
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptFor(c, cs.Node, false), clientID: clientID})
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, text), clientID: clientID})
 	if err != nil {
 		return "", err
 	}
@@ -501,13 +501,19 @@ func chatMessages(session string, items []*v1.TimelineItem) []*v1.ChatMessage {
 // chatPromptFor is the system prompt for a new session of chat c on node,
 // or "" when the node's agent can't pass one on. Caller holds h.mu.
 func (h *Hub) chatPromptFor(c *v1.Chat, node string, worker bool) string {
+	return h.chatPromptWith(c, node, worker, "")
+}
+
+// chatPromptWith is chatPromptFor for a session started by request, so the
+// skills it is offered are the ones that fit it.
+func (h *Hub) chatPromptWith(c *v1.Chat, node string, worker bool, request string) string {
 	if !h.agentAtLeast(node, systemPromptVersion) {
 		return ""
 	}
 	if worker {
 		return workerPrompt(c.Id) + " " + filesPrompt
 	}
-	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id)
+	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id, request)
 	if c.Target.GetState() == targetDetecting {
 		p += "\n\n" + detectPrompt(c.Id)
 	}
@@ -517,7 +523,7 @@ func (h *Hub) chatPromptFor(c *v1.Chat, node string, worker bool) string {
 // leadPrompt tells the session the user talks to that it leads the chat:
 // it can hand work to sessions on the connected machines and answer for
 // them. Caller holds h.mu.
-func (h *Hub) leadPrompt(chat string) string {
+func (h *Hub) leadPrompt(chat, request string) string {
 	hub := h.hubNode()
 	var machines []string
 	for _, n := range h.nodes {
@@ -538,7 +544,7 @@ func (h *Hub) leadPrompt(chat string) string {
 		"Work that belongs on another machine, or that can run in parallel, goes to a session there: call the tether MCP tool start_session with node, cwd, " +
 		"chat=\"" + chat + "\" and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
 		"wait_for_session or read_session. Don't do a delegated task yourself. When sessions finish, tell the user in plain words what each did and what is left. " +
-		"Small tasks that need no other machine you simply do here. " + filesPrompt + h.activeSkillsPrompt()
+		"Small tasks that need no other machine you simply do here. " + filesPrompt + h.activeSkillsPrompt(request)
 }
 
 // filesPrompt is how a file the user asked for reaches them: the agent

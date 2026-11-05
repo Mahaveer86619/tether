@@ -11,7 +11,7 @@ What is left to build, in the order that makes sense, so the next development ca
 | a | ~~Hub posts a finished task's result into its chat (5)~~ Done: a note per finished turn; the rich card waits for the design | The chat's result cards need it | [chats.md](chats.md) |
 | b | ~~The drop folder and the chat's artifacts endpoint~~ Done; `present_file` and result items remain (new) | Deliverables need it; the file card and Files panel are drawn against it | [deliverables.md](deliverables.md) |
 | c | Node capabilities (done: tools and the Android SDK, in the node status and the lead's prompt); the agent's doctor remains (new) | The checklist screen, Auto picking the machine that can build | [first-run.md](first-run.md) |
-| d | The skill router and usage recording (8) | "Used skill X" and a prompt that stays small | [agent-tools.md](agent-tools.md#3-choosing-skills-well) |
+| d | ~~The skill router~~ Done for a chat's first request (top three that fit, a pointer to the rest); usage recording and outcomes remain (8) | "Used skill X" and a prompt that stays small | [agent-tools.md](agent-tools.md#3-choosing-skills-well) |
 | e | Notification rules, preferences and the `Notify` frame on the hub (new) | Every notification screen and setting | [notifications.md](notifications.md) |
 | f | The audit log (done for tool calls and skill decisions); scoped MCP credentials and rate limits remain (new) | Security for 1.0; the audit log has a screen | [agent-tools.md](agent-tools.md#4-security) |
 | g | Terminal output with colour, then streaming frames (new) | Terminal mode | [terminal-mode.md](terminal-mode.md) |

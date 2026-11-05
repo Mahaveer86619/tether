@@ -235,16 +235,38 @@ func (h *Hub) draftSkill(example string) (string, *opError) {
 	return "", &opError{"not_found", "that routine is no longer in the history", http.StatusNotFound}
 }
 
+// skillsOffered is how many skills a prompt lists without a request to
+// match them against.
+const skillsOffered = 8
+
 // activeSkillsPrompt tells a lead session which skills it can use, or "".
-func (h *Hub) activeSkillsPrompt() string {
+// With the request that starts the chat it offers the three that fit and
+// says the rest exist; without one it lists the first few. See
+// docs/agent-tools.md#3-choosing-skills-well.
+func (h *Hub) activeSkillsPrompt(request string) string {
 	active, err := h.lib().Active()
 	if err != nil || len(active) == 0 {
 		return ""
 	}
+	const intro = "\n\nSkills Tether has learned from this user's repeated requests (tether tool read_skill gives the steps; follow one when it fits, and fix it with update_skill if a step is wrong)"
+	offer := active
+	if request != "" {
+		offer = nil
+		for _, m := range skills.Rank(request, active, 3) {
+			offer = append(offer, m.Skill)
+		}
+	} else if len(offer) > skillsOffered {
+		offer = offer[:skillsOffered]
+	}
 	var b strings.Builder
-	b.WriteString("\n\nSkills Tether has learned from this user's repeated requests (tether tool read_skill gives the steps; follow one when it fits, and fix it with update_skill if a step is wrong):")
-	for _, s := range active {
-		b.WriteString("\n- " + s.Name + ": " + s.Description)
+	if len(offer) > 0 {
+		b.WriteString(intro + ":")
+		for _, s := range offer {
+			b.WriteString("\n- " + s.Name + ": " + s.Description)
+		}
+	}
+	if len(offer) < len(active) {
+		b.WriteString("\n\nTether has " + strconv.Itoa(len(active)) + " learned skills in all; list_skills shows them.")
 	}
 	return b.String()
 }

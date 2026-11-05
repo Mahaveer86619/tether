@@ -61,7 +61,7 @@ func TestTheLeadSeesWhatEachMachineCanBuild(t *testing.T) {
 	h.mu.Lock()
 	h.nodes["laptop"] = &v1.NodeStatus{Node: "laptop", Os: "windows", Online: true, Capabilities: []string{"android-sdk", "flutter"}}
 	h.nodes["minipc"] = &v1.NodeStatus{Node: "minipc", Os: "linux", Online: true}
-	p := h.leadPrompt("c1")
+	p := h.leadPrompt("c1", "")
 	h.mu.Unlock()
 	if !strings.Contains(p, "laptop (windows) with android-sdk, flutter") || !strings.Contains(p, "minipc (linux).") {
 		t.Errorf("prompt: %s", p)

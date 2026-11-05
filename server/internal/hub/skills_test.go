@@ -160,10 +160,15 @@ func TestTheChatLeadIsToldWhichSkillsItHas(t *testing.T) {
 	if _, err := h.lib().Approve("v2-sync-progress", 2); err != nil {
 		t.Fatal(err)
 	}
-	postChat(t, srv, "/api/v1/chats", `{"prompt":"hello again","target":{"mode":"claude"}}`)
+	postChat(t, srv, "/api/v1/chats", `{"prompt":"how far along is the v2 sync?","target":{"mode":"claude"}}`)
 	p := nextCommand(t, agent, ctx, isStart).GetStart().SystemPrompt
 	if !strings.Contains(p, "v2-sync-progress: Use when asked how far the v2 sync is") || !strings.Contains(p, "read_skill") {
-		t.Fatalf("an approved skill is offered: %q", p)
+		t.Fatalf("an approved skill that fits the request is offered: %q", p)
+	}
+	postChat(t, srv, "/api/v1/chats", `{"prompt":"what is the capital of France","target":{"mode":"claude"}}`)
+	p = nextCommand(t, agent, ctx, isStart).GetStart().SystemPrompt
+	if strings.Contains(p, "v2-sync-progress") || !strings.Contains(p, "1 learned skills in all; list_skills") {
+		t.Fatalf("a skill that doesn't fit is left out, with a pointer to the rest: %q", p)
 	}
 }
 
