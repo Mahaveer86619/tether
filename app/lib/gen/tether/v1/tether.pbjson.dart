@@ -452,6 +452,7 @@ const NodeStatus$json = {
       '5': 3,
       '10': 'historySyncedMs'
     },
+    {'1': 'capabilities', '3': 11, '4': 3, '5': 9, '10': 'capabilities'},
   ],
 };
 
@@ -462,7 +463,8 @@ final $typed_data.Uint8List nodeStatusDescriptor = $convert.base64Decode(
     'dmVyc2lvbhgFIAEoCVINY2xhdWRlVmVyc2lvbhIjCg1hZ2VudF92ZXJzaW9uGAYgASgJUgxhZ2'
     'VudFZlcnNpb24SIAoMbGFzdF9zZWVuX21zGAcgASgDUgpsYXN0U2Vlbk1zEikKEHJ1bm5pbmdf'
     'c2Vzc2lvbnMYCCABKAVSD3J1bm5pbmdTZXNzaW9ucxIOCgJpcBgJIAEoCVICaXASKgoRaGlzdG'
-    '9yeV9zeW5jZWRfbXMYCiABKANSD2hpc3RvcnlTeW5jZWRNcw==');
+    '9yeV9zeW5jZWRfbXMYCiABKANSD2hpc3RvcnlTeW5jZWRNcxIiCgxjYXBhYmlsaXRpZXMYCyAD'
+    'KAlSDGNhcGFiaWxpdGllcw==');
 
 @$core.Deprecated('Use sessionInfoDescriptor instead')
 const SessionInfo$json = {

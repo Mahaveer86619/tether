@@ -840,6 +840,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     $core.int? runningSessions,
     $core.String? ip,
     $fixnum.Int64? historySyncedMs,
+    $core.Iterable<$core.String>? capabilities,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -852,6 +853,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (runningSessions != null) result.runningSessions = runningSessions;
     if (ip != null) result.ip = ip;
     if (historySyncedMs != null) result.historySyncedMs = historySyncedMs;
+    if (capabilities != null) result.capabilities.addAll(capabilities);
     return result;
   }
 
@@ -878,6 +880,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     ..aI(8, _omitFieldNames ? '' : 'runningSessions')
     ..aOS(9, _omitFieldNames ? '' : 'ip')
     ..aInt64(10, _omitFieldNames ? '' : 'historySyncedMs')
+    ..pPS(11, _omitFieldNames ? '' : 'capabilities')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -991,6 +994,11 @@ class NodeStatus extends $pb.GeneratedMessage {
   $core.bool hasHistorySyncedMs() => $_has(9);
   @$pb.TagNumber(10)
   void clearHistorySyncedMs() => $_clearField(10);
+
+  /// What this machine can build or run, found by the agent: tool names
+  /// such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
+  @$pb.TagNumber(11)
+  $pb.PbList<$core.String> get capabilities => $_getList(10);
 }
 
 class SessionInfo extends $pb.GeneratedMessage {

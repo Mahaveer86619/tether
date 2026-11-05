@@ -93,6 +93,9 @@ message NodeStatus {
   string ip = 9;
   // When the node's transcripts were last fully synced to the hub's history.
   int64 history_synced_ms = 10;
+  // What this machine can build or run, found by the agent: tool names
+  // such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
+  repeated string capabilities = 11;
 }
 
 enum SessionState {

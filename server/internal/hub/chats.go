@@ -525,6 +525,9 @@ func (h *Hub) leadPrompt(chat string) string {
 			continue
 		}
 		m := n.Node + " (" + n.Os + ")"
+		if len(n.Capabilities) > 0 {
+			m += " with " + strings.Join(n.Capabilities, ", ")
+		}
 		if n.Node == hub {
 			m += ", the hub's own machine"
 		}

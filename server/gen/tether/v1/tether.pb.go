@@ -970,8 +970,11 @@ type NodeStatus struct {
 	Ip string `protobuf:"bytes,9,opt,name=ip,proto3" json:"ip,omitempty"`
 	// When the node's transcripts were last fully synced to the hub's history.
 	HistorySyncedMs int64 `protobuf:"varint,10,opt,name=history_synced_ms,json=historySyncedMs,proto3" json:"history_synced_ms,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// What this machine can build or run, found by the agent: tool names
+	// such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
+	Capabilities  []string `protobuf:"bytes,11,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodeStatus) Reset() {
@@ -1072,6 +1075,13 @@ func (x *NodeStatus) GetHistorySyncedMs() int64 {
 		return x.HistorySyncedMs
 	}
 	return 0
+}
+
+func (x *NodeStatus) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
 }
 
 type SessionInfo struct {
@@ -9090,7 +9100,7 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\rhistory_chunk\x18: \x01(\v2\x17.tether.v1.HistoryChunkH\x00R\fhistoryChunk\x12A\n" +
 	"\x0ehistory_synced\x18; \x01(\v2\x18.tether.v1.HistorySyncedH\x00R\rhistorySynced\x12>\n" +
 	"\ragent_command\x18< \x01(\v2\x17.tether.v1.AgentCommandH\x00R\fagentCommandB\x06\n" +
-	"\x04body\"\xb9\x02\n" +
+	"\x04body\"\xdd\x02\n" +
 	"\n" +
 	"NodeStatus\x12\x12\n" +
 	"\x04node\x18\x01 \x01(\tR\x04node\x12\x16\n" +
@@ -9104,7 +9114,8 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x10running_sessions\x18\b \x01(\x05R\x0frunningSessions\x12\x0e\n" +
 	"\x02ip\x18\t \x01(\tR\x02ip\x12*\n" +
 	"\x11history_synced_ms\x18\n" +
-	" \x01(\x03R\x0fhistorySyncedMs\"\xd9\a\n" +
+	" \x01(\x03R\x0fhistorySyncedMs\x12\"\n" +
+	"\fcapabilities\x18\v \x03(\tR\fcapabilities\"\xd9\a\n" +
 	"\vSessionInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04node\x18\x02 \x01(\tR\x04node\x12\x14\n" +

@@ -92,6 +92,7 @@ type Agent struct {
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
 	claudeV       string
+	capabilities  []string // tools found on this machine, see capabilities.go
 }
 
 func New(cfg Config) (*Agent, error) {
@@ -130,6 +131,7 @@ func New(cfg Config) (*Agent, error) {
 // Run connects to the hub and keeps reconnecting until ctx ends.
 func (a *Agent) Run(ctx context.Context) error {
 	a.claudeV = claudeVersion(a.cfg.Claude)
+	a.probeCapabilities()
 	if a.cfg.HookAddr != "" {
 		if err := a.serveHooks(a.cfg.HookAddr); err != nil {
 			return err
@@ -220,10 +222,11 @@ func (a *Agent) status() *v1.NodeStatus {
 	host, _ := os.Hostname()
 	a.mu.Lock()
 	running := int32(len(a.runs) + len(a.panes))
+	caps := a.capabilities
 	a.mu.Unlock()
 	return &v1.NodeStatus{
 		Node: a.cfg.Node, Online: true, Os: runtime.GOOS, Hostname: host,
-		ClaudeVersion: a.claudeV, AgentVersion: a.cfg.Version, RunningSessions: running,
+		ClaudeVersion: a.claudeV, AgentVersion: a.cfg.Version, RunningSessions: running, Capabilities: caps,
 	}
 }
 

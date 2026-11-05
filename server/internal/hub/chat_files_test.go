@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -52,5 +53,20 @@ func TestChatFilesGatherEverySessionOfTheChat(t *testing.T) {
 	}
 	if status, _ := call(t, srv, "GET", "/api/v1/chats/missing/artifacts", "secret", ""); status != 404 {
 		t.Errorf("missing chat: %d", status)
+	}
+}
+
+func TestTheLeadSeesWhatEachMachineCanBuild(t *testing.T) {
+	h, _ := newTestHubWith(t)
+	h.mu.Lock()
+	h.nodes["laptop"] = &v1.NodeStatus{Node: "laptop", Os: "windows", Online: true, Capabilities: []string{"android-sdk", "flutter"}}
+	h.nodes["minipc"] = &v1.NodeStatus{Node: "minipc", Os: "linux", Online: true}
+	p := h.leadPrompt("c1")
+	h.mu.Unlock()
+	if !strings.Contains(p, "laptop (windows) with android-sdk, flutter") || !strings.Contains(p, "minipc (linux).") {
+		t.Errorf("prompt: %s", p)
+	}
+	if !strings.Contains(p, ".tether/out/") {
+		t.Errorf("the prompt should say where files go: %s", p)
 	}
 }
