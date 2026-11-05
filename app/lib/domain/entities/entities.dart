@@ -26,11 +26,15 @@ class Node extends Equatable {
     this.lastSeen,
     this.runningSessions = 0,
     this.ip = '',
+    this.capabilities = const [],
   });
 
   final String name;
   final bool online;
   final String os, hostname, claudeVersion, agentVersion;
+
+  /// What the machine can build or run: "flutter", "android-sdk", "docker"...
+  final List<String> capabilities;
   final DateTime? lastSeen;
   final int runningSessions;
 
@@ -38,7 +42,7 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }

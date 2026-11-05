@@ -19,6 +19,7 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       lastSeen: _time(n.lastSeenMs),
       runningSessions: n.runningSessions,
       ip: n.ip,
+      capabilities: n.capabilities,
     );
 
 SessionState _state(pbe.SessionState s) => switch (s) {

@@ -1010,6 +1010,7 @@ void main() {
       await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.byKey(const Key('new-chat-input')), findsNothing);
+      expect(find.text('flutter'), findsOneWidget, reason: 'a machine shows what it can build');
 
       await tester.tap(find.byKey(const Key('nav-home')));
       await settle(tester);

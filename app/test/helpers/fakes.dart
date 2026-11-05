@@ -485,7 +485,7 @@ class FakeHubSocket implements HubSocket {
   Future<void> close() => _events.close();
 }
 
-const laptop = Node(name: 'laptop', online: true, os: 'windows');
+const laptop = Node(name: 'laptop', online: true, os: 'windows', capabilities: ['android-sdk', 'flutter']);
 const minipc = Node(name: 'minipc', online: true, os: 'linux');
 
 Session session(String id,
