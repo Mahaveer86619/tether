@@ -19,7 +19,8 @@ tests=1 apk=1 windows=1 target=
 while [ $# -gt 0 ]; do
   case $1 in
   --patch)
-    IFS=. read -r a b c < <(tr -d ' \r\n' < VERSION)
+    # read reports failure at the end of a line with no newline.
+    IFS=. read -r a b c < <(tr -d ' \r\n' < VERSION) || true
     target=$a.$b.$((c + 1))
     ;;
   --version) shift; target=${1:?--version needs X.Y.Z} ;;
