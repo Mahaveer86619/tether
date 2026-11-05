@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
 
@@ -300,5 +301,65 @@ func TestTheChatLeadKnowsTheMachinesAndItsTaskSessionsOnlyDoTheirTask(t *testing
 	h.mu.Unlock()
 	if lead == worker || strings.Contains(worker, "You lead") || !strings.Contains(worker, "Don't start other sessions") {
 		t.Fatalf("worker prompt: %q", worker)
+	}
+}
+
+func TestAFinishedTaskReportsItsResultIntoTheChat(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	agent, ctx := dialAgent(t, h, srv.URL)
+	c := postChat(t, srv, "/api/v1/chats", `{"prompt":"ship the release","target":{"node":"laptop","cwd":"/src/tether"}}`)
+	nextCommand(t, agent, ctx, isStart)
+
+	_, m := rpc(t, srv, "secret", `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"start_session","arguments":{"prompt":"run the tests","node":"laptop","cwd":"/src/tether","chat":"`+c.Id+`"}}}`)
+	toolText(t, m)
+	task := nextCommand(t, agent, ctx, isStart).GetStart().Session
+
+	say := func(id, text string) {
+		h.mu.Lock()
+		h.commit(task, []*v1.TimelineItem{{ItemId: id, TsMs: time.Now().UnixMilli(), Kind: &v1.TimelineItem_Markdown{Markdown: &v1.Markdown{Blocks: []*v1.Block{{Kind: &v1.Block_Paragraph{Paragraph: &v1.Paragraph{Spans: []*v1.Span{{Text: text}}}}}}}}}})
+		h.mu.Unlock()
+	}
+	notes := func() []string {
+		items, _, err := h.store.ItemsAfter(c.ActiveSession, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, it := range items {
+			if n := it.GetNotice(); n != nil {
+				out = append(out, n.Text)
+			}
+		}
+		return out
+	}
+	end := func() {
+		h.mu.Lock()
+		h.noteTurnEnded(task)
+		h.mu.Unlock()
+	}
+
+	say("m1", "All 212 tests pass; one flaky test was retried.")
+	end()
+	got := notes()
+	if len(got) != 1 || !strings.HasPrefix(got[0], "Task finished: ") || !strings.Contains(got[0], "(laptop, tether)") || !strings.Contains(got[0], "All 212 tests pass") {
+		t.Fatalf("the lead's chat should show what the task said: %q", got)
+	}
+	end()
+	if len(notes()) != 1 {
+		t.Fatalf("one turn is reported once: %q", notes())
+	}
+
+	say("m2", "Also fixed the retry.")
+	end()
+	if got := notes(); len(got) != 2 || !strings.Contains(got[1], "Also fixed the retry") {
+		t.Fatalf("the next turn is reported too: %q", got)
+	}
+
+	// The lead's own turns are not reported to itself.
+	h.mu.Lock()
+	h.noteTurnEnded(c.ActiveSession)
+	h.mu.Unlock()
+	if len(notes()) != 2 {
+		t.Fatalf("the lead is not a task: %q", notes())
 	}
 }

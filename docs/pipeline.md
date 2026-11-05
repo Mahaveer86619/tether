@@ -8,7 +8,7 @@ What is left to build, in the order that makes sense, so the next development ca
 
 | Order | Item | Why now | Doc |
 |---|---|---|---|
-| a | Hub posts a finished task's result into its chat (5) | The chat's result cards need it | [chats.md](chats.md) |
+| a | ~~Hub posts a finished task's result into its chat (5)~~ Done: a note per finished turn; the rich card waits for the design | The chat's result cards need it | [chats.md](chats.md) |
 | b | `present_file`, the drop folder, the chat's artifacts endpoint, result items (new) | Deliverables need it; the file card and Files panel are drawn against it | [deliverables.md](deliverables.md) |
 | c | Node capabilities and the agent's doctor, reported in the node status (new) | The checklist screen, Auto picking the machine that can build | [first-run.md](first-run.md) |
 | d | The skill router and usage recording (8) | "Used skill X" and a prompt that stays small | [agent-tools.md](agent-tools.md#3-choosing-skills-well) |

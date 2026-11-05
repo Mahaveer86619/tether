@@ -14,7 +14,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 | Interrupt, resume, fork, continue on the hub | Built | Session menu | [sessions.md](sessions.md) | Branch and merge ([plan.md](plan.md#fork-branch-and-merge)) |
 | Chats: a title, a target (device and folder), sessions linked to it | Built | Home, chat screen | [chats.md](chats.md) | |
 | Where a chat runs: auto, by hand, or Claude works it out | Built | New-chat box, target picker | [chats.md](chats.md#targets) | |
-| A chat leads and hands work to task sessions on other devices | Partly | Chat screen (Tasks strip) | [chats.md](chats.md), [overview.md](overview.md) | Not run live yet; the lead's results are not posted back by the hub, only by Claude following its tasks |
+| A chat leads and hands work to task sessions on other devices | Partly | Chat screen (Tasks strip) | [chats.md](chats.md), [overview.md](overview.md) | Not run live yet; a finished task's result is now posted into the chat by the hub (a plain note until the result card is designed) |
 | Follow a remote session live inside the chat and message it | Planned | Chat screen | [chats.md](chats.md) | Streaming a linked session's timeline into the chat |
 | Terminal mode: the assistant's own interface, live, beside chat mode; on the phone with a key row | Planned | Chat screen | [terminal-mode.md](terminal-mode.md), [v1-spec.md](v1-spec.md#e-terminal-mode) | Everything; today only a text "Screen & keys" sheet |
 | Outbox: a message is kept until the session shows it | Built | Composer | [app.md](app.md) | |
