@@ -193,7 +193,8 @@ func (h *Hub) serveMCP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "this MCP server answers POST requests only", http.StatusMethodNotAllowed)
 		return
 	}
-	if _, err := h.auth(r, true); err != nil {
+	caller, err := h.auth(r, true)
+	if err != nil {
 		writeError(w, err)
 		return
 	}
@@ -233,6 +234,9 @@ func (h *Hub) serveMCP(w http.ResponseWriter, r *http.Request) {
 			if t.Name == p.Name {
 				text, err := t.call(h, p.Arguments)
 				isErr := err != nil
+				h.mu.Lock()
+				h.audit(actorOf(caller), "mcp", t.Name, auditDetail(p.Arguments), !isErr)
+				h.mu.Unlock()
 				if isErr {
 					text = err.Error()
 				}

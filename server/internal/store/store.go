@@ -146,6 +146,17 @@ var migrations = []string{
 		PRIMARY KEY (chat, kind)
 	)`,
 	historySchema,
+	// The audit log: who did what, when. Append only.
+	`CREATE TABLE audit (
+		id      INTEGER PRIMARY KEY AUTOINCREMENT,
+		at_ms   INTEGER NOT NULL,
+		actor   TEXT NOT NULL,
+		kind    TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		detail  TEXT NOT NULL,
+		ok      INTEGER NOT NULL
+	);
+	CREATE INDEX audit_by_time ON audit (at_ms DESC)`,
 }
 
 type Store struct {

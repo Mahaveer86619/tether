@@ -13,7 +13,7 @@ What is left to build, in the order that makes sense, so the next development ca
 | c | Node capabilities (done: tools and the Android SDK, in the node status and the lead's prompt); the agent's doctor remains (new) | The checklist screen, Auto picking the machine that can build | [first-run.md](first-run.md) |
 | d | The skill router and usage recording (8) | "Used skill X" and a prompt that stays small | [agent-tools.md](agent-tools.md#3-choosing-skills-well) |
 | e | Notification rules, preferences and the `Notify` frame on the hub (new) | Every notification screen and setting | [notifications.md](notifications.md) |
-| f | Scoped MCP credentials, the audit log, rate limits (new) | Security for 1.0; the audit log has a screen | [agent-tools.md](agent-tools.md#4-security) |
+| f | The audit log (done for tool calls and skill decisions); scoped MCP credentials and rate limits remain (new) | Security for 1.0; the audit log has a screen | [agent-tools.md](agent-tools.md#4-security) |
 | g | Terminal output with colour, then streaming frames (new) | Terminal mode | [terminal-mode.md](terminal-mode.md) |
 | h | Wipe orders and per-scope deletion on the hub (15) | The remove-data screen | [uninstall.md](uninstall.md) |
 | i | The hub installer (new) | First run | [first-run.md](first-run.md) |

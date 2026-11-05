@@ -58,7 +58,7 @@ Tether is a remote control for shells on the person's machines, so it is built a
 
 **To do for 1.0.**
 - **Least privilege for the assistant's own calls.** A session's MCP calls use a credential scoped to that session; a *task* session (one the lead started) cannot start further sessions or read the library (today only its prompt says so). The hub enforces what the prompt asks.
-- **An audit log** on the hub: every MCP tool call, every skill change, every terminal opened, every wipe, with who and when; viewable and exportable.
+- **An audit log** on the hub: every MCP tool call, every skill change, every terminal opened, every wipe, with who and when; viewable and exportable. *Built for MCP tool calls and skill decisions* (`GET /api/v1/audit`, newest first, `kind`, `before`, `limit`): it records the tool and where and what it was aimed at (node, folder, session, chat, name), never the content. Terminals and wipes join it when they exist; the screen and export are for the design.
 - **Untrusted content.** Files, web pages and tool outputs can carry instructions meant to steer the assistant. Tether does not read them, but it can keep an approval in the way: nothing a skill or a result says can approve itself, and an approval card always shows what will actually run, not what the assistant says it will run.
 - **Rate limits** on notifications, session starts and file uploads per device.
 - **Secrets.** Never in skills, prompts or logs; the doctor checks the hub's data folder is private to its user; tokens are shown once.

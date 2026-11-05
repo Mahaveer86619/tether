@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -180,6 +181,10 @@ func (h *Hub) skillLibraryRoutes(mux *http.ServeMux) {
 				skillError(w, err)
 				return
 			}
+			id, _ := r.Context().Value(identityKey{}).(identity)
+			h.mu.Lock()
+			h.audit(actorOf(id), "skill", path.Base(r.URL.Path), r.PathValue("name"), true)
+			h.mu.Unlock()
 			writePlainJSON(w, summarize(s))
 		})
 	}
