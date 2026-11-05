@@ -184,13 +184,15 @@ The palette, tokens and shapes (phase 0) can ship first and make every existing 
 
 ## 6. Decisions
 
-1. **Terminal as a mode, not a tab** (section 2). Recommended; the alternative is a tab that opens the current chat's terminal.
-2. **Light mode**: build a light "Tether" or keep the six existing light palettes only?
-3. **Default palette**: should "Tether" replace "Claude" as the default for everyone, or stay opt-in until phase 5?
-4. **Fonts**: bundle Inter and JetBrains Mono (both open licence, about 1 MB for the weights we need), or use system fonts to keep the app small?
-5. **Phone bottom bar**: Home, Chats, Devices, More. Does "Chats" opening the last chat feel right, or should it open the list?
-6. **Pinned skills on Home**: pin from the Skills screen, or the three most used?
-7. **Desktop right drawer**: opens on demand, or always open at wide sizes?
+Settled by the owner on 2026-11-05.
+
+1. **Terminal is a mode, not a tab**: Chat · Terminal · Split in the chat header.
+2. **Light mode**: Tether stays dark-only by design; light uses the existing light palettes. The light side already in the palette stays but is not drawn by the design team.
+3. **Default palette**: Tether is opt-in until phase 5, then becomes the default.
+4. **Fonts**: bundle Inter and JetBrains Mono.
+5. **Phone bottom bar**: Home, Chats, Devices, More; Chats opens the chat list.
+6. **Pinned skills on Home**: pinned from the Skills screen.
+7. **Desktop right drawer**: opens on demand.
 
 ## 7. Brief to send back to the design team
 
