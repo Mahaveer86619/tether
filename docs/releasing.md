@@ -38,6 +38,17 @@ Each release's notes are its section in `CHANGELOG.md` (`## X.Y.Z`). They go int
 
 `workflow_dispatch` runs the same jobs on a branch, but builds and deploys without publishing.
 
+### Shipping from your laptop
+
+The build machine does not have to be the hub's machine. With `TETHER_SHIP_HOST=user@host` in `.local/ship.env` (not committed), one command does the whole release:
+
+```sh
+make ship ARGS=--patch            # 0.17.1 -> 0.17.2: tests, build, deploy
+make ship ARGS="--version 0.18.0 --no-tests"
+```
+
+`tools/release/ship.sh` refuses to run with uncommitted changes or without a `## X.Y.Z` section in `CHANGELOG.md`, then runs the tests, builds the Go binaries, the APK (signed with `app/android/key.properties`, or the debug key if there is none, so the installed app updates in place), the Windows app, and `latest.json`. It sends `dist/X.Y.Z` to the hub's machine and runs `deploy.sh` there, so the backup, health checks and rollback below all apply. When it finishes, agents on other machines update themselves when idle, and each app shows its update banner. `--no-apk`, `--no-windows` and `--no-tests` skip parts when only the server changed. The transfer goes over your network link, so the APK and the Windows zip are what take the time.
+
 ### By hand on the hub's machine
 
 The same steps, without GitHub:

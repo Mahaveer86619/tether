@@ -2,6 +2,15 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.1
+
+- **One command ships a release** from your own machine: `make ship ARGS=--patch` tests, builds the hub, agents, APK and Windows app, and deploys over ssh with the usual backup and rollback. Apps and agents then update themselves.
+- **Files reach the chat.** Anything a session leaves in `.tether/out/` is delivered as a file you can download, and a chat's Files list is available from the hub.
+- **Machines say what they can build** (Flutter, Android SDK, Docker and so on), shown on the device card and in the lead's prompt.
+- **Skills are offered by fit.** A new chat is offered the three skills that match its request instead of all of them, and you can pin skills to Home.
+- **An audit log** of tool calls and skill decisions on the hub.
+- **Home, Chats and History** are separate places, the phone bar gets More, Inter and JetBrains Mono are built in, and a new Tether look is available under Appearance.
+
 ## 0.17.0
 
 - **Updates in the app.** The app checks for a new release when it starts and every few hours, and the hub announces one as soon as it has it. A banner shows the release notes, with Update and Skip this version. On Android the update downloads, is checked, and opens the installer; on Windows it is applied when the app restarts. A release can require an update from versions that are too old.
