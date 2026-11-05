@@ -55,12 +55,8 @@ class NativeUpdatePlatform implements UpdatePlatform {
   Future<void> _applyOnExit(File zip) async {
     final app = File(Platform.resolvedExecutable).parent;
     final script = File('${zip.parent.path}\\apply-update.ps1');
-    await script.writeAsString(_windowsHelper);
-    await Process.start(
-      'powershell.exe',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', script.path, '-Zip', zip.path, '-App', app.path, '-AppPid', '$pid'],
-      mode: ProcessStartMode.detached,
-    );
+    await script.writeAsString(windowsHelperScript(zip: zip.path, app: app.path, appPid: pid));
+    await Process.start('cmd.exe', windowsHelperLaunch(script.path), mode: ProcessStartMode.detached);
   }
 
   @override
@@ -75,7 +71,6 @@ class NativeUpdatePlatform implements UpdatePlatform {
 }
 
 const _windowsHelper = r'''
-param([string]$Zip, [string]$App, [int]$AppPid)
 $ErrorActionPreference = 'Stop'
 $log = Join-Path (Split-Path $Zip) 'apply-update.log'
 function Note($m) { Add-Content -Path $log -Value "$(Get-Date -Format s) $m" }
@@ -99,3 +94,16 @@ try {
 catch { Note "update failed: $_" }
 Start-Process (Join-Path $App 'tether.exe')
 ''';
+
+String _quoted(String v) => "'${v.replaceAll("'", "''")}'";
+
+/// The helper with its three values written in, so nothing depends on how
+/// the arguments survive being passed on.
+String windowsHelperScript({required String zip, required String app, required int appPid}) =>
+    '\$Zip = ${_quoted(zip)}\n\$App = ${_quoted(app)}\n\$AppPid = $appPid\n$_windowsHelper';
+
+/// How to start the helper so it outlives the app. PowerShell started
+/// straight from a detached process never runs; going through `cmd start`
+/// does, and `-WindowStyle Hidden` keeps it from showing.
+List<String> windowsHelperLaunch(String script) =>
+    ['/c', 'start', '', '/b', 'powershell.exe', '-NoProfile', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', script];

@@ -2,6 +2,10 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.2
+
+- **Fix: the Windows app now applies its update.** After Restart to update, the helper that swaps in the new version never started, so the app came back on the old version and offered the update again. It now starts the right way, and the update screen no longer loops.
+
 ## 0.17.1
 
 - **One command ships a release** from your own machine: `make ship ARGS=--patch` tests, builds the hub, agents, APK and Windows app, and deploys over ssh with the usual backup and rollback. Apps and agents then update themselves.
