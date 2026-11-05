@@ -9,6 +9,7 @@ import 'nav/nav_cubit.dart';
 import 'tailscale/tailscale_cubit.dart';
 import 'update/update_cubit.dart';
 import 'hub/hub_cubit.dart';
+import 'routines/pinned_skills_cubit.dart';
 import 'settings/settings_cubit.dart';
 import 'theme/palettes.dart';
 import 'theme/theme.dart';
@@ -26,6 +27,7 @@ class TetherApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<NavCubit>()),
         BlocProvider(create: (_) => sl<ChatsCubit>()),
         BlocProvider(create: (_) => sl<UpdateCubit>()..start()),
+        BlocProvider(create: (_) => PinnedSkillsCubit(sl())..load()),
         // Looks after Tailscale in the background when the hub is on the tailnet.
         BlocProvider(create: (_) => sl<TailscaleCubit>(), lazy: false),
       ],

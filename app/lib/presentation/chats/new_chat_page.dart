@@ -6,6 +6,7 @@ import '../../injection.dart';
 import '../artifacts/attachments.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
+import '../routines/pinned_skills_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -144,6 +145,29 @@ class _NewChatState extends State<_NewChat> {
                 ),
                 if (hint.isNotEmpty) Text(hint, style: TextStyle(fontSize: 12, color: c.muted)),
               ],
+            ),
+            BlocBuilder<PinnedSkillsCubit, List<String>>(
+              builder: (context, pinned) => pinned.isEmpty
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          for (final name in pinned)
+                            ActionChip(
+                              key: Key('pinned-$name'),
+                              avatar: Icon(Icons.auto_awesome_rounded, size: 15, color: c.accent),
+                              label: Text(name, style: monoStyle(context, size: 12.5, color: c.text)),
+                              onPressed: () {
+                                _text.text = 'Use the $name skill. ${_text.text}'.trimRight();
+                                _text.selection = TextSelection.collapsed(offset: _text.text.length);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         );

@@ -7,6 +7,7 @@ import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import 'pinned_skills_cubit.dart';
 import 'routines_cubit.dart';
 
 /// What you keep asking for, read from the hub's history, and the skills made
@@ -153,7 +154,22 @@ class _SkillCard extends StatelessWidget {
                     Icon(k.proposed ? Icons.hourglass_top_rounded : Icons.check_circle_rounded, size: 17, color: k.proposed ? c.warning : c.success),
                     const SizedBox(width: 8),
                     Expanded(child: Text(k.name, style: monoStyle(context, size: 14, color: c.text).copyWith(fontWeight: FontWeight.w600))),
-                    if (busy) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) else Icon(Icons.chevron_right_rounded, size: 20, color: c.faint),
+                    if (busy)
+                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    else if (!k.proposed)
+                      BlocBuilder<PinnedSkillsCubit, List<String>>(
+                        builder: (context, pinned) {
+                          final on = pinned.contains(k.name);
+                          return IconButton(
+                            key: Key('pin-${k.name}'),
+                            tooltip: on ? 'Unpin from Home' : 'Pin to Home',
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(on ? Icons.push_pin_rounded : Icons.push_pin_outlined, size: 18, color: on ? c.accent : c.faint),
+                            onPressed: () => context.read<PinnedSkillsCubit>().toggle(k.name),
+                          );
+                        },
+                      ),
+                    Icon(Icons.chevron_right_rounded, size: 20, color: c.faint),
                   ],
                 ),
                 const SizedBox(height: 6),
