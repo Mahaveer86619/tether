@@ -8,7 +8,7 @@ M0 to M5 below are mostly built. What stands between here and 1.0 is, in order:
 
 1. **Finish what is half done:** the run card, following a remote session live in its chat, history views in the app, uploads from the Home box in the background (the list is in [features.md](features.md)).
 2. **The UI overhaul:** every screen, one pass, against shared rules ([ui-overhaul.md](ui-overhaul.md)).
-3. **Previews and interactive guides** ([previews-and-guides.md](previews-and-guides.md)), designed alongside the overhaul so the chat has room for them.
+3. **The 1.0 features that are still new**, specified in [v1-spec.md](v1-spec.md): terminal mode, deliverables (files and builds in the chat), previews and interactive guides, notifications, first-run setup, skill choice and security. The design team draws from that spec; the engine work goes ahead in parallel ([pipeline.md](pipeline.md#while-the-design-team-works)).
 4. **Clean removal** of data and of Tether ([uninstall.md](uninstall.md)).
 5. **CI switched on** on GitHub, so a tag builds and deploys ([releasing.md](releasing.md)).
 

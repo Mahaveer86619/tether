@@ -2,6 +2,7 @@ package hub
 
 import (
 	"net/http"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -388,6 +389,60 @@ func (h *Hub) noteTurnEnded(session string) {
 	}
 	h.runChatJobs(c)
 	h.putChat(c)
+	h.reportTask(c, session)
+}
+
+// reportTask adds a note to the chat's lead session when a task it started
+// finishes a turn: what the task did, in its own last words, so the chat
+// shows the result without the lead having to go and read it. The note is
+// keyed by the task's last item, so one turn is reported once. Caller holds
+// h.mu.
+func (h *Hub) reportTask(c *v1.Chat, task string) {
+	if !h.workerOf(c, task) || c.ActiveSession == "" || c.ActiveSession == task {
+		return
+	}
+	s := h.sessions[task]
+	if s == nil {
+		return
+	}
+	last, err := h.store.LastItemID(task)
+	if err != nil || last == "" {
+		return
+	}
+	id := "task:" + task + ":" + last
+	if it, _ := h.store.Item(c.ActiveSession, id); it != nil {
+		return
+	}
+	text := "Task finished"
+	level := v1.Notice_LEVEL_INFO
+	if s.State == v1.SessionState_SESSION_STATE_ERROR {
+		text, level = "Task failed", v1.Notice_LEVEL_ERROR
+	}
+	where := s.Node
+	if s.Cwd != "" {
+		where += ", " + path.Base(strings.ReplaceAll(s.Cwd, `\`, "/"))
+	}
+	text += ": " + clip(firstNonEmpty(s.Title, "a task"), 80) + " (" + where + ")"
+	if said := h.lastAssistantText(c.Id, task); said != "" {
+		text += "\n\n" + clip(said, 600)
+	}
+	h.commit(c.ActiveSession, []*v1.TimelineItem{{
+		ItemId: id, TsMs: time.Now().UnixMilli(), Kind: &v1.TimelineItem_Notice{Notice: &v1.Notice{Level: level, Text: text}},
+	}})
+}
+
+// lastAssistantText is what a session last said in a chat's stored context.
+func (h *Hub) lastAssistantText(chat, session string) string {
+	msgs, err := h.store.ChatMessages(chat)
+	if err != nil {
+		return ""
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if m := msgs[i]; m.Session == session && m.Role == "assistant" && strings.TrimSpace(m.Text) != "" {
+			return strings.TrimSpace(m.Text)
+		}
+	}
+	return ""
 }
 
 // keepMessages stores the user and assistant messages among items, if
