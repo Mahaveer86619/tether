@@ -1,6 +1,6 @@
 # Deliverables: asking for something and getting the file
 
-Status: plan. Product view: [v1-spec.md](v1-spec.md#f-files-results-and-guides). The pieces it stands on exist: the artifact store, resumable downloads, signed links, file hooks, generated pages. What is missing is the way a thing the assistant *makes* reaches the chat as a file you can take.
+Status: the drop folder and the chat's files endpoint are built; the rest is plan. Product view: [v1-spec.md](v1-spec.md#f-files-results-and-guides). The pieces it stands on exist: the artifact store, resumable downloads, signed links, file hooks, generated pages. What is missing is the way a thing the assistant *makes* reaches the chat as a file you can take.
 
 ## The scenario
 
@@ -16,8 +16,8 @@ From the phone: "build a new APK of the app from the laptop." The lead hands the
 
 ### 1. Two ways a file becomes a deliverable
 
-- **`present_file(path, note)`**, a hub tool the assistant calls: "I made this, the user wants it." The agent on that machine reads the file, uploads it as an artifact with origin `result`, and the hub puts a result item in the chat. This is the main path; the lead prompt and the task prompt tell the assistant to use it whenever it produces a file for the user (a build, an export, a report). Works for any file anywhere on the machine.
-- **A drop folder**, `<cwd>/.tether/out/`: anything placed there is delivered automatically, the way pages under `.tether/pages/` are. For scripts that can't call a tool.
+- **`present_file(path, note)`** (not built; the drop folder below does the job for now, and the prompt tells the assistant to use it), a hub tool the assistant calls: "I made this, the user wants it." The agent on that machine reads the file, uploads it as an artifact with origin `result`, and the hub puts a result item in the chat. This is the main path; the lead prompt and the task prompt tell the assistant to use it whenever it produces a file for the user (a build, an export, a report). Works for any file anywhere on the machine.
+- **A drop folder**, `<cwd>/.tether/out/` (built): after every tool call the agent uploads what has settled there (two seconds untouched, no dot-files or `.part`/`.tmp` files, at most 50 per call) as an artifact with origin `result`, once per version of a file. The lead's and the task's prompts tell the assistant to copy or write what the user asked for into it.
 
 ### 2. What the file carries
 
@@ -31,7 +31,7 @@ From the phone: "build a new APK of the app from the laptop." The lead hands the
 
 ### 4. The chat's Files panel
 
-`GET /api/v1/chats/{id}/artifacts` returns every artifact of every session in the chat, newest first, with origin (sent or made), kind and size, paged. The app's Files panel is two tabs over it ("You sent", "Made for you") with a type filter and name search. The global Files screen stays for everything on the hub.
+`GET /api/v1/chats/{id}/artifacts` (built; `origin=sent|made`, `q`, `before`, `limit`) returns every artifact of every session in the chat, newest first, with origin (sent or made), kind and size, paged. The app's Files panel is two tabs over it ("You sent", "Made for you") with a type filter and name search. The global Files screen stays for everything on the hub.
 
 ### 5. Getting it to the device
 

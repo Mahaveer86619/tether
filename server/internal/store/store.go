@@ -651,6 +651,49 @@ func (s *Store) Artifacts(session string, limit int) ([]*v1.Artifact, error) {
 	return out, rows.Err()
 }
 
+// ArtifactsOf lists the artifacts of any of the sessions, newest first,
+// created before the given time (0 for no bound), with names containing q.
+func (s *Store) ArtifactsOf(sessions, origins []string, q string, before int64, limit int) ([]*v1.Artifact, error) {
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+	marks := func(n int) string { return strings.TrimSuffix(strings.Repeat("?,", n), ",") }
+	query := `SELECT ` + artifactCols + ` FROM artifacts WHERE session IN (` + marks(len(sessions)) + `)`
+	args := []any{}
+	for _, id := range sessions {
+		args = append(args, id)
+	}
+	if len(origins) > 0 {
+		query += ` AND origin IN (` + marks(len(origins)) + `)`
+		for _, o := range origins {
+			args = append(args, o)
+		}
+	}
+	if q != "" {
+		query += ` AND name LIKE ? ESCAPE '\'`
+		args = append(args, "%"+strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q)+"%")
+	}
+	if before > 0 {
+		query += ` AND created_ms < ?`
+		args = append(args, before)
+	}
+	query += ` ORDER BY created_ms DESC LIMIT ?`
+	rows, err := s.db.Query(query, append(args, limit)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.Artifact
+	for rows.Next() {
+		a, err := scanArtifact(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 // DeleteArtifact removes one artifact and reports whether others still use
 // its content.
 func (s *Store) DeleteArtifact(id, sha string) (shared bool, err error) {

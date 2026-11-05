@@ -505,7 +505,7 @@ func (h *Hub) chatPromptFor(c *v1.Chat, node string, worker bool) string {
 		return ""
 	}
 	if worker {
-		return workerPrompt(c.Id)
+		return workerPrompt(c.Id) + " " + filesPrompt
 	}
 	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id)
 	if c.Target.GetState() == targetDetecting {
@@ -535,8 +535,13 @@ func (h *Hub) leadPrompt(chat string) string {
 		"Work that belongs on another machine, or that can run in parallel, goes to a session there: call the tether MCP tool start_session with node, cwd, " +
 		"chat=\"" + chat + "\" and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
 		"wait_for_session or read_session. Don't do a delegated task yourself. When sessions finish, tell the user in plain words what each did and what is left. " +
-		"Small tasks that need no other machine you simply do here." + h.activeSkillsPrompt()
+		"Small tasks that need no other machine you simply do here. " + filesPrompt + h.activeSkillsPrompt()
 }
+
+// filesPrompt is how a file the user asked for reaches them: the agent
+// delivers whatever lands in this folder. See docs/deliverables.md.
+const filesPrompt = "When you make a file the user asked for (a build, an export, a report, a spreadsheet), copy or write it into .tether/out/ in your working folder; " +
+	"Tether delivers it to the user's chat as a file they can download. Say what it is in your reply; don't paste its contents."
 
 // workerPrompt is for a session the lead started: do the one task and report.
 func workerPrompt(chat string) string {
@@ -766,6 +771,9 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /api/v1/chats/{id}/context", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.chatContext(r.PathValue("id"))
+	}))
+	mux.HandleFunc("GET /api/v1/chats/{id}/artifacts", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return h.chatFiles(r.PathValue("id"), r)
 	}))
 	mux.HandleFunc("GET /api/v1/targets", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.targetSuggestions(r.URL.Query().Get("prompt")), nil

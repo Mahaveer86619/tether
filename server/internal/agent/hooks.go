@@ -75,6 +75,7 @@ func (a *Agent) handleHook(w http.ResponseWriter, r *http.Request) {
 	}
 	a.noteHook(in, pid)
 	a.noteToolFile(in)
+	a.noteOutbox(in)
 	if in.Event != "PermissionRequest" {
 		w.WriteHeader(http.StatusOK)
 		return
