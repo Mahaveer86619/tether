@@ -3,12 +3,14 @@
 // The images land in test/screens/out/ (not committed).
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/repositories/repositories.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
+import 'package:tether/gen/tether/v1/render.pbenum.dart' as rpbe;
 import 'package:tether/injection.dart';
 import 'package:tether/presentation/app.dart';
 
@@ -63,7 +65,9 @@ void main() {
       configureDependencies(withData: false);
     });
 
-    Future<void> shoot(WidgetTester t, String name, Size size) async {
+    rpb.Span span(String t, {bool bold = false, bool code = false}) => rpb.Span(text: t, bold: bold, code: code);
+
+    Future<void> shoot(WidgetTester t, String name, Size size, {String? chat, String? go}) async {
       await _font('Inter', ['assets/fonts/Inter-Regular.ttf', 'assets/fonts/Inter-Medium.ttf', 'assets/fonts/Inter-SemiBold.ttf']);
       await _font('JetBrains Mono', ['assets/fonts/JetBrainsMono-Regular.ttf', 'assets/fonts/JetBrainsMono-Medium.ttf']);
       await _font('MaterialIcons', ['fonts/MaterialIcons-Regular.otf']);
@@ -72,10 +76,40 @@ void main() {
       addTearDown(t.view.reset);
       await t.pumpWidget(const TetherApp());
       await _settle(t);
+      if (go != null) {
+        await t.tap(find.byKey(Key(go)));
+        await _settle(t);
+      }
+      if (chat != null) {
+        await t.tap(find.byKey(Key('chat-$chat')));
+        await _settle(t);
+        repo.emitTimeline('s1', [
+          rpb.TimelineItem(itemId: 'u1', ord: Int64(1), user: rpb.UserText(text: 'Webhook retries are double-charging. Find the cause and fix it on the laptop.')),
+          rpb.TimelineItem(itemId: 'a1', ord: Int64(2), markdown: rpb.Markdown(blocks: [
+            rpb.Block(paragraph: rpb.Paragraph(spans: [span('Looking at '), span('internal/billing/webhook.go', code: true), span(' first. The handler acknowledges after processing, so a slow response makes Stripe retry.')])),
+          ])),
+          rpb.TimelineItem(itemId: 't1', ord: Int64(3), tool: rpb.ToolCard(toolUseId: 't1', name: 'Bash', title: 'go test ./internal/billing', status: rpbe.ToolCard_Status.STATUS_SUCCEEDED, shell: rpb.ShellCard(command: 'go test ./internal/billing'))),
+          rpb.TimelineItem(itemId: 't2', ord: Int64(4), tool: rpb.ToolCard(toolUseId: 't2', name: 'Edit', title: 'internal/billing/webhook.go', status: rpbe.ToolCard_Status.STATUS_SUCCEEDED, edit: rpb.EditCard(path: 'internal/billing/webhook.go', unifiedDiff: '@@ -42,3 +42,4 @@\n-\tprocess(evt)\n+\tack(w)\n+\tgo process(evt)\n', added: 2, removed: 1))),
+          rpb.TimelineItem(itemId: 'a2', ord: Int64(5), markdown: rpb.Markdown(blocks: [
+            rpb.Block(paragraph: rpb.Paragraph(spans: [span('Fixed: the handler now acknowledges first and processes in the background, and the event id is checked for repeats.', bold: false)])),
+            rpb.Block(list: rpb.ListBlock(items: [
+              rpb.ListItem(checked: true, blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('tests pass')]))]),
+              rpb.ListItem(checked: false, blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('deploy to staging')]))]),
+            ])),
+          ])),
+        ]);
+        await _settle(t);
+      }
       await expectLater(find.byType(TetherApp), matchesGoldenFile('out/$name.png'));
     }
 
     testWidgets('home on a phone', (t) => shoot(t, 'home-phone', const Size(400, 860)), skip: !on);
+    testWidgets('a chat on a phone', (t) => shoot(t, 'chat-phone', const Size(400, 860), chat: 'c1'), skip: !on);
+    testWidgets('a chat on a desktop', (t) => shoot(t, 'chat-desktop', const Size(1400, 900), chat: 'c1'), skip: !on);
+    for (final d in ['devices', 'activity', 'files', 'routines', 'usage', 'chats']) {
+      testWidgets('$d on a desktop', (t) => shoot(t, '$d-desktop', const Size(1400, 900), go: 'nav-$d'), skip: !on);
+    }
+    testWidgets('devices on a phone', (t) => shoot(t, 'devices-phone', const Size(400, 860), go: 'nav-devices'), skip: !on);
     testWidgets('home on a desktop', (t) => shoot(t, 'home-desktop', const Size(1400, 900)), skip: !on);
   });
 }

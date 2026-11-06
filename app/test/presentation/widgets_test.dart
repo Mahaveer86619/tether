@@ -4,6 +4,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tether/domain/entities/entities.dart';
@@ -712,7 +713,7 @@ void main() {
       await tester.tap(find.byTooltip('Settings'));
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsNothing);
-      await tester.tap(find.byTooltip('Back (Esc)'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsNothing);
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');

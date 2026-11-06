@@ -1077,6 +1077,7 @@ class _ComposerState extends State<Composer> {
     final canSubmit = s.canType && !s.sending && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
     final canStop = s.session?.canInterrupt ?? false;
     return PromptBox(
+      prompt: true,
       controller: _text,
       focusNode: _focus,
       fieldKey: const Key('composer'),

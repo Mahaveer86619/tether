@@ -184,7 +184,6 @@ class _WidePane extends StatelessWidget {
         ),
       null => _Titled(
           title: _title(state.destination),
-          onBack: back,
           action: _destinationAction(context, state.destination),
           child: _destinationPage(context, state.destination),
         ),
