@@ -2,6 +2,12 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.3
+
+- **Back works like a phone.** Switching between Home, Chats, Devices and the rest no longer piles up history; Back closes what you opened, then goes Home, then leaves. A chat, Settings, Home and Back no longer reopens the chat.
+- **A new look, starting with Home.** A terminal-style start box with your pinned skills as `/skill` chips, run cards with step bars for what is working, a card for each chat, small mono labels, and the Tether theme as the default dark look. The chat box is a prompt too. Text on the accent colour is dark where white would be hard to read.
+- Destinations on wide screens no longer show a back arrow.
+
 ## 0.17.2
 
 - **Fix: the Windows app now applies its update.** After Restart to update, the helper that swaps in the new version never started, so the app came back on the old version and offered the update again. It now starts the right way, and the update screen no longer loops.
