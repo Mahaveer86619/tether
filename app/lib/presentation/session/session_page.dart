@@ -7,6 +7,7 @@ import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../artifacts/artifact_widgets.dart' show artifactIcon, fileSize;
 import '../artifacts/attachments.dart';
+import '../artifacts/file_card.dart';
 import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
 import '../hub/hub_cubit.dart';
@@ -127,6 +128,7 @@ class _SessionBodyState extends State<_SessionBody> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        DeliveredFiles(sessionId: session.id),
                         if (s.approvals.isNotEmpty)
                           // Cards can be taller than the screen (several questions); they scroll here, and the timeline keeps the rest.
                           ConstrainedBox(

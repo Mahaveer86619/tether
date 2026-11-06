@@ -719,6 +719,26 @@ void main() {
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');
     });
 
+    testWidgets('files a session delivered show as cards with Download, and a program says so', (tester) async {
+      repo.emitHub(repo.current.copyWith(artifacts: {
+        'f1': Artifact(id: 'f1', name: 'app-release.apk', mime: 'application/vnd.android.package-archive', size: 81487523, session: 's1', node: 'laptop', origin: 'result', created: DateTime.now()),
+        'f2': Artifact(id: 'f2', name: 'rows.csv', mime: 'text/csv', size: 2048, session: 's1', node: 'laptop', origin: 'result', created: DateTime.now().subtract(const Duration(minutes: 1)), note: 'the failing rows'),
+        'f3': Artifact(id: 'f3', name: 'shot.png', mime: 'image/png', size: 10, session: 's1', origin: 'attachment', created: DateTime.now()),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      expect(find.text('DELIVERED'), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f1')), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f2')), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f3')), findsNothing, reason: 'what you sent is not a delivery');
+      expect(find.text('a program'), findsOneWidget, reason: 'only the APK');
+      expect(find.text('the failing rows'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('file-card-download-f2')));
+      await settle(tester);
+      expect(transfers.downloads.map((a) => a.id), ['f2']);
+    });
+
     testWidgets('a session is drawn as chat, as a terminal transcript, or both', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
       await openSession(tester, 's1');
