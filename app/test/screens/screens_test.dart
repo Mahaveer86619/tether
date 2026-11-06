@@ -67,7 +67,7 @@ void main() {
 
     rpb.Span span(String t, {bool bold = false, bool code = false}) => rpb.Span(text: t, bold: bold, code: code);
 
-    Future<void> shoot(WidgetTester t, String name, Size size, {String? chat, String? go}) async {
+    Future<void> shoot(WidgetTester t, String name, Size size, {String? chat, String? go, String? view}) async {
       await _font('Inter', ['assets/fonts/Inter-Regular.ttf', 'assets/fonts/Inter-Medium.ttf', 'assets/fonts/Inter-SemiBold.ttf']);
       await _font('JetBrains Mono', ['assets/fonts/JetBrainsMono-Regular.ttf', 'assets/fonts/JetBrainsMono-Medium.ttf']);
       await _font('MaterialIcons', ['fonts/MaterialIcons-Regular.otf']);
@@ -99,12 +99,19 @@ void main() {
           ])),
         ]);
         await _settle(t);
+        if (view != null) {
+          await t.tap(find.byKey(Key('view-$view')));
+          await _settle(t);
+        }
       }
       await expectLater(find.byType(TetherApp), matchesGoldenFile('out/$name.png'));
     }
 
     testWidgets('home on a phone', (t) => shoot(t, 'home-phone', const Size(400, 860)), skip: !on);
     testWidgets('a chat on a phone', (t) => shoot(t, 'chat-phone', const Size(400, 860), chat: 'c1'), skip: !on);
+    testWidgets('a chat as a terminal', (t) => shoot(t, 'terminal-desktop', const Size(1400, 900), chat: 'c1', view: 'terminal'), skip: !on);
+    testWidgets('a chat split', (t) => shoot(t, 'split-desktop', const Size(1400, 900), chat: 'c1', view: 'split'), skip: !on);
+    testWidgets('a chat as a terminal on a phone', (t) => shoot(t, 'terminal-phone', const Size(400, 860), chat: 'c1', view: 'terminal'), skip: !on);
     testWidgets('a chat on a desktop', (t) => shoot(t, 'chat-desktop', const Size(1400, 900), chat: 'c1'), skip: !on);
     for (final d in ['devices', 'activity', 'files', 'routines', 'usage', 'chats']) {
       testWidgets('$d on a desktop', (t) => shoot(t, '$d-desktop', const Size(1400, 900), go: 'nav-$d'), skip: !on);

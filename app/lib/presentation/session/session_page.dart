@@ -11,9 +11,11 @@ import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import '../widgets/prompt_box.dart';
+import '../widgets/terminal_view.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
@@ -45,11 +47,43 @@ class SessionScreen extends StatelessWidget {
   }
 }
 
-class _SessionBody extends StatelessWidget {
+/// How the conversation is drawn: as chat, as a terminal transcript, or both
+/// side by side. The same timeline either way.
+enum ViewMode { chat, terminal, split }
+
+class _SessionBody extends StatefulWidget {
   const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final ValueChanged<String> onOpenSession;
   final Widget? leading, title, subtitle;
+
+  @override
+  State<_SessionBody> createState() => _SessionBodyState();
+}
+
+class _SessionBodyState extends State<_SessionBody> {
+  ViewMode _mode = ViewMode.chat;
+
+  ValueChanged<String> get onOpenSession => widget.onOpenSession;
+  Widget? get leading => widget.leading;
+  Widget? get title => widget.title;
+  Widget? get subtitle => widget.subtitle;
+
+  Widget _timeline(SessionViewState s, double width) {
+    final terminal = TerminalTranscript(items: s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet), working: s.session?.isBusy ?? false);
+    final mode = _mode == ViewMode.split && width < 900 ? ViewMode.terminal : _mode;
+    return switch (mode) {
+      ViewMode.chat => _Timeline(state: s),
+      ViewMode.terminal => terminal,
+      ViewMode.split => Row(
+          children: [
+            Expanded(child: _Timeline(state: s)),
+            VerticalDivider(width: 1, color: context.colors.border),
+            Expanded(child: terminal),
+          ],
+        ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +108,16 @@ class _SessionBody extends StatelessWidget {
           }
           return Column(
             children: [
-              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession, title: title),
+              SessionHeader(
+                session: session,
+                leading: leading,
+                onOpenSession: onOpenSession,
+                title: title,
+                mode: _mode,
+                onMode: (m) => setState(() => _mode = m),
+              ),
               ?subtitle,
-              Expanded(child: _Timeline(state: s)),
+              Expanded(child: LayoutBuilder(builder: (context, box) => _timeline(s, box.maxWidth))),
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: contentWidth + 32),
@@ -121,12 +162,68 @@ class _SessionBody extends StatelessWidget {
   }
 }
 
+/// Chat, Split and Terminal as one small switch in the header.
+class _ViewSwitch extends StatelessWidget {
+  const _ViewSwitch({required this.mode, required this.split, required this.onChanged});
+
+  final ViewMode mode;
+  final bool split;
+  final ValueChanged<ViewMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    Widget seg(ViewMode m, String label, IconData icon) {
+      final on = mode == m;
+      return Tooltip(
+        message: label,
+        child: InkWell(
+          key: Key('view-${m.name}'),
+          borderRadius: context.round(8),
+          onTap: () => onChanged(m),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: MediaQuery.sizeOf(context).width < 600 ? 7 : 10, vertical: 6),
+            decoration: BoxDecoration(color: on ? c.raised : Colors.transparent, borderRadius: context.round(8)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: on ? c.accent : c.muted),
+                if (MediaQuery.sizeOf(context).width >= 900) ...[
+                  const SizedBox(width: 6),
+                  Text(label, style: Type.meta(context, color: on ? c.text : c.muted, size: 12)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          seg(ViewMode.chat, 'Chat', Icons.chat_bubble_outline_rounded),
+          if (split) seg(ViewMode.split, 'Split', Icons.vertical_split_rounded),
+          seg(ViewMode.terminal, 'Terminal', Icons.terminal_rounded),
+        ],
+      ),
+    );
+  }
+}
+
 class SessionHeader extends StatelessWidget {
-  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title});
+  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title, this.mode = ViewMode.chat, this.onMode});
 
   final Session session;
   final Widget? leading, title;
   final ValueChanged<String>? onOpenSession;
+  final ViewMode mode;
+
+  /// Set to offer the Chat, Terminal and Split switch.
+  final ValueChanged<ViewMode>? onMode;
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +293,11 @@ class SessionHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onMode != null)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: narrow ? 0 : 4),
+              child: _ViewSwitch(mode: mode, split: !narrow, onChanged: onMode!),
+            ),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
           if (forks.isNotEmpty && onOpenSession != null)
             PopupMenuButton<String>(

@@ -719,6 +719,30 @@ void main() {
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');
     });
 
+    testWidgets('a session is drawn as chat, as a terminal transcript, or both', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'run the tests'))]);
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('view-terminal')));
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsOneWidget);
+      expect(find.text('> run the tests'), findsOneWidget);
+      expect(find.byKey(const Key('composer')), findsOneWidget, reason: 'the composer stays in every view');
+
+      await tester.tap(find.byKey(const Key('view-split')));
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsOneWidget);
+      expect(find.text('run the tests'), findsOneWidget, reason: 'the chat side shows it as a message');
+
+      await tester.tap(find.byKey(const Key('view-chat')));
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsNothing);
+    });
+
     testWidgets('a fork links to its parent, and marks where it split off', (tester) async {
       repo.emitHub(snapshotWith([
         session('s1'),
