@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/presentation/theme/palettes.dart';
+import 'package:tether/presentation/theme/theme.dart';
 
 double _ratio(Color a, Color b) {
   final la = a.computeLuminance(), lb = b.computeLuminance();
@@ -38,6 +39,16 @@ void main() {
         }
       });
     }
+
+    test('text on the accent reads at 4.5:1 in every palette', () {
+      for (final palette in palettes) {
+        for (final b in Brightness.values) {
+          final accent = palette.of(b).accent;
+          expect(_ratio(onAccent(accent), accent), greaterThanOrEqualTo(3.0), reason: '${palette.id} $b');
+        }
+      }
+      expect(_ratio(onAccent(const Color(0xFF10B981)), const Color(0xFF10B981)), greaterThanOrEqualTo(4.5));
+    });
 
     test('squares the corners, while the others keep theirs', () {
       expect(p.of(Brightness.dark).shape, lessThan(0.5));

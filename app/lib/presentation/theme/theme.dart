@@ -150,6 +150,10 @@ extension TetherTheme on BuildContext {
   BorderRadius round(double r) => BorderRadius.circular(shape(r));
 }
 
+/// Text on the accent colour: dark on a light accent (emerald, amber), white
+/// on a dark one, whichever reads at 4.5:1 or better.
+Color onAccent(Color accent) => accent.computeLuminance() > 0.25 ? const Color(0xFF0A0E14) : Colors.white;
+
 const String monoFont = 'JetBrains Mono';
 const List<String> monoFallback = ['Cascadia Mono', 'Consolas', 'Menlo', 'monospace'];
 const String sansFont = 'Inter';
@@ -169,7 +173,7 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
   double r(double n) => n >= 18 ? n : n * c.shape;
   final scheme = ColorScheme.fromSeed(seedColor: c.accent, brightness: brightness).copyWith(
     primary: c.accent,
-    onPrimary: Colors.white,
+    onPrimary: onAccent(c.accent),
     surface: c.canvas,
     onSurface: c.text,
     outline: c.border,
@@ -218,7 +222,7 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: c.accent,
-        foregroundColor: Colors.white,
+        foregroundColor: onAccent(c.accent),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(10))),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),

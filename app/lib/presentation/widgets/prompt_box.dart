@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import 'common.dart';
 
 const double _row = 40;
@@ -25,6 +26,7 @@ class PromptBox extends StatefulWidget {
     this.footer,
     this.highlight = false,
     this.focusNode,
+    this.prompt = false,
   });
 
   final TextEditingController controller;
@@ -44,6 +46,9 @@ class PromptBox extends StatefulWidget {
 
   /// Draws the border in the accent colour.
   final bool highlight;
+
+  /// A mono ">" before the text, as in a terminal.
+  final bool prompt;
 
   @override
   State<PromptBox> createState() => _PromptBoxState();
@@ -140,11 +145,10 @@ class _PromptBoxState extends State<PromptBox> {
     return Container(
       decoration: BoxDecoration(
         color: c.surface,
-        borderRadius: BorderRadius.circular(compact ? 24 : 18),
+        borderRadius: context.round(14),
         border: Border.all(color: widget.highlight ? c.accent.withValues(alpha: 0.6) : c.border),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 2))],
       ),
-      padding: EdgeInsets.fromLTRB(compact ? 16 : 14, 6, 6, 6),
+      padding: EdgeInsets.fromLTRB(compact ? 14 : 12, 6, 6, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -154,6 +158,13 @@ class _PromptBoxState extends State<PromptBox> {
             // Buttons stay on the last line as the text grows.
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              if (widget.prompt)
+                Container(
+                  height: _row,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Text('>', style: Type.meta(context, color: c.accent, size: 16).copyWith(fontWeight: FontWeight.w600)),
+                ),
               Expanded(child: field),
               if (_long)
                 PromptButton(
@@ -196,12 +207,12 @@ class PromptButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       backgroundColor: filled ? c.accent : null,
       disabledBackgroundColor: filled ? c.raised : null,
-      foregroundColor: filled ? Colors.white : c.muted,
+      foregroundColor: filled ? onAccent(c.accent) : c.muted,
       side: filled || plain ? null : BorderSide(color: c.border),
       shape: RoundedRectangleBorder(borderRadius: context.round(12)),
     );
     final child = busy
-        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+        ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: onAccent(c.accent)))
         : Icon(icon, size: filled ? 20 : 18);
     return IconButton(tooltip: tooltip, onPressed: onPressed, style: style, icon: child);
   }

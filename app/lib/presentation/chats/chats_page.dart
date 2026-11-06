@@ -7,6 +7,7 @@ import '../home/cards.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'chats_cubit.dart';
@@ -128,21 +129,18 @@ class _ChatsPageState extends State<ChatsPage> {
         else
           for (final MapEntry(key: period, value: list) in groups.entries) ...[
             SectionLabel(period),
-            Material(
-              color: c.surface,
-              shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (final (i, e) in list.indexed) ...[
-                    if (i > 0) Divider(height: 1, color: c.border),
-                    e.chat != null
-                        ? ChatTile(chat: e.chat!, onTap: () => nav.openChat(e.id))
-                        : _SessionRow(session: e.session!, onTap: () => nav.push(SessionEntry(e.id))),
-                  ],
-                ],
+            for (final e in list)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Gap.sm),
+                child: Material(
+                  color: c.surface,
+                  shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(10)),
+                  clipBehavior: Clip.antiAlias,
+                  child: e.chat != null
+                      ? ChatTile(chat: e.chat!, onTap: () => nav.openChat(e.id))
+                      : _SessionRow(session: e.session!, onTap: () => nav.push(SessionEntry(e.id))),
+                ),
               ),
-            ),
           ],
         if (widget.limit != null && all.length > entries.length)
           Align(
@@ -190,47 +188,44 @@ class ChatTile extends StatelessWidget {
       (h) => (h.state.hub.sessions[chat.activeSession], h.state.hub.chatUpdated(chat)),
     );
     final extra = chat.links.length - 1;
+    final summary = session?.lastPrompt.replaceAll(RegExp(r'\s+'), ' ') ?? '';
     return InkWell(
       key: Key('chat-${chat.id}'),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+        padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.xs, Gap.md),
         child: Row(
           children: [
-            SizedBox(
-              width: 18,
-              child: session != null && session.isLive ? StateDot(state: session.state, size: 8) : Icon(Icons.chat_bubble_outline_rounded, size: 16, color: c.faint),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(chat.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(targetIcon(chat.target), size: 13, color: chat.target.detecting ? c.accent : c.faint),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          [
-                            targetLabel(chat.target),
-                            if (session != null && session.isLive) stateLabel(session.state),
-                            if (extra > 0) '$extra linked',
-                          ].join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: c.muted),
-                        ),
-                      ),
+                      if (session != null && session.isLive) ...[StateDot(state: session.state, size: 7), const SizedBox(width: Gap.sm)],
+                      Expanded(child: Text(chat.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.title(context))),
                     ],
+                  ),
+                  if (summary.isNotEmpty) ...[
+                    const SizedBox(height: Gap.xs),
+                    Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
+                  ],
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    [
+                      targetLabel(chat.target),
+                      if (session != null && session.isLive) stateLabel(session.state),
+                      if (extra > 0) '$extra linked',
+                    ].join('  ·  '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Type.meta(context, color: chat.target.detecting ? c.accent : c.faint, size: 11.5),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(ago(updated), style: TextStyle(fontSize: 11.5, color: c.faint)),
+            const SizedBox(width: Gap.sm),
+            Text(ago(updated), style: Type.meta(context, color: c.faint, size: 11.5)),
             ChatMenu(chat: chat),
           ],
         ),

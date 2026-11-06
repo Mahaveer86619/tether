@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 
@@ -142,6 +143,97 @@ class SessionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A working session: what it is doing now, how far along, and where.
+class RunCard extends StatelessWidget {
+  const RunCard({super.key, required this.session, required this.online, required this.onTap});
+
+  final Session session;
+  final bool online;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = session;
+    final steps = s.todos.length;
+    final where = [s.node, if (s.cwd.isNotEmpty) baseName(s.cwd) else if (s.scratch) 'scratch'].join(' · ');
+    return CardShell(
+      onTap: onTap,
+      accent: c.accent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              StateDot(state: online ? s.state : SessionState.idle, size: 8),
+              const SizedBox(width: Gap.sm),
+              Expanded(child: Text(s.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.title(context))),
+              const SizedBox(width: Gap.sm),
+              Text(ago(s.updated), style: Type.meta(context, color: c.faint)),
+            ],
+          ),
+          if (steps > 0) ...[
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                Text('STEP ${(s.todosDone + 1).clamp(1, steps)} OF $steps', style: Type.label(context)),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(s.currentTodo?.label ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: Type.meta(context, color: c.accent)),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.sm),
+            StepBar(done: s.todosDone, total: steps),
+          ] else if (lastUpdate(s).isNotEmpty) ...[
+            const SizedBox(height: Gap.sm),
+            Text(lastUpdate(s), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
+          ],
+          const SizedBox(height: Gap.md),
+          Row(
+            children: [
+              Expanded(child: Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.faint))),
+              Text('Open', style: TextStyle(fontSize: 12.5, color: c.accent, fontWeight: FontWeight.w600)),
+              Icon(Icons.arrow_forward_rounded, size: 14, color: c.accent),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Progress as a row of segments, one per step (at most 12, each standing
+/// for several steps when there are more).
+class StepBar extends StatelessWidget {
+  const StepBar({super.key, required this.done, required this.total});
+
+  final int done, total;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = total.clamp(1, 12);
+    final filled = (done * n / total).floor();
+    return Row(
+      children: [
+        for (var i = 0; i < n; i++) ...[
+          if (i > 0) const SizedBox(width: 3),
+          Expanded(
+            child: Container(
+              height: 3,
+              decoration: BoxDecoration(
+                color: i < filled ? c.accent : (i == filled ? c.accent.withValues(alpha: 0.45) : c.raised),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

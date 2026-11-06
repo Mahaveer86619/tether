@@ -8,6 +8,7 @@ import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../routines/pinned_skills_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import '../widgets/prompt_box.dart';
@@ -104,15 +105,18 @@ class _NewChatState extends State<_NewChat> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.hub_rounded, size: 30, color: c.accent),
-            const SizedBox(height: 12),
-            Text('What should Claude work on?',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: narrow ? 21 : 25, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 22),
+            if (!widget.embedded) ...[
+              Icon(Icons.hub_rounded, size: 30, color: c.accent),
+              const SizedBox(height: 12),
+              Text('What should Claude work on?',
+                  textAlign: TextAlign.center, style: TextStyle(fontSize: narrow ? 21 : 25, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 22),
+            ],
             PromptBox(
+              prompt: true,
               controller: _text,
               fieldKey: const Key('new-chat-input'),
-              hint: 'Ask anything, or describe a task',
+              hint: widget.embedded ? (narrow ? 'Ask Claude anything…' : 'What should Claude work on?') : 'Ask anything, or describe a task',
               autofocus: !narrow,
               canSubmit: canSend,
               onSubmit: send,
@@ -140,7 +144,7 @@ class _NewChatState extends State<_NewChat> {
                 ActionChip(
                   key: const Key('target-chip'),
                   avatar: Icon(_targetIcon(s), size: 16, color: c.accent),
-                  label: Text(label, overflow: TextOverflow.ellipsis),
+                  label: Text(label, overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.text)),
                   onPressed: connected ? () => _pickTarget(s) : null,
                 ),
                 if (hint.isNotEmpty) Text(hint, style: TextStyle(fontSize: 12, color: c.muted)),
@@ -158,8 +162,7 @@ class _NewChatState extends State<_NewChat> {
                           for (final name in pinned)
                             ActionChip(
                               key: Key('pinned-$name'),
-                              avatar: Icon(Icons.auto_awesome_rounded, size: 15, color: c.accent),
-                              label: Text(name, style: monoStyle(context, size: 12.5, color: c.text)),
+                              label: Text('/$name', style: Type.meta(context, color: c.text)),
                               onPressed: () {
                                 _text.text = 'Use the $name skill. ${_text.text}'.trimRight();
                                 _text.selection = TextSelection.collapsed(offset: _text.text.length);

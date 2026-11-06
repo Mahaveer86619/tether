@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../session/session_page.dart';
 import '../widgets/common.dart';
 import 'cards.dart';
@@ -56,7 +57,7 @@ class LiveSections extends StatelessWidget {
       children: [
         _DevicesStrip(hub: hub, onTap: onDevices),
         if (approvals.isNotEmpty || waiting.isNotEmpty) ...[
-          SectionLabel('Needs you', trailing: Pill('${approvals.length + waiting.length}', color: c.warning)),
+          SectionLabel('Needs you', dot: c.warning, trailing: Text('${approvals.length + waiting.length}', style: Type.meta(context, color: c.warning))),
           for (final a in approvals)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -66,8 +67,8 @@ class LiveSections extends StatelessWidget {
             CardGrid(children: [for (final s in waiting) SessionCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
         ],
         if (running.isNotEmpty) ...[
-          SectionLabel('Running now', trailing: Text('${running.length}', style: TextStyle(color: c.faint, fontSize: 12))),
-          CardGrid(children: [for (final s in running) SessionCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
+          SectionLabel('Running now', dot: c.accent, trailing: Text('${running.length}', style: Type.meta(context, color: c.accent))),
+          CardGrid(children: [for (final s in running) RunCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
         ],
       ],
     );
