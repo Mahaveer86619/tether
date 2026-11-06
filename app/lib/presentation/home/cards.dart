@@ -21,7 +21,7 @@ class CardShell extends StatelessWidget {
     final body = Padding(padding: const EdgeInsets.all(14), child: child);
     return Material(
       color: c.surface,
-      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(14)),
+      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(10)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -30,7 +30,7 @@ class CardShell extends StatelessWidget {
             : IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [Container(width: 3, color: accent), Expanded(child: body)],
+                  children: [Container(width: 2, color: accent), Expanded(child: body)],
                 ),
               ),
       ),

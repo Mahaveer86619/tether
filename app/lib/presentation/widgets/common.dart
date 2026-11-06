@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/error/failures.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import 'format.dart';
 
 bool get isDesktop => Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -186,10 +187,15 @@ class Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final tone = color ?? c.muted;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(color: (color ?? c.muted).withValues(alpha: 0.12), borderRadius: context.round(5)),
-      child: Text(text, style: TextStyle(fontSize: 11, color: color ?? c.muted, fontWeight: FontWeight.w500)),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.1),
+        border: Border.all(color: tone.withValues(alpha: 0.3)),
+        borderRadius: context.round(6),
+      ),
+      child: Text(text, style: Type.meta(context, color: tone, size: 11)),
     );
   }
 }
@@ -226,20 +232,27 @@ class EmptyState extends StatelessWidget {
   }
 }
 
+/// A section's title in small mono capitals, with an optional dot in the
+/// section's colour (amber for what needs you, green for what's running) and
+/// a count or action at the end.
 class SectionLabel extends StatelessWidget {
-  const SectionLabel(this.text, {super.key, this.trailing});
+  const SectionLabel(this.text, {super.key, this.trailing, this.dot});
 
   final String text;
   final Widget? trailing;
+  final Color? dot;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+        padding: const EdgeInsets.fromLTRB(Gap.xs, Gap.lg + Gap.xs, Gap.xs, Gap.sm),
         child: Row(
           children: [
+            if (dot != null) ...[
+              Container(width: 7, height: 7, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+              const SizedBox(width: Gap.sm),
+            ],
             Expanded(
-              child: Text(text.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: context.colors.faint)),
+              child: Text(text.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.label(context, color: dot ?? context.colors.muted)),
             ),
             ?trailing,
           ],

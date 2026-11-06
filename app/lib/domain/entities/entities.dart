@@ -506,7 +506,7 @@ class HubConnection extends Equatable {
 
 /// How the app looks: light or dark, which theme, and an optional accent.
 class Appearance extends Equatable {
-  const Appearance({this.mode = ThemeMode.system, this.palette = 'claude', this.accent});
+  const Appearance({this.mode = ThemeMode.dark, this.palette = 'tether', this.accent});
 
   final ThemeMode mode;
   final String palette;

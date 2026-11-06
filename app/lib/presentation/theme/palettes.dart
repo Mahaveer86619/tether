@@ -22,8 +22,8 @@ const accentChoices = <Color>[
 ];
 
 final palettes = <Palette>[
-  const Palette('claude', 'Claude', TetherColors.light, TetherColors.dark),
   _tetherPalette,
+  const Palette('claude', 'Claude', TetherColors.light, TetherColors.dark),
   _tinted('ocean', 'Ocean', hue: 212, saturation: 0.18, accentLight: const Color(0xFF2A6FB0), accentDark: const Color(0xFF6AA8E8),
       syntaxHues: [275, 140, 28, 205, 175, 335, 220]),
   _tinted('forest', 'Forest', hue: 140, saturation: 0.12, accentLight: const Color(0xFF2F7D4F), accentDark: const Color(0xFF6CC08A),
