@@ -48,15 +48,12 @@ class NodeEntry extends NavEntry {
 }
 
 class NavState extends Equatable {
-  const NavState({this.destination = Destination.home, this.stack = const [], this.history = const []});
+  const NavState({this.destination = Destination.home, this.stack = const []});
 
   final Destination destination;
 
   /// Screens open on top of the destination, newest last.
   final List<NavEntry> stack;
-
-  /// Where Back goes: earlier states, newest last.
-  final List<NavState> history;
 
   NavEntry? get top => stack.lastOrNull;
 
@@ -66,46 +63,43 @@ class NavState extends Equatable {
   String get selectedNode => switch (top) { NodeEntry(:final node) => node, _ => '' };
 
   /// Nothing left to go back to: Back leaves the app.
-  bool get atRoot => history.isEmpty && stack.isEmpty && destination == Destination.home;
-
-  NavState _without() => NavState(destination: destination, stack: stack);
+  bool get atRoot => stack.isEmpty && destination == Destination.home;
 
   @override
-  List<Object?> get props => [destination, stack, history];
+  List<Object?> get props => [destination, stack];
 }
 
 /// The one place navigation state lives. Every layout renders from it and
 /// every screen moves through it; screens keep no navigation of their own.
+///
+/// The rules, as on any phone: a destination is a place, not a step, so
+/// switching between them leaves nothing to go back to. Screens opened on
+/// top of a destination (a chat, a device) are steps, and Back pops them.
+/// With nothing open, Back from any destination goes Home, and from Home
+/// leaves the app.
 class NavCubit extends Cubit<NavState> {
   NavCubit({required this._watchHub}) : super(const NavState());
 
   final WatchHub _watchHub;
-  static const _maxHistory = 50;
 
   HubSnapshot get _hub => _watchHub.current;
 
-  void _go(NavState next) {
-    if (next.destination == state.destination && _sameStack(next.stack, state.stack)) return;
-    final history = [...state.history, state._without()];
-    if (history.length > _maxHistory) history.removeAt(0);
-    emit(NavState(destination: next.destination, stack: next.stack, history: history));
-  }
-
-  static bool _sameStack(List<NavEntry> a, List<NavEntry> b) => a.length == b.length && [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
-
   /// Switches to a destination, closing whatever was open on top.
-  void select(Destination d) => _go(NavState(destination: d));
+  void select(Destination d) {
+    if (d == state.destination && state.stack.isEmpty) return;
+    emit(NavState(destination: d));
+  }
 
   /// Opens a screen on top of the current one.
   void push(NavEntry e) {
     if (state.top == e) return;
-    _go(NavState(destination: state.destination, stack: [...state.stack, e]));
+    emit(NavState(destination: state.destination, stack: [...state.stack, e]));
   }
 
   /// Opens a screen in place of whatever was open, e.g. from the sidebar.
   void show(NavEntry e) {
     if (state.stack.length == 1 && state.top == e) return;
-    _go(NavState(destination: state.destination, stack: [e]));
+    emit(NavState(destination: state.destination, stack: [e]));
   }
 
   /// Swaps the top screen without a Back step, e.g. a new chat becoming
@@ -113,17 +107,11 @@ class NavCubit extends Cubit<NavState> {
   void replaceTop(NavEntry e) {
     final stack = [...state.stack];
     if (stack.isNotEmpty) stack.removeLast();
-    emit(NavState(destination: state.destination, stack: [...stack, e], history: state.history));
+    emit(NavState(destination: state.destination, stack: [...stack, e]));
   }
 
   /// Goes back one step; false when there's nowhere to go.
   bool back() {
-    if (state.history.isNotEmpty) {
-      final history = [...state.history];
-      final prev = history.removeLast();
-      emit(NavState(destination: prev.destination, stack: prev.stack, history: history));
-      return true;
-    }
     if (state.stack.isNotEmpty) {
       emit(NavState(destination: state.destination, stack: state.stack.sublist(0, state.stack.length - 1)));
       return true;

@@ -171,7 +171,7 @@ class _WidePane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = context.read<NavCubit>();
-    final back = state.history.isEmpty && state.stack.isEmpty ? null : nav.back;
+    final back = state.atRoot ? null : nav.back;
     return switch (state.top) {
       ChatEntry(:final chatId) => ChatPage(key: ValueKey('chat-$chatId'), chatId: chatId),
       SessionEntry(:final sessionId) => SessionScreen(key: ValueKey(sessionId), sessionId: sessionId, onOpenSession: (id) => nav.push(SessionEntry(id))),

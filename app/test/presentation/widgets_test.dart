@@ -704,7 +704,7 @@ void main() {
       expect(settings.saved.isComplete, isFalse);
     });
 
-    testWidgets('desktop: Back from settings returns to where you were', (tester) async {
+    testWidgets('desktop: Back from settings goes Home, not back into the chat opened before', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
       await openSession(tester, 's1');
       await settle(tester);
@@ -714,7 +714,8 @@ void main() {
       expect(find.byKey(const Key('composer')), findsNothing);
       await tester.tap(find.byTooltip('Back (Esc)'));
       await settle(tester);
-      expect(find.byKey(const Key('composer')), findsOneWidget);
+      expect(find.byKey(const Key('composer')), findsNothing);
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');
     });
 
     testWidgets('a fork links to its parent, and marks where it split off', (tester) async {
