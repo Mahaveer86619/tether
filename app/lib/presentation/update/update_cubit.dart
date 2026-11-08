@@ -89,10 +89,18 @@ class UpdateCubit extends Cubit<UpdateState> {
     _timer = Timer.periodic(every, (_) => check());
   }
 
-  Future<void> check() async {
+  Future<void> check() => checkNow();
+
+  /// Looks for a release now; true when there is a newer one to install, null
+  /// when the hub couldn't be asked.
+  Future<bool?> checkNow() async {
     final r = await _updates.latest();
-    if (isClosed) return;
-    if (r.valueOrNull case final release?) await _consider(release);
+    if (isClosed || r.failureOrNull != null) return null;
+    final release = r.valueOrNull;
+    if (release == null) return false;
+    _dismissed = false;
+    await _consider(release);
+    return state.release != null && state.stage != UpdateStage.none;
   }
 
   Future<void> _consider(Release r) async {

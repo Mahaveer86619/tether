@@ -115,6 +115,8 @@ class Chats {
 
   Future<Result<Chat>> archive(String chatId, {bool archived = true}) => _hub.setChatArchived(chatId, archived: archived);
 
+  Future<Result<void>> delete(String chatId) => _hub.deleteChat(chatId);
+
   Future<Result<String>> send(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
     if (text.trim().isEmpty && attachments.isEmpty) return const Err(ValidationFailure('Message is empty.'));
     return _hub.sendToChat(chatId, SendMessage.wording(text), attachments: attachments, clientId: clientId);

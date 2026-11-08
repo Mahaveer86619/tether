@@ -1193,6 +1193,33 @@ void main() {
       expect(find.text('Chat archived'), findsOneWidget);
     });
 
+    testWidgets('chats: Delete asks first, then the chat is gone and its session stays', (tester) async {
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.17.3', chats: {
+        'c1': Chat(id: 'c1', title: 'Fix login', activeSession: 's1', links: const [ChatLink(session: 's1')], updated: DateTime.now()),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('chat-menu-c1')).first);
+      await settle(tester);
+      await tester.tap(find.text('Delete'));
+      await settle(tester);
+      await tester.tap(find.text('Cancel'));
+      await settle(tester);
+      expect(repo.deletedChats, isEmpty, reason: 'Cancel leaves it');
+
+      await tester.tap(find.byKey(const Key('chat-menu-c1')).first);
+      await settle(tester);
+      await tester.tap(find.text('Delete'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('confirm-delete-chat')));
+      await settle(tester);
+      expect(repo.deletedChats, ['c1']);
+      expect(find.byKey(const Key('chat-c1')), findsNothing);
+      expect(find.text('Chat deleted'), findsOneWidget);
+      expect(repo.current.sessions.containsKey('s1'), isTrue);
+    });
+
     testWidgets('chats: a monitored session that is a chat opens as the chat', (tester) async {
       repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', chats: {
         'c1': Chat(id: 'c1', title: 'Chat about s1', activeSession: 's1', links: const [ChatLink(session: 's1'), ChatLink(session: 't1', role: 'started')]),
@@ -1213,6 +1240,24 @@ void main() {
       await tester.tap(find.byKey(const Key('linked-sessions')));
       await settle(tester);
       expect(find.text('Started by Claude · laptop · app'), findsOneWidget);
+    });
+
+    testWidgets('updates: Settings has a Check for updates button that says what it found', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byTooltip('Settings'));
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const Key('check-updates')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('check-updates')));
+      await settle(tester);
+      expect(find.text('You are on the latest version'), findsOneWidget);
+
+      updates.release = release('9.0.0');
+      await tester.pump(const Duration(seconds: 3));
+      await tester.tap(find.byKey(const Key('check-updates')));
+      await settle(tester);
+      expect(find.textContaining('A new version is ready'), findsOneWidget);
+      expect(find.byKey(const Key('update-banner')), findsOneWidget);
     });
 
     testWidgets('updates: a banner with the notes, Skip, and Update through to Install', (tester) async {

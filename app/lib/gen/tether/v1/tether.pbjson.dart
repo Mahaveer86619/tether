@@ -2468,6 +2468,7 @@ const Chat$json = {
       '6': '.tether.v1.ChatLink',
       '10': 'sessions'
     },
+    {'1': 'deleted', '3': 10, '4': 1, '5': 8, '10': 'deleted'},
   ],
 };
 
@@ -2478,7 +2479,7 @@ final $typed_data.Uint8List chatDescriptor = $convert.base64Decode(
     'Eh0KCnVwZGF0ZWRfbXMYBSABKANSCXVwZGF0ZWRNcxIaCghhcmNoaXZlZBgGIAEoCFIIYXJjaG'
     'l2ZWQSLQoGdGFyZ2V0GAcgASgLMhUudGV0aGVyLnYxLkNoYXRUYXJnZXRSBnRhcmdldBIlCg5h'
     'Y3RpdmVfc2Vzc2lvbhgIIAEoCVINYWN0aXZlU2Vzc2lvbhIvCghzZXNzaW9ucxgJIAMoCzITLn'
-    'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnM=');
+    'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnMSGAoHZGVsZXRlZBgKIAEoCFIHZGVsZXRlZA==');
 
 @$core.Deprecated('Use chatTargetDescriptor instead')
 const ChatTarget$json = {

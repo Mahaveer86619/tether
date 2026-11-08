@@ -400,7 +400,20 @@ class HubRepositoryImpl implements HubRepository {
     return r.map(chatFromPb);
   }
 
+  void _removeChat(String id) {
+    _wireChats.remove(id);
+    _emit(_snap.copyWith(chats: {..._snap.chats}..remove(id)));
+    _scheduleStateSave();
+  }
+
+  @override
+  Future<Result<void>> deleteChat(String chatId) => _command(() async {
+        await _api.deleteChat(chatId);
+        _removeChat(chatId);
+      });
+
   void _putChat(pb.Chat c) {
+    if (c.deleted) return _removeChat(c.id);
     _wireChats[c.id] = c;
     _emit(_snap.copyWith(chats: {..._snap.chats, c.id: chatFromPb(c)}));
     _scheduleStateSave();

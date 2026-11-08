@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../core/version.dart';
 import '../hub/hub_cubit.dart';
+import '../update/update_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import 'appearance_picker.dart';
@@ -93,6 +95,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 20),
                   AppearancePicker(appearance: s.appearance),
+                  const SizedBox(height: 32),
+                  const _AboutSection(),
                 ],
               ),
             ),
@@ -164,6 +168,64 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(hub.error!, style: TextStyle(color: c.danger, fontSize: 12)),
           ),
+      ],
+    );
+  }
+}
+
+/// This app's version and a way to look for a newer one.
+class _AboutSection extends StatefulWidget {
+  const _AboutSection();
+
+  @override
+  State<_AboutSection> createState() => _AboutSectionState();
+}
+
+class _AboutSectionState extends State<_AboutSection> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    setState(() => _checking = true);
+    final found = await context.read<UpdateCubit>().checkNow();
+    if (!mounted) return;
+    setState(() => _checking = false);
+    showToast(
+      context,
+      switch (found) {
+        true => 'A new version is ready: see the banner at the top',
+        false => 'You are on the latest version',
+        null => 'Could not reach the hub to ask',
+      },
+      icon: found == null ? Icons.error_outline_rounded : Icons.check_rounded,
+      error: found == null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hubVersion = context.select<HubCubit, String>((h) => h.state.hub.hubVersion);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tether $appVersion${hubVersion.isEmpty ? '' : '  ·  hub $hubVersion'}',
+                style: monoStyle(context, size: 13, color: c.muted),
+              ),
+            ),
+            OutlinedButton.icon(
+              key: const Key('check-updates'),
+              onPressed: _checking ? null : _check,
+              icon: _checking ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.system_update_alt_rounded, size: 18),
+              label: const Text('Check for updates'),
+            ),
+          ],
+        ),
       ],
     );
   }

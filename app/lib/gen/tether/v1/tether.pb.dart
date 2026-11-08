@@ -9022,6 +9022,7 @@ class Chat extends $pb.GeneratedMessage {
     ChatTarget? target,
     $core.String? activeSession,
     $core.Iterable<ChatLink>? sessions,
+    $core.bool? deleted,
   }) {
     final result = Chat._();
     if (id != null) result.id = id;
@@ -9033,6 +9034,7 @@ class Chat extends $pb.GeneratedMessage {
     if (target != null) result.target = target;
     if (activeSession != null) result.activeSession = activeSession;
     if (sessions != null) result.sessions.addAll(sessions);
+    if (deleted != null) result.deleted = deleted;
     return result;
   }
 
@@ -9060,6 +9062,7 @@ class Chat extends $pb.GeneratedMessage {
     ..aOS(8, _omitFieldNames ? '' : 'activeSession')
     ..pPM<ChatLink>(9, _omitFieldNames ? '' : 'sessions',
         subBuilder: ChatLink.$_createMessage)
+    ..aOB(10, _omitFieldNames ? '' : 'deleted')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9161,6 +9164,16 @@ class Chat extends $pb.GeneratedMessage {
   /// Oldest first, the active one included.
   @$pb.TagNumber(9)
   $pb.PbList<ChatLink> get sessions => $_getList(8);
+
+  /// Sent once when the chat is deleted, so clients drop it. Its sessions stay.
+  @$pb.TagNumber(10)
+  $core.bool get deleted => $_getBF(9);
+  @$pb.TagNumber(10)
+  set deleted($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasDeleted() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearDeleted() => $_clearField(10);
 }
 
 /// Where a chat's work runs.

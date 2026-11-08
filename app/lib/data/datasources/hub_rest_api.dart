@@ -56,6 +56,9 @@ class HubRestApi {
 
   Future<pb.Chat> createChat(pb.CreateChat body) => _post('/chats', body, pb.Chat());
 
+  Future<void> deleteChat(String chat) =>
+      _send(() => _client.delete(_endpoint.api('/chats/${Uri.encodeComponent(chat)}'), headers: _headers), pb.Ack());
+
   Future<pb.Chat> updateChat(String chat, pb.UpdateChat body) => _send(
         () => _client.patch(
           _endpoint.api('/chats/${Uri.encodeComponent(chat)}'),

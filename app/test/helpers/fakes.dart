@@ -308,6 +308,15 @@ class FakeHubRepository implements HubRepository {
         (c) => Chat(id: c.id, title: title.isEmpty ? 'Auto title' : title, titleByUser: title.isNotEmpty, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated),
       );
 
+  final deletedChats = <String>[];
+
+  @override
+  Future<Result<void>> deleteChat(String chatId) async {
+    deletedChats.add(chatId);
+    emitHub(_snap.copyWith(chats: {..._snap.chats}..remove(chatId)));
+    return const Ok(null);
+  }
+
   @override
   Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) async => _updateChat(
         chatId,

@@ -954,6 +954,8 @@ message Chat {
   string active_session = 8;
   // Oldest first, the active one included.
   repeated ChatLink sessions = 9;
+  // Sent once when the chat is deleted, so clients drop it. Its sessions stay.
+  bool deleted = 10;
 }
 
 // Where a chat's work runs.

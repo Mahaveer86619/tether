@@ -197,6 +197,28 @@ func (h *Hub) updateChat(id string, u *v1.UpdateChat) (*v1.Chat, *opError) {
 	return proto.Clone(c).(*v1.Chat), nil
 }
 
+// deleteChat removes a chat and tells every client. Its sessions stay: they
+// are listed on their own again. Caller holds h.mu.
+func (h *Hub) deleteChat(id string) *opError {
+	c := h.chats[id]
+	if c == nil {
+		return errChatNotFound
+	}
+	if err := h.store.DeleteChat(id); err != nil {
+		return internalError(err)
+	}
+	for _, l := range c.Sessions {
+		if h.chatOf[l.Session] == id {
+			delete(h.chatOf, l.Session)
+		}
+	}
+	delete(h.chats, id)
+	gone := proto.Clone(c).(*v1.Chat)
+	gone.Deleted = true
+	h.broadcast(&v1.Frame{Body: &v1.Frame_Chat{Chat: gone}})
+	return nil
+}
+
 var errChatNotFound = &opError{"not_found", "unknown chat", http.StatusNotFound}
 
 // chatSend sends a message to the chat's active session. When that session
@@ -756,6 +778,9 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 			return nil, err
 		}
 		return h.updateChat(r.PathValue("id"), u)
+	}))
+	mux.HandleFunc("DELETE /api/v1/chats/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return &v1.Ack{}, h.deleteChat(r.PathValue("id"))
 	}))
 	mux.HandleFunc("POST /api/v1/chats/{id}/messages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		m := &v1.SendMessage{}

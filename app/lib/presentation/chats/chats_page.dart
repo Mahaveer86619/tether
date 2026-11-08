@@ -291,6 +291,11 @@ class ChatMenu extends StatelessWidget {
             if (title != null) await cubit.rename(chat.id, title);
           case 'archive':
             await cubit.archive(chat.id, archived: !chat.archived);
+          case 'delete':
+            final nav = context.read<NavCubit>();
+            if (!await _confirmDelete(context, chat)) return;
+            final gone = await cubit.delete(chat.id);
+            if (gone && nav.state.selectedChat == chat.id) nav.back();
           case 'copy':
             final text = await cubit.transcript(chat.id);
             if (text != null) {
@@ -303,6 +308,7 @@ class ChatMenu extends StatelessWidget {
         _item('rename', Icons.edit_outlined, 'Rename'),
         _item('copy', Icons.content_copy_rounded, 'Copy conversation'),
         _item('archive', chat.archived ? Icons.unarchive_outlined : Icons.archive_outlined, chat.archived ? 'Restore' : 'Archive'),
+        _item('delete', Icons.delete_outline_rounded, 'Delete'),
       ],
     );
   }
@@ -312,6 +318,25 @@ class ChatMenu extends StatelessWidget {
         child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 12), Flexible(child: Text(label))]),
       );
 }
+
+Future<bool> _confirmDelete(BuildContext context, Chat chat) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${chat.displayTitle}"?'),
+        content: const Text('The chat goes away. Its sessions stay, and are listed on their own.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('confirm-delete-chat'),
+            style: FilledButton.styleFrom(backgroundColor: ctx.colors.danger, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ) ??
+    false;
 
 /// Asks for a chat's new title. An empty one hands naming back to Tether.
 Future<String?> showRenameChat(BuildContext context, Chat chat) => showDialog<String>(

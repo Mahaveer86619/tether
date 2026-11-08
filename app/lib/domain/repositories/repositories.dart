@@ -48,6 +48,9 @@ abstract interface class HubRepository {
 
   Future<Result<Chat>> setChatArchived(String chatId, {required bool archived});
 
+  /// Deletes a chat. The sessions it held stay, listed on their own.
+  Future<Result<void>> deleteChat(String chatId);
+
   /// Sends to the chat's active session; returns the session that got it.
   Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''});
 

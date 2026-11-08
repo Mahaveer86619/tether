@@ -6206,7 +6206,9 @@ type Chat struct {
 	// Where messages go now.
 	ActiveSession string `protobuf:"bytes,8,opt,name=active_session,json=activeSession,proto3" json:"active_session,omitempty"`
 	// Oldest first, the active one included.
-	Sessions      []*ChatLink `protobuf:"bytes,9,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	Sessions []*ChatLink `protobuf:"bytes,9,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	// Sent once when the chat is deleted, so clients drop it. Its sessions stay.
+	Deleted       bool `protobuf:"varint,10,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6302,6 +6304,13 @@ func (x *Chat) GetSessions() []*ChatLink {
 		return x.Sessions
 	}
 	return nil
+}
+
+func (x *Chat) GetDeleted() bool {
+	if x != nil {
+		return x.Deleted
+	}
+	return false
 }
 
 // Where a chat's work runs.
@@ -9622,7 +9631,7 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\n" +
 	"expires_ms\x18\a \x01(\x03R\texpiresMs\"1\n" +
 	"\bPageList\x12%\n" +
-	"\x05pages\x18\x01 \x03(\v2\x0f.tether.v1.PageR\x05pages\"\xb1\x02\n" +
+	"\x05pages\x18\x01 \x03(\v2\x0f.tether.v1.PageR\x05pages\"\xcb\x02\n" +
 	"\x04Chat\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\"\n" +
@@ -9634,7 +9643,9 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\barchived\x18\x06 \x01(\bR\barchived\x12-\n" +
 	"\x06target\x18\a \x01(\v2\x15.tether.v1.ChatTargetR\x06target\x12%\n" +
 	"\x0eactive_session\x18\b \x01(\tR\ractiveSession\x12/\n" +
-	"\bsessions\x18\t \x03(\v2\x13.tether.v1.ChatLinkR\bsessions\"\x8e\x01\n" +
+	"\bsessions\x18\t \x03(\v2\x13.tether.v1.ChatLinkR\bsessions\x12\x18\n" +
+	"\adeleted\x18\n" +
+	" \x01(\bR\adeleted\"\x8e\x01\n" +
 	"\n" +
 	"ChatTarget\x12\x12\n" +
 	"\x04mode\x18\x01 \x01(\tR\x04mode\x12\x12\n" +
