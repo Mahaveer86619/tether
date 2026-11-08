@@ -104,6 +104,10 @@ void main() {
         ]);
         await _settle(t);
         if (view != null) {
+          if (size.width < 600) {
+            await t.tap(find.byKey(const Key('view-menu')));
+            await _settle(t);
+          }
           await t.tap(find.byKey(Key('view-$view')));
           await _settle(t);
         }
@@ -123,7 +127,8 @@ void main() {
     testWidgets('home on a phone', (t) => shoot(t, 'home-phone', const Size(400, 860)), skip: !on);
     testWidgets('a chat on a phone', (t) => shoot(t, 'chat-phone', const Size(400, 860), chat: 'c1'), skip: !on);
     testWidgets('a chat as a terminal', (t) => shoot(t, 'terminal-desktop', const Size(1400, 900), chat: 'c1', view: 'terminal'), skip: !on);
-    testWidgets('a chat split', (t) => shoot(t, 'split-desktop', const Size(1400, 900), chat: 'c1', view: 'split'), skip: !on);
+    testWidgets('a chat beside its files', (t) => shoot(t, 'files-desktop-view', const Size(1400, 900), chat: 'c1', view: 'files'), skip: !on);
+    testWidgets('files on a phone', (t) => shoot(t, 'files-phone', const Size(400, 860), chat: 'c1', view: 'files'), skip: !on);
     testWidgets('a chat as a terminal on a phone', (t) => shoot(t, 'terminal-phone', const Size(400, 860), chat: 'c1', view: 'terminal'), skip: !on);
     testWidgets('a chat on a desktop', (t) => shoot(t, 'chat-desktop', const Size(1400, 900), chat: 'c1'), skip: !on);
     for (final d in ['devices', 'activity', 'files', 'routines', 'usage', 'chats']) {

@@ -15,6 +15,7 @@ import '../theme/theme.dart';
 import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../widgets/changes_pane.dart';
 import '../widgets/prompt_box.dart';
 import '../widgets/terminal_view.dart';
 import '../widgets/timeline_item_view.dart';
@@ -48,9 +49,9 @@ class SessionScreen extends StatelessWidget {
   }
 }
 
-/// How the conversation is drawn: as chat, as a terminal transcript, or both
-/// side by side. The same timeline either way.
-enum ViewMode { chat, terminal, split }
+/// How the session is drawn, from the same timeline: as chat, as chat beside
+/// the files Claude is changing, or as a terminal transcript.
+enum ViewMode { chat, files, terminal }
 
 class _SessionBody extends StatefulWidget {
   const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
@@ -71,18 +72,21 @@ class _SessionBodyState extends State<_SessionBody> {
   Widget? get subtitle => widget.subtitle;
 
   Widget _timeline(SessionViewState s, double width) {
-    final terminal = TerminalTranscript(items: s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet), working: s.session?.isBusy ?? false);
-    final mode = _mode == ViewMode.split && width < 900 ? ViewMode.terminal : _mode;
-    return switch (mode) {
+    final items = s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet);
+    final working = s.session?.isBusy ?? false;
+    return switch (_mode) {
       ViewMode.chat => _Timeline(state: s),
-      ViewMode.terminal => terminal,
-      ViewMode.split => Row(
-          children: [
-            Expanded(child: _Timeline(state: s)),
-            VerticalDivider(width: 1, color: context.colors.border),
-            Expanded(child: terminal),
-          ],
-        ),
+      ViewMode.terminal => TerminalTranscript(items: items, working: working),
+      // Beside the chat on a wide window; on a narrow one, in its place.
+      ViewMode.files => width < 900
+          ? ChangesPane(items: items, working: working)
+          : Row(
+              children: [
+                Expanded(flex: 5, child: _Timeline(state: s)),
+                VerticalDivider(width: 1, color: context.colors.border),
+                Expanded(flex: 4, child: ChangesPane(items: items, working: working)),
+              ],
+            ),
     };
   }
 
@@ -164,17 +168,32 @@ class _SessionBodyState extends State<_SessionBody> {
   }
 }
 
-/// Chat, Split and Terminal as one small switch in the header.
+/// Chat, Files and Terminal as one small switch in the header.
 class _ViewSwitch extends StatelessWidget {
-  const _ViewSwitch({required this.mode, required this.split, required this.onChanged});
+  const _ViewSwitch({required this.mode, required this.onChanged});
 
   final ViewMode mode;
-  final bool split;
   final ValueChanged<ViewMode> onChanged;
+
+  static const _labels = {ViewMode.chat: ('Chat', Icons.chat_bubble_outline_rounded), ViewMode.files: ('Files', Icons.difference_outlined), ViewMode.terminal: ('Terminal', Icons.terminal_rounded)};
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // On a phone the three views do not fit in the header: one button opens them.
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return PopupMenuButton<ViewMode>(
+        key: const Key('view-menu'),
+        tooltip: 'View: ${_labels[mode]!.$1}',
+        initialValue: mode,
+        onSelected: onChanged,
+        icon: Icon(_labels[mode]!.$2, size: 20, color: mode == ViewMode.chat ? c.muted : c.accent),
+        itemBuilder: (_) => [
+          for (final m in ViewMode.values)
+            PopupMenuItem(key: Key('view-${m.name}'), value: m, child: Row(children: [Icon(_labels[m]!.$2, size: 18), const SizedBox(width: 12), Text(_labels[m]!.$1)])),
+        ],
+      );
+    }
     Widget seg(ViewMode m, String label, IconData icon) {
       final on = mode == m;
       return Tooltip(
@@ -207,9 +226,7 @@ class _ViewSwitch extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          seg(ViewMode.chat, 'Chat', Icons.chat_bubble_outline_rounded),
-          if (split) seg(ViewMode.split, 'Split', Icons.vertical_split_rounded),
-          seg(ViewMode.terminal, 'Terminal', Icons.terminal_rounded),
+          for (final m in ViewMode.values) seg(m, _labels[m]!.$1, _labels[m]!.$2),
         ],
       ),
     );
@@ -298,7 +315,7 @@ class SessionHeader extends StatelessWidget {
           if (onMode != null)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: narrow ? 0 : 4),
-              child: _ViewSwitch(mode: mode, split: !narrow, onChanged: onMode!),
+              child: _ViewSwitch(mode: mode, onChanged: onMode!),
             ),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
           if (forks.isNotEmpty && onOpenSession != null)

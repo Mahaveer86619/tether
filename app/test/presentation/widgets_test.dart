@@ -763,13 +763,36 @@ void main() {
       expect(transfers.downloads.map((a) => a.id), ['f2']);
     });
 
-    testWidgets('a session is drawn as chat, as a terminal transcript, or both', (tester) async {
+    testWidgets('a session is drawn as chat, beside the files it changes, or as a terminal transcript', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
       await openSession(tester, 's1');
       await settle(tester);
-      repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'run the tests'))]);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'run the tests')),
+        rpb.TimelineItem(
+          itemId: 'e1',
+          ord: Int64(2),
+          tool: rpb.ToolCard(
+            toolUseId: 'e1',
+            name: 'Edit',
+            status: rpbe.ToolCard_Status.STATUS_SUCCEEDED,
+            edit: rpb.EditCard(path: '/srv/app/main.go', added: 1, removed: 1, unifiedDiff: '@@ -1 +1 @@\n-old()\n+fresh()\n'),
+          ),
+        ),
+        rpb.TimelineItem(
+          itemId: 'e2',
+          ord: Int64(3),
+          tool: rpb.ToolCard(
+            toolUseId: 'e2',
+            name: 'Edit',
+            status: rpbe.ToolCard_Status.STATUS_SUCCEEDED,
+            edit: rpb.EditCard(path: '/srv/app/util.go', added: 2, removed: 0, unifiedDiff: '@@ -3 +3,2 @@\n+a()\n+b()\n'),
+          ),
+        ),
+      ]);
       await settle(tester);
       expect(find.byKey(const Key('terminal-transcript')), findsNothing);
+      expect(find.byKey(const Key('changes-pane')), findsNothing);
 
       await tester.tap(find.byKey(const Key('view-terminal')));
       await settle(tester);
@@ -777,14 +800,23 @@ void main() {
       expect(find.text('> run the tests'), findsOneWidget);
       expect(find.byKey(const Key('composer')), findsOneWidget, reason: 'the composer stays in every view');
 
-      await tester.tap(find.byKey(const Key('view-split')));
+      await tester.tap(find.byKey(const Key('view-files')));
       await settle(tester);
-      expect(find.byKey(const Key('terminal-transcript')), findsOneWidget);
-      expect(find.text('run the tests'), findsOneWidget, reason: 'the chat side shows it as a message');
+      expect(find.byKey(const Key('changes-pane')), findsOneWidget);
+      expect(find.text('run the tests'), findsOneWidget, reason: 'the chat stays beside it');
+      expect(find.byKey(const Key('change-tab-/srv/app/main.go')), findsOneWidget);
+      expect(find.byKey(const Key('change-tab-/srv/app/util.go')), findsOneWidget);
+      expect(find.text('following'), findsOneWidget, reason: 'it opens on the file touched last');
+      expect(find.textContaining('/srv/app/util.go'), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('change-tab-/srv/app/main.go')));
+      await settle(tester);
+      expect(find.text('pinned'), findsOneWidget);
+      expect(find.textContaining('/srv/app/main.go'), findsWidgets);
 
       await tester.tap(find.byKey(const Key('view-chat')));
       await settle(tester);
-      expect(find.byKey(const Key('terminal-transcript')), findsNothing);
+      expect(find.byKey(const Key('changes-pane')), findsNothing);
     });
 
     testWidgets('a fork links to its parent, and marks where it split off', (tester) async {
