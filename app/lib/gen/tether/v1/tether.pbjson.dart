@@ -2708,6 +2708,7 @@ const TargetCandidate$json = {
     {'1': 'score', '3': 5, '4': 1, '5': 1, '10': 'score'},
     {'1': 'reason', '3': 6, '4': 1, '5': 9, '10': 'reason'},
     {'1': 'last_used_ms', '3': 7, '4': 1, '5': 3, '10': 'lastUsedMs'},
+    {'1': 'uses', '3': 8, '4': 1, '5': 5, '10': 'uses'},
   ],
 };
 
@@ -2716,7 +2717,7 @@ final $typed_data.Uint8List targetCandidateDescriptor = $convert.base64Decode(
     'Cg9UYXJnZXRDYW5kaWRhdGUSEgoEbm9kZRgBIAEoCVIEbm9kZRIQCgNjd2QYAiABKAlSA2N3ZB'
     'IUCgVsYWJlbBgDIAEoCVIFbGFiZWwSFgoGb25saW5lGAQgASgIUgZvbmxpbmUSFAoFc2NvcmUY'
     'BSABKAFSBXNjb3JlEhYKBnJlYXNvbhgGIAEoCVIGcmVhc29uEiAKDGxhc3RfdXNlZF9tcxgHIA'
-    'EoA1IKbGFzdFVzZWRNcw==');
+    'EoA1IKbGFzdFVzZWRNcxISCgR1c2VzGAggASgFUgR1c2Vz');
 
 @$core.Deprecated('Use targetSuggestionsDescriptor instead')
 const TargetSuggestions$json = {

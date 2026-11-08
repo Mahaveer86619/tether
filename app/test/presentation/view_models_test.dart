@@ -8,7 +8,6 @@ import 'package:tether/domain/entities/entities.dart';
 import 'package:tether/domain/usecases/usecases.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 import 'package:tether/presentation/hub/hub_cubit.dart';
-import 'package:tether/presentation/new_session/new_session_cubit.dart';
 import 'package:tether/presentation/session/session_bloc.dart';
 import 'package:tether/presentation/session/terminal_cubit.dart';
 import 'package:tether/presentation/settings/settings_cubit.dart';
@@ -439,52 +438,6 @@ void main() {
       await cubit.decide('ap', allow: false);
       expect(cubit.state.failure, isA<NotFoundFailure>());
       await cubit.close();
-    });
-  });
-
-  group('NewSessionCubit', () {
-    test('defaults to the preferred online node and its latest folder', () {
-      final hub = snapshotWith([session('s1', cwd: '/srv/old'), session('s2', node: 'laptop', cwd: r'C:\code\app')]);
-      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(FakeHubRepository(hub)), drafts: Drafts(FakeSettingsRepository()), loadWorkspaces: LoadWorkspaces(FakeHubRepository(hub)), setRoot: SetWorkspaceRoot(FakeHubRepository(hub)), preferredNode: 'laptop');
-      expect(cubit.state.node, 'laptop');
-      expect(cubit.state.cwd, r'C:\code\app');
-      cubit.selectNode('minipc');
-      expect(cubit.state.cwd, '/srv/old');
-    });
-
-    test('a new project is created in a workspace root, and a suggested root is remembered', () async {
-      final hub = snapshotWith([session('s2', node: 'laptop', cwd: r'C:\code\app')]);
-      final repo = FakeHubRepository(hub)..roots = [];
-      final cubit = NewSessionCubit(
-        hub: hub,
-        createSession: CreateSession(repo),
-        drafts: Drafts(FakeSettingsRepository()),
-        loadWorkspaces: LoadWorkspaces(repo),
-        setRoot: SetWorkspaceRoot(repo),
-        preferredNode: 'laptop',
-      );
-      await Future<void>.delayed(Duration.zero);
-      expect(cubit.state.suggestedRoots, [r'C:\code']);
-      cubit
-        ..setNewProject(true)
-        ..setProjectName('new-app');
-      expect(cubit.newProjectPath, r'C:\code\new-app');
-      await cubit.submit('scaffold it');
-      final req = repo.created.single;
-      expect((req.cwd, req.createCwd), (r'C:\code\new-app', true));
-      expect(repo.roots, [const WorkspaceRoot(node: 'laptop', path: r'C:\code')]);
-    });
-
-    test('validation failures stay in the form', () async {
-      final hub = snapshotWith([]);
-      final repo = FakeHubRepository(hub);
-      final cubit = NewSessionCubit(hub: hub, createSession: CreateSession(repo), drafts: Drafts(FakeSettingsRepository()), loadWorkspaces: LoadWorkspaces(repo), setRoot: SetWorkspaceRoot(repo));
-      await cubit.submit('   ');
-      expect(cubit.state.failure, isA<ValidationFailure>());
-      expect(cubit.state.createdId, isNull);
-      await cubit.submit('do the thing');
-      expect(cubit.state.createdId, 'new-session');
-      expect(repo.created.single.prompt, 'do the thing');
     });
   });
 }

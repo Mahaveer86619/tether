@@ -18,7 +18,6 @@ import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
 import 'data/repositories/update_repository_impl.dart';
 import 'data/datasources/update_platform.dart';
-import 'domain/entities/entities.dart';
 import 'domain/repositories/repositories.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
@@ -30,7 +29,6 @@ import 'presentation/nav/nav_cubit.dart';
 import 'presentation/update/update_cubit.dart';
 import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
-import 'presentation/new_session/new_session_cubit.dart';
 import 'presentation/session/session_bloc.dart';
 import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
@@ -144,16 +142,6 @@ void configureDependencies({bool withData = true}) {
         continueOnHub: sl(),
         outbox: sl(),
         uploads: sl(),
-      ),
-    )
-    ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(
-      (hub, preferredNode) => NewSessionCubit(
-        hub: hub,
-        createSession: sl(),
-        drafts: sl(),
-        loadWorkspaces: sl(),
-        setRoot: sl(),
-        preferredNode: preferredNode,
       ),
     );
 }

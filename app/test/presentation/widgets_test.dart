@@ -659,6 +659,10 @@ void main() {
       await pumpApp(tester, const Size(1400, 1600));
       await tester.tap(find.byTooltip('Settings'));
       await settle(tester);
+      await tester.scrollUntilVisible(find.byKey(const Key('section-codebases')), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('shop'), findsNothing, reason: 'the section starts folded, with its count');
+      await tester.tap(find.byKey(const Key('section-codebases')));
+      await settle(tester);
       await tester.scrollUntilVisible(find.text('shop'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('120 files'), findsOneWidget);
       await tester.tap(find.text('shop'));

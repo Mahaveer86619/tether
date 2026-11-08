@@ -1059,6 +1059,8 @@ message TargetCandidate {
   double score = 5;
   string reason = 6;
   int64 last_used_ms = 7;
+  // Sessions that ran in this folder.
+  int32 uses = 8;
 }
 
 // GET /api/v1/targets?prompt=

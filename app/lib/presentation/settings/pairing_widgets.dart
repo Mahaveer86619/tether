@@ -12,6 +12,7 @@ import '../../domain/usecases/usecases.dart' show parsePairingLink;
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/collapsible.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'devices_cubit.dart';
@@ -177,21 +178,22 @@ class _DevicesBody extends StatelessWidget {
           showFailure(context, s.failure!);
         }
       },
-      builder: (context, s) => Column(
+      builder: (context, s) => CollapsibleSection(
+        title: 'Devices',
+        count: s.devices.length,
+        summary: 'Apps and agents paired with this hub',
+        initiallyOpen: true,
+        actions: [
+          FilledButton.icon(
+            key: const Key('add-device'),
+            onPressed: cubit.invite,
+            icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+            label: const Text('Add a device'),
+          ),
+        ],
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Expanded(child: Text('Devices', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-              FilledButton.icon(
-                key: const Key('add-device'),
-                onPressed: cubit.invite,
-                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                label: const Text('Add a device'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
           Text('Apps and agents paired with their own token. Revoking one disconnects it at once.',
               style: TextStyle(color: c.muted, fontSize: 13)),
           const SizedBox(height: 10),
@@ -268,6 +270,7 @@ class _DevicesBody extends StatelessWidget {
           else
             for (final d in s.tailnet) TailnetRow(device: d, isSelf: d.ips.contains(clientIp)),
         ],
+        ),
       ),
     );
   }

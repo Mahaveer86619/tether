@@ -384,14 +384,48 @@ class HubSnapshot extends Equatable {
     return out..sort((a, b) => (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0)));
   }
 
-  /// Parent folders of the projects used on a node: likely workspace roots.
-  List<String> suggestedRoots(String node) {
-    final seen = <String>{};
-    for (final f in recentFolders(node)) {
-      final i = f.lastIndexOf(RegExp(r'[\\/]'));
-      if (i > 0) seen.add(f.substring(0, i));
+  /// Parent folders that hold the projects worked in on a node: likely
+  /// workspace roots, best first. A folder qualifies with two or more
+  /// projects in it, or with one that is worked in often (three sessions).
+  /// Home folders, scratch and app-data folders are not projects, and a
+  /// folder whose projects are all roots themselves (`projects` above
+  /// `projects/personal`) is left out.
+  List<String> suggestedRoots(String node, {int limit = 5}) {
+    String norm(String p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+    bool skip(String p) {
+      final low = norm(p).toLowerCase();
+      return low.contains('/.tether/') ||
+          low.contains('/appdata/') ||
+          RegExp(r'^([a-z]:)?/(users|home)/[^/]+$').hasMatch(low) ||
+          low == '/root' ||
+          !low.contains('/');
     }
-    return seen.take(5).toList();
+
+    final uses = <String, int>{};
+    final latest = <String, DateTime>{};
+    for (final s in sessions.values) {
+      if (s.node != node || s.cwd.isEmpty || skip(s.cwd)) continue;
+      final f = norm(s.cwd);
+      uses[f] = (uses[f] ?? 0) + 1;
+      final t = s.updated ?? DateTime(0);
+      if (t.isAfter(latest[f] ?? DateTime(0))) latest[f] = t;
+    }
+    final children = <String, Set<String>>{};
+    for (final f in uses.keys) {
+      final parent = f.substring(0, f.lastIndexOf('/'));
+      if (!skip(parent)) children.putIfAbsent(parent, () => {}).add(f);
+    }
+    final candidates = {
+      for (final e in children.entries)
+        if (e.value.length >= 2 || uses[e.value.first]! >= 3) e.key,
+    };
+    final roots = [
+      for (final p in candidates)
+        if (!children[p]!.every(candidates.contains)) p,
+    ];
+    DateTime last(String p) => children[p]!.map((k) => latest[k]!).reduce((a, b) => a.isAfter(b) ? a : b);
+    roots.sort((a, b) => children[a]!.length != children[b]!.length ? children[b]!.length.compareTo(children[a]!.length) : last(b).compareTo(last(a)));
+    return roots.take(limit).toList();
   }
 
   /// Folders used recently on a node, newest first.

@@ -7001,9 +7001,11 @@ type TargetCandidate struct {
 	Label  string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
 	Online bool                   `protobuf:"varint,4,opt,name=online,proto3" json:"online,omitempty"`
 	// Higher is better; 0 means no clue from the prompt.
-	Score         float64 `protobuf:"fixed64,5,opt,name=score,proto3" json:"score,omitempty"`
-	Reason        string  `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
-	LastUsedMs    int64   `protobuf:"varint,7,opt,name=last_used_ms,json=lastUsedMs,proto3" json:"last_used_ms,omitempty"`
+	Score      float64 `protobuf:"fixed64,5,opt,name=score,proto3" json:"score,omitempty"`
+	Reason     string  `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	LastUsedMs int64   `protobuf:"varint,7,opt,name=last_used_ms,json=lastUsedMs,proto3" json:"last_used_ms,omitempty"`
+	// Sessions that ran in this folder.
+	Uses          int32 `protobuf:"varint,8,opt,name=uses,proto3" json:"uses,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7083,6 +7085,13 @@ func (x *TargetCandidate) GetReason() string {
 func (x *TargetCandidate) GetLastUsedMs() int64 {
 	if x != nil {
 		return x.LastUsedMs
+	}
+	return 0
+}
+
+func (x *TargetCandidate) GetUses() int32 {
+	if x != nil {
+		return x.Uses
 	}
 	return 0
 }
@@ -9698,7 +9707,7 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\vChatContext\x12#\n" +
 	"\x04chat\x18\x01 \x01(\v2\x0f.tether.v1.ChatR\x04chat\x122\n" +
 	"\bmessages\x18\x02 \x03(\v2\x16.tether.v1.ChatMessageR\bmessages\x12)\n" +
-	"\x05notes\x18\x03 \x03(\v2\x13.tether.v1.ChatNoteR\x05notes\"\xb5\x01\n" +
+	"\x05notes\x18\x03 \x03(\v2\x13.tether.v1.ChatNoteR\x05notes\"\xc9\x01\n" +
 	"\x0fTargetCandidate\x12\x12\n" +
 	"\x04node\x18\x01 \x01(\tR\x04node\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12\x14\n" +
@@ -9707,7 +9716,8 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x05score\x18\x05 \x01(\x01R\x05score\x12\x16\n" +
 	"\x06reason\x18\x06 \x01(\tR\x06reason\x12 \n" +
 	"\flast_used_ms\x18\a \x01(\x03R\n" +
-	"lastUsedMs\"\x7f\n" +
+	"lastUsedMs\x12\x12\n" +
+	"\x04uses\x18\b \x01(\x05R\x04uses\"\x7f\n" +
 	"\x11TargetSuggestions\x12:\n" +
 	"\n" +
 	"candidates\x18\x01 \x03(\v2\x1a.tether.v1.TargetCandidateR\n" +

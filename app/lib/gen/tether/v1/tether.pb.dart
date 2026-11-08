@@ -10080,6 +10080,7 @@ class TargetCandidate extends $pb.GeneratedMessage {
     $core.double? score,
     $core.String? reason,
     $fixnum.Int64? lastUsedMs,
+    $core.int? uses,
   }) {
     final result = TargetCandidate._();
     if (node != null) result.node = node;
@@ -10089,6 +10090,7 @@ class TargetCandidate extends $pb.GeneratedMessage {
     if (score != null) result.score = score;
     if (reason != null) result.reason = reason;
     if (lastUsedMs != null) result.lastUsedMs = lastUsedMs;
+    if (uses != null) result.uses = uses;
     return result;
   }
 
@@ -10112,6 +10114,7 @@ class TargetCandidate extends $pb.GeneratedMessage {
     ..aD(5, _omitFieldNames ? '' : 'score')
     ..aOS(6, _omitFieldNames ? '' : 'reason')
     ..aInt64(7, _omitFieldNames ? '' : 'lastUsedMs')
+    ..aI(8, _omitFieldNames ? '' : 'uses')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10199,6 +10202,16 @@ class TargetCandidate extends $pb.GeneratedMessage {
   $core.bool hasLastUsedMs() => $_has(6);
   @$pb.TagNumber(7)
   void clearLastUsedMs() => $_clearField(7);
+
+  /// Sessions that ran in this folder.
+  @$pb.TagNumber(8)
+  $core.int get uses => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set uses($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasUses() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearUses() => $_clearField(8);
 }
 
 /// GET /api/v1/targets?prompt=
