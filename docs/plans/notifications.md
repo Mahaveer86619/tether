@@ -1,6 +1,22 @@
 # Notifications
 
-Status: plan. Product view: [v1-spec.md](../product/v1-spec.md#i1-notifications). Today only two things notify: an update being available and a large download's progress. Nothing tells you the assistant needs you.
+Status: the first version is built (below, "What is built"); the rest is plan. Product view: [v1-spec.md](../product/v1-spec.md#i1-notifications).
+
+## What is built
+
+A turn that finished, an approval or question waiting, a failure, and a test: the hub records each as a notification (`notifications` table, newest 300) when the event happens. A task session of a chat stays quiet; its lead's turn is what finishes the conversation.
+
+How it reaches a phone with the app closed, with or without Tailscale:
+
+- **A token that opens only notifications.** The app asks `POST /api/v1/notify-token` (with a label naming the install) and gets a token for `GET /n/poll?since=<id>&wait=<s>`, a long poll that returns what is newer than `since`. The token opens nothing else, and the hub's own tokens do not open the poll.
+- **The poll is on the main listener** (so it works over Tailscale) **and on a separate, notifications-only listener** (`-notify-addr`, a free local port by default) that a tunnel points at. Nothing but `/n/ping` and `/n/poll` exists there.
+- **The tunnel.** `tether-hub -notify-tunnel` runs `cloudflared tunnel --url http://127.0.0.1:<port>` (a quick tunnel, `-cloudflared` names the program) and reads its `*.trycloudflare.com` address from its output, restarting it with a growing pause if it ends. Each new address is sent to every connected app (`Welcome.notify_url` and the `NotifyEndpoint` frame); an app that is on Tailscale keeps it for when it is not. With a tunnel you already run (a named one, a proxy) use `-notify-url <address> -notify-addr <bind>` instead.
+- **Privacy.** Cloudflare terminates the tunnel's TLS, so it can read what passes. Through the tunnel the hub sends titles only; the text of what Claude said goes only over Tailscale, unless `-notify-bodies` is set.
+- **The phone.** An Android foreground service (a small standing notification, "Tether is listening") long-polls the tailnet address first and the tunnel second, remembers the last good one, backs off when neither answers, and shows a notification per item, quiet while the app is on screen. It restarts after a reboot. Settings has the switch, the three kinds (Finished, Needs you, Failed), how it is reaching the hub, and a test button.
+
+Not built yet: Windows toasts and tray, Allow and Deny from the notification, clearing a notification resolved elsewhere, quiet hours, per-chat grouping, "Ready" (a file the assistant made) and "something is wrong" (a device offline).
+
+## Original plan
 
 ## What must be told
 
@@ -24,7 +40,7 @@ An Android app that is closed holds no connection to the hub, and the hub can on
 | **UnifiedPush with a self-hosted relay** (ntfy on the hub) | The hub posts to a relay; a distributor app on the phone wakes Tether | No standing connection from Tether; the roadmap's original choice | A second app on the phone; the relay must be reachable (private network again, or public) |
 | **A cloud push service** | The hub tells a provider, which wakes the phone | Reliable | A third-party cloud, which is exactly what Tether avoids; rejected |
 
-**Proposal:** build the foreground service first, as an opt-in setting ("Stay connected so I'm notified", on by default once notifications are allowed), with the standing notification as quiet as Android allows. Keep the delivery code behind one interface so the relay can be added later without touching what notifications say. The owner decides the trade-off (see open questions).
+**Decision (built):** the foreground service, as an opt-in setting ("Stay connected so I'm notified", on by default once notifications are allowed), with the standing notification as quiet as Android allows. Keep the delivery code behind one interface so the relay can be added later without touching what notifications say. The owner decides the trade-off (see open questions).
 
 Windows: toasts while the app is running; the app can minimise to the tray and start with Windows so it stays running. No relay needed.
 

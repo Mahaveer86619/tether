@@ -67,6 +67,10 @@ Add `-trust-tailnet` to the hub (`TETHER_HUB_FLAGS=-trust-tailnet` in `tether.en
 
 Settings → Devices lists every machine on the tailnet and what of Tether runs on it.
 
+## Notifications from outside the tailnet
+
+To reach a phone that is not on Tailscale, give the hub a tunnel that serves only notifications. Install `cloudflared` on the hub's machine, then add `-notify-tunnel` to the hub's flags (`TETHER_HUB_FLAGS` in `tether.env`). The hub starts the tunnel itself, learns its address and tells every app, so nothing is configured on the phone. `-notify-url` with `-notify-addr` uses a tunnel or proxy you run yourself; `-notify-bodies` lets the text of notifications through it too. What the tunnel exposes and what it leaves out: [notifications.md](../plans/notifications.md#what-is-built). Then, on the phone, Settings, Notifications.
+
 ## A hub on a public address
 
 Over Tailscale, nothing more is needed. On a VM with a public `host:port`, the hub needs TLS, and it refuses to start without it:
