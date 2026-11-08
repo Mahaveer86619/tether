@@ -2,6 +2,13 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.5
+
+- **Notifications.** Send a prompt and leave: your phone is told when Claude finishes, when it needs an approval or has a question, or when a session fails. Turn it on under Settings, Notifications (Finished, Needs you, Failed, and a test button). An Android service listens quietly while the app is closed and stays silent while the app is on screen.
+- **Reached with or without Tailscale.** The hub can open a Cloudflare tunnel (`-notify-tunnel`) that serves only notifications, with a token that opens nothing else, and tells your apps its address as it changes. Through the tunnel only titles travel, not what Claude said; the full text comes over Tailscale.
+- **A Files view.** Chat beside the files Claude is changing: a tab for each file and its changes as live, syntax-highlighted diffs that follow the newest one. It replaces Split. On a phone the three views are one button in the header.
+- **A better Terminal view.** The transcript draws tables with box characters, frames and colours code by language, shows each edit as a coloured diff, a write as its new text, and to-dos as a checklist.
+
 ## 0.17.4
 
 - **A more reliable update on Windows.** The release carries a small updater program that swaps the app for the new version, checks the new version comes up, and puts the old one back if it does not. It no longer depends on a script starting after the app exits.
