@@ -93,6 +93,7 @@ type Agent struct {
 	reported      map[string]*v1.SessionInfo
 	claudeV       string
 	capabilities  []string // tools found on this machine, see capabilities.go
+	mcpState      string   // "ok", or why the hub's MCP server is not registered; see doctor.go
 }
 
 func New(cfg Config) (*Agent, error) {
@@ -227,6 +228,7 @@ func (a *Agent) status() *v1.NodeStatus {
 	return &v1.NodeStatus{
 		Node: a.cfg.Node, Online: true, Os: runtime.GOOS, Hostname: host,
 		ClaudeVersion: a.claudeV, AgentVersion: a.cfg.Version, RunningSessions: running, Capabilities: caps,
+		Checks: a.doctorChecks(),
 	}
 }
 

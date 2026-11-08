@@ -96,6 +96,19 @@ message NodeStatus {
   // What this machine can build or run, found by the agent: tool names
   // such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
   repeated string capabilities = 11;
+  // What the agent checked about this machine, for the device's checklist.
+  repeated DoctorCheck checks = 12;
+}
+
+// One thing the agent checked: is Claude Code here, are its hooks in, and so on.
+message DoctorCheck {
+  string id = 1;
+  string label = 2;
+  bool ok = 3;
+  // What was found, or what to do about it.
+  string detail = 4;
+  // Without it Tether cannot work on this machine (as opposed to a nicety).
+  bool required = 5;
 }
 
 enum SessionState {

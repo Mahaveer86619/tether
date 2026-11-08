@@ -453,6 +453,14 @@ const NodeStatus$json = {
       '10': 'historySyncedMs'
     },
     {'1': 'capabilities', '3': 11, '4': 3, '5': 9, '10': 'capabilities'},
+    {
+      '1': 'checks',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.DoctorCheck',
+      '10': 'checks'
+    },
   ],
 };
 
@@ -464,7 +472,26 @@ final $typed_data.Uint8List nodeStatusDescriptor = $convert.base64Decode(
     'VudFZlcnNpb24SIAoMbGFzdF9zZWVuX21zGAcgASgDUgpsYXN0U2Vlbk1zEikKEHJ1bm5pbmdf'
     'c2Vzc2lvbnMYCCABKAVSD3J1bm5pbmdTZXNzaW9ucxIOCgJpcBgJIAEoCVICaXASKgoRaGlzdG'
     '9yeV9zeW5jZWRfbXMYCiABKANSD2hpc3RvcnlTeW5jZWRNcxIiCgxjYXBhYmlsaXRpZXMYCyAD'
-    'KAlSDGNhcGFiaWxpdGllcw==');
+    'KAlSDGNhcGFiaWxpdGllcxIuCgZjaGVja3MYDCADKAsyFi50ZXRoZXIudjEuRG9jdG9yQ2hlY2'
+    'tSBmNoZWNrcw==');
+
+@$core.Deprecated('Use doctorCheckDescriptor instead')
+const DoctorCheck$json = {
+  '1': 'DoctorCheck',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'label', '3': 2, '4': 1, '5': 9, '10': 'label'},
+    {'1': 'ok', '3': 3, '4': 1, '5': 8, '10': 'ok'},
+    {'1': 'detail', '3': 4, '4': 1, '5': 9, '10': 'detail'},
+    {'1': 'required', '3': 5, '4': 1, '5': 8, '10': 'required'},
+  ],
+};
+
+/// Descriptor for `DoctorCheck`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List doctorCheckDescriptor = $convert.base64Decode(
+    'CgtEb2N0b3JDaGVjaxIOCgJpZBgBIAEoCVICaWQSFAoFbGFiZWwYAiABKAlSBWxhYmVsEg4KAm'
+    '9rGAMgASgIUgJvaxIWCgZkZXRhaWwYBCABKAlSBmRldGFpbBIaCghyZXF1aXJlZBgFIAEoCFII'
+    'cmVxdWlyZWQ=');
 
 @$core.Deprecated('Use sessionInfoDescriptor instead')
 const SessionInfo$json = {

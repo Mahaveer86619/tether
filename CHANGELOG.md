@@ -9,6 +9,10 @@ Each release's section becomes its release notes and the notes the apps show. Ke
 - **Chat, Split and Terminal views** of a conversation: the same timeline drawn as chat, as a terminal transcript, or both side by side.
 - **Files a session delivers** (a build, an export) show as cards above the composer with Download, and a program says it is one. A session's `.tether/out/` folder is delivered to its chat.
 - **Delete a chat** from its menu; the sessions it held stay.
+- **First run finds your hub.** A new install looks for the hub among the devices on your Tailscale network (the desktop can list them; most devices don't run Tether, so only the ones that answer are shown), remembers hubs it has connected to, and connects by tap, pairing code or QR code.
+- **Settings folds away.** Devices, Workspaces and Codebases are collapsible sections with counts, so the page stays short.
+- **Better matching of where a chat runs.** The folders you work in most break ties between machines with the same repo, your home and app-data folders are no longer treated as projects, and suggested workspace folders come from where your projects really are.
+- **Each device has a checklist** from its agent: Claude Code found, hooks installed, Tether's tools registered, git, tmux and a writable data folder, with what to do about anything missing.
 
 ## 0.17.3
 

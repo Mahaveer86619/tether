@@ -8,6 +8,7 @@ import '../hub/hub_cubit.dart';
 import '../settings/devices_cubit.dart';
 import '../settings/pairing_widgets.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'cards.dart';
@@ -200,6 +201,49 @@ class _SetupGuide extends StatelessWidget {
 }
 
 /// One device and all of its sessions.
+/// What the agent checked about its machine, one line each; a failure says
+/// what to do about it.
+class _Checklist extends StatelessWidget {
+  const _Checklist({required this.checks});
+
+  final List<DoctorCheck> checks;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      key: const Key('checklist'),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(10)),
+      child: Column(
+        children: [
+          for (final (i, k) in checks.indexed) ...[
+            if (i > 0) Divider(height: 1, color: c.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm + 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(k.ok ? Icons.check_circle_rounded : (k.required ? Icons.error_rounded : Icons.info_outline_rounded), size: 18, color: k.ok ? c.success : (k.required ? c.danger : c.warning)),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(k.label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                        if (k.detail.isNotEmpty) Text(k.detail, style: TextStyle(fontSize: 12.5, color: k.ok ? c.muted : c.text)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class DevicePage extends StatelessWidget {
   const DevicePage({super.key, required this.node, required this.onSession});
 
@@ -232,6 +276,10 @@ class DevicePage extends StatelessWidget {
               style: TextStyle(color: c.muted, fontSize: 13),
             ),
           ),
+        if (status != null && status.checks.isNotEmpty) ...[
+          SectionLabel('Checks', dot: status.needsAttention ? c.warning : c.success, trailing: Text('${status.checks.where((k) => k.ok).length}/${status.checks.length}', style: Type.meta(context, color: c.faint))),
+          _Checklist(checks: status.checks),
+        ],
         SectionLabel('Live', trailing: Text('${live.length}', style: TextStyle(color: c.faint, fontSize: 12))),
         if (live.isEmpty)
           Text('No live sessions on this device.', style: TextStyle(color: c.muted, fontSize: 13))

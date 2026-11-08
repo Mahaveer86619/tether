@@ -724,6 +724,25 @@ void main() {
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');
     });
 
+    testWidgets('a device lists what its agent checked, and flags one that needs attention', (tester) async {
+      repo.emitHub(repo.current.copyWith(nodes: {
+        ...repo.current.nodes,
+        'laptop': Node(name: 'laptop', online: true, os: 'windows', checks: const [
+          DoctorCheck(id: 'claude', label: 'Claude Code', ok: false, required: true, detail: 'Claude Code did not answer. Install it and sign in.'),
+          DoctorCheck(id: 'git', label: 'git', ok: true, detail: 'Found.'),
+        ]),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-devices')));
+      await settle(tester);
+      expect(find.byKey(const Key('attention-laptop')), findsOneWidget);
+      await tester.tap(find.text('laptop').first);
+      await settle(tester);
+      expect(find.byKey(const Key('checklist')), findsOneWidget);
+      expect(find.textContaining('Install it and sign in'), findsOneWidget);
+      expect(find.text('CHECKS'), findsOneWidget);
+    });
+
     testWidgets('files a session delivered show as cards with Download, and a program says so', (tester) async {
       repo.emitHub(repo.current.copyWith(artifacts: {
         'f1': Artifact(id: 'f1', name: 'app-release.apk', mime: 'application/vnd.android.package-archive', size: 81487523, session: 's1', node: 'laptop', origin: 'result', created: DateTime.now()),

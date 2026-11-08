@@ -242,6 +242,7 @@ class HubRepositoryImpl implements HubRepository {
         agentVersion: n.agentVersion,
         lastSeen: n.lastSeen,
         capabilities: n.capabilities,
+        checks: n.checks,
       );
 
   /// Keeps sessions that are working subscribed even when no screen shows

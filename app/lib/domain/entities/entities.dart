@@ -27,6 +27,7 @@ class Node extends Equatable {
     this.runningSessions = 0,
     this.ip = '',
     this.capabilities = const [],
+    this.checks = const [],
   });
 
   final String name;
@@ -35,6 +36,14 @@ class Node extends Equatable {
 
   /// What the machine can build or run: "flutter", "android-sdk", "docker"...
   final List<String> capabilities;
+
+  /// What the agent checked about the machine.
+  final List<DoctorCheck> checks;
+
+  /// Checks that failed, required ones first.
+  List<DoctorCheck> get problems => [...checks.where((c) => !c.ok && c.required), ...checks.where((c) => !c.ok && !c.required)];
+
+  bool get needsAttention => checks.any((c) => !c.ok && c.required);
   final DateTime? lastSeen;
   final int runningSessions;
 
@@ -42,7 +51,7 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }
@@ -1387,5 +1396,16 @@ class FoundHub extends Equatable {
 
   @override
   List<Object?> get props => [name, url, version, trusted, known, reachable];
+}
+
+/// One thing an agent checked about its machine.
+class DoctorCheck extends Equatable {
+  const DoctorCheck({required this.id, required this.label, required this.ok, this.detail = '', this.required = false});
+
+  final String id, label, detail;
+  final bool ok, required;
+
+  @override
+  List<Object?> get props => [id, label, ok, detail, required];
 }
 

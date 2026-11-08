@@ -18,6 +18,7 @@ func (a *Agent) registerMCP() {
 	if a.cfg.HubFingerprint != "" {
 		// Claude Code would reject the hub's self-signed certificate.
 		a.log.Info("not registering the hub's MCP server: its certificate is self-signed")
+		a.setMCP("not registered: the hub's certificate is self-signed, which Claude Code would reject")
 		return
 	}
 	url := wire.HTTPBase(a.cfg.HubURL) + "/mcp"
@@ -38,9 +39,17 @@ func (a *Agent) registerMCP() {
 	_, _ = claude("mcp", "remove", "tether", "--scope", "user")
 	if out, err := claude(args...); err != nil {
 		a.log.Warn("register MCP server", "err", err, "output", strings.TrimSpace(string(out)))
+		a.setMCP("registering failed: " + strings.TrimSpace(string(out)))
 		return
 	}
 	a.log.Info("registered the hub's MCP server with Claude Code", "url", url)
+	a.setMCP("ok")
+}
+
+func (a *Agent) setMCP(state string) {
+	a.mu.Lock()
+	a.mcpState = state
+	a.mu.Unlock()
 }
 
 func (a *Agent) hubTrustsUs() bool {

@@ -1,6 +1,6 @@
 # First run
 
-Status: plan. Product view: [v1-spec.md](../product/v1-spec.md#a1-first-run-setup).
+Status: partly built. The app's first screen finds hubs on the tailnet and remembers them, and each agent reports a checklist ("doctor") that the device page shows; the hub installer and the guided machine setup are still plans. Product view: [v1-spec.md](../product/v1-spec.md#a1-first-run-setup).
 
 ## The problem
 

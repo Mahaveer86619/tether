@@ -20,6 +20,7 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       runningSessions: n.runningSessions,
       ip: n.ip,
       capabilities: n.capabilities,
+      checks: [for (final c in n.checks) DoctorCheck(id: c.id, label: c.label, ok: c.ok, detail: c.detail, required: c.required)],
     );
 
 SessionState _state(pbe.SessionState s) => switch (s) {

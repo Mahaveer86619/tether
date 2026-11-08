@@ -14,6 +14,8 @@ var capabilityTools = []string{"git", "go", "node", "python", "java", "gradle", 
 
 // findCapabilities reports the tools on PATH, and "android-sdk" when an
 // Android SDK is installed. getenv and home are injected for tests.
+var lookPath = exec.LookPath
+
 func findCapabilities(lookPath func(string) (string, error), getenv func(string) string, home string) []string {
 	var out []string
 	for _, tool := range capabilityTools {

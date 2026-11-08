@@ -278,17 +278,23 @@ class DeviceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
-                    Flexible(child: Text(node.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
-                    const SizedBox(width: 8),
-                    OnlineDot(online: node.online),
-                    if (isHub) ...[const SizedBox(width: 8), Pill('hub', color: c.accent)],
-                    if (isSelf) ...[const SizedBox(width: 8), const Pill('this device')],
-                    if (isOlderVersion(node.agentVersion, hubVersion)) ...[
-                      const SizedBox(width: 8),
-                      Pill('update', key: Key('update-${node.name}'), color: c.warning),
-                    ],
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(node.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 8),
+                        OnlineDot(online: node.online),
+                      ],
+                    ),
+                    if (isHub) Pill('hub', color: c.accent),
+                    if (isSelf) const Pill('this device'),
+                    if (node.needsAttention) Pill('needs attention', key: Key('attention-${node.name}'), color: c.danger),
+                    if (isOlderVersion(node.agentVersion, hubVersion)) Pill('update', key: Key('update-${node.name}'), color: c.warning),
                   ],
                 ),
                 const SizedBox(height: 3),

@@ -841,6 +841,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     $core.String? ip,
     $fixnum.Int64? historySyncedMs,
     $core.Iterable<$core.String>? capabilities,
+    $core.Iterable<DoctorCheck>? checks,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -854,6 +855,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (ip != null) result.ip = ip;
     if (historySyncedMs != null) result.historySyncedMs = historySyncedMs;
     if (capabilities != null) result.capabilities.addAll(capabilities);
+    if (checks != null) result.checks.addAll(checks);
     return result;
   }
 
@@ -881,6 +883,8 @@ class NodeStatus extends $pb.GeneratedMessage {
     ..aOS(9, _omitFieldNames ? '' : 'ip')
     ..aInt64(10, _omitFieldNames ? '' : 'historySyncedMs')
     ..pPS(11, _omitFieldNames ? '' : 'capabilities')
+    ..pPM<DoctorCheck>(12, _omitFieldNames ? '' : 'checks',
+        subBuilder: DoctorCheck.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -999,6 +1003,118 @@ class NodeStatus extends $pb.GeneratedMessage {
   /// such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
   @$pb.TagNumber(11)
   $pb.PbList<$core.String> get capabilities => $_getList(10);
+
+  /// What the agent checked about this machine, for the device's checklist.
+  @$pb.TagNumber(12)
+  $pb.PbList<DoctorCheck> get checks => $_getList(11);
+}
+
+/// One thing the agent checked: is Claude Code here, are its hooks in, and so on.
+class DoctorCheck extends $pb.GeneratedMessage {
+  factory DoctorCheck({
+    $core.String? id,
+    $core.String? label,
+    $core.bool? ok,
+    $core.String? detail,
+    $core.bool? required,
+  }) {
+    final result = DoctorCheck._();
+    if (id != null) result.id = id;
+    if (label != null) result.label = label;
+    if (ok != null) result.ok = ok;
+    if (detail != null) result.detail = detail;
+    if (required != null) result.required = required;
+    return result;
+  }
+
+  DoctorCheck._();
+
+  factory DoctorCheck.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DoctorCheck()..mergeFromBuffer(data, registry);
+  factory DoctorCheck.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DoctorCheck()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DoctorCheck',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: DoctorCheck.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'label')
+    ..aOB(3, _omitFieldNames ? '' : 'ok')
+    ..aOS(4, _omitFieldNames ? '' : 'detail')
+    ..aOB(5, _omitFieldNames ? '' : 'required')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DoctorCheck clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DoctorCheck copyWith(void Function(DoctorCheck) updates) =>
+      super.copyWith((message) => updates(message as DoctorCheck))
+          as DoctorCheck;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DoctorCheck() / DoctorCheck.new instead')
+  static DoctorCheck create() => DoctorCheck._();
+  static $pb.GeneratedMessage $_createMessage() => DoctorCheck._();
+  @$core.override
+  DoctorCheck createEmptyInstance() => DoctorCheck._();
+  @$core.pragma('dart2js:noInline')
+  static DoctorCheck getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DoctorCheck>(
+          DoctorCheck.$_createMessage);
+  static DoctorCheck? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get label => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set label($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasLabel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearLabel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get ok => $_getBF(2);
+  @$pb.TagNumber(3)
+  set ok($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOk() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOk() => $_clearField(3);
+
+  /// What was found, or what to do about it.
+  @$pb.TagNumber(4)
+  $core.String get detail => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set detail($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDetail() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDetail() => $_clearField(4);
+
+  /// Without it Tether cannot work on this machine (as opposed to a nicety).
+  @$pb.TagNumber(5)
+  $core.bool get required => $_getBF(4);
+  @$pb.TagNumber(5)
+  set required($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasRequired() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearRequired() => $_clearField(5);
 }
 
 class SessionInfo extends $pb.GeneratedMessage {
