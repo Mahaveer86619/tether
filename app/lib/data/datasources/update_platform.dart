@@ -49,14 +49,25 @@ class NativeUpdatePlatform implements UpdatePlatform {
     throw const StorageException('this platform updates through its package manager');
   }
 
-  /// Writes a helper that waits for the app to exit, swaps its folder for
-  /// the update (keeping the old one as `<folder>.prev`, and putting it back
-  /// if the copy fails), and starts the app again.
+  /// Hands the unpacking to tether-updater.exe, a small program that ships
+  /// next to the app: it waits for this process to exit, swaps the app's
+  /// folder for the update, starts the new app and goes back to the old one
+  /// if the new one does not come up. It runs from a copy in the temp folder,
+  /// since it replaces the folder it lives in.
   Future<void> _applyOnExit(File zip) async {
     final app = File(Platform.resolvedExecutable).parent;
-    final script = File('${zip.parent.path}\\apply-update.ps1');
-    await script.writeAsString(windowsHelperScript(zip: zip.path, app: app.path, appPid: pid));
-    await Process.start('cmd.exe', windowsHelperLaunch(script.path), mode: ProcessStartMode.detached);
+    final updater = File('${app.path}${Platform.pathSeparator}$updaterName');
+    if (!await updater.exists()) {
+      throw const StorageException('this install has no updater; install the new version once by hand');
+    }
+    final work = await Directory.systemTemp.createTemp('tether-update-');
+    final copy = await updater.copy('${work.path}${Platform.pathSeparator}$updaterName');
+    final sep = Platform.pathSeparator;
+    await Process.start(
+      copy.path,
+      updaterArguments(zip: zip.path, app: app.path, appPid: pid, log: '${zip.parent.path}${sep}apply-update.log', ok: '${zip.parent.path}${sep}update-ok'),
+      mode: ProcessStartMode.detached,
+    );
   }
 
   @override
@@ -70,40 +81,8 @@ class NativeUpdatePlatform implements UpdatePlatform {
   }
 }
 
-const _windowsHelper = r'''
-$ErrorActionPreference = 'Stop'
-$log = Join-Path (Split-Path $Zip) 'apply-update.log'
-function Note($m) { Add-Content -Path $log -Value "$(Get-Date -Format s) $m" }
-try {
-    Wait-Process -Id $AppPid -Timeout 60 -ErrorAction SilentlyContinue
-    $staging = "$App.new"
-    $prev = "$App.prev"
-    Remove-Item $staging -Recurse -Force -ErrorAction SilentlyContinue
-    Expand-Archive -Path $Zip -DestinationPath $staging -Force
-    if (-not (Test-Path (Join-Path $staging 'tether.exe'))) { throw 'the update has no tether.exe' }
-    Remove-Item $prev -Recurse -Force -ErrorAction SilentlyContinue
-    # Windows can hold the old DLLs for a moment after the app exits.
-    foreach ($try in 1..20) {
-        try { Rename-Item $App $prev; break } catch { if ($try -eq 20) { throw }; Start-Sleep -Milliseconds 500 }
-    }
-    try { Rename-Item $staging $App }
-    catch { Rename-Item $prev $App; throw }
-    Note "updated from $Zip"
-    Remove-Item $Zip -Force -ErrorAction SilentlyContinue
-}
-catch { Note "update failed: $_" }
-Start-Process (Join-Path $App 'tether.exe')
-''';
+const updaterName = 'tether-updater.exe';
 
-String _quoted(String v) => "'${v.replaceAll("'", "''")}'";
-
-/// The helper with its three values written in, so nothing depends on how
-/// the arguments survive being passed on.
-String windowsHelperScript({required String zip, required String app, required int appPid}) =>
-    '\$Zip = ${_quoted(zip)}\n\$App = ${_quoted(app)}\n\$AppPid = $appPid\n$_windowsHelper';
-
-/// How to start the helper so it outlives the app. PowerShell started
-/// straight from a detached process never runs; going through `cmd start`
-/// does, and `-WindowStyle Hidden` keeps it from showing.
-List<String> windowsHelperLaunch(String script) =>
-    ['/c', 'start', '', '/b', 'powershell.exe', '-NoProfile', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', script];
+/// The updater's command line.
+List<String> updaterArguments({required String zip, required String app, required int appPid, required String log, required String ok}) =>
+    ['-zip', zip, '-app', app, '-pid', '$appPid', '-log', log, '-ok', ok];

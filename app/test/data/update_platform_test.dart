@@ -2,18 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tether/data/datasources/update_platform.dart';
 
 void main() {
-  test('the Windows helper carries its own values, quoted', () {
-    final s = windowsHelperScript(zip: r"C:\Users\O'Neil\updates\t.zip", app: r'C:\Program Files\Tether', appPid: 42);
-    expect(s, startsWith(r"$Zip = 'C:\Users\O''Neil\updates\t.zip'"));
-    expect(s, contains(r"$App = 'C:\Program Files\Tether'"));
-    expect(s, contains(r'$AppPid = 42'));
-    expect(s, isNot(contains('param(')));
-    expect(s, contains('Rename-Item'));
-  });
-
-  test('the helper starts through cmd, which lets it outlive the app', () {
-    final args = windowsHelperLaunch(r'C:\x\apply-update.ps1');
-    expect(args.take(5), ['/c', 'start', '', '/b', 'powershell.exe']);
-    expect(args, containsAllInOrder(['-WindowStyle', 'Hidden', '-File', r'C:\x\apply-update.ps1']));
+  test('the updater is given what it needs, one argument each', () {
+    final args = updaterArguments(zip: r'C:\u dir\t.zip', app: r'C:\Users\a b\Tether', appPid: 42, log: r'C:\u dir\apply-update.log', ok: r'C:\u dir\update-ok');
+    expect(args, ['-zip', r'C:\u dir\t.zip', '-app', r'C:\Users\a b\Tether', '-pid', '42', '-log', r'C:\u dir\apply-update.log', '-ok', r'C:\u dir\update-ok']);
+    expect(updaterName, 'tether-updater.exe');
   });
 }

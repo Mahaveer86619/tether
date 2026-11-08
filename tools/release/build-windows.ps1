@@ -17,6 +17,19 @@ try {
 finally { Pop-Location }
 
 $release = Join-Path $root 'app\build\windows\x64\runner\Release'
+
+# The program the app starts to swap itself for the next version.
+Push-Location (Join-Path $root 'server')
+try {
+    $env:GOOS = 'windows'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
+    go build -trimpath -ldflags '-s -w -H=windowsgui' -o (Join-Path $release 'tether-updater.exe') ./cmd/tether-updater
+    if ($LASTEXITCODE -ne 0) { throw 'go build tether-updater failed' }
+}
+finally {
+    Remove-Item Env:GOOS, Env:GOARCH, Env:CGO_ENABLED -ErrorAction SilentlyContinue
+    Pop-Location
+}
+
 $zip = Join-Path $dist "tether-windows-$v.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $release '*') -DestinationPath $zip

@@ -120,7 +120,14 @@ Flags:
 
 - A newer release shows a banner with **What's new**, **Skip this version** and **Update**. On Android a system notification also announces it, once per version.
 - **Android:** the app downloads the APK from the hub, checks its sha256 and opens the system installer. That uses `REQUEST_INSTALL_PACKAGES` and a `FileProvider` on the cache's `updates/` folder. The first time, Android asks to allow installs from Tether.
-- **Windows:** the app downloads and checks the zip, then offers **Restart to update**. A helper script (`apply-update.ps1`, next to the download) waits for the app to exit and unpacks the zip. It swaps the app folder, keeping the old one as `<folder>.prev` and putting it back if the swap fails, then starts the app again. The script logs to `apply-update.log`.
+- **Windows:** the app downloads and checks the zip, then offers **Restart to update**. The release carries `tether-updater.exe` next to `tether.exe`, a small Go program (`server/cmd/tether-updater`, logic in `server/internal/winupdate`). The app copies it to a temp folder, starts it and exits. The updater:
+  1. waits for the app's process to exit;
+  2. unpacks the zip beside the app (`<folder>.new`), refusing paths that leave it, and checks `tether.exe` is there;
+  3. renames the app folder to `<folder>.prev` and the new one into its place;
+  4. starts the new app with `TETHER_UPDATE_OK` set to a file name, and waits up to 30 seconds for the app to write it, which it does after its first frame;
+  5. if the file never appears, kills the new app, puts `<folder>.prev` back and starts it again, leaving the zip for another try.
+
+  It logs to `apply-update.log` beside the download. It is a program, not a script, so execution policy and antivirus script rules do not touch it; `deploy/windows/install-app.ps1` and `build-windows.ps1` build it into the app folder. An install without it says to install the new version once by hand.
 - A release whose `min_supported` is above the app's version replaces the whole app with an update screen, and can't be skipped.
 
 **Agents** from 0.17 update themselves:
