@@ -168,11 +168,13 @@ func extract(zipPath, dir string) error {
 	}
 	root := filepath.Clean(dir) + string(os.PathSeparator)
 	for _, f := range r.File {
-		target := filepath.Join(dir, filepath.FromSlash(f.Name))
+		// Windows PowerShell's Compress-Archive writes backslashes in names.
+		name := strings.ReplaceAll(f.Name, `\`, "/")
+		target := filepath.Join(dir, filepath.FromSlash(name))
 		if !strings.HasPrefix(target+string(os.PathSeparator), root) && filepath.Clean(target) != filepath.Clean(dir) {
 			return fmt.Errorf("unsafe path %q in the update", f.Name)
 		}
-		if f.FileInfo().IsDir() {
+		if strings.HasSuffix(name, "/") {
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}

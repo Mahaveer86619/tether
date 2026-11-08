@@ -151,3 +151,21 @@ func TestApplyWaitsForTheAppToExit(t *testing.T) {
 		t.Error("nothing should change while the app runs")
 	}
 }
+
+// Windows PowerShell's Compress-Archive writes backslashes in entry names,
+// and lists folders as entries ending in one.
+func TestApplyReadsZipsMadeByPowerShell(t *testing.T) {
+	fx := newFixture(t, true)
+	makeZip(t, fx.zip, map[string]string{
+		"tether.exe":                       "new",
+		`data\`:                            "",
+		`data\flutter_assets\`:             "",
+		`data\flutter_assets\assets\a.txt`: "asset",
+	})
+	if err := Apply(Config{Zip: fx.zip, App: fx.app, OKFile: fx.ok, Timeout: time.Second}, fx.hooks); err != nil {
+		t.Fatal(err)
+	}
+	if read(t, filepath.Join(fx.app, "data", "flutter_assets", "assets", "a.txt")) != "asset" {
+		t.Error("nested files should land in their folders")
+	}
+}
