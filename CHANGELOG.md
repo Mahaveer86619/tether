@@ -2,6 +2,14 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.4
+
+- **A more reliable update on Windows.** The release carries a small updater program that swaps the app for the new version, checks the new version comes up, and puts the old one back if it does not. It no longer depends on a script starting after the app exits.
+- **Check for updates** in Settings, with the app and hub versions.
+- **Chat, Split and Terminal views** of a conversation: the same timeline drawn as chat, as a terminal transcript, or both side by side.
+- **Files a session delivers** (a build, an export) show as cards above the composer with Download, and a program says it is one. A session's `.tether/out/` folder is delivered to its chat.
+- **Delete a chat** from its menu; the sessions it held stay.
+
 ## 0.17.3
 
 - **Back works like a phone.** Switching between Home, Chats, Devices and the rest no longer piles up history; Back closes what you opened, then goes Home, then leaves. A chat, Settings, Home and Back no longer reopens the chat.
