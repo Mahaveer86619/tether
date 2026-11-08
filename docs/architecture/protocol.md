@@ -1,6 +1,6 @@
 # Protocol (contract v1)
 
-The source of truth is [`proto/tether/v1`](../../../proto/tether/v1): `tether.proto` (frames, commands, events) and `render.proto` (timeline items, Markdown blocks, tool cards). Go code is generated with `buf generate`; the Flutter app will generate Dart from the same files.
+The source of truth is [`proto/tether/v1`](../../proto/tether/v1): `tether.proto` (frames, commands, events) and `render.proto` (timeline items, Markdown blocks, tool cards). Go code is generated with `buf generate`; the Flutter app will generate Dart from the same files.
 
 There are two hops:
 
