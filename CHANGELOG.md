@@ -2,6 +2,10 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.6
+
+- **Fix: the Windows update could not replace the app.** The updater inherited the app's folder as its working directory, and Windows will not rename a folder a program is working in, so the swap failed after ten seconds and the old version came back. The updater now steps out of the folder first, and is started from a temporary one. Confirmed by running it the way the app does, on the real install.
+
 ## 0.17.5
 
 - **Notifications.** Send a prompt and leave: your phone is told when Claude finishes, when it needs an approval or has a question, or when a session fails. Turn it on under Settings, Notifications (Finished, Needs you, Failed, and a test button). An Android service listens quietly while the app is closed and stays silent while the app is on screen.

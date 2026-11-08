@@ -71,6 +71,14 @@ func Apply(cfg Config, h Hooks) error {
 	}
 	h.log("updating %s from %s", cfg.App, cfg.Zip)
 
+	// The app starts this with its own folder as the working directory, and on
+	// Windows a process's working directory cannot be renamed. Leave it first.
+	if wd, err := os.Getwd(); err == nil && inside(wd, cfg.App) {
+		if err := os.Chdir(os.TempDir()); err != nil {
+			h.log("could not leave %s: %v", wd, err)
+		}
+	}
+
 	if cfg.Pid > 0 && h.Wait != nil {
 		if err := h.Wait(cfg.Pid, cfg.WaitExit); err != nil {
 			return fmt.Errorf("the app did not exit: %w", err)
@@ -132,6 +140,12 @@ func Apply(cfg Config, h Hooks) error {
 		h.log("could not start the old version: %v", serr)
 	}
 	return fmt.Errorf("the new version did not start: %w", err)
+}
+
+// inside says whether dir is root or somewhere under it.
+func inside(dir, root string) bool {
+	d, r := strings.ToLower(filepath.Clean(dir)), strings.ToLower(filepath.Clean(root))
+	return d == r || strings.HasPrefix(d, r+string(os.PathSeparator))
 }
 
 func retry(h Hooks, n int, gap time.Duration, f func() error) error {

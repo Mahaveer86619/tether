@@ -169,3 +169,39 @@ func TestApplyReadsZipsMadeByPowerShell(t *testing.T) {
 		t.Error("nested files should land in their folders")
 	}
 }
+
+// The app starts the updater inside its own folder; Windows cannot rename a
+// folder a process is working in, so Apply must step out of it first.
+func TestApplyLeavesTheAppFolderBeforeSwappingIt(t *testing.T) {
+	fx := newFixture(t, true)
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(old)
+	if err := os.Chdir(fx.app); err != nil {
+		t.Fatal(err)
+	}
+	if err := Apply(Config{Zip: fx.zip, App: fx.app, OKFile: fx.ok, Timeout: time.Second}, fx.hooks); err != nil {
+		t.Fatalf("with the app folder as the working directory: %v", err)
+	}
+	if wd, _ := os.Getwd(); inside(wd, fx.app) {
+		t.Errorf("still working inside the app folder: %s", wd)
+	}
+}
+
+func TestInside(t *testing.T) {
+	for _, c := range []struct {
+		dir, root string
+		want      bool
+	}{
+		{"/a/b", "/a/b", true},
+		{"/a/b/c", "/a/b", true},
+		{"/a/bc", "/a/b", false},
+		{"/a", "/a/b", false},
+	} {
+		if got := inside(filepath.FromSlash(c.dir), filepath.FromSlash(c.root)); got != c.want {
+			t.Errorf("inside(%q, %q) = %v", c.dir, c.root, got)
+		}
+	}
+}

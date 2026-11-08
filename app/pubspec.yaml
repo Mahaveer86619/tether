@@ -1,7 +1,7 @@
 name: tether
 description: "Tether: see and control every Claude Code session on your machines, from Android and Windows."
 publish_to: 'none'
-version: 0.17.5+1705
+version: 0.17.6+1706
 
 environment:
   sdk: ^3.13.5

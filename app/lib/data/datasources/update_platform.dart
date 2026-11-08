@@ -66,6 +66,8 @@ class NativeUpdatePlatform implements UpdatePlatform {
     await Process.start(
       copy.path,
       updaterArguments(zip: zip.path, app: app.path, appPid: pid, log: '${zip.parent.path}${sep}apply-update.log', ok: '${zip.parent.path}${sep}update-ok'),
+      // Not the app's folder, which it is about to replace.
+      workingDirectory: work.path,
       mode: ProcessStartMode.detached,
     );
   }
