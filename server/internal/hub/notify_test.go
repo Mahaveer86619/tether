@@ -37,7 +37,16 @@ func poll(t *testing.T, base, token, query string) (int, polled) {
 
 func notifyToken(t *testing.T, srv *httptest.Server) string {
 	t.Helper()
-	status, body := call(t, srv, "POST", "/api/v1/notify-token", "secret", "")
+	return notifyTokenFor(t, srv, "")
+}
+
+func notifyTokenFor(t *testing.T, srv *httptest.Server, label string) string {
+	t.Helper()
+	body0 := ""
+	if label != "" {
+		body0 = `{"label":"` + label + `"}`
+	}
+	status, body := call(t, srv, "POST", "/api/v1/notify-token", "secret", body0)
 	var got struct{ Token, Tunnel string }
 	if status != 200 || json.Unmarshal([]byte(body), &got) != nil || len(got.Token) < 32 {
 		t.Fatalf("token: %d %s", status, body)
@@ -122,6 +131,26 @@ func TestOnlyANotificationTokenOpensThePollAndItOpensNothingElse(t *testing.T) {
 	}
 	if status, _ := poll(t, srv.URL, fresh, "?since=0&wait=0"); status != 200 {
 		t.Errorf("the new token: %d", status)
+	}
+}
+
+func TestTwoInstallsOfOneKindDoNotTakeEachOthersToken(t *testing.T) {
+	_, srv := newTestHubWith(t)
+	phone, laptop := notifyTokenFor(t, srv, "phone"), notifyTokenFor(t, srv, "laptop")
+	for name, token := range map[string]string{"phone": phone, "laptop": laptop} {
+		if status, _ := poll(t, srv.URL, token, "?since=0&wait=0"); status != 200 {
+			t.Errorf("%s's token: %d", name, status)
+		}
+	}
+	again := notifyTokenFor(t, srv, "phone")
+	if status, _ := poll(t, srv.URL, phone, "?since=0&wait=0"); status != 401 {
+		t.Errorf("the phone's old token still works: %d", status)
+	}
+	if status, _ := poll(t, srv.URL, again, "?since=0&wait=0"); status != 200 {
+		t.Errorf("the phone's new token: %d", status)
+	}
+	if status, _ := poll(t, srv.URL, laptop, "?since=0&wait=0"); status != 200 {
+		t.Errorf("the laptop's token was taken: %d", status)
 	}
 }
 

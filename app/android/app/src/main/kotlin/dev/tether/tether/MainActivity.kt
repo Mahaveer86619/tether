@@ -29,6 +29,44 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        // Notifications: tell the background service where to listen and for what.
+        // See lib/data/datasources/notify_platform.dart.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tether/notify").setMethodCallHandler { call, result ->
+            val prefs = NotifyPrefs.of(this)
+            when (call.method) {
+                "configure" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    val token = call.argument<String>("token") ?: ""
+                    val edit = prefs.edit()
+                        .putBoolean("enabled", enabled)
+                        .putString("urls", (call.argument<List<String>>("urls") ?: emptyList()).joinToString("\n"))
+                        .putString("kinds", (call.argument<List<String>>("kinds") ?: emptyList()).joinToString(","))
+                    if (token != (prefs.getString("token", "") ?: "")) edit.remove("since")
+                    edit.putString("token", token).apply()
+                    if (enabled && token.isNotEmpty()) NotifyPrefs.start(this) else NotifyPrefs.stop(this)
+                    result.success(null)
+                }
+                "setActive" -> {
+                    prefs.edit().putBoolean("active", call.argument<Boolean>("active") ?: false).apply()
+                    result.success(null)
+                }
+                "permission" -> result.success(notificationsAllowed())
+                "requestPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed()) {
+                        requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7002)
+                    }
+                    result.success(null)
+                }
+                "status" -> result.success(
+                    mapOf(
+                        "enabled" to prefs.getBoolean("enabled", false),
+                        "ok" to prefs.getLong("ok", 0L),
+                        "error" to (prefs.getString("error", "") ?: ""),
+                    ),
+                )
+                else -> result.notImplemented()
+            }
+        }
         // App updates: hand a downloaded, checked APK to the system installer,
         // and say a release is out. See lib/data/datasources/update_platform.dart.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tether/update").setMethodCallHandler { call, result ->
@@ -42,6 +80,10 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
+    private fun notificationsAllowed(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
     private val tailscalePackage = "com.tailscale.ipn"
 

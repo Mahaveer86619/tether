@@ -1,5 +1,7 @@
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
 
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
@@ -618,3 +620,82 @@ class AppUpdates {
   Future<void> setNotified(String version) => _updates.setNotified(version);
   Future<void> notify(String title, String body) => _updates.notify(title, body);
 }
+
+/// The hub's HTTP address for its websocket one: `ws://host:7420/ws` is
+/// `http://host:7420`.
+String? httpBaseOf(String wsUrl) {
+  final u = Uri.tryParse(wsUrl);
+  if (u == null || u.host.isEmpty) return null;
+  return Uri(scheme: u.scheme == 'wss' || u.scheme == 'https' ? 'https' : 'http', host: u.host, port: u.hasPort ? u.port : null).toString();
+}
+
+/// Being told things with the app closed: whether it is on, for which kinds,
+/// and the token the background service listens with. The settings live on
+/// the device; the hub only issues the token.
+class Notifications {
+  Notifications(this._hub, this._settings, this._device);
+
+  final HubRepository _hub;
+  final SettingsRepository _settings;
+  final NotifyDevice _device;
+
+  static const _key = 'notifications';
+  static final _rand = math.Random.secure();
+
+  bool get available => _device.available;
+
+  Future<NotifySettings> load() async {
+    var s = const NotifySettings();
+    final raw = await _settings.loadDraft(_key);
+    if (raw.isNotEmpty) {
+      try {
+        final m = jsonDecode(raw) as Map<String, dynamic>;
+        s = NotifySettings(
+          enabled: m['enabled'] == true,
+          kinds: {for (final k in m['kinds'] as List<dynamic>? ?? const []) ...NotifyKind.values.where((v) => v.name == k)},
+          installId: m['installId'] as String? ?? '',
+          token: m['token'] as String? ?? '',
+        );
+      } on FormatException {
+        // Start again from the defaults.
+      } on TypeError {
+        // Same.
+      }
+    }
+    if (s.installId.isEmpty) {
+      s = s.copyWith(installId: List.generate(12, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join());
+      await save(s);
+    }
+    return s;
+  }
+
+  Future<void> save(NotifySettings s) => _settings.saveDraft(
+        _key,
+        jsonEncode({'enabled': s.enabled, 'kinds': [for (final k in s.kinds) k.name], 'installId': s.installId, 'token': s.token}),
+      );
+
+  /// Gives the background service what it needs: a token (asked for once and
+  /// kept), and the addresses to listen at, the tailnet one first and the
+  /// tunnel after it. Returns the settings with the token filled in.
+  Future<Result<NotifySettings>> apply(NotifySettings s, {required String hubUrl, required String tunnel}) async {
+    var token = s.token;
+    if (s.enabled && token.isEmpty) {
+      final got = await _hub.notifyAccess(s.installId);
+      if (got.failureOrNull case final f?) return Err(f);
+      token = got.valueOrNull!.token;
+    }
+    final base = httpBaseOf(hubUrl);
+    await _device.configure(enabled: s.enabled, token: token, urls: [?base, if (tunnel.isNotEmpty) tunnel], kinds: s.kinds);
+    final next = s.copyWith(token: token);
+    await save(next);
+    return Ok(next);
+  }
+
+  Future<Result<void>> test() => _hub.sendTestNotification();
+
+  Future<bool> permitted() => _device.permitted();
+  Future<void> askPermission() => _device.askPermission();
+  Future<NotifyStatus> status() => _device.status();
+  Future<void> appActive(bool active) => _device.setActive(active);
+}
+

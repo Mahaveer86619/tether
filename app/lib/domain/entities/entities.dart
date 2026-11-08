@@ -284,6 +284,7 @@ class HubSnapshot extends Equatable {
     this.endpoint = '',
     this.lastError,
     this.preferences,
+    this.notifyUrl = '',
     this.hubNode = '',
     this.deviceId = '',
     this.clientIp = '',
@@ -309,6 +310,9 @@ class HubSnapshot extends Equatable {
 
   /// App settings shared by every client; null until one has saved them.
   final Appearance? preferences;
+
+  /// The hub's notification tunnel, which works without Tailscale; empty when it has none.
+  final String notifyUrl;
 
   /// The node on the hub's own machine, where hub sessions run.
   final String hubNode;
@@ -454,6 +458,7 @@ class HubSnapshot extends Equatable {
     String? endpoint,
     String? Function()? lastError,
     Appearance? Function()? preferences,
+    String? notifyUrl,
     String? hubNode,
     String? deviceId,
     String? clientIp,
@@ -472,6 +477,7 @@ class HubSnapshot extends Equatable {
         endpoint: endpoint ?? this.endpoint,
         lastError: lastError != null ? lastError() : this.lastError,
         preferences: preferences != null ? preferences() : this.preferences,
+        notifyUrl: notifyUrl ?? this.notifyUrl,
         hubNode: hubNode ?? this.hubNode,
         deviceId: deviceId ?? this.deviceId,
         clientIp: clientIp ?? this.clientIp,
@@ -483,7 +489,7 @@ class HubSnapshot extends Equatable {
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -1407,5 +1413,49 @@ class DoctorCheck extends Equatable {
 
   @override
   List<Object?> get props => [id, label, ok, detail, required];
+}
+
+/// What a device needs to be told things when the app is closed: a token that
+/// opens only the hub's notifications, and the tunnel address if there is one.
+class NotifyAccess extends Equatable {
+  const NotifyAccess({required this.token, this.tunnel = ''});
+
+  final String token, tunnel;
+
+  @override
+  List<Object?> get props => [token, tunnel];
+}
+
+/// The kinds of thing worth a notification.
+enum NotifyKind { finished, approval, failed }
+
+/// How notifications are set up on this device.
+class NotifySettings extends Equatable {
+  const NotifySettings({this.enabled = false, this.kinds = const {NotifyKind.finished, NotifyKind.approval, NotifyKind.failed}, this.installId = '', this.token = ''});
+
+  final bool enabled;
+  final Set<NotifyKind> kinds;
+
+  /// Names this install to the hub, so two devices do not share a token.
+  final String installId;
+  final String token;
+
+  NotifySettings copyWith({bool? enabled, Set<NotifyKind>? kinds, String? installId, String? token}) =>
+      NotifySettings(enabled: enabled ?? this.enabled, kinds: kinds ?? this.kinds, installId: installId ?? this.installId, token: token ?? this.token);
+
+  @override
+  List<Object?> get props => [enabled, kinds.map((k) => k.name).toList()..sort(), installId, token];
+}
+
+/// What the background listener last saw.
+class NotifyStatus extends Equatable {
+  const NotifyStatus({this.running = false, this.lastOk, this.error = ''});
+
+  final bool running;
+  final DateTime? lastOk;
+  final String error;
+
+  @override
+  List<Object?> get props => [running, lastOk, error];
 }
 

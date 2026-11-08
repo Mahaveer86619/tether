@@ -51,6 +51,13 @@ abstract interface class HubRepository {
   /// Deletes a chat. The sessions it held stay, listed on their own.
   Future<Result<void>> deleteChat(String chatId);
 
+  /// A token that opens only the hub's notifications, for [installId], and the
+  /// tunnel's address.
+  Future<Result<NotifyAccess>> notifyAccess(String installId);
+
+  /// Asks the hub to send a test notification.
+  Future<Result<void>> sendTestNotification();
+
   /// Sends to the chat's active session; returns the session that got it.
   Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''});
 
@@ -196,6 +203,23 @@ abstract interface class TailscaleRepository {
   /// The other devices on the tailnet, when this platform can list them
   /// (the desktop can; a phone's Tailscale app does not say).
   Future<List<TailnetPeer>> peers();
+}
+
+/// What a phone does to be told things with the app closed: a background
+/// service that asks the hub for news. Only Android has one.
+abstract interface class NotifyDevice {
+  bool get available;
+
+  /// Tells the service where to listen (tailnet address first, then the
+  /// tunnel), with which token, for which kinds, or stops it.
+  Future<void> configure({required bool enabled, required String token, required List<String> urls, required Set<NotifyKind> kinds});
+
+  /// The app is on screen, so the service leaves showing news to it.
+  Future<void> setActive(bool active);
+
+  Future<bool> permitted();
+  Future<void> askPermission();
+  Future<NotifyStatus> status();
 }
 
 /// Asks an address whether a Tether hub answers there.

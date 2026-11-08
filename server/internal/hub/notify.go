@@ -185,7 +185,17 @@ func (h *Hub) notifyRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/notify-token", h.authed(func(w http.ResponseWriter, r *http.Request) {
 		id, _ := r.Context().Value(identityKey{}).(identity)
+		// A device paired with its own token is named by it; anything else (the
+		// admin token, a trusted tailnet) says which install it is, so two of
+		// them do not take each other's token.
+		var body struct {
+			Label string `json:"label"`
+		}
+		_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&body)
 		who := firstNonEmpty(id.deviceID(), "client:"+actorOf(id))
+		if id.deviceID() == "" && body.Label != "" {
+			who = "install:" + clip(body.Label, 64)
+		}
 		h.mu.Lock()
 		token := h.newNotifyToken(who)
 		url := h.notifyURL

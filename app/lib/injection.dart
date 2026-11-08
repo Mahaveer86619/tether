@@ -8,6 +8,7 @@ import 'package:http/io_client.dart';
 import 'data/datasources/file_downloads.dart';
 import 'data/datasources/hub_cache.dart';
 import 'data/datasources/hub_probe.dart';
+import 'data/datasources/notify_platform.dart';
 import 'data/datasources/hub_rest_api.dart';
 import 'data/datasources/hub_socket.dart';
 import 'data/datasources/hub_tls.dart';
@@ -69,6 +70,7 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
       ..registerLazySingleton<TailscaleRepository>(_tailscale)
       ..registerLazySingleton<HubProbe>(HttpHubProbe.new)
+      ..registerLazySingleton<NotifyDevice>(_notifyDevice)
       ..registerLazySingleton<UpdateRepository>(() => UpdateRepositoryImpl(api: sl(), client: sl(), platform: sl(), local: sl()))
       ..registerLazySingleton<TransferRepository>(() => TransferRepositoryImpl(api: sl(), downloads: sl()), dispose: (r) => (r as TransferRepositoryImpl).dispose());
   }
@@ -99,6 +101,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => LoadRoutines(sl()))
     ..registerLazySingleton(() => EnsureTailscale(sl()))
     ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
+    ..registerLazySingleton(() => Notifications(sl(), sl(), sl()))
     ..registerLazySingleton(() => Skills(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
@@ -155,6 +158,10 @@ String _title(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 /// The device's network changing (Wi-Fi, mobile data, a VPN coming up),
 /// without the state it starts in.
+/// Where notifications come from with the app closed: a background service on
+/// Android, nothing elsewhere.
+NotifyDevice _notifyDevice() => Platform.isAndroid ? AndroidNotify() : const NoNotify();
+
 /// Tailscale as this kind of device allows: the desktop starts it itself, a
 /// phone is asked and pointed at the app.
 TailscaleRepository _tailscale() => Platform.isAndroid

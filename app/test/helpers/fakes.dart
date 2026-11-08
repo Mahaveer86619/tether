@@ -309,6 +309,22 @@ class FakeHubRepository implements HubRepository {
       );
 
   final deletedChats = <String>[];
+  var notifyTokens = 0;
+  var testNotifications = 0;
+  Failure? notifyFailure;
+
+  @override
+  Future<Result<NotifyAccess>> notifyAccess(String installId) async {
+    if (notifyFailure != null) return Err(notifyFailure!);
+    notifyTokens++;
+    return Ok(NotifyAccess(token: 'token-$notifyTokens'));
+  }
+
+  @override
+  Future<Result<void>> sendTestNotification() async {
+    testNotifications++;
+    return const Ok(null);
+  }
 
   @override
   Future<Result<void>> deleteChat(String chatId) async {
@@ -715,5 +731,48 @@ class FakeHubProbe implements HubProbe {
     asked.add(host);
     return hubs[host];
   }
+}
+
+/// A background service that remembers what it was told.
+class FakeNotifyDevice implements NotifyDevice {
+  FakeNotifyDevice({this.canNotify = true});
+
+  final bool canNotify;
+  var allowed = false;
+  var asked = 0;
+  var active = false;
+  var enabled = false;
+  var token = '';
+  var urls = <String>[];
+  var kinds = <NotifyKind>{};
+  var configures = 0;
+  var state = const NotifyStatus();
+
+  @override
+  bool get available => canNotify;
+
+  @override
+  Future<void> configure({required bool enabled, required String token, required List<String> urls, required Set<NotifyKind> kinds}) async {
+    configures++;
+    this.enabled = enabled;
+    this.token = token;
+    this.urls = urls;
+    this.kinds = kinds;
+  }
+
+  @override
+  Future<void> setActive(bool active) async => this.active = active;
+
+  @override
+  Future<bool> permitted() async => allowed;
+
+  @override
+  Future<void> askPermission() async {
+    asked++;
+    allowed = true;
+  }
+
+  @override
+  Future<NotifyStatus> status() async => state;
 }
 

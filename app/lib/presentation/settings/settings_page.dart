@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../core/version.dart';
 import '../hub/hub_cubit.dart';
+import '../notifications/notifications_section.dart';
 import '../update/update_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
@@ -80,6 +81,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (s.connection.isComplete && hub.status == ConnectionStatus.connected) ...[
                     const SizedBox(height: 32),
                     const DevicesSection(),
+                    const SizedBox(height: 16),
+                    const NotificationsSection(),
                     const SizedBox(height: 32),
                     const WorkspacesSection(),
                     const SizedBox(height: 32),

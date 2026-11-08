@@ -183,6 +183,7 @@ class HubRepositoryImpl implements HubRepository {
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
           chats: {for (final c in w.chats) c.id: chatFromPb(c)},
           update: () => w.hasUpdate() ? releaseFromPb(w.update) : null,
+          notifyUrl: w.notifyUrl,
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
           preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
@@ -198,6 +199,8 @@ class HubRepositoryImpl implements HubRepository {
         _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
       case pb.Frame_Body.chat:
         _putChat(f.chat);
+      case pb.Frame_Body.notifyEndpoint:
+        _emit(_snap.copyWith(notifyUrl: f.notifyEndpoint.url));
       case pb.Frame_Body.updateAvailable:
         _emit(_snap.copyWith(update: () => releaseFromPb(f.updateAvailable)));
       case pb.Frame_Body.preferences:
@@ -406,6 +409,15 @@ class HubRepositoryImpl implements HubRepository {
     _emit(_snap.copyWith(chats: {..._snap.chats}..remove(id)));
     _scheduleStateSave();
   }
+
+  @override
+  Future<Result<NotifyAccess>> notifyAccess(String installId) => _command(() async {
+        final j = await _api.notifyToken(installId);
+        return NotifyAccess(token: '${j['token'] ?? ''}', tunnel: '${j['tunnel'] ?? ''}');
+      });
+
+  @override
+  Future<Result<void>> sendTestNotification() => _command(_api.notifyTest);
 
   @override
   Future<Result<void>> deleteChat(String chatId) => _command(() async {

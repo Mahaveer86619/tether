@@ -147,7 +147,8 @@ void main() {
         ..registerSingleton<SettingsRepository>(settings)
         ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository())
         ..registerSingleton<TailscaleRepository>(FakeTailscale())
-        ..registerSingleton<HubProbe>(FakeHubProbe());
+        ..registerSingleton<HubProbe>(FakeHubProbe())
+        ..registerSingleton<NotifyDevice>(FakeNotifyDevice());
       configureDependencies(withData: false);
     });
 

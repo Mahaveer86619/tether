@@ -244,6 +244,15 @@ class HubRestApi {
   }
 
 
+  /// A token for [label]'s install that opens only the notifications (plain JSON).
+  Future<Map<String, dynamic>> notifyToken(String label) => _jsonMap(() => _client.post(
+        _endpoint.api('/notify-token'),
+        headers: {..._headers, 'Content-Type': 'application/json'},
+        body: jsonEncode({'label': label}),
+      ));
+
+  Future<void> notifyTest() => _jsonMap(() => _client.post(_endpoint.api('/notifications/test'), headers: _headers));
+
   Future<pb.PairingCode> createPairingCode() => _post('/pairing-codes', null, pb.PairingCode());
 
   Future<pb.DeviceList> devices() => _get('/devices', pb.DeviceList());
