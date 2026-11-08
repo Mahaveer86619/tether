@@ -285,6 +285,15 @@ const Frame$json = {
       '10': 'updateAvailable'
     },
     {
+      '1': 'notify_endpoint',
+      '3': 43,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.NotifyEndpoint',
+      '9': 0,
+      '10': 'notifyEndpoint'
+    },
+    {
       '1': 'agent_hello',
       '3': 50,
       '4': 1,
@@ -417,20 +426,21 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'IudjEuUHJlZmVyZW5jZXNIAFILcHJlZmVyZW5jZXMSPAoOYXJ0aWZhY3RfYWRkZWQYKCABKAsy'
     'Ey50ZXRoZXIudjEuQXJ0aWZhY3RIAFINYXJ0aWZhY3RBZGRlZBIlCgRjaGF0GCkgASgLMg8udG'
     'V0aGVyLnYxLkNoYXRIAFIEY2hhdBJGChB1cGRhdGVfYXZhaWxhYmxlGCogASgLMhkudGV0aGVy'
-    'LnYxLlVwZGF0ZU1hbmlmZXN0SABSD3VwZGF0ZUF2YWlsYWJsZRI4CgthZ2VudF9oZWxsbxgyIA'
-    'EoCzIVLnRldGhlci52MS5BZ2VudEhlbGxvSABSCmFnZW50SGVsbG8SPgoNc2Vzc2lvbl9pbmRl'
-    'eBgzIAEoCzIXLnRldGhlci52MS5TZXNzaW9uSW5kZXhIAFIMc2Vzc2lvbkluZGV4EjUKCnJhd1'
-    '9ldmVudHMYNCABKAsyFC50ZXRoZXIudjEuUmF3RXZlbnRzSABSCXJhd0V2ZW50cxI7Cgx1c2Fn'
-    'ZV9yZXBvcnQYNSABKAsyFi50ZXRoZXIudjEuVXNhZ2VSZXBvcnRIAFILdXNhZ2VSZXBvcnQSNQ'
-    'oKcGxhbl91c2FnZRg2IAEoCzIULnRldGhlci52MS5QbGFuVXNhZ2VIAFIJcGxhblVzYWdlEkQK'
-    'D3NjcmVlbl9zbmFwc2hvdBg3IAEoCzIZLnRldGhlci52MS5TY3JlZW5TbmFwc2hvdEgAUg5zY3'
-    'JlZW5TbmFwc2hvdBI4Cgttb2RlX3Jlc3VsdBg4IAEoCzIVLnRldGhlci52MS5Nb2RlUmVzdWx0'
-    'SABSCm1vZGVSZXN1bHQSQQoOY29tbWFuZF9yZXN1bHQYOSABKAsyGC50ZXRoZXIudjEuQ29tbW'
-    'FuZFJlc3VsdEgAUg1jb21tYW5kUmVzdWx0Ej4KDWhpc3RvcnlfY2h1bmsYOiABKAsyFy50ZXRo'
-    'ZXIudjEuSGlzdG9yeUNodW5rSABSDGhpc3RvcnlDaHVuaxJBCg5oaXN0b3J5X3N5bmNlZBg7IA'
-    'EoCzIYLnRldGhlci52MS5IaXN0b3J5U3luY2VkSABSDWhpc3RvcnlTeW5jZWQSPgoNYWdlbnRf'
-    'Y29tbWFuZBg8IAEoCzIXLnRldGhlci52MS5BZ2VudENvbW1hbmRIAFIMYWdlbnRDb21tYW5kQg'
-    'YKBGJvZHk=');
+    'LnYxLlVwZGF0ZU1hbmlmZXN0SABSD3VwZGF0ZUF2YWlsYWJsZRJECg9ub3RpZnlfZW5kcG9pbn'
+    'QYKyABKAsyGS50ZXRoZXIudjEuTm90aWZ5RW5kcG9pbnRIAFIObm90aWZ5RW5kcG9pbnQSOAoL'
+    'YWdlbnRfaGVsbG8YMiABKAsyFS50ZXRoZXIudjEuQWdlbnRIZWxsb0gAUgphZ2VudEhlbGxvEj'
+    '4KDXNlc3Npb25faW5kZXgYMyABKAsyFy50ZXRoZXIudjEuU2Vzc2lvbkluZGV4SABSDHNlc3Np'
+    'b25JbmRleBI1CgpyYXdfZXZlbnRzGDQgASgLMhQudGV0aGVyLnYxLlJhd0V2ZW50c0gAUglyYX'
+    'dFdmVudHMSOwoMdXNhZ2VfcmVwb3J0GDUgASgLMhYudGV0aGVyLnYxLlVzYWdlUmVwb3J0SABS'
+    'C3VzYWdlUmVwb3J0EjUKCnBsYW5fdXNhZ2UYNiABKAsyFC50ZXRoZXIudjEuUGxhblVzYWdlSA'
+    'BSCXBsYW5Vc2FnZRJECg9zY3JlZW5fc25hcHNob3QYNyABKAsyGS50ZXRoZXIudjEuU2NyZWVu'
+    'U25hcHNob3RIAFIOc2NyZWVuU25hcHNob3QSOAoLbW9kZV9yZXN1bHQYOCABKAsyFS50ZXRoZX'
+    'IudjEuTW9kZVJlc3VsdEgAUgptb2RlUmVzdWx0EkEKDmNvbW1hbmRfcmVzdWx0GDkgASgLMhgu'
+    'dGV0aGVyLnYxLkNvbW1hbmRSZXN1bHRIAFINY29tbWFuZFJlc3VsdBI+Cg1oaXN0b3J5X2NodW'
+    '5rGDogASgLMhcudGV0aGVyLnYxLkhpc3RvcnlDaHVua0gAUgxoaXN0b3J5Q2h1bmsSQQoOaGlz'
+    'dG9yeV9zeW5jZWQYOyABKAsyGC50ZXRoZXIudjEuSGlzdG9yeVN5bmNlZEgAUg1oaXN0b3J5U3'
+    'luY2VkEj4KDWFnZW50X2NvbW1hbmQYPCABKAsyFy50ZXRoZXIudjEuQWdlbnRDb21tYW5kSABS'
+    'DGFnZW50Q29tbWFuZEIGCgRib2R5');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -998,6 +1008,7 @@ const Welcome$json = {
       '6': '.tether.v1.UpdateManifest',
       '10': 'update'
     },
+    {'1': 'notify_url', '3': 11, '4': 1, '5': 9, '10': 'notifyUrl'},
   ],
 };
 
@@ -1011,7 +1022,19 @@ final $typed_data.Uint8List welcomeDescriptor = $convert.base64Decode(
     '9ub2RlGAYgASgJUgdodWJOb2RlEhsKCWRldmljZV9pZBgHIAEoCVIIZGV2aWNlSWQSGwoJY2xp'
     'ZW50X2lwGAggASgJUghjbGllbnRJcBIlCgVjaGF0cxgJIAMoCzIPLnRldGhlci52MS5DaGF0Ug'
     'VjaGF0cxIxCgZ1cGRhdGUYCiABKAsyGS50ZXRoZXIudjEuVXBkYXRlTWFuaWZlc3RSBnVwZGF0'
-    'ZQ==');
+    'ZRIdCgpub3RpZnlfdXJsGAsgASgJUglub3RpZnlVcmw=');
+
+@$core.Deprecated('Use notifyEndpointDescriptor instead')
+const NotifyEndpoint$json = {
+  '1': 'NotifyEndpoint',
+  '2': [
+    {'1': 'url', '3': 1, '4': 1, '5': 9, '10': 'url'},
+  ],
+};
+
+/// Descriptor for `NotifyEndpoint`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List notifyEndpointDescriptor =
+    $convert.base64Decode('Cg5Ob3RpZnlFbmRwb2ludBIQCgN1cmwYASABKAlSA3VybA==');
 
 @$core.Deprecated('Use ackDescriptor instead')
 const Ack$json = {

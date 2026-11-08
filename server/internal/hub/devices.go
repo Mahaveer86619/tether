@@ -227,6 +227,7 @@ func (h *Hub) revoke(id string) (string, *opError) {
 
 func (h *Hub) forgetDevice(hash string, d *v1.Device) {
 	delete(h.devices, hash)
+	h.dropNotifyTokens(d.Id)
 	if err := h.store.DeleteDevice(d.Id); err != nil {
 		h.log.Error("delete device", "device", d.Id, "err", err)
 	}

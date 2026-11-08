@@ -34,6 +34,11 @@ func main() {
 	redact := flag.Bool("history-redact", true, "take tokens, keys and passwords out of the stored history")
 	keepDays := flag.Int("history-keep-days", 0, "drop a session's history after this many days untouched (0 keeps it)")
 	maxMB := flag.Int("history-max-mb", 0, "drop the oldest sessions' history beyond this many MB (0: no limit)")
+	notifyTunnel := flag.Bool("notify-tunnel", false, "open a Cloudflare quick tunnel to a listener that serves only notifications, so phones are reached without Tailscale")
+	cloudflared := flag.String("cloudflared", "cloudflared", "the cloudflared program for -notify-tunnel")
+	notifyURL := flag.String("notify-url", "", "a public address you already route to the notification listener (instead of a quick tunnel)")
+	notifyAddr := flag.String("notify-addr", "", "where the notification listener binds (default: a free local port); needed with -notify-url")
+	notifyBodies := flag.Bool("notify-bodies", false, "send notification text through the tunnel too; the tunnel's operator can read it")
 	flag.Parse()
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
@@ -82,7 +87,7 @@ func main() {
 
 	h, err := hub.New(hub.Config{Token: token, Version: version.Version, Log: log, CertFingerprint: fp, TrustTailnet: *trustTailnet, DataDir: filepath.Dir(*dbPath),
 		UpdatesDir: *updatesDir, UpdateFeed: *updateFeed, AutoUpdateAgents: *autoAgents,
-		HistoryRedact: *redact, HistoryKeepDays: *keepDays, HistoryMaxMB: *maxMB}, st)
+		HistoryRedact: *redact, HistoryKeepDays: *keepDays, HistoryMaxMB: *maxMB, NotifyBodiesOnTunnel: *notifyBodies}, st)
 	if err != nil {
 		log.Error("start hub", "err", err)
 		os.Exit(1)
@@ -91,6 +96,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go h.Run(ctx)
+	if *notifyTunnel || *notifyURL != "" {
+		tc := hub.TunnelConfig{PublicURL: *notifyURL, Addr: *notifyAddr}
+		if *notifyTunnel {
+			tc.Cloudflared = *cloudflared
+		}
+		if err := h.StartNotifyTunnel(ctx, tc); err != nil {
+			log.Error("notification listener", "err", err)
+		}
+	}
 
 	// No ReadTimeout or WriteTimeout: they cap a whole request, and a file of
 	// several GB over a phone's connection can take hours either way.

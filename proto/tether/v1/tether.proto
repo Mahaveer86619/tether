@@ -49,6 +49,8 @@ message Frame {
     Chat chat = 41;
     // A newer release is available (sent to every client).
     UpdateManifest update_available = 42;
+    // Where notifications can be fetched from outside the tailnet changed.
+    NotifyEndpoint notify_endpoint = 43;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -375,6 +377,14 @@ message Welcome {
   repeated Chat chats = 9;
   // The newest release the hub knows of; unset when it knows none.
   UpdateManifest update = 10;
+  // The public address that serves only notifications (a Cloudflare tunnel);
+  // empty when the hub has none. Changes are sent as NotifyEndpoint.
+  string notify_url = 11;
+}
+
+// Where notifications can be fetched without Tailscale.
+message NotifyEndpoint {
+  string url = 1;
 }
 
 message Ack {

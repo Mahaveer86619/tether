@@ -157,6 +157,16 @@ var migrations = []string{
 		ok      INTEGER NOT NULL
 	);
 	CREATE INDEX audit_by_time ON audit (at_ms DESC)`,
+	// What the owner is told about: a turn finished, something needs approval.
+	`CREATE TABLE notifications (
+		id      INTEGER PRIMARY KEY AUTOINCREMENT,
+		at_ms   INTEGER NOT NULL,
+		kind    TEXT NOT NULL,
+		title   TEXT NOT NULL,
+		body    TEXT NOT NULL,
+		chat    TEXT NOT NULL,
+		session TEXT NOT NULL
+	)`,
 }
 
 type Store struct {

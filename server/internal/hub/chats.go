@@ -402,6 +402,7 @@ func (h *Hub) noteNewSession(s *v1.SessionInfo) {
 // noteTurnEnded runs a chat's jobs when one of its sessions finishes a
 // turn. Caller holds h.mu.
 func (h *Hub) noteTurnEnded(session string) {
+	h.notifyTurnEnded(session)
 	c := h.chats[h.chatOf[session]]
 	if c == nil {
 		return

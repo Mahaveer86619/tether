@@ -46,6 +46,7 @@ enum Frame_Body {
   artifactAdded,
   chat,
   updateAvailable,
+  notifyEndpoint,
   agentHello,
   sessionIndex,
   rawEvents,
@@ -90,6 +91,7 @@ class Frame extends $pb.GeneratedMessage {
     Artifact? artifactAdded,
     Chat? chat,
     UpdateManifest? updateAvailable,
+    NotifyEndpoint? notifyEndpoint,
     AgentHello? agentHello,
     SessionIndex? sessionIndex,
     RawEvents? rawEvents,
@@ -130,6 +132,7 @@ class Frame extends $pb.GeneratedMessage {
     if (artifactAdded != null) result.artifactAdded = artifactAdded;
     if (chat != null) result.chat = chat;
     if (updateAvailable != null) result.updateAvailable = updateAvailable;
+    if (notifyEndpoint != null) result.notifyEndpoint = notifyEndpoint;
     if (agentHello != null) result.agentHello = agentHello;
     if (sessionIndex != null) result.sessionIndex = sessionIndex;
     if (rawEvents != null) result.rawEvents = rawEvents;
@@ -177,6 +180,7 @@ class Frame extends $pb.GeneratedMessage {
     40: Frame_Body.artifactAdded,
     41: Frame_Body.chat,
     42: Frame_Body.updateAvailable,
+    43: Frame_Body.notifyEndpoint,
     50: Frame_Body.agentHello,
     51: Frame_Body.sessionIndex,
     52: Frame_Body.rawEvents,
@@ -218,6 +222,7 @@ class Frame extends $pb.GeneratedMessage {
       40,
       41,
       42,
+      43,
       50,
       51,
       52,
@@ -281,6 +286,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: Chat.$_createMessage)
     ..aOM<UpdateManifest>(42, _omitFieldNames ? '' : 'updateAvailable',
         subBuilder: UpdateManifest.$_createMessage)
+    ..aOM<NotifyEndpoint>(43, _omitFieldNames ? '' : 'notifyEndpoint',
+        subBuilder: NotifyEndpoint.$_createMessage)
     ..aOM<AgentHello>(50, _omitFieldNames ? '' : 'agentHello',
         subBuilder: AgentHello.$_createMessage)
     ..aOM<SessionIndex>(51, _omitFieldNames ? '' : 'sessionIndex',
@@ -348,6 +355,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
   @$pb.TagNumber(42)
+  @$pb.TagNumber(43)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -383,6 +391,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(40)
   @$pb.TagNumber(41)
   @$pb.TagNumber(42)
+  @$pb.TagNumber(43)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -696,136 +705,148 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(42)
   UpdateManifest ensureUpdateAvailable() => $_ensure(26);
 
+  /// Where notifications can be fetched from outside the tailnet changed.
+  @$pb.TagNumber(43)
+  NotifyEndpoint get notifyEndpoint => $_getN(27);
+  @$pb.TagNumber(43)
+  set notifyEndpoint(NotifyEndpoint value) => $_setField(43, value);
+  @$pb.TagNumber(43)
+  $core.bool hasNotifyEndpoint() => $_has(27);
+  @$pb.TagNumber(43)
+  void clearNotifyEndpoint() => $_clearField(43);
+  @$pb.TagNumber(43)
+  NotifyEndpoint ensureNotifyEndpoint() => $_ensure(27);
+
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(27);
+  AgentHello get agentHello => $_getN(28);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(27);
+  $core.bool hasAgentHello() => $_has(28);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(27);
+  AgentHello ensureAgentHello() => $_ensure(28);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(28);
+  SessionIndex get sessionIndex => $_getN(29);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(28);
+  $core.bool hasSessionIndex() => $_has(29);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(28);
+  SessionIndex ensureSessionIndex() => $_ensure(29);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(29);
+  RawEvents get rawEvents => $_getN(30);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(29);
+  $core.bool hasRawEvents() => $_has(30);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(29);
+  RawEvents ensureRawEvents() => $_ensure(30);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(30);
+  UsageReport get usageReport => $_getN(31);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(30);
+  $core.bool hasUsageReport() => $_has(31);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(30);
+  UsageReport ensureUsageReport() => $_ensure(31);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(31);
+  PlanUsage get planUsage => $_getN(32);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(31);
+  $core.bool hasPlanUsage() => $_has(32);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(31);
+  PlanUsage ensurePlanUsage() => $_ensure(32);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(32);
+  ScreenSnapshot get screenSnapshot => $_getN(33);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(32);
+  $core.bool hasScreenSnapshot() => $_has(33);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(32);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(33);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(33);
+  ModeResult get modeResult => $_getN(34);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(33);
+  $core.bool hasModeResult() => $_has(34);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(33);
+  ModeResult ensureModeResult() => $_ensure(34);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(34);
+  CommandResult get commandResult => $_getN(35);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(34);
+  $core.bool hasCommandResult() => $_has(35);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(34);
+  CommandResult ensureCommandResult() => $_ensure(35);
 
   /// Transcript bytes for the hub's history (agent -> hub), and the end of
   /// a sync run.
   @$pb.TagNumber(58)
-  HistoryChunk get historyChunk => $_getN(35);
+  HistoryChunk get historyChunk => $_getN(36);
   @$pb.TagNumber(58)
   set historyChunk(HistoryChunk value) => $_setField(58, value);
   @$pb.TagNumber(58)
-  $core.bool hasHistoryChunk() => $_has(35);
+  $core.bool hasHistoryChunk() => $_has(36);
   @$pb.TagNumber(58)
   void clearHistoryChunk() => $_clearField(58);
   @$pb.TagNumber(58)
-  HistoryChunk ensureHistoryChunk() => $_ensure(35);
+  HistoryChunk ensureHistoryChunk() => $_ensure(36);
 
   @$pb.TagNumber(59)
-  HistorySynced get historySynced => $_getN(36);
+  HistorySynced get historySynced => $_getN(37);
   @$pb.TagNumber(59)
   set historySynced(HistorySynced value) => $_setField(59, value);
   @$pb.TagNumber(59)
-  $core.bool hasHistorySynced() => $_has(36);
+  $core.bool hasHistorySynced() => $_has(37);
   @$pb.TagNumber(59)
   void clearHistorySynced() => $_clearField(59);
   @$pb.TagNumber(59)
-  HistorySynced ensureHistorySynced() => $_ensure(36);
+  HistorySynced ensureHistorySynced() => $_ensure(37);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(37);
+  AgentCommand get agentCommand => $_getN(38);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(37);
+  $core.bool hasAgentCommand() => $_has(38);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(37);
+  AgentCommand ensureAgentCommand() => $_ensure(38);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -3088,6 +3109,7 @@ class Welcome extends $pb.GeneratedMessage {
     $core.String? clientIp,
     $core.Iterable<Chat>? chats,
     UpdateManifest? update,
+    $core.String? notifyUrl,
   }) {
     final result = Welcome._();
     if (hubVersion != null) result.hubVersion = hubVersion;
@@ -3101,6 +3123,7 @@ class Welcome extends $pb.GeneratedMessage {
     if (clientIp != null) result.clientIp = clientIp;
     if (chats != null) result.chats.addAll(chats);
     if (update != null) result.update = update;
+    if (notifyUrl != null) result.notifyUrl = notifyUrl;
     return result;
   }
 
@@ -3133,6 +3156,7 @@ class Welcome extends $pb.GeneratedMessage {
         subBuilder: Chat.$_createMessage)
     ..aOM<UpdateManifest>(10, _omitFieldNames ? '' : 'update',
         subBuilder: UpdateManifest.$_createMessage)
+    ..aOS(11, _omitFieldNames ? '' : 'notifyUrl')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3231,6 +3255,75 @@ class Welcome extends $pb.GeneratedMessage {
   void clearUpdate() => $_clearField(10);
   @$pb.TagNumber(10)
   UpdateManifest ensureUpdate() => $_ensure(9);
+
+  /// The public address that serves only notifications (a Cloudflare tunnel);
+  /// empty when the hub has none. Changes are sent as NotifyEndpoint.
+  @$pb.TagNumber(11)
+  $core.String get notifyUrl => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set notifyUrl($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasNotifyUrl() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearNotifyUrl() => $_clearField(11);
+}
+
+/// Where notifications can be fetched without Tailscale.
+class NotifyEndpoint extends $pb.GeneratedMessage {
+  factory NotifyEndpoint({
+    $core.String? url,
+  }) {
+    final result = NotifyEndpoint._();
+    if (url != null) result.url = url;
+    return result;
+  }
+
+  NotifyEndpoint._();
+
+  factory NotifyEndpoint.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NotifyEndpoint()..mergeFromBuffer(data, registry);
+  factory NotifyEndpoint.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NotifyEndpoint()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NotifyEndpoint',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: NotifyEndpoint.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'url')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NotifyEndpoint clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NotifyEndpoint copyWith(void Function(NotifyEndpoint) updates) =>
+      super.copyWith((message) => updates(message as NotifyEndpoint))
+          as NotifyEndpoint;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NotifyEndpoint() / NotifyEndpoint.new instead')
+  static NotifyEndpoint create() => NotifyEndpoint._();
+  static $pb.GeneratedMessage $_createMessage() => NotifyEndpoint._();
+  @$core.override
+  NotifyEndpoint createEmptyInstance() => NotifyEndpoint._();
+  @$core.pragma('dart2js:noInline')
+  static NotifyEndpoint getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NotifyEndpoint>(
+          NotifyEndpoint.$_createMessage);
+  static NotifyEndpoint? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get url => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set url($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUrl() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUrl() => $_clearField(1);
 }
 
 class Ack extends $pb.GeneratedMessage {
