@@ -10,6 +10,7 @@ import '../chats/chats_cubit.dart';
 import '../chats/chats_page.dart';
 import '../chats/new_chat_page.dart';
 import '../hub/hub_cubit.dart';
+import '../onboarding/find_hubs_card.dart';
 import '../nav/nav_cubit.dart';
 import '../session/session_page.dart';
 import '../settings/settings_cubit.dart';
@@ -57,7 +58,7 @@ class Shell extends StatelessWidget {
         ),
       ],
       child: !configured
-          ? Scaffold(appBar: AppBar(title: const Text('Connect to your hub')), body: const SettingsPage())
+          ? const Scaffold(body: SafeArea(child: SettingsPage(header: FindHubsCard())))
           : LayoutBuilder(
               builder: (context, box) => box.maxWidth < phoneBreakpoint ? const _PhoneShell() : _WideShell(compact: box.maxWidth < sidebarBreakpoint),
             ),

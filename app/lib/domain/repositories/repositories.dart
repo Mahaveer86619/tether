@@ -192,6 +192,16 @@ abstract interface class TailscaleRepository {
 
   /// Opens the Tailscale app, where there is one.
   Future<void> openApp();
+
+  /// The other devices on the tailnet, when this platform can list them
+  /// (the desktop can; a phone's Tailscale app does not say).
+  Future<List<TailnetPeer>> peers();
+}
+
+/// Asks an address whether a Tether hub answers there.
+abstract interface class HubProbe {
+  /// A hub's hello, or null when nothing answers in time or it is not a hub.
+  Future<HubHello?> hello(String host, {int port = 7420});
 }
 
 abstract interface class SettingsRepository {
@@ -200,6 +210,12 @@ abstract interface class SettingsRepository {
 
   /// Forgets the hub address and token.
   Future<Result<void>> clearConnection();
+
+  /// Hubs connected to before, newest first.
+  Future<List<KnownHub>> loadKnownHubs();
+  Future<void> rememberHub(KnownHub hub);
+  Future<void> forgetHub(String url);
+
   /// Unsent text from a message box; empty when there is none.
   Future<String> loadDraft(String key);
   Future<void> saveDraft(String key, String text);

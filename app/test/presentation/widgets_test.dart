@@ -146,7 +146,8 @@ void main() {
         ..registerSingleton<TransferRepository>(transfers)
         ..registerSingleton<SettingsRepository>(settings)
         ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository())
-        ..registerSingleton<TailscaleRepository>(FakeTailscale());
+        ..registerSingleton<TailscaleRepository>(FakeTailscale())
+        ..registerSingleton<HubProbe>(FakeHubProbe());
       configureDependencies(withData: false);
     });
 

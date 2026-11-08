@@ -410,6 +410,20 @@ class FakeHubRepository implements HubRepository {
 
 class FakeSettingsRepository implements SettingsRepository {
   final outboxes = <String, List<OutboxEntry>>{};
+  final knownHubs = <KnownHub>[];
+
+  @override
+  Future<List<KnownHub>> loadKnownHubs() async => [...knownHubs];
+
+  @override
+  Future<void> rememberHub(KnownHub hub) async {
+    knownHubs
+      ..removeWhere((h) => h.url == hub.url)
+      ..insert(0, hub);
+  }
+
+  @override
+  Future<void> forgetHub(String url) async => knownHubs.removeWhere((h) => h.url == url);
 
   @override
   Future<List<OutboxEntry>> loadOutbox(String session) async => outboxes[session] ?? const [];
@@ -659,6 +673,10 @@ class FakeTailscale implements TailscaleRepository {
 
   final bool startable;
   var current = const TailscaleStatus(TailscaleState.running);
+  var peerList = <TailnetPeer>[];
+
+  @override
+  Future<List<TailnetPeer>> peers() async => peerList;
 
   /// What [start] reports, in order.
   var steps = <TailscaleStatus>[];
@@ -684,3 +702,18 @@ class FakeTailscale implements TailscaleRepository {
   @override
   Future<void> openApp() async => opened++;
 }
+
+/// Hubs by host; anything not listed does not answer.
+class FakeHubProbe implements HubProbe {
+  FakeHubProbe([Map<String, HubHello>? hubs]) : hubs = hubs ?? {};
+
+  final Map<String, HubHello> hubs;
+  final asked = <String>[];
+
+  @override
+  Future<HubHello?> hello(String host, {int port = 7420}) async {
+    asked.add(host);
+    return hubs[host];
+  }
+}
+

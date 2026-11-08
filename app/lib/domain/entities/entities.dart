@@ -1336,3 +1336,56 @@ class TailscaleStatus extends Equatable {
   @override
   List<Object?> get props => [state, loginUrl, message];
 }
+
+/// A hub this device has connected to before, remembered so it is offered
+/// again without searching.
+class KnownHub extends Equatable {
+  const KnownHub({required this.url, required this.name, this.lastConnected});
+
+  /// The hub's websocket address, as saved.
+  final String url;
+  final String name;
+  final DateTime? lastConnected;
+
+  @override
+  List<Object?> get props => [url, name, lastConnected];
+}
+
+/// Another device on the tailnet, as Tailscale lists it.
+class TailnetPeer extends Equatable {
+  const TailnetPeer({required this.name, required this.ip, this.online = true, this.os = ''});
+
+  final String name, ip, os;
+  final bool online;
+
+  @override
+  List<Object?> get props => [name, ip, online, os];
+}
+
+/// What a Tether hub says about itself to anyone who asks.
+class HubHello extends Equatable {
+  const HubHello({required this.version, required this.trusted});
+
+  final String version;
+
+  /// The hub would let this device in without a token or code.
+  final bool trusted;
+
+  @override
+  List<Object?> get props => [version, trusted];
+}
+
+/// A Tether hub found on the tailnet, or remembered.
+class FoundHub extends Equatable {
+  const FoundHub({required this.name, required this.url, this.version = '', this.trusted = false, this.known = false, this.reachable = true});
+
+  final String name, url, version;
+  final bool trusted, known;
+
+  /// A remembered hub that did not answer just now.
+  final bool reachable;
+
+  @override
+  List<Object?> get props => [name, url, version, trusted, known, reachable];
+}
+

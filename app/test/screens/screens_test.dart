@@ -35,6 +35,9 @@ void main() {
 
   group('screens', () {
     late FakeHubRepository repo;
+    late FakeSettingsRepository settings;
+    late FakeTailscale tailscale;
+    late FakeHubProbe probe;
 
     setUp(() async {
       await sl.reset();
@@ -55,13 +58,14 @@ void main() {
         'c1': Chat(id: 'c1', title: 'Fix Stripe webhooks on laptop', activeSession: 's1', links: const [ChatLink(session: 's1')], updated: DateTime.now()),
         'c2': Chat(id: 'c2', title: 'Refactor docker-compose volumes', activeSession: 't1', links: const [ChatLink(session: 't1')], updated: DateTime.now().subtract(const Duration(hours: 3))),
       }));
-      final settings = FakeSettingsRepository()..saved = const HubConnection(url: 'ws://100.64.0.1:7420/ws', token: 't');
+      settings = FakeSettingsRepository()..saved = const HubConnection(url: 'ws://100.64.0.1:7420/ws', token: 't');
       sl
         ..registerSingleton<HubRepository>(repo)
         ..registerSingleton<TransferRepository>(FakeTransferRepository())
         ..registerSingleton<SettingsRepository>(settings)
         ..registerSingleton<UpdateRepository>(FakeUpdateRepository())
-        ..registerSingleton<TailscaleRepository>(FakeTailscale());
+        ..registerSingleton<TailscaleRepository>(tailscale = FakeTailscale())
+        ..registerSingleton<HubProbe>(probe = FakeHubProbe());
       configureDependencies(withData: false);
     });
 
@@ -107,6 +111,15 @@ void main() {
       await expectLater(find.byType(TetherApp), matchesGoldenFile('out/$name.png'));
     }
 
+    for (final size in [const Size(400, 860), const Size(1400, 900)]) {
+      testWidgets('first run ${size.width.toInt()}', (t) async {
+        settings.saved = const HubConnection(url: '', token: '');
+        settings.knownHubs.add(const KnownHub(url: 'ws://100.64.0.9:7420/ws', name: 'work-hub'));
+        tailscale.peerList = const [TailnetPeer(name: 'minipc', ip: '100.64.0.2'), TailnetPeer(name: 'nas', ip: '100.64.0.5')];
+        probe.hubs['100.64.0.2'] = const HubHello(version: '0.17.4', trusted: true);
+        await shoot(t, 'first-run-${size.width.toInt()}', size);
+      }, skip: !on);
+    }
     testWidgets('home on a phone', (t) => shoot(t, 'home-phone', const Size(400, 860)), skip: !on);
     testWidgets('a chat on a phone', (t) => shoot(t, 'chat-phone', const Size(400, 860), chat: 'c1'), skip: !on);
     testWidgets('a chat as a terminal', (t) => shoot(t, 'terminal-desktop', const Size(1400, 900), chat: 'c1', view: 'terminal'), skip: !on);

@@ -15,9 +15,12 @@ import 'settings_cubit.dart';
 
 /// Hub connection and appearance. Also the first-run screen.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, this.onSaved});
+  const SettingsPage({super.key, this.onSaved, this.header});
 
   final VoidCallback? onSaved;
+
+  /// Above the connect form on a first run.
+  final Widget? header;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -60,6 +63,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!s.connection.isComplete) ...[
+                    ?widget.header,
                     const PairForm(),
                     const SizedBox(height: 16),
                     Theme(

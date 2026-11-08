@@ -56,10 +56,10 @@ class _PairFormState extends State<PairForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Connect this device', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const Text('With a code or a name', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Text(
-          "Over Tailscale, enter the hub's machine name and connect. Otherwise, on a device that is already connected, open Settings and choose \"Add a device\", then scan its QR code or type the code.",
+          "On a device that is already connected, open Settings and choose \"Add a device\", then scan its QR code or type the code. Over Tailscale you can also enter the hub's machine name and connect.",
           style: TextStyle(color: c.muted, fontSize: 13),
         ),
         const SizedBox(height: 16),

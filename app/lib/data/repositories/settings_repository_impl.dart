@@ -26,6 +26,43 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<Result<void>> clearConnection() => guard(_local.clearConnection);
 
+  static const _hubsKey = 'known-hubs';
+
+  @override
+  Future<List<KnownHub>> loadKnownHubs() async {
+    final raw = await _local.readValue(_hubsKey);
+    if (raw.isEmpty) return const [];
+    try {
+      final hubs = [
+        for (final m in jsonDecode(raw) as List<dynamic>)
+          KnownHub(
+            url: (m as Map<String, dynamic>)['url'] as String,
+            name: m['name'] as String? ?? '',
+            lastConnected: m['at'] == null ? null : DateTime.fromMillisecondsSinceEpoch(m['at'] as int),
+          ),
+      ];
+      return hubs..sort((a, b) => (b.lastConnected ?? DateTime(0)).compareTo(a.lastConnected ?? DateTime(0)));
+    } on FormatException {
+      return const [];
+    } on TypeError {
+      return const [];
+    }
+  }
+
+  Future<void> _saveKnownHubs(List<KnownHub> hubs) => _local.writeValue(
+        _hubsKey,
+        jsonEncode([for (final h in hubs) {'url': h.url, 'name': h.name, if (h.lastConnected != null) 'at': h.lastConnected!.millisecondsSinceEpoch}]),
+      );
+
+  @override
+  Future<void> rememberHub(KnownHub hub) async {
+    final others = [for (final h in await loadKnownHubs()) if (h.url != hub.url) h];
+    await _saveKnownHubs([hub, ...others].take(12).toList());
+  }
+
+  @override
+  Future<void> forgetHub(String url) async => _saveKnownHubs([for (final h in await loadKnownHubs()) if (h.url != url) h]);
+
   @override
   Future<String> loadDraft(String key) => _local.readDraft(key);
 
@@ -78,7 +115,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<Appearance> loadAppearance() async {
     final (mode, palette, accent) = await _local.readAppearance();
-    return Appearance(mode: ThemeMode.values.asNameMap()[mode] ?? ThemeMode.system, palette: palette ?? 'claude', accent: accent);
+    const fresh = Appearance();
+    return Appearance(mode: ThemeMode.values.asNameMap()[mode] ?? fresh.mode, palette: palette ?? fresh.palette, accent: accent);
   }
 
   @override

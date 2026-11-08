@@ -28,6 +28,30 @@ TailscaleStatus parseTailscaleStatus(String json) {
   };
 }
 
+/// The other devices in `tailscale status --json`, with an IPv4 address each
+/// (the one a hub is reached at); this device is not among them.
+List<TailnetPeer> parseTailnetPeers(String json) {
+  final Object? doc;
+  try {
+    doc = jsonDecode(json);
+  } on FormatException {
+    return const [];
+  }
+  final peers = doc is Map<String, dynamic> ? doc['Peer'] : null;
+  if (peers is! Map<String, dynamic>) return const [];
+  final out = <TailnetPeer>[];
+  for (final p in peers.values) {
+    if (p is! Map<String, dynamic>) continue;
+    final ips = [for (final ip in p['TailscaleIPs'] as List<dynamic>? ?? const []) '$ip'];
+    final v4 = ips.where((ip) => !ip.contains(':')).firstOrNull;
+    if (v4 == null) continue;
+    final name = (p['HostName'] as String?) ?? ((p['DNSName'] as String?) ?? '').split('.').first;
+    out.add(TailnetPeer(name: name.isEmpty ? v4 : name, ip: v4, online: p['Online'] == true, os: p['OS'] as String? ?? ''));
+  }
+  out.sort((a, b) => a.online == b.online ? a.name.compareTo(b.name) : (a.online ? -1 : 1));
+  return out;
+}
+
 /// Checks and starts Tailscale on a desktop through its command line, so the
 /// owner doesn't have to open it first. It never changes how Tailscale is set
 /// up: `up` is given the flags Tailscale itself says the current setup needs.
@@ -93,6 +117,20 @@ class DesktopTailscale implements TailscaleRepository {
     if (out.startsWith('{')) return parseTailscaleStatus(out);
     // The command line is there but the service behind it isn't answering.
     return TailscaleStatus(TailscaleState.serviceStopped, message: _lastLine('${r.stderr}${r.stdout}'));
+  }
+
+  @override
+  Future<List<TailnetPeer>> peers() async {
+    final exe = await _find();
+    if (exe == null) return const [];
+    try {
+      final r = await _run(exe, ['status', '--json']).timeout(const Duration(seconds: 8));
+      return parseTailnetPeers('${r.stdout}');
+    } on TimeoutException {
+      return const [];
+    } on ProcessException {
+      return const [];
+    }
   }
 
   @override

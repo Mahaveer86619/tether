@@ -1,4 +1,6 @@
 
+import 'dart:async';
+
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../entities/entities.dart';
@@ -334,6 +336,7 @@ class SaveConnection {
     final saved = await _settings.saveConnection(conn);
     return saved.fold(Err.new, (_) {
       _hub.connect(conn);
+      unawaited(_settings.rememberHub(KnownHub(url: normalized, name: hubNameOf(normalized), lastConnected: DateTime.now())));
       return Ok(conn);
     });
   }
@@ -346,13 +349,14 @@ class ConnectOverTailnet {
   final SettingsRepository _settings;
   final HubRepository _hub;
 
-  Future<Result<HubConnection>> call(String url) async {
+  Future<Result<HubConnection>> call(String url, {String name = ''}) async {
     final normalized = normalizeHubUrl(url);
     if (normalized == null) return const Err(ValidationFailure('Enter the Tailscale name or address of the hub, e.g. minipc or 100.64.0.1.'));
     final conn = HubConnection(url: normalized, token: '', viaTailnet: true);
     final saved = await _settings.saveConnection(conn);
     return saved.fold(Err.new, (_) {
       _hub.connect(conn);
+      unawaited(_settings.rememberHub(KnownHub(url: normalized, name: name.isEmpty ? hubNameOf(normalized) : name, lastConnected: DateTime.now())));
       return Ok(conn);
     });
   }
@@ -514,6 +518,60 @@ class ThemeSettings {
 
 /// Accepts "100.64.0.1", "100.64.0.1:7420", "http://…" or a full ws:// URL;
 /// returns null when it can't be a hub address.
+/// A hub's name for a list: its host.
+String hubNameOf(String url) => Uri.tryParse(url)?.host ?? url;
+
+/// Finds the Tether hubs this device can connect to: the ones it has used
+/// before, and (where the platform can list the tailnet) any that answer on
+/// the other devices there. Most devices on a tailnet do not run Tether, so
+/// each is asked and the silent ones are left out.
+class FindHubs {
+  const FindHubs(this._tailscale, this._probe, this._settings);
+
+  final TailscaleRepository _tailscale;
+  final HubProbe _probe;
+  final SettingsRepository _settings;
+
+  /// Whether this platform can search the tailnet at all.
+  bool get canSearch => _tailscale.canStart;
+
+  Future<List<FoundHub>> known() async => [
+        for (final h in await _settings.loadKnownHubs()) FoundHub(name: h.name, url: h.url, known: true),
+      ];
+
+  /// Everything found, remembered hubs first. A remembered hub that does not
+  /// answer is still listed, marked unreachable.
+  Future<List<FoundHub>> call() async {
+    final known = await _settings.loadKnownHubs();
+    final byUrl = <String, FoundHub>{};
+    final peers = (await _tailscale.peers()).where((p) => p.online).toList();
+
+    final probes = <Future<void>>[];
+    for (final p in peers) {
+      probes.add(() async {
+        final hello = await _probe.hello(p.ip);
+        if (hello == null) return;
+        final url = normalizeHubUrl(p.ip)!;
+        byUrl[url] = FoundHub(name: p.name, url: url, version: hello.version, trusted: hello.trusted, known: known.any((k) => k.url == url));
+      }());
+    }
+    for (final k in known) {
+      if (peers.any((p) => normalizeHubUrl(p.ip) == k.url)) continue;
+      probes.add(() async {
+        final uri = Uri.tryParse(k.url);
+        final hello = uri == null ? null : await _probe.hello(uri.host, port: uri.port);
+        byUrl[k.url] = FoundHub(name: k.name, url: k.url, version: hello?.version ?? '', trusted: hello?.trusted ?? false, known: true, reachable: hello != null);
+      }());
+    }
+    await Future.wait(probes);
+    return byUrl.values.toList()
+      ..sort((a, b) {
+        if (a.known != b.known) return a.known ? -1 : 1;
+        return a.name.compareTo(b.name);
+      });
+  }
+}
+
 String? normalizeHubUrl(String input) {
   var s = input.trim();
   if (s.isEmpty) return null;
