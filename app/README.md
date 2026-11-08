@@ -28,7 +28,7 @@ lib/
   gen/             Dart types generated from proto/ (do not edit)
 ```
 
-Details: [docs/app.md](../docs/app.md).
+Details: [docs/architecture/app.md](../docs/architecture/app.md).
 
 ## Run
 

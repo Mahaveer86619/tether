@@ -1,5 +1,5 @@
 # What Tether never copies to the hub. Gitignore syntax.
-# .env files are kept separately, encrypted on the hub; see docs/plan.md.
+# .env files are kept separately, encrypted on the hub; see docs/plans/plan.md.
 .git/
 .tether/attachments/
 .env

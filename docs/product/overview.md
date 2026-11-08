@@ -13,12 +13,12 @@ What Tether has to work with, how a chat becomes work on a device, and how sessi
 | **Hub MCP** | `/mcp`, registered with Claude Code on every agent machine | Lets a session see and use the rest of Tether: `list_nodes`, `list_sessions`, `start_session`, `send_message`, `read_session`, `wait_for_session`, `set_chat_target`, and the artifact tools. |
 | **Tailscale** | the network | The hub listens on the tailnet; own devices connect without a token (`-trust-tailnet`). Nothing is public. |
 
-See [architecture.md](architecture.md) for the diagrams and [security.md](security.md) for trust.
+See [architecture.md](../architecture/architecture.md) for the diagrams and [security.md](../architecture/security.md) for trust.
 
 ## How a chat starts
 
 1. You type in the box on Home (optionally attaching files and choosing where). The app sends `POST /chats`.
-2. The hub picks the **target**, a device and folder, in one of three ways ([chats.md](chats.md#targets)): *auto* scores the folders you work in against your words; *manual* is your pick; *claude* starts in a scratch folder and Claude works out the place and calls `set_chat_target`.
+2. The hub picks the **target**, a device and folder, in one of three ways ([chats.md](../architecture/chats.md#targets)): *auto* scores the folders you work in against your words; *manual* is your pick; *claude* starts in a scratch folder and Claude works out the place and calls `set_chat_target`.
 3. The hub creates the chat and its first session, and tells the target device's agent to start `claude` there with your message and a system prompt. The prompt makes this session the chat's **lead**: it lists the machines online and tells it to hand work elsewhere to task sessions.
 4. The agent streams Claude Code's events back. The hub renders them into a timeline (messages, tool cards, to-dos, approvals), stores them, and pushes them to every app. A title is derived from your first message.
 5. Later messages go to the chat's active session, resuming it if no process is live. If its session was cleaned up, the chat moves to a new session at its target, carrying the conversation.
@@ -27,12 +27,12 @@ See [architecture.md](architecture.md) for the diagrams and [security.md](securi
 
 - **One chat, many sessions.** A chat links sessions with roles: `main` (the first), `moved`, `fork`, `started` (started by Claude through `start_session`), `linked`. A session belongs to at most one chat.
 - **Spawning.** The lead calls `start_session` with a device, a folder and `chat`. The hub tells that device's agent to start it. The new session is a **task**: its prompt says to do the one thing and end with a report. The chat shows it under Tasks with its device, folder and progress. The lead follows tasks with `wait_for_session` or `read_session` and reports back.
-- **Where sessions run.** Linux: tmux windows. Windows: headless runs. Sessions you start in your own terminal are mirrored read-only; you can approve from the app and fork to continue ([hosting.md](hosting.md), [sessions.md](sessions.md)).
+- **Where sessions run.** Linux: tmux windows. Windows: headless runs. Sessions you start in your own terminal are mirrored read-only; you can approve from the app and fork to continue ([hosting.md](../architecture/hosting.md), [sessions.md](../architecture/sessions.md)).
 - **State and approvals** come from hooks, so a session you started yourself still shows as working or waiting, and its permission prompts and questions reach the app.
 - **History** is kept on the hub, not only on the device. Agents upload transcripts incrementally, so the app reads history from the hub and a chat's timeline can span its sessions.
 - **Files** go through the hub's artifact store. A file attached to a message uploads in the background, is linked to the message, and is delivered into the session's folder.
-- **Updates.** Releases are built and deployed on the hub's machine ([releasing.md](releasing.md)). Apps and agents of 0.17 and later update from the hub.
+- **Updates.** Releases are built and deployed on the hub's machine ([releasing.md](../operations/releasing.md)). Apps and agents of 0.17 and later update from the hub.
 
 ## What is not built yet
 
-The run-card UI, chats that follow a session on another machine live, the app's history views, other LLM providers, automatic skills ([skills.md](skills.md)) and a clean uninstall ([uninstall.md](uninstall.md)). See [roadmap.md](roadmap.md) and [plan.md](plan.md).
+The run-card UI, chats that follow a session on another machine live, the app's history views, other LLM providers, automatic skills ([skills.md](../plans/skills.md)) and a clean uninstall ([uninstall.md](../plans/uninstall.md)). See [roadmap.md](roadmap.md) and [plan.md](../plans/plan.md).

@@ -1,7 +1,7 @@
 // Package winupdate swaps a new version of the Windows app in for the
 // running one, and goes back to the old one if the new one does not come
 // up. The app starts it as a separate program (tether-updater.exe) and exits.
-// See docs/releasing.md#how-apps-and-agents-update.
+// See docs/operations/releasing.md#how-apps-and-agents-update.
 package winupdate
 
 import (

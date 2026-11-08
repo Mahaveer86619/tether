@@ -15,7 +15,7 @@ The Claude Code TUI is great at one session in one terminal. Tether is for when 
 - **It learns your routines.** Requests you keep making are found in your history and can become skills Claude runs instead of working them out again, only with your approval.
 - **Your own server.** The hub runs on a machine you own, over Tailscale. Nothing is public and nothing leaves your tailnet.
 
-What exists, what is pending and where each part is described: [docs/features.md](docs/features.md).
+What exists, what is pending and where each part is described: [docs/product/features.md](docs/product/features.md).
 
 ## How it fits together
 
@@ -33,9 +33,9 @@ What exists, what is pending and where each part is described: [docs/features.md
    └ indexes and mirrors TUI sessions └ NAS mounted as /workspace
 ```
 
-Details: [docs/architecture.md](docs/architecture.md).
+Details: [docs/architecture/architecture.md](docs/architecture/architecture.md).
 
-**Setting up:** the hub first, then the agent on each machine, then the apps; updates go in the same order. See [docs/running.md](docs/running.md#install-order).
+**Setting up:** the hub first, then the agent on each machine, then the apps; updates go in the same order. See [docs/operations/running.md](docs/operations/running.md#install-order).
 
 ## Tech
 
@@ -49,21 +49,27 @@ Details: [docs/architecture.md](docs/architecture.md).
 ## Repository layout
 
 ```
-proto/tether/v1/        wire contract (source of truth)
+proto/tether/v1/        wire contract (source of truth); buf.yaml and buf.gen.yaml generate Go and Dart
 server/                 Go module
-  cmd/tether-hub/
-  cmd/tether-agent/
+  cmd/tether-hub/       the hub
+  cmd/tether-agent/     the agent on each machine
+  cmd/tether-updater/   swaps the Windows app for a new version (starts from the app)
+  cmd/tetherctl/        terminal client for testing and pairing
+  internal/hub/         routing, chats, approvals, files, skills, updates, audit
+  internal/agent/       session index, headless runs, transcript mirror, hooks, drop folder
   internal/render/      stream-json and transcript lines → timeline items
-  internal/hub/         routing, subscriptions, approvals
-  internal/agent/       session index, headless runs, transcript mirror
   internal/store/       SQLite
-  cmd/tetherctl/        terminal client for testing
-  tools/release/        writes a release's latest.json and SHA256SUMS
+  internal/skills/      finding routines, the library, the router
+  internal/winupdate/   the swap-and-roll-back logic of the Windows updater
+  gen/                  generated protobuf code (do not edit)
+  tools/                small programs: release manifest, skill scanner
 app/                    Flutter app (android, windows)
-deploy/                 systemd user units and deploy.sh, Windows install scripts, CI runner setup
-tools/release/          version.sh, build.sh, build-windows.ps1, manifest.sh
+deploy/                 linux/ (systemd units, deploy.sh), windows/ (install scripts), ci/ (runner setup)
+tools/                  release/ (version, build, ship, manifest scripts), icongen/
 .github/workflows/      ci (tests on every push and PR), release (on vX.Y.Z tags)
-docs/                   design docs
+docs/                   product/, design/, architecture/, plans/, operations/; start at docs/README.md
+VERSION  MIN_SUPPORTED  CHANGELOG.md  Makefile
+                        one version for everything; the oldest client allowed; release notes; tasks
 ```
 
 ## Building, releasing, deploying
@@ -72,14 +78,15 @@ docs/                   design docs
 cd server && go test ./... && go build -o bin/ ./cmd/...     # the Go side
 cd app && flutter test && flutter build apk                   # the app
 make release                                                  # on the hub's machine: test, build, deploy
+make ship ARGS=--patch                                        # from your own machine: test, build, deploy over ssh
 git tag -a vX.Y.Z -m "Tether X.Y.Z" && git push origin vX.Y.Z  # CI builds, publishes and deploys
 ```
 
-Every part shares one version (`VERSION`). Apps and agents update themselves from the hub. See [docs/releasing.md](docs/releasing.md) for releases, signing, the self-hosted runner and updates, and [docs/running.md](docs/running.md) for a first install.
+Every part shares one version (`VERSION`). Apps and agents update themselves from the hub. See [docs/operations/releasing.md](docs/operations/releasing.md) for releases, signing, the self-hosted runner and updates, and [docs/operations/running.md](docs/operations/running.md) for a first install.
 
 ## Status
 
-Version 0.17. The hub, agents and app work end to end on the author's setup: a laptop, a home server and a phone. Chats, sessions across machines, approvals, files of any size, generated pages, usage, in-app updates and skill learning are built; see [docs/features.md](docs/features.md) for the exact state and the pending list. The next big piece is a pass over every screen before 1.0, planned in [docs/ui-overhaul.md](docs/ui-overhaul.md). See also [docs/roadmap.md](docs/roadmap.md) and [docs/running.md](docs/running.md).
+Version 0.17. The hub, agents and app work end to end on the author's setup: a laptop, a home server and a phone. Chats, sessions across machines, approvals, files of any size, generated pages, usage, in-app updates and skill learning are built; see [docs/product/features.md](docs/product/features.md) for the exact state and the pending list. The next big piece is a pass over every screen before 1.0, planned in [docs/design/ui-overhaul.md](docs/design/ui-overhaul.md). See also [docs/product/roadmap.md](docs/product/roadmap.md) and [docs/operations/running.md](docs/operations/running.md).
 
 ## Docs
 

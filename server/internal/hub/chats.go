@@ -16,7 +16,7 @@ import (
 )
 
 // Chats are the conversations the app shows; sessions do the work behind
-// them. See docs/chats.md.
+// them. See docs/architecture/chats.md.
 
 const (
 	linkMain    = "main"
@@ -570,7 +570,7 @@ func (h *Hub) leadPrompt(chat, request string) string {
 }
 
 // filesPrompt is how a file the user asked for reaches them: the agent
-// delivers whatever lands in this folder. See docs/deliverables.md.
+// delivers whatever lands in this folder. See docs/plans/deliverables.md.
 const filesPrompt = "When you make a file the user asked for (a build, an export, a report, a spreadsheet), copy or write it into .tether/out/ in your working folder; " +
 	"Tether delivers it to the user's chat as a file they can download. Say what it is in your reply; don't paste its contents."
 

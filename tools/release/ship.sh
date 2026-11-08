@@ -3,7 +3,7 @@
 # the hub, its agent and every app and agent come up to date. The same
 # steps CI runs, without GitHub: tests, the Go binaries, the APK, the
 # Windows app, latest.json, then deploy.sh over ssh with its backup, health
-# checks and automatic rollback. See docs/releasing.md#shipping-from-your-laptop.
+# checks and automatic rollback. See docs/operations/releasing.md#shipping-from-your-laptop.
 #
 # Usage: ship.sh [--patch | --version X.Y.Z] [--no-tests] [--no-apk] [--no-windows]
 # Needs TETHER_SHIP_HOST (user@host of the hub's machine), set in the

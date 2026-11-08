@@ -1,6 +1,6 @@
 # App audit: what the app does today, and where it goes in the rebuild
 
-Taken from the code on 2026-11-06 (every screen and cubit in `app/lib/presentation`), for the presentation-layer rebuild described in [ui-design.md](ui-design.md). Each row is a thing a person can do. **New home** is the screen that carries it in the rebuild; **Gap** is what is missing or wrong today and gets fixed on the way. Nothing here changes what the engine does; the cubits, use cases and data layer stay, and the views on top of them are rewritten.
+Taken from the code on 2026-11-06 (every screen and cubit in `app/lib/presentation`), for the presentation-layer rebuild described in [ui-design.md](../design/ui-design.md). Each row is a thing a person can do. **New home** is the screen that carries it in the rebuild; **Gap** is what is missing or wrong today and gets fixed on the way. Nothing here changes what the engine does; the cubits, use cases and data layer stay, and the views on top of them are rewritten.
 
 ## Navigation (fixed 2026-11-06)
 
@@ -29,7 +29,7 @@ A destination is a place, not a step. Switching between places leaves nothing to
 | Permission mode with revert timer | Mode chip | Chat header | Not choosable when starting |
 | Interrupt, "Esc again", end session, stuck banner | Header, banners | Chat header, run card | |
 | Fork, forked-from, forks list; continue on the hub; keep a copy on the hub; mark done | Header and More menu | Chat menu | |
-| Screen and keys (text view of the terminal, key chips, typing) | Sheet | Terminal mode | Real terminal mode is planned ([terminal-mode.md](terminal-mode.md)) |
+| Screen and keys (text view of the terminal, key chips, typing) | Sheet | Terminal mode | Real terminal mode is planned ([terminal-mode.md](../plans/terminal-mode.md)) |
 | Attach files to a session, its files, its pages, copy resume command, copy id | More menu | Chat menu and Files panel | |
 | Rename or delete a session | none | Chat menu | Missing |
 
@@ -80,8 +80,8 @@ A destination is a place, not a step. Switching between places leaves nothing to
 | Usage: plan limits, tokens per machine, sessions this week | Usage | Usage (under More) | |
 | Tailscale banner with Sign in, Open, Get, Try again | Banner | Banner | |
 | Updates: banner with notes, skip, update; forced update screen | Banner | Banner, Settings | **No "Check for updates" button** |
-| Notifications | only update and download | Settings | All of it ([notifications.md](notifications.md)) |
-| Remove data or Tether | none | Settings | All of it ([uninstall.md](uninstall.md)) |
+| Notifications | only update and download | Settings | All of it ([notifications.md](../plans/notifications.md)) |
+| Remove data or Tether | none | Settings | All of it ([uninstall.md](../plans/uninstall.md)) |
 
 ## Dead code to remove
 
@@ -89,7 +89,7 @@ A destination is a place, not a step. Switching between places leaves nothing to
 
 ## Decisions taken for the rebuild
 
-1. Rebuild every view with one set of components in `presentation/ui/`, from the tokens in [ui-design.md](ui-design.md). Cubits, blocs and the layers below them stay.
+1. Rebuild every view with one set of components in `presentation/ui/`, from the tokens in [ui-design.md](../design/ui-design.md). Cubits, blocs and the layers below them stay.
 2. Destinations: Home, Chats, Devices, History, Files, Routines, Settings (Usage moves into Devices and Settings). Phone bar: Home, Chats, Devices, More.
 3. Dense, mono for what is executed, left accent rails for "needs you" (amber) and "running" (green), uppercase mono section labels, Inter for everything else.
 4. Add what is missing where it fits: delete and unlink chats, rename sessions, a "Check for updates" button, model and permission mode on a new chat.

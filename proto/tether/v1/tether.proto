@@ -164,7 +164,7 @@ message SessionInfo {
   // hub's machine when its own machine is closed or offline.
   bool global = 24;
   // The codebase its folder belongs to, and the snapshot the hub took of it
-  // for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
+  // for this session (set on forks); see docs/plans/plan.md#codebases-on-the-hub.
   string codebase = 25;
   string snapshot = 26;
   // Claude Code's permission mode: default, acceptEdits, plan or auto. From
@@ -939,7 +939,7 @@ message PageList {
 // A chat is the conversation the user sees; the sessions doing the work sit
 // behind it. One is active (messages go there); others are linked: forks,
 // sessions it started on other machines, or a move to another folder.
-// See docs/chats.md.
+// See docs/architecture/chats.md.
 
 message Chat {
   string id = 1;
@@ -1073,7 +1073,7 @@ message TargetSuggestions {
 // ---- Updates ----
 //
 // A release's latest.json, as CI publishes it and the hub serves it at
-// GET /api/v1/updates/latest. See docs/releasing.md.
+// GET /api/v1/updates/latest. See docs/operations/releasing.md.
 
 message UpdateAsset {
   string name = 1;

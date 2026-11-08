@@ -10,7 +10,7 @@ import (
 )
 
 // The drop folder: anything a session leaves in <cwd>/.tether/out/ is
-// delivered to the chat as a result file. See docs/deliverables.md.
+// delivered to the chat as a result file. See docs/plans/deliverables.md.
 
 const (
 	outDir = ".tether/out"

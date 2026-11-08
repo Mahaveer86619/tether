@@ -10,9 +10,9 @@ One screen at a time, in this loop:
 2. **I** write down what I'll change against the rules below, and anything I think is wrong that you didn't mention.
 3. **I** change it, add or update a widget test for the behaviour (and a screenshot check where the look matters), and run the app on the Windows build.
 4. **You** look at it on the phone and the desktop. Anything off goes back to step 1 for that screen.
-5. The screen's row in the table below is ticked, and its entry in [app.md](app.md) is brought up to date.
+5. The screen's row in the table below is ticked, and its entry in [app.md](../architecture/app.md) is brought up to date.
 
-Nothing here changes what a feature does. A behaviour change goes through [features.md](features.md) first.
+Nothing here changes what a feature does. A behaviour change goes through [features.md](../product/features.md) first.
 
 ## The rules
 
@@ -27,7 +27,7 @@ These come from what you've asked for so far. Add to them as you see things.
 7. **Say what is happening in the background.** Connecting, starting Tailscale, updating, syncing: a slim banner or a line, never a silent wait and never a modal.
 8. **Every state is designed.** Loading, empty, error, offline and partial each have a screen, with one clear next action.
 9. **Same thing, same look.** One pill, one card, one empty state, one banner, one sheet. A new screen is built from these, not beside them.
-10. **Phone, tablet and desktop are all first class.** The layouts in [app.md](app.md#views) stay; each screen says what it does at 400, 800 and 1400 px.
+10. **Phone, tablet and desktop are all first class.** The layouts in [app.md](../architecture/app.md#views) stay; each screen says what it does at 400, 800 and 1400 px.
 11. **Copy is plain.** Short sentences, no jargon, the same word for the same thing (chat, task, routine, skill, device).
 12. **Colour carries meaning.** Accent is for what you can act on, amber for what needs you, green for done, red for failed; never colour alone.
 
@@ -46,7 +46,7 @@ Tick a row when it has had its pass. "Known" is what we already know is wrong or
 | Approvals, questions, prompts, terminal dialogs | `session/question_card.dart`, `session/prompt_card.dart`, `session/session_page.dart` (ApprovalCard), `session/terminal_sheet.dart`, `session/mode_picker.dart` | Question card now steps one by one; the other cards still list everything | [ ] |
 | Devices and a device's page | `home/devices_page.dart`, `home/session_navigator.dart` | Install-order layout is dense; a device's sessions list | [ ] |
 | Activity | `home/activity_page.dart` | | [ ] |
-| Files and Pages | `artifacts/files_page.dart`, `artifacts/pages_view.dart`, `artifacts/artifact_widgets.dart` | No inline preview ([previews-and-guides.md](previews-and-guides.md)); page opener | [ ] |
+| Files and Pages | `artifacts/files_page.dart`, `artifacts/pages_view.dart`, `artifacts/artifact_widgets.dart` | No inline preview ([previews-and-guides.md](../plans/previews-and-guides.md)); page opener | [ ] |
 | Routines and Skills | `routines/` | New; step names and the review dialog need a pass | [ ] |
 | Usage | `usage/usage_page.dart` | Overflow on narrow screens fixed once; charts are plain bars | [ ] |
 | Settings | `settings/settings_page.dart`, `settings/appearance_picker.dart`, `settings/pairing_widgets.dart`, `settings/codebases_section.dart`, `settings/workspaces_section.dart` | One long page; pairing, appearance, codebases and workspaces want their own sections | [ ] |
@@ -65,7 +65,7 @@ Do these before the screens, so the screens use one set:
 - **Pill, Chip, Card, Banner, Sheet, Dialog, EmptyState, ErrorState, SectionLabel** in `widgets/common.dart`, each with one look.
 - **A step bar and a tile** for stepping through choices (the question card has the first version).
 - **Run card** ([below](#run-card)).
-- **Preview** and **page card** from [previews-and-guides.md](previews-and-guides.md).
+- **Preview** and **page card** from [previews-and-guides.md](../plans/previews-and-guides.md).
 
 ## Run card
 
@@ -86,4 +86,4 @@ It reads from the session's tool events and to-dos; no protocol change is needed
 - No `RenderFlex overflowed` in the widget tests.
 - All text selectable where it should be; contrast checked on every palette in light and dark (the Tether palette has a test; the older ones do not meet 4.5:1 everywhere).
 - The structure and decisions in [ui-design.md](ui-design.md) are built, phase by phase.
-- [app.md](app.md) describes what is there, and [features.md](features.md) agrees.
+- [app.md](../architecture/app.md) describes what is there, and [features.md](../product/features.md) agrees.

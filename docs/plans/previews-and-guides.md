@@ -71,7 +71,7 @@ It builds on **generated pages** ([plan.md](plan.md#generated-pages)): Claude wr
 What this adds:
 
 1. **A page card in the chat**, where the page was made: its title, what it shows, "Open" and "Copy link". Not a link buried in text.
-2. **An opener.** On the desktop it opens in the browser, later in a pane beside the chat; on a phone it opens in the browser, later in an in-app view. It needs the hub reachable, which is the tailnet; if Tailscale is down the card says so and offers to bring it up ([app.md](app.md#tailscale-in-the-background)).
+2. **An opener.** On the desktop it opens in the browser, later in a pane beside the chat; on a phone it opens in the browser, later in an in-app view. It needs the hub reachable, which is the tailnet; if Tailscale is down the card says so and offers to bring it up ([app.md](../architecture/app.md#tailscale-in-the-background)).
 3. **A way for Claude to know when and how.** The hub's MCP instructions get a short guide: *when the user asks for an interactive guide, diagram, explainer or explorer, build a page*; how to lay it out, what it can and can't do, and a `present_page` tool that puts the card in the chat (name, title, one line).
 4. **A small shared kit, hosted by the hub**: one stylesheet in Tether's look (palettes, light and dark), and a few helpers for the common parts (a diagram canvas with pan, zoom and click, a table with sort and filter, step checklists with saved state, copy buttons). Pages link to it with a relative path, so they look like Tether and a page stays small.
 5. **Versions.** Asking for a change makes a new version of the same page; the card shows the latest and the history is kept, so a link you shared keeps working.

@@ -12,7 +12,7 @@ import (
 
 // Where a chat runs: picked by the user, matched by the hub from the
 // prompt and the folders the user works in, or worked out by Claude in a
-// scratch folder when nothing matches. See docs/chats.md#targets.
+// scratch folder when nothing matches. See docs/architecture/chats.md#targets.
 
 const (
 	scoreName  = 10 // the folder's whole name is in the prompt

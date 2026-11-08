@@ -87,7 +87,7 @@ class HubRestApi {
   Future<pb.ArtifactList> artifacts({String session = '', int limit = 300}) =>
       _get('/artifacts', pb.ArtifactList(), query: {if (session.isNotEmpty) 'session': session, 'limit': '$limit'});
 
-  /// Starts a resumable upload (see docs/plan.md#large-files).
+  /// Starts a resumable upload (see docs/plans/plan.md#large-files).
   Future<pb.Upload> startUpload({
     required String name,
     required int size,
@@ -235,7 +235,7 @@ class HubRestApi {
     return json;
   }
 
-  /// The routines found in the hub's history (see docs/skills.md). Plain JSON,
+  /// The routines found in the hub's history (see docs/plans/skills.md). Plain JSON,
   /// not a protobuf message.
   Future<Map<String, dynamic>> routines({required int days, required int runs}) async {
     final json = await _sendJson(() => _client.get(_endpoint.api('/skills/candidates', {'days': '$days', 'runs': '$runs'}), headers: _headers));

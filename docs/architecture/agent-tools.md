@@ -29,9 +29,9 @@ The point of the wrapper: the assistant on one machine can use all of the person
 | `set_chat_target` | Move a chat to the right machine and folder | Built |
 | `save_artifact`, `read_artifact` | Share files through the hub | Built |
 | `list_skills`, `read_skill`, `propose_skill`, `update_skill` | Use, propose and correct skills | Built |
-| `present_file` | Put a file it made in the chat for the person to take ([deliverables.md](deliverables.md)) | New |
-| `present_page` | Put an interactive guide card in the chat ([previews-and-guides.md](previews-and-guides.md)) | New |
-| `notify_user` | Tell the person something now ([notifications.md](notifications.md)); rate-limited | New |
+| `present_file` | Put a file it made in the chat for the person to take ([deliverables.md](../plans/deliverables.md)) | New |
+| `present_page` | Put an interactive guide card in the chat ([previews-and-guides.md](../plans/previews-and-guides.md)) | New |
+| `notify_user` | Tell the person something now ([notifications.md](../plans/notifications.md)); rate-limited | New |
 | `node_info` | What a machine can do (toolchains, versions, disk) | New |
 | `remember`, `recall` | The second brain | Later |
 
@@ -80,10 +80,10 @@ The assumption stays: a private network (Tailscale) and one always-on hub. What 
 ## Work items (engine side)
 
 1. Hub posts a finished task's result into its chat.
-2. `present_file`, the drop folder and the chat's artifacts endpoint ([deliverables.md](deliverables.md)).
+2. `present_file`, the drop folder and the chat's artifacts endpoint ([deliverables.md](../plans/deliverables.md)).
 3. The skill router and usage recording.
 4. Scoped MCP credentials and the audit log.
-5. Node capabilities and the doctor ([first-run.md](first-run.md)).
-6. Notification rules and the `Notify` frame ([notifications.md](notifications.md)).
-7. The terminal frames ([terminal-mode.md](terminal-mode.md)).
+5. Node capabilities and the doctor ([first-run.md](../plans/first-run.md)).
+6. Notification rules and the `Notify` frame ([notifications.md](../plans/notifications.md)).
+7. The terminal frames ([terminal-mode.md](../plans/terminal-mode.md)).
 8. The engine contract written down and the Claude Code engine moved behind it, then a design doc for API engines.

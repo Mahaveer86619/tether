@@ -35,7 +35,7 @@ final palettes = <Palette>[
   _solarized,
 ];
 
-/// The design system's identity (docs/ui-design.md): a cool, dense, dark-first
+/// The design system's identity (docs/design/ui-design.md): a cool, dense, dark-first
 /// palette with emerald for what you can act on. The dark side follows the
 /// design's tokens, with the tertiary text and the red lightened to reach
 /// 4.5:1; the light side is new, since the design has none.

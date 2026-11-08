@@ -1,6 +1,6 @@
 # Deliverables: asking for something and getting the file
 
-Status: the drop folder and the chat's files endpoint are built; the rest is plan. Product view: [v1-spec.md](v1-spec.md#f-files-results-and-guides). The pieces it stands on exist: the artifact store, resumable downloads, signed links, file hooks, generated pages. What is missing is the way a thing the assistant *makes* reaches the chat as a file you can take.
+Status: the drop folder and the chat's files endpoint are built; the rest is plan. Product view: [v1-spec.md](../product/v1-spec.md#f-files-results-and-guides). The pieces it stands on exist: the artifact store, resumable downloads, signed links, file hooks, generated pages. What is missing is the way a thing the assistant *makes* reaches the chat as a file you can take.
 
 ## The scenario
 

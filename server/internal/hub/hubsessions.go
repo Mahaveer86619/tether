@@ -12,7 +12,7 @@ import (
 
 // Hub sessions run on the hub's own machine in a scratch folder each, so a
 // conversation can start without picking a device. Old ones are archived,
-// then deleted (their artifacts stay). See docs/plan.md.
+// then deleted (their artifacts stay). See docs/plans/plan.md.
 
 const (
 	scratchArchiveAfter = 14 * 24 * time.Hour

@@ -44,7 +44,7 @@ class DevicesPage extends StatelessWidget {
               trailing: Text('${hub.nodes.values.where((n) => n.online).length}/${hub.nodes.length} online', style: TextStyle(color: c.faint, fontSize: 12))),
           if (self != null) CardGrid(children: [card(self)]),
           if (others.isEmpty)
-            Text(self != null ? 'No other devices run Tether yet. See docs/running.md to add one.' : 'No agents have connected yet. See docs/running.md to install one.',
+            Text(self != null ? 'No other devices run Tether yet. See docs/operations/running.md to add one.' : 'No agents have connected yet. See docs/operations/running.md to install one.',
                 style: TextStyle(color: c.muted, fontSize: 13))
           else
             CardGrid(children: [for (final n in others) card(n)]),
@@ -192,7 +192,7 @@ class _SetupGuide extends StatelessWidget {
           step('1', 'The hub', 'Runs on an always-on machine on your tailnet (tether-hub, systemd). Update it first: agents and apps are made to work with a hub at least as new.'),
           step('2', 'The agent on each machine', 'tether-agent next to Claude Code on every machine whose sessions you want here. Pair it with a code from "Add a device", or tetherctl pair.'),
           step('3', 'The apps', 'Android and Windows. Pair by scanning the QR code from "Add a device" on a paired app, or connect over Tailscale.'),
-          Text('Step by step, with commands: docs/running.md.', style: TextStyle(fontSize: 12, color: c.faint)),
+          Text('Step by step, with commands: docs/operations/running.md.', style: TextStyle(fontSize: 12, color: c.faint)),
         ],
       ),
     );

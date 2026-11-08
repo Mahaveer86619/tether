@@ -18,7 +18,7 @@ import (
 // the interactive sessions it can see (tmux panes, and Windows consoles it
 // can attach to), turns a dialog into a prompt card, and offers the raw
 // screen and key presses for anything it can't parse. See
-// docs/hosting.md#dialogs-on-screen.
+// docs/architecture/hosting.md#dialogs-on-screen.
 
 const (
 	screenEvery = 2 * time.Second

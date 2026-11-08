@@ -1,5 +1,5 @@
 // skillscan lists the routines that keep coming back in a hub database, as
-// docs/skills.md describes. It reads only, but opening a database can run its
+// docs/plans/skills.md describes. It reads only, but opening a database can run its
 // migrations, so point it at a copy:
 //
 //	skillscan -db copy-of-hub.db [-days 30] [-runs 3]

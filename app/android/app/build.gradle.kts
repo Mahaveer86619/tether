@@ -8,7 +8,7 @@ plugins {
 
 // Release signing comes from android/key.properties, written by CI from
 // GitHub secrets or set up on the build machine; it is never committed.
-// Without it the APK is signed with the debug key. See docs/releasing.md.
+// Without it the APK is signed with the debug key. See docs/operations/releasing.md.
 val keyProperties = Properties().apply {
     val file = rootProject.file("key.properties")
     if (file.exists()) file.inputStream().use { load(it) }

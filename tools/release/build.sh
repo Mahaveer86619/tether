@@ -2,7 +2,7 @@
 # Builds a release into dist/<version>/: the Go binaries for Linux and
 # Windows (amd64) and the signed Android APK, then latest.json and
 # SHA256SUMS. The Windows app is built on Windows (build-windows.ps1);
-# CI adds it before publishing. See docs/releasing.md.
+# CI adds it before publishing. See docs/operations/releasing.md.
 #
 # Usage: build.sh [--no-android] [--no-manifest]
 # BASE_URL sets where latest.json says the files are; it defaults to the
@@ -47,7 +47,7 @@ ld="-s -w -X github.com/Mahaveer86619/tether/server/internal/version.Version=$v"
 
 if [ $android -eq 1 ]; then
   if [ ! -f "$root/app/android/key.properties" ]; then
-    echo "app/android/key.properties is missing, so the APK would be signed with a debug key; see docs/releasing.md#signing" >&2
+    echo "app/android/key.properties is missing, so the APK would be signed with a debug key; see docs/operations/releasing.md#signing" >&2
     [ "${ALLOW_DEBUG_SIGNING:-}" = 1 ] || exit 1
   fi
   (

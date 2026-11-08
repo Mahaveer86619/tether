@@ -16,7 +16,7 @@ const Dim = 512
 type Fingerprint struct {
 	// Words is a hashed bag of the request's words and word pairs, scaled to
 	// length 1, so the dot product of two is their cosine similarity. It is the
-	// light local embedder from docs/plan.md: no model, nothing leaves the hub.
+	// light local embedder from docs/plans/plan.md: no model, nothing leaves the hub.
 	Words [Dim]float32
 	// Steps are the distinct step keys, sorted.
 	Steps     []string

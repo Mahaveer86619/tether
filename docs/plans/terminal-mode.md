@@ -1,6 +1,6 @@
 # Terminal mode
 
-Status: plan. The design team's view of it is in [v1-spec.md](v1-spec.md#e-terminal-mode); this page is how it is built.
+Status: plan. The design team's view of it is in [v1-spec.md](../product/v1-spec.md#e-terminal-mode); this page is how it is built.
 
 ## What it is
 
@@ -10,7 +10,7 @@ It is also what makes Tether a wrapper in the full sense: anything the assistant
 
 ## What exists
 
-- The agent already reads the screen of every interactive session it can reach every 2 seconds (tmux `capture-pane`; on Windows `AttachConsole` and `ReadConsoleOutputCharacter`) to find dialogs ([hosting.md](hosting.md#dialogs-on-screen)).
+- The agent already reads the screen of every interactive session it can reach every 2 seconds (tmux `capture-pane`; on Windows `AttachConsole` and `ReadConsoleOutputCharacter`) to find dialogs ([hosting.md](../architecture/hosting.md#dialogs-on-screen)).
 - `GET /api/v1/sessions/{id}/screen` returns the current screen as text; `POST /api/v1/sessions/{id}/keys` presses keys and types text (Enter, Escape, arrows, Tab, Shift+Tab, Space, Backspace, digits, single characters).
 - The app has a "Screen & keys" sheet that shows that text and a row of keys.
 

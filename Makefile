@@ -1,4 +1,4 @@
-# Release tasks for the hub's machine (Linux). See docs/releasing.md.
+# Release tasks for the hub's machine (Linux). See docs/operations/releasing.md.
 #   make test      vet and test the server, analyze and test the app
 #   make dist      build dist/<version>: Go binaries, the signed APK, latest.json
 #   make deploy    install dist/<version> here, with backup and rollback
@@ -31,6 +31,6 @@ deploy:
 
 release: test dist deploy
 
-# From your own machine, not the hub's: build and deploy over ssh. See docs/releasing.md.
+# From your own machine, not the hub's: build and deploy over ssh. See docs/operations/releasing.md.
 ship:
 	tools/release/ship.sh $(ARGS)

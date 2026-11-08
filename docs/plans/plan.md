@@ -1,6 +1,6 @@
 # Plan: orchestration, second brain and collaboration
 
-Where Tether goes after M4 ([roadmap.md](roadmap.md)): what each idea means in practice, what has to be decided first, and in which order to build it. The order at the end marks what is built.
+Where Tether goes after M4 ([roadmap.md](../product/roadmap.md)): what each idea means in practice, what has to be decided first, and in which order to build it. The order at the end marks what is built.
 
 Every node uses only its own Claude login and usage. Work is never moved to another account to share usage.
 

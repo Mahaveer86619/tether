@@ -1122,7 +1122,7 @@ type SessionInfo struct {
 	// hub's machine when its own machine is closed or offline.
 	Global bool `protobuf:"varint,24,opt,name=global,proto3" json:"global,omitempty"`
 	// The codebase its folder belongs to, and the snapshot the hub took of it
-	// for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
+	// for this session (set on forks); see docs/plans/plan.md#codebases-on-the-hub.
 	Codebase string `protobuf:"bytes,25,opt,name=codebase,proto3" json:"codebase,omitempty"`
 	Snapshot string `protobuf:"bytes,26,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
 	// Claude Code's permission mode: default, acceptEdits, plan or auto. From

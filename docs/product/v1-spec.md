@@ -105,7 +105,7 @@ Each feature lists: what it is for, what the person sees and does, the states to
 
 **Open.** Does the app install anything itself on the desktop (the agent), or only show the command? Does 1.0 include an installer for the hub, or is a command line enough?
 
-*Longer doc: [first-run.md](first-run.md).*
+*Longer doc: [first-run.md](../plans/first-run.md).*
 
 #### A2. Connecting to the hub *(Built)*
 
@@ -133,7 +133,7 @@ Each feature lists: what it is for, what the person sees and does, the states to
 
 **States.** Checking/starting; needs sign-in; not installed (with a link); needs admin rights (desktop); failed with a reason.
 
-*Longer doc: [app.md](app.md#tailscale-in-the-background).*
+*Longer doc: [app.md](../architecture/app.md#tailscale-in-the-background).*
 
 #### A5. Connection status *(Built)*
 
@@ -284,7 +284,7 @@ A banner when a session waits with no card: **Show screen**, **Esc again**, **En
 
 **Open.** Does the terminal view replace "Screen & keys" entirely? Is the styled rendering for sessions without a terminal worth building for 1.0, or is the live view for terminal sessions enough?
 
-*Longer doc: [terminal-mode.md](terminal-mode.md).*
+*Longer doc: [terminal-mode.md](../plans/terminal-mode.md).*
 
 ---
 
@@ -314,7 +314,7 @@ The person must be able to get *anything the assistant makes* in the chat, and *
 
 **Open.** Should the person confirm before a big download on mobile data? Where do downloads go on Windows and on Android, and can the person choose?
 
-*Longer doc: [deliverables.md](deliverables.md).*
+*Longer doc: [deliverables.md](../plans/deliverables.md).*
 
 #### F3. Preview in the chat *(New)*
 
@@ -358,7 +358,7 @@ A downloads tray: active, paused, finished and failed, each with its file card; 
 
 **States.** Building; ready; hub unreachable; deleted; an older version.
 
-*Longer doc: [previews-and-guides.md](previews-and-guides.md).*
+*Longer doc: [previews-and-guides.md](../plans/previews-and-guides.md).*
 
 ---
 
@@ -382,7 +382,7 @@ A downloads tray: active, paused, finished and failed, each with its file card; 
 
 **States.** Waiting for approval; in use; corrected (new version); failing (needs review); removed.
 
-*Longer doc: [skills.md](skills.md), [agent-tools.md](agent-tools.md).*
+*Longer doc: [skills.md](../plans/skills.md), [agent-tools.md](../architecture/agent-tools.md).*
 
 ---
 
@@ -437,7 +437,7 @@ Per machine: the plan's limits (the window and the week, from the assistant itse
 
 **Controls.** Per kind on or off; quiet hours; which devices notify (so the desktop and the phone don't both buzz); whether the notification shows content or just "Claude needs you" (privacy on a lock screen); sound and vibration on the phone.
 
-**How it reaches the phone** (a design constraint, not a visual one): the phone is not always connected to the hub; the notification path must work when the app is closed and the phone is asleep, without a third-party cloud. The chosen approach is in [notifications.md](notifications.md); the design needs: a permission request at the right moment, an explanation if the person refuses it, and a "test notification" button.
+**How it reaches the phone** (a design constraint, not a visual one): the phone is not always connected to the hub; the notification path must work when the app is closed and the phone is asleep, without a third-party cloud. The chosen approach is in [notifications.md](../plans/notifications.md); the design needs: a permission request at the right moment, an explanation if the person refuses it, and a "test notification" button.
 
 **States.** Not yet allowed; allowed; denied (with how to fix it in system settings); a notification for something already answered elsewhere (it clears).
 
@@ -475,7 +475,7 @@ Where the person's projects live on each machine (so "start here" and Auto know 
 
 **States.** Nothing selected; summary; confirming; running per device (done, waiting for the device, failed); finished.
 
-*Longer doc: [uninstall.md](uninstall.md).*
+*Longer doc: [uninstall.md](../plans/uninstall.md).*
 
 #### J6. About *(Built)*
 
@@ -538,7 +538,7 @@ Short sentences. Plain words. The same word for the same thing (section 3). Say 
 
 ## 10. Not in 1.0
 
-Several people sharing one hub with roles and permissions; other assistants besides Claude Code as a first-class choice (the interface is designed so they fit: see [agent-tools.md](agent-tools.md)); the second brain (shared memory across sessions); automations triggered by webhooks or schedules; iPhone and macOS apps; a public (non-private-network) way to reach the hub.
+Several people sharing one hub with roles and permissions; other assistants besides Claude Code as a first-class choice (the interface is designed so they fit: see [agent-tools.md](../architecture/agent-tools.md)); the second brain (shared memory across sessions); automations triggered by webhooks or schedules; iPhone and macOS apps; a public (non-private-network) way to reach the hub.
 
 ## 11. Open questions
 

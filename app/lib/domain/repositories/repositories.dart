@@ -37,7 +37,7 @@ abstract interface class HubRepository {
   /// Continues a global session on the hub's machine; returns the new id.
   Future<Result<String>> continueOnHub(String sessionId, String text);
 
-  /// Starts a chat and its first session; see docs/chats.md.
+  /// Starts a chat and its first session; see docs/architecture/chats.md.
   Future<Result<Chat>> createChat(NewChatRequest request);
 
   /// Makes a chat of a session that has none, or returns the one it's in.

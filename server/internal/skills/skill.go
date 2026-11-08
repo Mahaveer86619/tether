@@ -11,7 +11,7 @@ import (
 // A skill is a Claude Code skill: SKILL.md with a front matter that names it
 // and says when to use it, then the steps. Tether keeps them on the hub and
 // hands them to Claude through the hub's MCP server, so every machine has the
-// same ones. See docs/skills.md.
+// same ones. See docs/plans/skills.md.
 
 const (
 	maxSkillBytes   = 20 << 10

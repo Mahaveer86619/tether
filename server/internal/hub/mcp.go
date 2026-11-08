@@ -16,7 +16,7 @@ import (
 // The hub's MCP server (streamable HTTP, JSON responses) at /mcp. It lets a
 // Claude session on any node see the other nodes and sessions, start work
 // elsewhere and wait for it, and use the artifact store. Agents register it
-// in Claude Code on their machine. See docs/plan.md.
+// in Claude Code on their machine. See docs/plans/plan.md.
 
 const (
 	mcpProtocol   = "2025-06-18"

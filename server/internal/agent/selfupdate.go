@@ -20,7 +20,7 @@ import (
 // through the hub, checks its sha256 and that it runs, keeps the old one
 // as <exe>.prev and restarts. A marker file counts the new binary's starts;
 // if it can't reach the hub within a few, the old one is put back. See
-// docs/releasing.md.
+// docs/operations/releasing.md.
 
 // ExitRestart is the exit code that tells the service manager to start
 // the agent again.

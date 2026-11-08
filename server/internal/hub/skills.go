@@ -16,7 +16,7 @@ import (
 )
 
 // The routines that keep coming back across the user's sessions, read-only.
-// See docs/skills.md. Reading every timeline takes a moment, so an answer is
+// See docs/plans/skills.md. Reading every timeline takes a moment, so an answer is
 // kept for a few minutes.
 
 const skillCacheTTL = 5 * time.Minute
@@ -242,7 +242,7 @@ const skillsOffered = 8
 // activeSkillsPrompt tells a lead session which skills it can use, or "".
 // With the request that starts the chat it offers the three that fit and
 // says the rest exist; without one it lists the first few. See
-// docs/agent-tools.md#3-choosing-skills-well.
+// docs/architecture/agent-tools.md#3-choosing-skills-well.
 func (h *Hub) activeSkillsPrompt(request string) string {
 	active, err := h.lib().Active()
 	if err != nil || len(active) == 0 {

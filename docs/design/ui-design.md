@@ -1,6 +1,6 @@
 # UI design: review of the generated designs, and the structure we build
 
-Status: plan. This takes the design team's first output (`stitch_tether_developer_workspace`: a design system, home, chat, terminal and devices screens for phone and desktop, and a 3-pane desktop workspace) and decides, screen by screen, what we adopt, what we change and what we drop, so the app can be restructured to it. [v1-spec.md](v1-spec.md) is the specification they drew from; [ui-overhaul.md](ui-overhaul.md) holds the rules and the checklist.
+Status: plan. This takes the design team's first output (`stitch_tether_developer_workspace`: a design system, home, chat, terminal and devices screens for phone and desktop, and a 3-pane desktop workspace) and decides, screen by screen, what we adopt, what we change and what we drop, so the app can be restructured to it. [v1-spec.md](../product/v1-spec.md) is the specification they drew from; [ui-overhaul.md](ui-overhaul.md) holds the rules and the checklist.
 
 ## 1. What the designs get right
 
@@ -26,13 +26,13 @@ The mockups navigate the same things four ways at once, and that has to be settl
 |---|---|
 | **Terminal** is a bottom tab, a sidebar entry, a top-bar entry *and* a Chat/Terminal toggle in the chat | It is a **mode of a session**, not a place. One control in the chat header (Chat · Terminal; on desktop also Split). No Terminal tab, no sidebar entry. A person who wants "the terminal" opens the chat they were last in and flips the control. *(Owner: if you want the tab, it opens the terminal of the current chat.)* |
 | Desktop has a **top nav row** (Home, Workspace, Devices & Health, Terminal Mode) *and* the same list in the sidebar | One navigation: the sidebar. The top bar holds only the target chooser, the command palette, notifications and the account/device menu |
-| **Home, Workspace, Active Sessions, Chat, Overview, Sessions, Nodes, Audits** all appear as places | Destinations are **Home, Chats, Devices, History, Files, Routines, Settings**. A chat's own views are Chat, Split, Terminal. *Audits* is dropped until the audit log exists ([agent-tools.md](agent-tools.md#4-security)) |
+| **Home, Workspace, Active Sessions, Chat, Overview, Sessions, Nodes, Audits** all appear as places | Destinations are **Home, Chats, Devices, History, Files, Routines, Settings**. A chat's own views are Chat, Split, Terminal. *Audits* is dropped until the audit log exists ([agent-tools.md](../architecture/agent-tools.md#4-security)) |
 | The phone bottom bar is Home, Chat, Terminal, Devices | **Home, Chats, Devices, More.** "Chats" opens the last chat (the list if none); More holds History, Files, Routines and Settings |
 | "Active sessions" and "History" are two lists in the sidebar | One **Chats** list in the sidebar, grouped Today, Yesterday, Earlier, with a state dot for live ones; History is the searchable archive screen |
 
 ### The words
 
-The mockups invent a vocabulary. We use ours ([v1-spec.md](v1-spec.md#3-words-used-in-the-app)):
+The mockups invent a vocabulary. We use ours ([v1-spec.md](../product/v1-spec.md#3-words-used-in-the-app)):
 
 | In the mockups | In the app |
 |---|---|
@@ -77,7 +77,7 @@ The designs are dark only. The spec asks for light and dark in every palette. De
 - Phone header: "TETHER v1.0" collides with the screen title ("Ter…"), the logo is a **broken image**, and the connection chip ("Tailscale · 3") crowds the menu.
 - Chips and the **target line truncate** to unreadable ("laptop · /va… Change", "Tasks: 1 working on server · 2 done on lapt…").
 - The Home start box on the phone cuts the quick-run chips off the right edge.
-- A **file-write approval contains a second question** (choose port :8080 or :3000). A question and an approval are different cards ([v1-spec.md](v1-spec.md#d-asking-you-things)); do not combine them.
+- A **file-write approval contains a second question** (choose port :8080 or :3000). A question and an approval are different cards ([v1-spec.md](../product/v1-spec.md#d-asking-you-things)); do not combine them.
 - The 3-pane desktop's left column duplicates the sidebar's list (Fleet registry and Active runs vs the sidebar's chats); decide one place for runs.
 - Page titles read as button labels; no screen shows its own title in the content.
 - No empty, loading, error or offline state is drawn for any screen. Each needs one ([ui-overhaul.md](ui-overhaul.md#the-rules)).
@@ -90,17 +90,17 @@ A mockup is not a spec. These elements need a data source, or they go.
 | Element | Source in Tether | Verdict |
 |---|---|---|
 | Machine CPU, RAM, disk; online; Tailscale latency | The agent reports health; latency can be the hub's own ping | Real; ping per device is small work |
-| Doctor checklist per machine | The doctor ([first-run.md](first-run.md#the-doctor)) | Real once the doctor is built |
+| Doctor checklist per machine | The doctor ([first-run.md](../plans/first-run.md#the-doctor)) | Real once the doctor is built |
 | Running step list, progress bar, timer | The session's tool events and to-dos | Real |
 | Context meter ("84.2k / 200k tokens") | Usage per session exists; the context window does not | Show tokens used; the window needs the engine to report it |
 | Quick runners (`/fix-test`, `/review-git`, `/run-daemons`) | Pinned **skills** and the assistant's slash commands | Real, as a row of the owner's pinned skills and commands; none invented |
 | Command palette (Ctrl+K) | New | Real and worth building: chats, devices, skills, actions |
-| Notification bell | Notifications ([notifications.md](notifications.md)) | Placeholder until built |
-| Deliverables panel, install, preview | [deliverables.md](deliverables.md) | Real once built |
+| Notification bell | Notifications ([notifications.md](../plans/notifications.md)) | Placeholder until built |
+| Deliverables panel, install, preview | [deliverables.md](../plans/deliverables.md) | Real once built |
 | Connected apps with token fingerprint, revoke | Exists | Real |
-| Pair a new node, with a one-line command and a code | The hub installer ([first-run.md](first-run.md#the-hub-installer)); the pairing code exists | The command shows the **owner's own hub address**, never a made-up domain |
+| Pair a new node, with a one-line command and a code | The hub installer ([first-run.md](../plans/first-run.md#the-hub-installer)); the pairing code exists | The command shows the **owner's own hub address**, never a made-up domain |
 | Fleet CPU load, "Success rate 97.8%", "Avg latency p95", "Total runs 142", "Mesh RTT graph", "Tunnel synced", "Fleet config", "Relay telemetry", "Subnet router reachable", "Execution hooks and tool jail", "Sandboxed runtime", "Auto-timeout 04:48" on approvals | Nothing | **Drop**, or defer until a feature produces them. They read as features that do not exist |
-| "Split", "TTY" views | [terminal-mode.md](terminal-mode.md) | Real once terminal mode is built; Split is desktop only |
+| "Split", "TTY" views | [terminal-mode.md](../plans/terminal-mode.md) | Real once terminal mode is built; Split is desktop only |
 | "Audits" | The audit log | Defer |
 | Pagination "Showing 4 of 18" | History | Real as a list with search, not a table with pages |
 
@@ -143,9 +143,9 @@ One pane. Home is a scroll of Needs you → Running now → Chats. The chat is f
 | Card level 1 and level 2 | The two tonal levels from DESIGN.md |
 | **Run card** | Header, step list, segmented bar, Pause, Stop, Open run; compact and full |
 | **Approval card**, **Question card** | Restyle of the existing; one decision each |
-| **File card**, result card, preview | [deliverables.md](deliverables.md) |
+| **File card**, result card, preview | [deliverables.md](../plans/deliverables.md) |
 | **Machine card** with doctor checklist | Collapsed to the headline, expands |
-| **Key row** and **terminal view** | [terminal-mode.md](terminal-mode.md) |
+| **Key row** and **terminal view** | [terminal-mode.md](../plans/terminal-mode.md) |
 | Banner | One slim strip style for Tailscale, update, offline |
 | Sheet and dialog | One look; always scroll inside a bound |
 | Command palette | Ctrl+K |
@@ -177,8 +177,8 @@ Each phase ends with the app installed on the phone and the desktop and a screen
 | 3 | **Chat**: header, run card, steps, deliverable cards, composer with mode and chips | L | The run card; `present_file` for deliverables |
 | 4 | **Devices**: the machine card, doctor checklist, connected apps, pair a node | M | The doctor |
 | 5 | **Desktop 3-pane** and the right drawer | L | Phases 1 to 3 |
-| 6 | **Terminal mode** | L | [terminal-mode.md](terminal-mode.md) |
-| 7 | **Files, History, Routines, Settings, first run** in the new style | L | [first-run.md](first-run.md) |
+| 6 | **Terminal mode** | L | [terminal-mode.md](../plans/terminal-mode.md) |
+| 7 | **Files, History, Routines, Settings, first run** in the new style | L | [first-run.md](../plans/first-run.md) |
 
 The palette, tokens and shapes (phase 0) can ship first and make every existing screen look like the design; the rest restructures screens on top.
 
@@ -202,4 +202,4 @@ Settled by the owner on 2026-11-05.
 4. Set labels in Inter, mono only for what is executed.
 5. Raise tertiary text and destructive red to 4.5:1, give inputs and keys a 3:1 edge, 44 px hit areas.
 6. Draw the light version of Home and Chat, a tablet layout, and for each screen its empty, loading, error and offline states.
-7. Draw the missing screens from [v1-spec.md](v1-spec.md#7-screens): first run, connect, machine checklist, file preview, Files, chat Files panel, History and search, Routines and Skills, skill review, Notifications settings, Remove data, update screen.
+7. Draw the missing screens from [v1-spec.md](../product/v1-spec.md#7-screens): first run, connect, machine checklist, file preview, Files, chat Files panel, History and search, Routines and Skills, skill review, Notifications settings, Remove data, update screen.

@@ -55,7 +55,7 @@ Step 2 is built (`skills.Cluster`, `GET /api/v1/skills/candidates`, and `tools/s
 
 Real sessions are never touched by tests. The corpus is the owner's patterns rewritten as small synthetic transcripts (the sync-progress routine, an upload diagnosis, a file copy), plus tiny custom datasets made for Tether.
 
-- **Parsing.** Golden transcripts in, expected task records out: request, masked tool sequence, outcome. Includes the known transcript quirks (queued commands, pasted images, list prompts) from [sessions.md](sessions.md).
+- **Parsing.** Golden transcripts in, expected task records out: request, masked tool sequence, outcome. Includes the known transcript quirks (queued commands, pasted images, list prompts) from [sessions.md](../architecture/sessions.md).
 - **Masking.** Property tests: the same routine with different paths, dates and ids gives one signature; different routines don't collide.
 - **Clustering.** A labelled set with known clusters and known one-offs; the suite fails below a set precision and recall, and the numbers are printed.
 - **Drafting.** A fake model, recorded and replayed, so tests are deterministic. Checks that the draft has the parameters, labels mutating steps, and contains no literal secrets from the input.

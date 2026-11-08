@@ -12,7 +12,7 @@ import (
 
 // The audit log: every MCP tool call and every change to a skill, with who
 // and when. It records what was asked, never the content (a skill's text, a
-// saved file), so it holds nothing secret. See docs/agent-tools.md.
+// saved file), so it holds nothing secret. See docs/architecture/agent-tools.md.
 
 // auditedArgs are the arguments of a tool call worth keeping: where and
 // what, not the content.

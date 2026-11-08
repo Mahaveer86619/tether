@@ -19,7 +19,7 @@ var fileOrigins = map[string][]string{
 // chatFiles serves GET /api/v1/chats/{id}/artifacts: the files of every
 // session in the chat, newest first. Query: origin=sent|made, q (name
 // contains), before (created_ms of the last row of the previous page),
-// limit. Caller holds h.mu. See docs/deliverables.md.
+// limit. Caller holds h.mu. See docs/plans/deliverables.md.
 func (h *Hub) chatFiles(id string, r *http.Request) (proto.Message, *opError) {
 	c := h.chats[id]
 	if c == nil {

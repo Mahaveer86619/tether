@@ -1,6 +1,6 @@
 # First run
 
-Status: plan. Product view: [v1-spec.md](v1-spec.md#a1-first-run-setup).
+Status: plan. Product view: [v1-spec.md](../product/v1-spec.md#a1-first-run-setup).
 
 ## The problem
 

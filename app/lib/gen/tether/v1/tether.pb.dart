@@ -1363,7 +1363,7 @@ class SessionInfo extends $pb.GeneratedMessage {
   void clearGlobal() => $_clearField(24);
 
   /// The codebase its folder belongs to, and the snapshot the hub took of it
-  /// for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
+  /// for this session (set on forks); see docs/plans/plan.md#codebases-on-the-hub.
   @$pb.TagNumber(25)
   $core.String get codebase => $_getSZ(24);
   @$pb.TagNumber(25)

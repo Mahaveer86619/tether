@@ -47,7 +47,7 @@ class Node extends Equatable {
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }
 
-/// Where a session's live process runs; see docs/hosting.md.
+/// Where a session's live process runs; see docs/architecture/hosting.md.
 enum SessionHost { none, headless, tmux, terminal }
 
 enum TodoStatus { pending, inProgress, completed }
@@ -746,7 +746,7 @@ class NewSessionRequest extends Equatable {
 }
 
 /// A file in the hub's central artifact store.
-/// A folder on a device the hub keeps copies of; see docs/plan.md#codebases-on-the-hub.
+/// A folder on a device the hub keeps copies of; see docs/plans/plan.md#codebases-on-the-hub.
 class Codebase extends Equatable {
   const Codebase({
     required this.id,
@@ -789,7 +789,7 @@ class EnvFileInfo extends Equatable {
   List<Object?> get props => [path, keys];
 }
 
-/// A small site a session made, hosted by the hub; see docs/plan.md#generated-pages.
+/// A small site a session made, hosted by the hub; see docs/plans/plan.md#generated-pages.
 class HostedPage extends Equatable {
   const HostedPage({required this.session, required this.name, this.files = 0, this.size = 0, this.updated, this.url = ''});
 
@@ -991,7 +991,7 @@ class ConnectedClient extends Equatable {
   List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
 }
 
-/// How a chat's target was chosen; see docs/chats.md#targets.
+/// How a chat's target was chosen; see docs/architecture/chats.md#targets.
 enum TargetMode {
   /// The hub matched it from the prompt and recent work.
   auto('auto'),
@@ -1162,7 +1162,7 @@ class UpdateAsset extends Equatable {
   List<Object?> get props => [name, url, sha256, size];
 }
 
-/// The newest release the hub knows of; see docs/releasing.md.
+/// The newest release the hub knows of; see docs/operations/releasing.md.
 class Release extends Equatable {
   const Release({required this.version, this.notes = '', this.minSupported = '', this.published, this.assets = const {}});
 

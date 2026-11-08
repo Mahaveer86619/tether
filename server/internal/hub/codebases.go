@@ -26,7 +26,7 @@ import (
 )
 
 // Codebases the hub keeps copies of, their snapshots, and the .env vault;
-// see docs/plan.md#codebases-on-the-hub. Snapshot files live in the same
+// see docs/plans/plan.md#codebases-on-the-hub. Snapshot files live in the same
 // content-addressed blob store as artifacts, so unchanged files are stored
 // once however many snapshots list them.
 

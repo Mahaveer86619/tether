@@ -21,7 +21,7 @@ Runs on every machine that has Claude Code: the Windows laptop and the mini PC.
 - Mirrors live TUI sessions read-only by tailing their transcript file.
 - Forwards raw events to the hub untouched. Parsing happens in one place, the hub.
 - Routes permission prompts to the app: through the `PermissionRequest` hook for interactive sessions (the terminal can answer too; first answer wins), and through Claude Code's stdio control protocol (`--permission-prompt-tool stdio`) for headless runs.
-- On the mini PC, launches each session in a sandbox container instead of directly on the host ([home-server.md](home-server.md)).
+- On the mini PC, launches each session in a sandbox container instead of directly on the host ([home-server.md](../operations/home-server.md)).
 - Reports node health: CPU, memory, disk, Claude Code version, online state.
 
 On Windows it runs as a per-user scheduled task that the app starts on launch, not a service, so it inherits the user's Claude Code login, PATH and `~/.claude`.

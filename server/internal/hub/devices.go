@@ -20,7 +20,7 @@ import (
 
 // Pairing gives each app and agent its own revocable token in exchange for
 // a one-time code, instead of everyone sharing the admin token. See
-// docs/plan.md#connecting-devices.
+// docs/plans/plan.md#connecting-devices.
 
 const (
 	pairingTTL = 10 * time.Minute

@@ -35,7 +35,7 @@ Thumbs.db
 # Release builds
 /dist/
 
-# Signing keys and server secrets: never committed (see docs/releasing.md)
+# Signing keys and server secrets: never committed (see docs/operations/releasing.md)
 *.jks
 *.keystore
 /app/android/key.properties

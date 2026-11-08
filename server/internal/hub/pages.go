@@ -13,7 +13,7 @@ import (
 )
 
 // Pages are small sites a session writes under .tether/pages/<name>/; see
-// docs/plan.md#generated-pages. They're served at
+// docs/plans/plan.md#generated-pages. They're served at
 // /p/<session>/<name>/<exp>/<sig>/<file>, so relative links between their
 // files resolve, and sandboxed so a page can't act as the hub's origin.
 

@@ -4,7 +4,7 @@
 #   publish                      makes the GitHub Release with latest.json
 #   deploy   (the hub's machine) installs the release there, with rollback;
 #                                it needs only the linux job, never Windows
-# See docs/releasing.md.
+# See docs/operations/releasing.md.
 name: release
 
 on:
@@ -48,7 +48,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::The ANDROID_KEYSTORE_* secrets aren't set; see docs/releasing.md#signing"
+            echo "::error::The ANDROID_KEYSTORE_* secrets aren't set; see docs/operations/releasing.md#signing"
             exit 1
           fi
           umask 077

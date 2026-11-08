@@ -1,6 +1,6 @@
 # Notifications
 
-Status: plan. Product view: [v1-spec.md](v1-spec.md#i1-notifications). Today only two things notify: an update being available and a large download's progress. Nothing tells you the assistant needs you.
+Status: plan. Product view: [v1-spec.md](../product/v1-spec.md#i1-notifications). Today only two things notify: an update being available and a large download's progress. Nothing tells you the assistant needs you.
 
 ## What must be told
 

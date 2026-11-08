@@ -7,10 +7,10 @@ Each milestone ends with something usable. For the state of every feature today,
 M0 to M5 below are mostly built. What stands between here and 1.0 is, in order:
 
 1. **Finish what is half done:** the run card, following a remote session live in its chat, history views in the app, uploads from the Home box in the background (the list is in [features.md](features.md)).
-2. **The UI overhaul:** every screen, one pass, against shared rules ([ui-overhaul.md](ui-overhaul.md)).
+2. **The UI overhaul:** every screen, one pass, against shared rules ([ui-overhaul.md](../design/ui-overhaul.md)).
 3. **The 1.0 features that are still new**, specified in [v1-spec.md](v1-spec.md): terminal mode, deliverables (files and builds in the chat), previews and interactive guides, notifications, first-run setup, skill choice and security. The design team draws from that spec; the engine work goes ahead in parallel ([pipeline.md](pipeline.md#while-the-design-team-works)).
-4. **Clean removal** of data and of Tether ([uninstall.md](uninstall.md)).
-5. **CI switched on** on GitHub, so a tag builds and deploys ([releasing.md](releasing.md)).
+4. **Clean removal** of data and of Tether ([uninstall.md](../plans/uninstall.md)).
+5. **CI switched on** on GitHub, so a tag builds and deploys ([releasing.md](../operations/releasing.md)).
 
 ## M0: Contract and fixtures
 
@@ -75,7 +75,7 @@ Done so far: session indexing, live mirroring, resume and fork; tmux hosting on 
   - A service is something like a script watcher with an agent attached, for example one that spots GitHub issues and fixes them automatically.
   - Grants can be view-only, can allow answering approvals, or can allow starting runs.
 - **Credentials:** every session runs on the Claude login of the node it runs on, and uses only that login's usage. Collaborating means sending commands to someone's node with their permission, as the app does today. Usage is never pooled or moved between accounts.
-- **Pairing:** devices join with a QR code and get their own revocable token. See [plan.md](plan.md#connecting-devices).
+- **Pairing:** devices join with a QR code and get their own revocable token. See [plan.md](../plans/plan.md#connecting-devices).
 - **Shared memory:** the knowledge graph and session history act as a knowledge base that users opt in to, so sessions can draw on what others have learned.
 
 **Done when:** a second user can watch and approve runs of a shared watcher service on the first user's mini PC, and start sessions on their own laptop, from one hub.

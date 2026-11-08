@@ -5,7 +5,7 @@
 //	  -base-url https://github.com/OWNER/tether/releases/download/v0.17.0 \
 //	  -notes ../CHANGELOG.md -min-supported 0.15.0
 //
-// See docs/releasing.md.
+// See docs/operations/releasing.md.
 package main
 
 import (
