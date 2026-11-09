@@ -8,7 +8,8 @@
 #   3. restarts the hub, which registers its notification listener with
 #      tunneld and passes the address on to every app.
 # Undo: put tether.env.pre-tunneld back, restart the hub, `docker compose down`.
-# Usage: enable-tunneld.sh [path to on-demand-tunnel-cf (default ~/on-demand-tunnel-cf)]
+# The hub's notification listener (reached by the container) is on 0.0.0.0:$NOTIFY_PORT, 7421 unless set.
+# Usage: [NOTIFY_PORT=n] enable-tunneld.sh [path to on-demand-tunnel-cf (default ~/on-demand-tunnel-cf)]
 set -euo pipefail
 
 src=${1:-$HOME/on-demand-tunnel-cf}
@@ -36,7 +37,8 @@ done
 curl -fsS "http://127.0.0.1:$port/healthz" >/dev/null || { echo "tunneld does not answer on port $port; see: docker compose logs" >&2; exit 1; }
 
 cp -p "$env_file" "$env_file.pre-tunneld"
-flag="-tunneld http://127.0.0.1:$port"
+nport=${NOTIFY_PORT:-7421}
+flag="-tunneld http://127.0.0.1:$port -notify-addr 0.0.0.0:$nport"
 if grep -q -- '-tunneld' "$env_file"; then
   echo "tether.env already has -tunneld"
 elif grep -q '^TETHER_HUB_FLAGS=' "$env_file"; then
