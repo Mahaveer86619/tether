@@ -7,6 +7,7 @@ import '../home/cards.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/motion.dart';
 import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -60,6 +61,9 @@ class _ChatsPageState extends State<ChatsPage> {
   String _query = '';
   bool _archived = false;
 
+  /// Rows that have already come in, so scrolling back to one does not play it again.
+  final _shown = <Object>{};
+
   bool _found(_Entry e) {
     if (_query.isEmpty) return true;
     final q = _query.toLowerCase();
@@ -83,6 +87,7 @@ class _ChatsPageState extends State<ChatsPage> {
     final archivedCount = hub.chats.values.where((c) => c.archived).length;
     return PageColumn(
       bottom: 96,
+      onRefresh: context.read<HubCubit>().refresh,
       children: [
         ?widget.header,
         const SizedBox(height: 8),
@@ -129,8 +134,13 @@ class _ChatsPageState extends State<ChatsPage> {
         else
           for (final MapEntry(key: period, value: list) in groups.entries) ...[
             SectionLabel(period),
-            for (final e in list)
-              Padding(
+            for (final (i, e) in list.indexed)
+              FadeIn(
+                key: ValueKey('fade-${e.id}'),
+                shown: _shown,
+                id: e.id,
+                delay: stagger(i),
+                child: Padding(
                 padding: const EdgeInsets.only(bottom: Gap.sm),
                 child: Material(
                   color: c.surface,
@@ -140,6 +150,7 @@ class _ChatsPageState extends State<ChatsPage> {
                       ? ChatTile(chat: e.chat!, onTap: () => nav.openChat(e.id))
                       : _SessionRow(session: e.session!, onTap: () => nav.push(SessionEntry(e.id))),
                 ),
+              ),
               ),
           ],
         if (widget.limit != null && all.length > entries.length)

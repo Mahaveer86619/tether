@@ -173,6 +173,10 @@ class _WidePane extends StatelessWidget {
   Widget build(BuildContext context) {
     final nav = context.read<NavCubit>();
     final back = state.atRoot ? null : nav.back;
+    return _Fade(id: state.top == null ? state.destination.name : '${state.top.runtimeType}:${state.top!.props.join(',')}', child: _pane(context, nav, back));
+  }
+
+  Widget _pane(BuildContext context, NavCubit nav, VoidCallback? back) {
     return switch (state.top) {
       ChatEntry(:final chatId) => ChatPage(key: ValueKey('chat-$chatId'), chatId: chatId),
       SessionEntry(:final sessionId) => SessionScreen(key: ValueKey(sessionId), sessionId: sessionId, onOpenSession: (id) => nav.push(SessionEntry(id))),
@@ -190,6 +194,24 @@ class _WidePane extends StatelessWidget {
         ),
     };
   }
+}
+
+/// Cross-fades to what is shown when the place or the open screen changes,
+/// so moving about is a dissolve and not a cut.
+class _Fade extends StatelessWidget {
+  const _Fade({required this.id, required this.child});
+
+  final Object id;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        child: KeyedSubtree(key: ValueKey(id), child: child),
+      );
 }
 
 class _Sidebar extends StatefulWidget {
@@ -562,9 +584,7 @@ class _PhoneRoot extends StatelessWidget {
           const TailscaleBanner(),
           const UpdateBanner(),
           Expanded(
-            child: d == Destination.home
-                ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
-                : _destinationPage(context, d),
+            child: _Fade(id: d, child: _destinationPage(context, d)),
           ),
         ],
       ),

@@ -80,7 +80,7 @@ class ActivityPage extends StatelessWidget {
       }
       rows.add(_EventRow(event: e));
     }
-    return PageColumn(children: rows);
+    return PageColumn(onRefresh: context.read<HubCubit>().refresh, children: rows);
   }
 }
 

@@ -37,7 +37,12 @@ class DevicesPage extends StatelessWidget {
         );
     return BlocProvider(
       create: (_) => sl<DevicesCubit>()..load(),
-      child: PageColumn(
+      child: Builder(
+        builder: (context) => PageColumn(
+        onRefresh: () async {
+          await context.read<HubCubit>().refresh();
+          if (context.mounted) await context.read<DevicesCubit>().load();
+        },
         children: [
           const SectionLabel('1 · Hub'),
           _HubCard(hub: hub, onNode: onNode),
@@ -71,6 +76,7 @@ class DevicesPage extends StatelessWidget {
             },
           ),
         ],
+        ),
       ),
     );
   }
@@ -261,6 +267,7 @@ class DevicePage extends StatelessWidget {
     final online = status?.online ?? false;
     return PageColumn(
       bottom: 96,
+      onRefresh: context.read<HubCubit>().refresh,
       children: [
         if (status != null)
           Padding(

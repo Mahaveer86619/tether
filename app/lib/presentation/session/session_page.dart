@@ -15,6 +15,8 @@ import '../theme/theme.dart';
 import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../widgets/changes_pane.dart';
 import '../widgets/prompt_box.dart';
 import '../widgets/terminal_view.dart';
@@ -561,7 +563,7 @@ class _TimelineState extends State<_Timeline> {
 
   /// Rows present when the history finished loading; only rows arriving
   /// after that animate in.
-  Set<String>? _initial;
+  final _shownRows = <Object>{};
 
   @override
   void initState() {
@@ -594,9 +596,6 @@ class _TimelineState extends State<_Timeline> {
       for (final o in s.outbox)
         if (o.state != OutboxState.sent || !Outbox.queuedOnHub(o, s.items)) o,
     ];
-    if (_initial == null && (!s.loading || items.isNotEmpty)) {
-      _initial = {for (final e in entries) e.key};
-    }
     if (entries.isEmpty && outbox.isEmpty) {
       if (busy) {
         return Align(
@@ -624,7 +623,9 @@ class _TimelineState extends State<_Timeline> {
     final side = MediaQuery.sizeOf(context).width < 600 ? 14.0 : 16.0;
     return Stack(
       children: [
-        SelectionArea(
+        EdgeRefresh(
+          onRefresh: context.read<HubCubit>().refresh,
+          child: SelectionArea(
           onSelectionChanged: (content) => _selected = content?.plainText ?? '',
           contextMenuBuilder: (context, area) => AdaptiveTextSelectionToolbar.buttonItems(
             anchors: area.contextMenuAnchors,
@@ -671,8 +672,10 @@ class _TimelineState extends State<_Timeline> {
               final e = entries[entries.length - i];
               key = ValueKey(e.key);
               final splitHere = s.session?.forkPoint.isNotEmpty == true && e.items.any((i) => i.itemId == s.session!.forkPoint);
-              child = _Appear(
-                animate: !(_initial?.contains(e.key) ?? true),
+              child = FadeIn(
+                shown: _shownRows,
+                id: e.key,
+                delay: stagger(i - 1),
                 child: splitHere
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -694,6 +697,7 @@ class _TimelineState extends State<_Timeline> {
               child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child)),
             );
           },
+          ),
           ),
         ),
         Positioned(
@@ -839,44 +843,6 @@ class _ForkMarker extends StatelessWidget {
 }
 
 /// Fades a new row in once, rising a few pixels, when it first appears.
-class _Appear extends StatefulWidget {
-  const _Appear({required this.animate, required this.child});
-
-  final bool animate;
-  final Widget child;
-
-  @override
-  State<_Appear> createState() => _AppearState();
-}
-
-class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 260), value: widget.animate ? 0 : 1);
-  late final _curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.animate) _c.forward();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _curve,
-        // A fixed offset: a relative one makes tall messages jump.
-        builder: (context, child) => Opacity(
-          opacity: _curve.value,
-          child: Transform.translate(offset: Offset(0, 10 * (1 - _curve.value)), child: child),
-        ),
-        child: widget.child,
-      );
-}
-
 /// Shown at the end of the chat while Claude works between messages.
 class _Working extends StatefulWidget {
   const _Working({required this.waitingForApproval, this.stopping = false});

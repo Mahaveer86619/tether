@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -47,8 +49,10 @@ class _UsageBody extends StatelessWidget {
           same == null ? accounts.add([n]) : same.add(n);
         }
         final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-        return ListView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 40),
+        return PullRefresh(
+          onRefresh: () => context.read<UsageCubit>().load(),
+          child: ListView(
+          padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context)),
           children: [
             Center(
               child: ConstrainedBox(
@@ -80,6 +84,7 @@ class _UsageBody extends StatelessWidget {
               ),
             ),
           ],
+        ),
         );
       },
     );

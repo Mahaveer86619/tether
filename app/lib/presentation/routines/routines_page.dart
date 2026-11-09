@@ -7,6 +7,8 @@ import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import 'pinned_skills_cubit.dart';
 import 'routines_cubit.dart';
 
@@ -43,8 +45,10 @@ class _RoutinesBody extends StatelessWidget {
         final cubit = context.read<RoutinesCubit>();
         final report = s.report;
         final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-        return ListView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 40),
+        return PullRefresh(
+          onRefresh: cubit.load,
+          child: ListView(
+          padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context)),
           children: [
             Center(
               child: ConstrainedBox(
@@ -114,6 +118,7 @@ class _RoutinesBody extends StatelessWidget {
               ),
             ),
           ],
+        ),
         );
       },
     );

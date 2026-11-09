@@ -1312,6 +1312,9 @@ void main() {
 
       updates.release = release('9.0.0');
       await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.ensureVisible(find.byKey(const Key('check-updates')));
+      await tester.pump();
       await tester.tap(find.byKey(const Key('check-updates')));
       await settle(tester);
       expect(find.textContaining('A new version is ready'), findsOneWidget);

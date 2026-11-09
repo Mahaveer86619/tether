@@ -5,6 +5,8 @@ import '../../domain/entities/entities.dart';
 import '../../core/version.dart';
 import '../hub/hub_cubit.dart';
 import '../notifications/notifications_section.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../update/update_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
@@ -54,8 +56,10 @@ class _SettingsPageState extends State<SettingsPage> {
         _url.text = s.connection.url;
         if (s.savedId > 0) widget.onSaved?.call();
       },
-      builder: (context, s) => ListView(
-        padding: const EdgeInsets.all(24),
+      builder: (context, s) => PullRefresh(
+        onRefresh: context.read<HubCubit>().refresh,
+        child: ListView(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, bottomRoom(context)),
         children: [
           Center(
             child: ConstrainedBox(
@@ -109,6 +113,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

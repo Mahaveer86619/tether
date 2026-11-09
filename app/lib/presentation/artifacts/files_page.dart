@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -42,6 +44,9 @@ class _FilesPageState extends State<FilesPage> {
   late String _session = widget.session;
   final _search = TextEditingController();
   int _uploading = 0;
+
+  /// Rows that have come in already, so scrolling back to one does not play it again.
+  final _shownRows = <Object>{};
 
   @override
   void dispose() {
@@ -168,7 +173,9 @@ class _FilesPageState extends State<FilesPage> {
             }
           }
         },
-        child: CustomScrollView(
+        child: PullRefresh(
+          onRefresh: context.read<HubCubit>().refresh,
+          child: CustomScrollView(
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(side, 12, side, 4),
@@ -309,14 +316,20 @@ class _FilesPageState extends State<FilesPage> {
                   separatorBuilder: (_, _) => const SizedBox(height: 6),
                   itemBuilder: (context, i) {
                     final a = files[i];
-                    return _FileRow(
-                      key: ValueKey('file-${a.id}'),
-                      artifact: a,
-                      from: hub.sessions[a.session],
-                      transfer: transfers[a.id],
-                      onDelete: () => _delete(a),
-                      onCopyLink: () => _copyLink(a),
-                      onSession: widget.onSession,
+                    return FadeIn(
+                      key: ValueKey('fade-${a.id}'),
+                      shown: _shownRows,
+                      id: a.id,
+                      delay: stagger(i),
+                      child: _FileRow(
+                        key: ValueKey('file-${a.id}'),
+                        artifact: a,
+                        from: hub.sessions[a.session],
+                        transfer: transfers[a.id],
+                        onDelete: () => _delete(a),
+                        onCopyLink: () => _copyLink(a),
+                        onSession: widget.onSession,
+                      ),
                     );
                   },
                 ),
@@ -329,7 +342,9 @@ class _FilesPageState extends State<FilesPage> {
                       textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: c.faint)),
                 ),
               ),
+            SliverToBoxAdapter(child: SizedBox(height: bottomRoom(context))),
           ],
+        ),
         ),
       ),
     );

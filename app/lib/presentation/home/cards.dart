@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -328,16 +330,21 @@ class DeviceCard extends StatelessWidget {
 
 /// A centred, width-capped scrolling column, as every home page uses.
 class PageColumn extends StatelessWidget {
-  const PageColumn({super.key, required this.children, this.bottom = 40});
+  const PageColumn({super.key, required this.children, this.bottom = 40, this.onRefresh});
 
   final List<Widget> children;
+
+  /// The least empty space under the last item; a page always leaves 15% of the screen.
   final double bottom;
+
+  /// Pulling the page down from its top calls this.
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-    return ListView(
-      padding: EdgeInsets.fromLTRB(side, 8, side, bottom),
+    final list = ListView(
+      padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context, least: bottom)),
       children: [
         Center(
           child: ConstrainedBox(
@@ -347,5 +354,6 @@ class PageColumn extends StatelessWidget {
         ),
       ],
     );
+    return onRefresh == null ? list : PullRefresh(onRefresh: onRefresh!, child: list);
   }
 }

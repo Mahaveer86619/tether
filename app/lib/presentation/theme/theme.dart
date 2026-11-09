@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import 'palettes.dart';
@@ -193,6 +194,14 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
     scaffoldBackgroundColor: c.canvas,
     extensions: [c],
     splashFactory: InkSparkle.splashFactory,
+    // A screen slides in from the right and can be swiped back, as on iOS.
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+    }),
   );
   final text = base.textTheme.apply(bodyColor: c.text, displayColor: c.text);
   return base.copyWith(
