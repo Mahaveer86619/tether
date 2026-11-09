@@ -7,6 +7,7 @@ import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
+import '../../domain/repositories/repositories.dart' show DesktopUpdater;
 import '../../domain/usecases/usecases.dart';
 
 enum UpdateStage {
@@ -15,7 +16,7 @@ enum UpdateStage {
   available,
   downloading,
 
-  /// Downloaded and checked; on Windows it's applied when the app restarts.
+  /// Downloaded and checked, waiting to be installed.
   ready,
   installing,
   failed,
@@ -61,12 +62,12 @@ class UpdateCubit extends Cubit<UpdateState> {
     required this._watchHub,
     this.current = appVersion,
     this.every = const Duration(hours: 6),
-    required this._exit,
+    required this._desktop,
   }) : super(const UpdateState());
 
   final AppUpdates _updates;
   final WatchHub _watchHub;
-  final void Function() _exit;
+  final DesktopUpdater _desktop;
   final String current;
   final Duration every;
 
@@ -91,9 +92,18 @@ class UpdateCubit extends Cubit<UpdateState> {
 
   Future<void> check() => checkNow();
 
+  /// Windows checks, downloads and installs through its own signed updater,
+  /// which shows its own dialog.
+  bool get nativeDialog => _desktop.available;
+
   /// Looks for a release now; true when there is a newer one to install, null
-  /// when the hub couldn't be asked.
+  /// when it couldn't be asked. With a native updater it opens its dialog and
+  /// says nothing more.
   Future<bool?> checkNow() async {
+    if (_desktop.available) {
+      await _desktop.checkNow();
+      return null;
+    }
     final r = await _updates.latest();
     if (isClosed || r.failureOrNull != null) return null;
     final release = r.valueOrNull;
@@ -125,8 +135,7 @@ class UpdateCubit extends Cubit<UpdateState> {
     return line.length > 120 ? '${line.substring(0, 117)}…' : line;
   }
 
-  /// Downloads and checks the release, then on Android opens the installer.
-  /// On Windows it waits for [restart].
+  /// Downloads and checks the release, then opens the installer.
   Future<void> update() async {
     final r = state.release;
     final asset = r == null ? null : _updates.assetFor(r);
@@ -145,8 +154,7 @@ class UpdateCubit extends Cubit<UpdateState> {
     }
   }
 
-  /// Hands the download to the installer; on Windows the app then exits
-  /// and comes back updated.
+  /// Hands the download to the system installer.
   Future<void> install() async {
     if (state.path.isEmpty) return;
     emit(state.copyWith(stage: UpdateStage.installing));
@@ -156,12 +164,8 @@ class UpdateCubit extends Cubit<UpdateState> {
       case Err(:final failure):
         emit(state.copyWith(stage: UpdateStage.failed, failure: () => failure));
       case Ok():
-        if (_updates.platform == 'windows') {
-          _exit();
-        } else {
-          // The installer is on screen; if it's cancelled, Install stays offered.
-          emit(state.copyWith(stage: UpdateStage.ready));
-        }
+        // The installer is on screen; if it's cancelled, Install stays offered.
+        emit(state.copyWith(stage: UpdateStage.ready));
     }
   }
 

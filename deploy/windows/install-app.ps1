@@ -9,23 +9,6 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path (Join-Path $Build 'tether.exe'))) {
     throw "No tether.exe in $Build. Build it first: cd app; flutter build windows --release"
 }
-$updater = Join-Path $Build 'tether-updater.exe'
-if (-not (Test-Path $updater)) {
-    # A plain `flutter build windows` does not make it; the release build does.
-    $server = Join-Path $PSScriptRoot '..\..\server'
-    if ((Get-Command go -ErrorAction SilentlyContinue) -and (Test-Path $server)) {
-        Push-Location $server
-        try {
-            $env:GOOS = 'windows'; $env:GOARCH = 'amd64'; $env:CGO_ENABLED = '0'
-            go build -trimpath -ldflags '-s -w -H=windowsgui' -o $updater ./cmd/tether-updater
-        }
-        finally {
-            Remove-Item Env:GOOS, Env:GOARCH, Env:CGO_ENABLED -ErrorAction SilentlyContinue
-            Pop-Location
-        }
-    }
-    if (-not (Test-Path $updater)) { Write-Warning 'No tether-updater.exe: this install cannot update itself.' }
-}
 $dir = Join-Path $env:LOCALAPPDATA 'Programs\Tether'
 $exe = Join-Path $dir 'tether.exe'
 

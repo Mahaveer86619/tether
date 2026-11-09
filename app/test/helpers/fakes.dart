@@ -776,3 +776,18 @@ class FakeNotifyDevice implements NotifyDevice {
   Future<NotifyStatus> status() async => state;
 }
 
+class FakeDesktopUpdater implements DesktopUpdater {
+  FakeDesktopUpdater({this.available = false});
+
+  @override
+  final bool available;
+  var starts = 0;
+  var checks = 0;
+
+  @override
+  Future<void> start() async => starts++;
+
+  @override
+  Future<void> checkNow() async => checks++;
+}
+

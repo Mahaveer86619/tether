@@ -53,14 +53,12 @@ proto/tether/v1/        wire contract (source of truth); buf.yaml and buf.gen.ya
 server/                 Go module
   cmd/tether-hub/       the hub
   cmd/tether-agent/     the agent on each machine
-  cmd/tether-updater/   swaps the Windows app for a new version (starts from the app)
   cmd/tetherctl/        terminal client for testing and pairing
   internal/hub/         routing, chats, approvals, files, skills, updates, audit
   internal/agent/       session index, headless runs, transcript mirror, hooks, drop folder
   internal/render/      stream-json and transcript lines → timeline items
   internal/store/       SQLite
   internal/skills/      finding routines, the library, the router
-  internal/winupdate/   the swap-and-roll-back logic of the Windows updater
   gen/                  generated protobuf code (do not edit)
   tools/                small programs: release manifest, skill scanner
 app/                    Flutter app (android, windows)

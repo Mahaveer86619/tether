@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -6,6 +7,8 @@ import 'package:http/http.dart' as http;
 
 import '../../core/error/exceptions.dart';
 import '../../core/result.dart';
+import '../../core/version.dart';
+import '../../gen/tether/v1/tether.pb.dart' as pb;
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../datasources/hub_rest_api.dart';
@@ -28,8 +31,31 @@ class UpdateRepositoryImpl implements UpdateRepository {
   @override
   String? get platform => _platform.key;
 
+  /// The newest release from GitHub, where releases are published, and from
+  /// the hub (which may hold a build made on the owner's machine that was
+  /// never published). GitHub wins a tie, so a release that is on both is
+  /// downloaded from GitHub and does not depend on the hub being reachable.
   @override
-  Future<Result<Release?>> latest() => guard(() async => releaseFromPb(await _api.latestRelease()));
+  Future<Result<Release?>> latest() async {
+    final github = await _github();
+    final hub = await guard(() async => releaseFromPb(await _api.latestRelease()));
+    final fromHub = hub.valueOrNull;
+    if (github == null) return hub;
+    if (fromHub == null || !isOlderVersion(github.version, fromHub.version)) return Ok(github);
+    return Ok(fromHub);
+  }
+
+  Future<Release?> _github() async {
+    try {
+      final res = await _client.get(Uri.parse(releaseFeedUrl)).timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return null;
+      final m = pb.UpdateManifest()..mergeFromProto3Json(jsonDecode(utf8.decode(res.bodyBytes)), ignoreUnknownFields: true);
+      return m.version.isEmpty ? null : releaseFromPb(m);
+    } on Exception {
+      // No answer, or not a release: the hub's copy is used.
+      return null;
+    }
+  }
 
   @override
   Future<Result<String>> download(UpdateAsset asset, {void Function(int received, int total)? onProgress}) => guard(() async {

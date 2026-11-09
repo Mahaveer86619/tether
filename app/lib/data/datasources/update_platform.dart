@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/error/exceptions.dart';
 
 /// What installing an update takes on this device: Android hands the APK to
-/// the system installer; Windows swaps the app folder after the app exits.
+/// the system installer; Windows has an updater of its own.
 abstract interface class UpdatePlatform {
   /// The release's key for this platform's app (android, windows), or
   /// null where the app can't update itself.
@@ -26,7 +26,8 @@ class NativeUpdatePlatform implements UpdatePlatform {
   static const _channel = MethodChannel('dev.tether/update');
 
   @override
-  String? get key => Platform.isAndroid ? 'android' : (Platform.isWindows ? 'windows' : null);
+  // Windows updates through WinSparkle (see desktop_updater.dart), not through this.
+  String? get key => Platform.isAndroid ? 'android' : null;
 
   @override
   Future<Directory> downloads() async {
@@ -45,31 +46,7 @@ class NativeUpdatePlatform implements UpdatePlatform {
       }
       return;
     }
-    if (Platform.isWindows) return _applyOnExit(file);
-    throw const StorageException('this platform updates through its package manager');
-  }
-
-  /// Hands the unpacking to tether-updater.exe, a small program that ships
-  /// next to the app: it waits for this process to exit, swaps the app's
-  /// folder for the update, starts the new app and goes back to the old one
-  /// if the new one does not come up. It runs from a copy in the temp folder,
-  /// since it replaces the folder it lives in.
-  Future<void> _applyOnExit(File zip) async {
-    final app = File(Platform.resolvedExecutable).parent;
-    final updater = File('${app.path}${Platform.pathSeparator}$updaterName');
-    if (!await updater.exists()) {
-      throw const StorageException('this install has no updater; install the new version once by hand');
-    }
-    final work = await Directory.systemTemp.createTemp('tether-update-');
-    final copy = await updater.copy('${work.path}${Platform.pathSeparator}$updaterName');
-    final sep = Platform.pathSeparator;
-    await Process.start(
-      copy.path,
-      updaterArguments(zip: zip.path, app: app.path, appPid: pid, log: '${zip.parent.path}${sep}apply-update.log', ok: '${zip.parent.path}${sep}update-ok'),
-      // Not the app's folder, which it is about to replace.
-      workingDirectory: work.path,
-      mode: ProcessStartMode.detached,
-    );
+    throw const StorageException('this platform updates through its own updater');
   }
 
   @override
@@ -82,9 +59,3 @@ class NativeUpdatePlatform implements UpdatePlatform {
     }
   }
 }
-
-const updaterName = 'tether-updater.exe';
-
-/// The updater's command line.
-List<String> updaterArguments({required String zip, required String app, required int appPid, required String log, required String ok}) =>
-    ['-zip', zip, '-app', app, '-pid', '$appPid', '-log', log, '-ok', ok];

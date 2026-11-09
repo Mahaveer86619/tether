@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
+import 'data/datasources/desktop_updater.dart';
 import 'data/datasources/file_downloads.dart';
 import 'data/datasources/hub_cache.dart';
 import 'data/datasources/hub_probe.dart';
@@ -71,6 +72,7 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton<TailscaleRepository>(_tailscale)
       ..registerLazySingleton<HubProbe>(HttpHubProbe.new)
       ..registerLazySingleton<NotifyDevice>(_notifyDevice)
+      ..registerLazySingleton<DesktopUpdater>(() => Platform.isWindows ? WinSparkleUpdater() : const NoDesktopUpdater())
       ..registerLazySingleton<UpdateRepository>(() => UpdateRepositoryImpl(api: sl(), client: sl(), platform: sl(), local: sl()))
       ..registerLazySingleton<TransferRepository>(() => TransferRepositoryImpl(api: sl(), downloads: sl()), dispose: (r) => (r as TransferRepositoryImpl).dispose());
   }
@@ -121,7 +123,7 @@ void configureDependencies({bool withData = true}) {
     // View models
     ..registerFactory(() => NavCubit(watchHub: sl()))
     ..registerFactory(() => ChatsCubit(chats: sl()))
-    ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), exit: () => exit(0)))
+    ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), desktop: sl()))
     ..registerFactoryParam<NewChatCubit, String, void>((node, _) => NewChatCubit(chats: sl(), drafts: sl(), watchHub: sl(), node: node))
     ..registerFactoryParam<TargetPickerCubit, String, String>((prompt, node) => TargetPickerCubit(chats: sl(), prompt: prompt, node: node))
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))

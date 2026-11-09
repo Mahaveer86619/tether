@@ -192,10 +192,13 @@ class _AboutSectionState extends State<_AboutSection> {
   bool _checking = false;
 
   Future<void> _check() async {
+    final updates = context.read<UpdateCubit>();
     setState(() => _checking = true);
-    final found = await context.read<UpdateCubit>().checkNow();
+    final found = await updates.checkNow();
     if (!mounted) return;
     setState(() => _checking = false);
+    // The Windows updater answers in its own dialog.
+    if (updates.nativeDialog) return;
     showToast(
       context,
       switch (found) {

@@ -40,14 +40,13 @@ void main() {
   group('UpdateCubit', () {
     late FakeHubRepository hub;
     late FakeUpdateRepository updates;
-    var exited = false;
-    UpdateCubit cubit({String current = '0.17.0'}) =>
-        UpdateCubit(updates: AppUpdates(updates), watchHub: WatchHub(hub), current: current, exit: () => exited = true);
+    late FakeDesktopUpdater desktop;
+    UpdateCubit cubit({String current = '0.17.0'}) => UpdateCubit(updates: AppUpdates(updates), watchHub: WatchHub(hub), current: current, desktop: desktop);
 
     setUp(() {
       hub = FakeHubRepository(snapshotWith([]));
       updates = FakeUpdateRepository();
-      exited = false;
+      desktop = FakeDesktopUpdater();
     });
 
     test('a newer release the hub announces is offered once, and notified once', () async {
@@ -103,20 +102,26 @@ void main() {
       await c.update();
       expect(updates.installed, ['/tmp/update.bin']);
       expect(c.state.stage, UpdateStage.ready, reason: 'Install stays offered if the installer is cancelled');
-      expect(exited, isFalse);
       await c.close();
     });
 
-    test('on Windows it waits for Restart, then the app exits for the helper', () async {
-      updates = FakeUpdateRepository(platform: 'windows', release: release('0.18.0'));
+    test('on a desktop with an updater of its own, Check opens its dialog and the cubit stays out of it', () async {
+      desktop = FakeDesktopUpdater(available: true);
+      updates = FakeUpdateRepository(platform: null, release: release('0.18.0'));
       final c = cubit();
-      await c.check();
-      await c.update();
-      expect(c.state.stage, UpdateStage.ready);
-      expect(updates.installed, isEmpty);
-      await c.install();
-      expect(updates.installed, ['/tmp/update.bin']);
-      expect(exited, isTrue);
+      expect(c.nativeDialog, isTrue);
+      expect(await c.checkNow(), isNull);
+      expect(desktop.checks, 1);
+      expect(c.state.stage, UpdateStage.none, reason: 'no banner: the updater has its own dialog');
+      await c.close();
+    });
+
+    test('without one, Check looks at the releases itself', () async {
+      updates.release = release('0.18.0');
+      final c = cubit();
+      expect(c.nativeDialog, isFalse);
+      expect(await c.checkNow(), isTrue);
+      expect(desktop.checks, 0);
       await c.close();
     });
 

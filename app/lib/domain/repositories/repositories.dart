@@ -253,6 +253,18 @@ abstract interface class SettingsRepository {
 }
 
 /// Releases of the app: finding one, fetching it, installing it.
+/// The Windows app's own updater (WinSparkle): it checks the signed feed,
+/// shows its own dialogs, runs the installer and restarts the app.
+abstract interface class DesktopUpdater {
+  bool get available;
+
+  /// Points it at the feed and starts the scheduled checks.
+  Future<void> start();
+
+  /// Checks now, with its dialog.
+  Future<void> checkNow();
+}
+
 abstract interface class UpdateRepository {
   /// This platform's key in a release (android, windows), or null where
   /// the app can't update itself.

@@ -116,18 +116,11 @@ Flags:
 - `-updates-dir`
 - `-update-agents` (default on)
 
-**Apps** check at start, every 6 hours and whenever the hub pushes a release:
+**Apps** (Android) check at start, every 6 hours and whenever the hub pushes a release:
 
 - A newer release shows a banner with **What's new**, **Skip this version** and **Update**. On Android a system notification also announces it, once per version.
-- **Android:** the app downloads the APK from the hub, checks its sha256 and opens the system installer. That uses `REQUEST_INSTALL_PACKAGES` and a `FileProvider` on the cache's `updates/` folder. The first time, Android asks to allow installs from Tether.
-- **Windows:** the app downloads and checks the zip, then offers **Restart to update**. The release carries `tether-updater.exe` next to `tether.exe`, a small Go program (`server/cmd/tether-updater`, logic in `server/internal/winupdate`). The app copies it to a temp folder, starts it and exits. The updater:
-  1. waits for the app's process to exit;
-  2. unpacks the zip beside the app (`<folder>.new`), refusing paths that leave it, and checks `tether.exe` is there;
-  3. renames the app folder to `<folder>.prev` and the new one into its place;
-  4. starts the new app with `TETHER_UPDATE_OK` set to a file name, and waits up to 30 seconds for the app to write it, which it does after its first frame;
-  5. if the file never appears, kills the new app, puts `<folder>.prev` back and starts it again, leaving the zip for another try.
-
-  It logs to `apply-update.log` beside the download. It is a program, not a script, so execution policy and antivirus script rules do not touch it; `deploy/windows/install-app.ps1` and `build-windows.ps1` build it into the app folder. An install without it says to install the new version once by hand.
+- **Android:** the app reads the release from **GitHub first** (`releases/latest/download/latest.json`) and from the hub, and takes the newer; on a tie GitHub wins, so a published release needs no hub. It downloads the APK (from GitHub, or from the hub for a build only the hub has), checks its sha256 and opens the system installer, which checks the APK is signed with the same key as the installed app. That uses `REQUEST_INSTALL_PACKAGES` and a `FileProvider` on the cache's `updates/` folder. The first time, Android asks to allow installs from Tether.
+- **Windows:** see [Windows updates](#windows-updates). The app has no banner for it; the updater has its own dialog.
 - A release whose `min_supported` is above the app's version replaces the whole app with an update screen, and can't be skipped.
 
 **Agents** from 0.17 update themselves:
@@ -140,6 +133,24 @@ Flags:
   4. exits with code 75. On Linux systemd restarts it; on Windows it first asks Task Scheduler to start "Tether Agent" again.
 - On start, the agent counts the starts in `<exe>.update`. Reaching the hub confirms the update and removes the file. After three starts that never reach the hub, it puts `<exe>.prev` back and restarts.
 - Turn this off with `-self-update=false`. Agents older than 0.17 are updated by hand, once.
+
+## Windows updates
+
+The Windows app updates itself with WinSparkle, through the `auto_updater` package. It reads `appcast.xml` from the latest GitHub release (`https://github.com/Mahaveer86619/tether/releases/latest/download/appcast.xml`), and when there is a newer version it shows WinSparkle's own dialog with the release notes. On Install it downloads `Tether-Setup-<version>.exe` from the same release, **checks its signature against the public key built into the app**, closes the app, runs the installer with `/SILENT` and starts the app again. The hub is not involved.
+
+What each part is:
+
+| Part | Where |
+|---|---|
+| The installer (Inno Setup; per user, into `%LOCALAPPDATA%\Programs\Tether`, the same folder as before, so it upgrades an existing copy in place) | `deploy/windows/tether.iss`, built by `tools/release/build-windows.ps1` when `ISCC.exe` is there (GitHub's Windows runners have it) |
+| The appcast: one item with the installer's URL, size, version (`X.Y.Z+code`, as the app's own version reads), `/SILENT`, the notes from `CHANGELOG.md`, and the **signature** | `tools/release/appcast.sh` |
+| The signing key: a DSA key pair made as WinSparkle's own `generate_keys` does (`openssl dsaparam 4096`, `gendsa`). The **public** half is in the app (`app/dsa_pub.pem`, compiled into `Runner.rc`). The **private** half is the GitHub secret `APPCAST_DSA_PRIVATE_KEY` and a copy kept somewhere safe | `appcast.sh` refuses to write a feed whose signature the app's public key does not verify |
+
+**Lose the private key and no installed Windows app can update again**: they would need the new installer by hand. Keep a copy offline.
+
+To make a key pair (once): `openssl dsaparam -out p.pem 4096 && openssl gendsa -out dsa_priv.pem p.pem && openssl dsa -in dsa_priv.pem -pubout -out dsa_pub.pem`, put `dsa_pub.pem` at `app/dsa_pub.pem`, and `dsa_priv.pem` into the secret (`gh secret set APPCAST_DSA_PRIVATE_KEY < dsa_priv.pem`).
+
+An app older than this one (0.17.x) updates through the hub's zip once, to the first release that has the new updater; keep publishing `tether-windows-<version>.zip` until the last of those has moved, then stop.
 
 ## Signing
 
