@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"time"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
@@ -26,6 +27,9 @@ type TunnelConfig struct {
 	// PublicURL is an address the owner already routes to the listener (a
 	// named tunnel or a reverse proxy); it is published as it is.
 	PublicURL string
+	// Tunneld hands the tunnel to an on-demand-tunnel-cf server instead of
+	// running cloudflared here; see tunneld.go.
+	Tunneld *TunneldConfig
 	// Addr is where the scoped listener binds; empty picks a free local port.
 	Addr string
 }
@@ -57,6 +61,11 @@ func (h *Hub) StartNotifyTunnel(ctx context.Context, cfg TunnelConfig) error {
 	switch {
 	case cfg.PublicURL != "":
 		h.setNotifyURL(cfg.PublicURL)
+	case cfg.Tunneld != nil:
+		if _, p, err := net.SplitHostPort(ln.Addr().String()); err == nil {
+			port, _ := strconv.Atoi(p)
+			go h.runTunneld(ctx, *cfg.Tunneld, port)
+		}
 	case cfg.Cloudflared != "":
 		go h.runTunnel(ctx, cfg.Cloudflared, ln.Addr().String())
 	}

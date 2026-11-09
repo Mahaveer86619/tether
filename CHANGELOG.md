@@ -4,7 +4,10 @@ Each release's section becomes its release notes and the notes the apps show. Ke
 
 ## 0.17.6
 
-- **Fix: the Windows update could not replace the app.** The updater inherited the app's folder as its working directory, and Windows will not rename a folder a program is working in, so the swap failed after ten seconds and the old version came back. The updater now steps out of the folder first, and is started from a temporary one. Confirmed by running it the way the app does, on the real install.
+- **Smooth, like a phone.** Lists bounce at their ends, pages slide in and swipe back, switching between Home, Chats, Devices and the rest cross-fades, and chats, files and messages fade in as they are loaded, including the ones you scroll up to. Every page leaves 15% of the screen empty under its last item.
+- **Pull down to refresh** on Home, Chats, Devices, History, Files, Usage, Routines and Settings; in a chat, pull the oldest message down.
+- **Windows updates through WinSparkle.** The desktop app checks a signed `appcast.xml` on the GitHub release and installs with the setup program, which swaps the app cleanly. Android reads GitHub first and the hub second. Windows apps older than this one still update from the zip, one last time.
+- **The notification tunnel can run in Docker.** The hub gives the tunnel to an on-demand-tunnel-cf service (`-tunneld`), asks it for the current address and sends that to every app, so the address stays in sync as it changes.
 
 ## 0.17.5
 

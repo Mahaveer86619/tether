@@ -38,6 +38,8 @@ func main() {
 	cloudflared := flag.String("cloudflared", "cloudflared", "the cloudflared program for -notify-tunnel")
 	notifyURL := flag.String("notify-url", "", "a public address you already route to the notification listener (instead of a quick tunnel)")
 	notifyAddr := flag.String("notify-addr", "", "where the notification listener binds (default: a free local port); needed with -notify-url")
+	tunneldURL := flag.String("tunneld", "", "an on-demand-tunnel-cf server (like http://127.0.0.1:7171) that owns the notification tunnel and says its address; its token is TETHER_TUNNELD_TOKEN")
+	tunneldName := flag.String("tunneld-name", "tether-notify", "the notification tunnel's name in tunneld")
 	notifyBodies := flag.Bool("notify-bodies", false, "send notification text through the tunnel too; the tunnel's operator can read it")
 	flag.Parse()
 
@@ -96,8 +98,15 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go h.Run(ctx)
-	if *notifyTunnel || *notifyURL != "" {
+	if *notifyTunnel || *notifyURL != "" || *tunneldURL != "" {
 		tc := hub.TunnelConfig{PublicURL: *notifyURL, Addr: *notifyAddr}
+		if *tunneldURL != "" && *notifyURL == "" {
+			tc.Tunneld = &hub.TunneldConfig{URL: *tunneldURL, Token: os.Getenv("TETHER_TUNNELD_TOKEN"), Name: *tunneldName}
+			// tunneld runs in Docker and reaches the host's ports, so a loopback listener is out of its reach.
+			if tc.Addr == "" {
+				tc.Addr = "0.0.0.0:7421"
+			}
+		}
 		if *notifyTunnel {
 			tc.Cloudflared = *cloudflared
 		}
