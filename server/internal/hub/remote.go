@@ -79,6 +79,8 @@ func (h *Hub) remoteRoutes(mux *http.ServeMux) {
 		var in struct {
 			On   bool   `json:"on"`
 			Node string `json:"node"`
+			// AllowSecrets lets Node receive the project's vault files.
+			AllowSecrets bool `json:"allow_secrets"`
 		}
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody)).Decode(&in) != nil {
 			writeError(w, invalid("malformed JSON"))
@@ -88,7 +90,7 @@ func (h *Hub) remoteRoutes(mux *http.ServeMux) {
 		defer h.mu.Unlock()
 		var err *opError
 		if in.On {
-			err = h.makeRemote(r.PathValue("id"), in.Node, clientName(r))
+			err = h.makeRemote(r.PathValue("id"), in.Node, in.AllowSecrets, clientName(r))
 		} else {
 			err = h.stopRemote(r.PathValue("id"))
 		}
@@ -109,7 +111,7 @@ func writeJSONPlain(w http.ResponseWriter, status int, v any) {
 // makeRemote starts making a chat remote: it pushes the chat's folder, has
 // mirrorNode pull it, and moves the chat there. It answers at once; the rest
 // happens as the agents report. Caller holds h.mu.
-func (h *Hub) makeRemote(chat, mirrorNode, from string) *opError {
+func (h *Hub) makeRemote(chat, mirrorNode string, allowSecrets bool, from string) *opError {
 	c := h.chats[chat]
 	if c == nil {
 		return errChatNotFound
@@ -134,6 +136,12 @@ func (h *Hub) makeRemote(chat, mirrorNode, from string) *opError {
 	if _, err := h.ensureRepo(repo); err != nil {
 		h.log.Warn("repo", "repo", repo, "err", err)
 		return &opError{"internal", "could not make the repository on the hub: " + err.Error(), http.StatusInternalServerError}
+	}
+	if allowSecrets {
+		if err := h.store.SetProjectNode(repo, mirrorNode, true); err != nil {
+			return &opError{"internal", err.Error(), http.StatusInternalServerError}
+		}
+		h.audit(from, "project-device", repo+"/"+mirrorNode, "allowed", true)
 	}
 	rem := store.ChatRemote{
 		Chat: chat, Repo: repo, Branch: "chat-" + chat,

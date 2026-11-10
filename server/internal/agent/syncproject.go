@@ -1,7 +1,10 @@
 package agent
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -63,6 +66,9 @@ func (a *Agent) runSync(c *v1.AgentCommand_SyncProject, res *v1.SyncResult) erro
 			return err
 		}
 		res.Head, _ = gitsync.Head(cwd)
+		if err := a.writeProjectFiles(cwd, c.Repo); err != nil {
+			return err
+		}
 	default:
 		return errors.New("unknown direction " + c.Direction)
 	}
@@ -85,4 +91,59 @@ func (a *Agent) repoRemote(repo string) (gitsync.Remote, error) {
 	}
 	base := scheme + "://" + u.Host
 	return gitsync.Remote{URL: base + "/git/" + strings.TrimSuffix(repo, ".git") + ".git", Token: a.cfg.Token}, nil
+}
+
+// writeProjectFiles puts the project's vault files into the folder (mode 600,
+// and kept out of git), if the owner has allowed this device. A device that
+// is not allowed just gets the code.
+func (a *Agent) writeProjectFiles(cwd, repo string) error {
+	remote, err := a.repoRemote(repo)
+	if err != nil {
+		return err
+	}
+	base := strings.TrimSuffix(remote.URL, "/git/"+repo+".git")
+	req, err := http.NewRequest(http.MethodGet, base+"/api/v1/projects/"+repo+"/files/content?node="+url.QueryEscape(a.cfg.Node), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+a.cfg.Token)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode == http.StatusForbidden {
+		return nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("the hub's vault answered %d", res.StatusCode)
+	}
+	var body struct {
+		Files []struct {
+			Path    string `json:"path"`
+			Content string `json:"content"`
+		} `json:"files"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		return err
+	}
+	var paths []string
+	for _, f := range body.Files {
+		rel := filepath.FromSlash(f.Path)
+		if filepath.IsAbs(rel) || strings.HasPrefix(filepath.Clean(rel), "..") {
+			continue
+		}
+		dest := filepath.Join(cwd, rel)
+		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(dest, []byte(f.Content), 0o600); err != nil {
+			return err
+		}
+		paths = append(paths, f.Path)
+	}
+	if len(paths) == 0 {
+		return nil
+	}
+	return gitsync.Exclude(cwd, paths...)
 }

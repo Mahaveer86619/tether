@@ -180,6 +180,21 @@ var migrations = []string{
 		error       TEXT NOT NULL,
 		synced_ms   INTEGER NOT NULL
 	)`,
+	// Files a remote project needs that git does not hold (.env, config.json),
+	// sealed like the codebase vault, and the devices allowed to receive them.
+	`CREATE TABLE project_files (
+		repo       TEXT NOT NULL,
+		path       TEXT NOT NULL,
+		nonce      BLOB NOT NULL,
+		sealed     BLOB NOT NULL,
+		updated_ms INTEGER NOT NULL,
+		PRIMARY KEY (repo, path)
+	);
+	CREATE TABLE project_nodes (
+		repo TEXT NOT NULL,
+		node TEXT NOT NULL,
+		PRIMARY KEY (repo, node)
+	)`,
 }
 
 type Store struct {

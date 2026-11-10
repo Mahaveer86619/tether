@@ -224,6 +224,7 @@ func (h *Hub) Handler() http.Handler {
 	h.routes(mux)
 	h.repoRoutes(mux)
 	h.remoteRoutes(mux)
+	h.projectFileRoutes(mux)
 	mux.HandleFunc("GET /api/v1/hello", h.hello)
 	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })

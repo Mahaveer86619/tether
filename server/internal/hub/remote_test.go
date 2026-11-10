@@ -2,6 +2,8 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,6 +59,9 @@ func fakeNode(t *testing.T, h *Hub, url, name string, pullInto string) {
 				if err2 = gitsync.Exclude(res.Cwd, c.Exclude...); err2 == nil {
 					err2 = gitsync.Pull(res.Cwd, remote, c.Branch)
 				}
+				if err2 == nil {
+					err2 = fetchVault(url, c.Repo, name, res.Cwd)
+				}
 			}
 			if err2 != nil {
 				res.Ok, res.Error = false, err2.Error()
@@ -97,11 +102,21 @@ func TestMakingAChatRemoteMovesItsProjectToAnotherDeviceAndKeepsBothInStep(t *te
 		t.Fatal(err)
 	}
 	c := postChat(t, srv, "/api/v1/chats", `{"prompt":"work on it","target":{"node":"laptop","cwd":`+jsonString(laptopDir)+`}}`)
+	repo := repoName("laptop", laptopDir)
+	if code, body := call(t, srv, "PUT", "/api/v1/projects/"+repo+"/files", "secret", `{"path":".env","content":"KEY=from-the-vault"}`); code != 200 {
+		t.Fatalf("vault put: %d %s", code, body)
+	}
+	if code, body := call(t, srv, "GET", "/api/v1/projects/"+repo+"/files", "secret", ""); code != 200 || !strings.Contains(body, `"KEY"`) || strings.Contains(body, "from-the-vault") {
+		t.Fatalf("the list shows key names, not values: %d %s", code, body)
+	}
+	if code, _ := call(t, srv, "GET", "/api/v1/projects/"+repo+"/files/content?node=minipc", "secret", ""); code != 403 {
+		t.Fatalf("a device that was not allowed got the files: %d", code)
+	}
 
 	if code, _ := call(t, srv, "POST", "/api/v1/chats/"+c.Id+"/remote", "secret", `{"on":true,"node":"laptop"}`); code != 400 {
 		t.Fatalf("making it remote on the device it is on: %d", code)
 	}
-	if code, body := call(t, srv, "POST", "/api/v1/chats/"+c.Id+"/remote", "secret", `{"on":true,"node":"minipc"}`); code != 202 {
+	if code, body := call(t, srv, "POST", "/api/v1/chats/"+c.Id+"/remote", "secret", `{"on":true,"node":"minipc","allow_secrets":true}`); code != 202 {
 		t.Fatalf("make remote: %d %s", code, body)
 	}
 
@@ -115,8 +130,8 @@ func TestMakingAChatRemoteMovesItsProjectToAnotherDeviceAndKeepsBothInStep(t *te
 	if got, _ := os.ReadFile(filepath.Join(miniDir, "main.go")); string(got) != "package main" {
 		t.Fatalf("the project did not reach minipc: %q", got)
 	}
-	if _, err := os.Stat(filepath.Join(miniDir, ".env")); err == nil {
-		t.Fatal("a secret was synced")
+	if got, _ := os.ReadFile(filepath.Join(miniDir, ".env")); string(got) != "KEY=from-the-vault" {
+		t.Fatalf("the vault file did not reach minipc, or git carried laptop's secret: %q", got)
 	}
 	h.mu.Lock()
 	rem, _, _ := h.store.ChatRemote(c.Id)
@@ -151,4 +166,31 @@ func TestMakingAChatRemoteMovesItsProjectToAnotherDeviceAndKeepsBothInStep(t *te
 func jsonString(s string) string {
 	b := strings.ReplaceAll(s, `\`, `\\`)
 	return `"` + b + `"`
+}
+
+// fetchVault does what the agent does after a pull: asks the hub for the
+// project's files and writes them, if it may.
+func fetchVault(url, repo, node, cwd string) error {
+	req, _ := http.NewRequest("GET", url+"/api/v1/projects/"+repo+"/files/content?node="+node, nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return nil
+	}
+	var body struct {
+		Files []projectFileContent `json:"files"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		return err
+	}
+	for _, f := range body.Files {
+		if err := os.WriteFile(filepath.Join(cwd, f.Path), []byte(f.Content), 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
