@@ -229,6 +229,33 @@ class HubRestApi {
     return json['session'] as String? ?? '';
   }
 
+  /// A chat's remote setup; plain JSON.
+  Future<Map<String, dynamic>> chatRemote(String chat) =>
+      _jsonMap(() => _client.get(_endpoint.api('/chats/${Uri.encodeComponent(chat)}/remote'), headers: _headers));
+
+  Future<void> setChatRemote(String chat, Map<String, Object?> body) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/remote'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
+  Future<Map<String, dynamic>> projectFiles(String repo) =>
+      _jsonMap(() => _client.get(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files'), headers: _headers));
+
+  Future<void> putProjectFile(String repo, String path, String content) => _jsonMap(
+        () => _client.put(
+          _endpoint.api('/projects/${Uri.encodeComponent(repo)}/files'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode({'path': path, 'content': content}),
+        ),
+      );
+
+  Future<void> deleteProjectFile(String repo, String path) => _jsonMap(
+        () => _client.delete(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files', {'path': path}), headers: _headers),
+      );
+
   Future<Map<String, dynamic>> _jsonMap(Future<http.Response> Function() request) async {
     final json = await _sendJson(request);
     if (json is! Map<String, dynamic>) throw const ProtocolException('unexpected response shape');

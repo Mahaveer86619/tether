@@ -105,6 +105,12 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  /// Whether a chat keeps its project folder in step on another device.
+  Future<Result<ChatRemote>> chatRemote(String chatId);
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false});
+  Future<Result<List<ProjectFile>>> projectFiles(String repo);
+  Future<Result<void>> putProjectFile(String repo, String path, String content);
+  Future<Result<void>> deleteProjectFile(String repo, String path);
   Future<Result<List<SkillInfo>>> skills();
   Future<Result<SkillDetail>> skill(String name);
   Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0});

@@ -486,6 +486,22 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<ChatRemote>> chatRemote(String chatId) => _command(() async => chatRemoteFromJson(await _api.chatRemote(chatId)));
+
+  @override
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false}) =>
+      _command(() => _api.setChatRemote(chatId, {'on': on, if (node.isNotEmpty) 'node': node, 'allow_secrets': allowSecrets}));
+
+  @override
+  Future<Result<List<ProjectFile>>> projectFiles(String repo) => _command(() async => projectFilesFromJson(await _api.projectFiles(repo)));
+
+  @override
+  Future<Result<void>> putProjectFile(String repo, String path, String content) => _command(() => _api.putProjectFile(repo, path, content));
+
+  @override
+  Future<Result<void>> deleteProjectFile(String repo, String path) => _command(() => _api.deleteProjectFile(repo, path));
+
+  @override
   Future<Result<List<SkillInfo>>> skills() => _command(() async => skillsFromJson(await _api.skills()));
 
   @override

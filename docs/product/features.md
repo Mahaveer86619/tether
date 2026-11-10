@@ -33,6 +33,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 | Ask for a thing and get the file in the chat (an APK built on the laptop, a CSV, a report) with Download and Install | Planned | Chat screen | [deliverables.md](../plans/deliverables.md) | `present_file`, the drop folder, result card, Install |
 | A chat's Files panel: everything sent and made, easy to find | Planned | Chat screen | [deliverables.md](../plans/deliverables.md#4-the-chats-files-panel) | Only the global Files screen exists |
 | Codebase snapshots and the `.env` vault | Built | Settings | [plan.md](../plans/plan.md#codebases-on-the-hub) | |
+| A chat made remote: its project kept in step on another device through git on the hub, with sealed setup files | Built (basic) | Chat header, cloud icon | [remote-projects.md](../plans/remote-projects.md) | Live sync lines on Home, import of existing `.env`, `tetherctl` commands |
 | Session history kept on the hub, with export for a second brain | Partly | Not shown in the app | [plan.md](../plans/plan.md) | History views in the app |
 
 ## 3. Learning and automation

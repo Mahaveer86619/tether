@@ -105,6 +105,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
     ..registerLazySingleton(() => Notifications(sl(), sl(), sl()))
     ..registerLazySingleton(() => Skills(sl()))
+    ..registerLazySingleton(() => RemoteProjects(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))

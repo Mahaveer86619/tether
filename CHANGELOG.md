@@ -7,6 +7,8 @@ Each release's section becomes its release notes and the notes the apps show. Ke
 - **Home is a chat app.** It opens on a new chat: a greeting, the folders you work in to pick from, and the message box at the bottom. Tether still picks the folder for you when you don't. A switch at the top, New | Chats, goes to the list of every chat.
 - **One side menu, no bottom bar.** On a phone the menu button opens it; on a desktop it sits beside the page and folds away. It holds New chat, Devices, History, Files, Routines and Usage, **Projects** (the folders you continue work in, each with its chats) and **Chats** (everything, one-off questions included).
 
+- **Remote projects.** A cloud icon in a chat opens *Remote project*: pick another device and the project's folder is copied there through git on the hub, the chat moves there, and after every turn the folder that was worked in is sent up and the other one follows. Only one device writes at a time, and your own branch and uncommitted work are never rewritten. A project's `.env` and config files are kept sealed on the hub instead of in git, set up from the same sheet, and written only to devices you allow.
+
 ## 0.17.6
 
 - **Smooth, like a phone.** Lists bounce at their ends, pages slide in and swipe back, switching between Home, Chats, Devices and the rest cross-fades, and chats, files and messages fade in as they are loaded, including the ones you scroll up to. Every page leaves 15% of the screen empty under its last item.

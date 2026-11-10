@@ -151,6 +151,35 @@ class FakeHubRepository implements HubRepository {
   final skillDecisions = <(String, SkillDecision, int)>[];
   final skillDrafts = <String>[];
 
+  ChatRemote remote = const ChatRemote();
+  final projectFileList = <String, List<ProjectFile>>{};
+  final remoteCalls = <String>[];
+
+  @override
+  Future<Result<ChatRemote>> chatRemote(String chatId) async => Ok(remote);
+
+  @override
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false}) async {
+    remoteCalls.add('${on ? 'on' : 'off'}:$chatId:$node:$allowSecrets');
+    remote = on ? ChatRemote(on: true, repo: remote.repo, sourceNode: node, mirrorNode: 'laptop', state: 'synced') : ChatRemote(repo: remote.repo);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<List<ProjectFile>>> projectFiles(String repo) async => Ok(projectFileList[repo] ?? const []);
+
+  @override
+  Future<Result<void>> putProjectFile(String repo, String path, String content) async {
+    projectFileList[repo] = [...(projectFileList[repo] ?? const []).where((f) => f.path != path), ProjectFile(path: path, keys: [for (final l in content.split('\n')) if (l.contains('=')) l.split('=').first])];
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteProjectFile(String repo, String path) async {
+    projectFileList[repo] = [...(projectFileList[repo] ?? const []).where((f) => f.path != path)];
+    return const Ok(null);
+  }
+
   @override
   Future<Result<List<SkillInfo>>> skills() async => Ok(skillList);
 

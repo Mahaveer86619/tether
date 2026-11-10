@@ -357,3 +357,26 @@ SkillDetail skillDetailFromJson(Map<String, dynamic> m) {
     versions: versions,
   );
 }
+
+ChatRemote chatRemoteFromJson(Map<String, dynamic> m) {
+  final r = m['remote'] as Map<String, dynamic>? ?? const {};
+  final ms = (r['synced_ms'] as num?)?.toInt() ?? 0;
+  return ChatRemote(
+    on: m['on'] == true,
+    repo: (r['repo'] ?? m['repo']) as String? ?? '',
+    sourceNode: r['source_node'] as String? ?? '',
+    mirrorNode: r['mirror_node'] as String? ?? '',
+    state: r['state'] as String? ?? '',
+    error: r['error'] as String? ?? '',
+    synced: ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
+  );
+}
+
+List<ProjectFile> projectFilesFromJson(Map<String, dynamic> m) => [
+      for (final f in m['files'] as List<dynamic>? ?? const [])
+        ProjectFile(
+          path: (f as Map<String, dynamic>)['path'] as String? ?? '',
+          keys: [for (final k in f['keys'] as List<dynamic>? ?? const []) k as String],
+          updated: ((f['updated_ms'] as num?)?.toInt() ?? 0) > 0 ? DateTime.fromMillisecondsSinceEpoch((f['updated_ms'] as num).toInt()) : null,
+        ),
+    ];

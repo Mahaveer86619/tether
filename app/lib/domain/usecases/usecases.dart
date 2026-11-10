@@ -433,6 +433,19 @@ class LoadRoutines {
   Future<Result<RoutineReport>> call({int days = 30, int runs = 3}) => _hub.routines(days: days, runs: runs);
 }
 
+/// A chat's project kept in step on another device, and the files the hub
+/// keeps for it.
+class RemoteProjects {
+  const RemoteProjects(this._hub);
+  final HubRepository _hub;
+  Future<Result<ChatRemote>> status(String chatId) => _hub.chatRemote(chatId);
+  Future<Result<void>> start(String chatId, {required String node, required bool allowSecrets}) => _hub.setChatRemote(chatId, on: true, node: node, allowSecrets: allowSecrets);
+  Future<Result<void>> stop(String chatId) => _hub.setChatRemote(chatId, on: false);
+  Future<Result<List<ProjectFile>>> files(String repo) => _hub.projectFiles(repo);
+  Future<Result<void>> saveFile(String repo, String path, String content) => _hub.putProjectFile(repo, path, content);
+  Future<Result<void>> removeFile(String repo, String path) => _hub.deleteProjectFile(repo, path);
+}
+
 /// The skills library: read it, decide on a proposal, go back a version, ask for a draft.
 class Skills {
   const Skills(this._hub);

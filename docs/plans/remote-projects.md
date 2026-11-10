@@ -1,6 +1,6 @@
 # Remote projects: the hub runs the work, devices follow
 
-Plan, not built. It extends [chats](../architecture/chats.md) and the codebase snapshots and `.env` vault in [plan.md](plan.md#codebases-on-the-hub).
+Built in 0.17.7 (the hub, the agents and a sheet in the chat). It extends [chats](../architecture/chats.md) and the codebase snapshots and `.env` vault in [plan.md](plan.md#codebases-on-the-hub).
 
 ## What the owner wants
 
@@ -43,7 +43,18 @@ Extend the existing vault from `.env` files found in codebases to **project file
 
 The hub already broadcasts session and timeline changes. Added: a per-chat **tasks** summary (which device, what it is doing, last event, how long) kept up to date as the leading session starts and finishes remote sessions, shown on Home under Running and in the chat; and sync state for a remote project (pushed, pulling, behind, conflict refused) as one line per device.
 
-## Order of work
+## What is built
+
+- **Hub repos** (`hub/repos.go`): `POST /api/v1/repos`, and `/git/<id>.git` served by `git http-backend` behind the hub's token. Repository ids are the folder name plus a short hash of its device and path.
+- **`gitsync`** (`internal/gitsync`): `Snapshot` commits the folder to its own ref (`refs/tether/<branch>`) using a private index, so the person's branch, index and stash are untouched; `Push` sends it to `tether/<branch>` on the hub; `Pull` fetches it and checks it out, refusing (`ErrDirty`) if the folder changed since its last sync, and treating a former writer as unchanged while it still matches what it last pushed. Files deleted by the writer are removed on the follower.
+- **Chat remote state** (`hub/remote.go`, table `chat_remote`): `POST /chats/{id}/remote` pushes from the chat's device, pulls on the chosen one, then moves the chat there with the existing move, which makes it the writer and the old device the follower. After every turn (`noteTurnEnded`) the writer pushes and the follower pulls. A sync that gets no answer in five minutes is marked failed.
+- **Agents**: the `SyncProject` command runs `gitsync` against the hub with the agent's own token; after a pull it asks the hub for the project's setup files and writes them (mode 600, excluded from git) if the device is allowed.
+- **Vault** (`hub/projectfiles.go`, tables `project_files`, `project_nodes`): setup files sealed with the hub's `secrets.key`, listed by key names only, served only to allowed devices.
+- **App**: a cloud icon in the chat header opens the Remote project sheet: pick a device and whether it may receive the setup files, make it remote, watch it sync (it looks again every three seconds while working), stop; and add, replace or delete setup files, whose values are never shown.
+
+Not yet: sync lines for remote projects on Home, importing the `.env` files a device already has, `tetherctl` commands for setup files, a per-device switch in the app after the first time, merging `tether/<chat>` back into the main branch.
+
+## Order of work (as planned)
 
 1. **Hub repos and transport** (Go): bare repos, `git http-backend` handler, token auth, agent push/pull of a branch, tests against a temp repo. Needs `git` on the hub and agents (the doctor already checks it).
 2. **Lease and sync loop** in the agent: commit at end of turn, push, pull on lease change; refusal when a second writer appears.

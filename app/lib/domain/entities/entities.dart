@@ -1150,6 +1150,42 @@ class Chat extends Equatable {
   List<Object?> get props => [id, title, titleByUser, created, updated, archived, target, activeSession, links];
 }
 
+/// Whether a chat keeps its project folder in step on two devices, and how
+/// that is going. A project's files (the .env and config the hub keeps for
+/// it) are named by [repo], which is set even before the chat is remote.
+class ChatRemote extends Equatable {
+  const ChatRemote({this.on = false, this.repo = '', this.sourceNode = '', this.mirrorNode = '', this.state = '', this.error = '', this.synced});
+
+  final bool on;
+  final String repo;
+
+  /// The device whose folder is pushed after each turn, and the one that follows.
+  final String sourceNode, mirrorNode;
+
+  /// pending, syncing, synced or failed.
+  final String state, error;
+  final DateTime? synced;
+
+  bool get working => on && (state == 'syncing' || state == 'pending');
+  bool get failed => on && state == 'failed';
+
+  @override
+  List<Object?> get props => [on, repo, sourceNode, mirrorNode, state, error, synced];
+}
+
+/// A file the hub keeps for a project, for the devices that run it: its
+/// path and the names of the keys in it, never the values.
+class ProjectFile extends Equatable {
+  const ProjectFile({required this.path, this.keys = const [], this.updated});
+
+  final String path;
+  final List<String> keys;
+  final DateTime? updated;
+
+  @override
+  List<Object?> get props => [path, keys, updated];
+}
+
 class NewChatRequest extends Equatable {
   const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = ''});
 

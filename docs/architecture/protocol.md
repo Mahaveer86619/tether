@@ -85,9 +85,17 @@ The same commands are available over HTTP, with `Authorization: Bearer <TETHER_T
 | `POST /api/v1/chats/{id}/target` | `SetChatTarget {target, move, text}` | `Chat`. With `move`, the conversation carries over to a new session there. |
 | `POST /api/v1/chats/{id}/links` | `LinkSession {session, role, unlink}` | `Chat` |
 | `GET /api/v1/chats/{id}/context` | | `ChatContext {chat, messages, notes}`: everything said in the chat, kept after its sessions go, plus what post-processing jobs made of it |
+| `POST /api/v1/repos` | `{id}` | `{id, path}`. Makes the hub's bare git repository for a project; `/git/<id>.git` is then served by git's `http-backend` to any valid token (apps, agents), for `git clone/fetch/push`. |
+| `GET /api/v1/chats/{id}/remote` | | Plain JSON: `{on, repo, remote:{repo, branch, source_node, source_cwd, mirror_node, mirror_cwd, state, error, synced_ms}}`. `repo` is set for a chat in a project folder even when `on` is false. `state`: pending, syncing, synced, failed. |
+| `POST /api/v1/chats/{id}/remote` | `{on, node, allow_secrets}` | 202. On: pushes the chat's folder, has `node` pull it, and moves the chat there. Off: stops syncing; both copies stay. |
+| `GET /api/v1/projects/{repo}/files` | | `{files:[{path, keys, updated_ms}]}`: the project's setup files by path, with key names for `.env`-style files; never values |
+| `PUT /api/v1/projects/{repo}/files` | `{path, content}` | Seals a setup file in the vault. Paths stay inside the project; 256 KB at most. |
+| `DELETE /api/v1/projects/{repo}/files?path=` | | |
+| `GET /api/v1/projects/{repo}/files/content?node=` | | The files with their contents, for an agent that has pulled the project. 403 unless the device is allowed (`POST /devices`). |
+| `GET`, `POST /api/v1/projects/{repo}/devices` | `{node, allow}` | The devices allowed to receive the project's files. |
 | `GET /api/v1/targets?prompt=` | | `TargetSuggestions {candidates, pick}`: the folders the user works in, best match for the prompt first, and what auto would pick |
 
-Agents also use: `POST /api/v1/codebases/found` (`FoundCodebases`, what a scan of the workspace roots found), `POST /api/v1/codebases/{id}/manifest` (a `SnapshotManifest`; answers `MissingBlobs`), `PUT /api/v1/blobs/{sha}` (one file, checked against its hash), `POST /api/v1/codebases/{id}/snapshots` (records the snapshot), `POST /api/v1/codebases/{id}/error`, and `PUT /api/v1/codebases/{id}/env` (`EnvFiles`, sealed into the vault). To restore, the hub machine's agent reads `GET /api/v1/snapshots/{id}/manifest`, `GET /api/v1/blobs/{sha}` and `GET /api/v1/codebases/{id}/env/files`; the last one only answers requests from the hub's own machine.
+Agents also use the `SyncProject` command and its `SyncResult` frame (push the folder to the hub's repository, or pull it; see [remote-projects.md](../plans/remote-projects.md)), and `POST /api/v1/codebases/found` (`FoundCodebases`, what a scan of the workspace roots found), `POST /api/v1/codebases/{id}/manifest` (a `SnapshotManifest`; answers `MissingBlobs`), `PUT /api/v1/blobs/{sha}` (one file, checked against its hash), `POST /api/v1/codebases/{id}/snapshots` (records the snapshot), `POST /api/v1/codebases/{id}/error`, and `PUT /api/v1/codebases/{id}/env` (`EnvFiles`, sealed into the vault). To restore, the hub machine's agent reads `GET /api/v1/snapshots/{id}/manifest`, `GET /api/v1/blobs/{sha}` and `GET /api/v1/codebases/{id}/env/files`; the last one only answers requests from the hub's own machine.
 
 Errors are an `Error {code, message}` body with a matching status: `unauthorized` 401, `invalid_code` 401, `invalid` 400, `not_found` 404, `terminal_active` 409, `busy` 409, `rate_limited` 429, `node_offline` 503.
 

@@ -70,7 +70,14 @@ func (h *Hub) remoteRoutes(mux *http.ServeMux) {
 			return
 		}
 		if !ok {
-			writeJSONPlain(w, http.StatusOK, map[string]any{"on": false})
+			// Not remote yet: say which project the chat is in, so its files can be set up first.
+			out := map[string]any{"on": false}
+			if c := h.chats[r.PathValue("id")]; c != nil {
+				if s := h.sessions[c.ActiveSession]; s != nil && !s.Scratch && s.Node != "" && isProject(s.Cwd) {
+					out["repo"] = repoName(s.Node, s.Cwd)
+				}
+			}
+			writeJSONPlain(w, http.StatusOK, out)
 			return
 		}
 		writeJSONPlain(w, http.StatusOK, map[string]any{"on": true, "remote": rem})

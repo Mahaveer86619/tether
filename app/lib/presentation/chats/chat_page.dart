@@ -14,6 +14,7 @@ import '../widgets/timeline_item_view.dart';
 import 'chat_tasks.dart';
 import 'chats_cubit.dart';
 import 'chats_page.dart';
+import 'remote_sheet.dart';
 import 'target_picker.dart';
 
 /// A chat: its active session's conversation under the chat's own title,
@@ -182,6 +183,13 @@ class ChatTargetBar extends StatelessWidget {
             ),
           ),
           if (busy) const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))),
+          IconButton(
+            key: const Key('remote-chat'),
+            tooltip: 'Remote project',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.cloud_sync_outlined, size: 18, color: c.muted),
+            onPressed: () => showRemoteSheet(context, chat),
+          ),
           TextButton(
             key: const Key('change-target'),
             onPressed: busy ? null : () => _change(context),
