@@ -71,6 +71,8 @@ message Frame {
     // a sync run.
     HistoryChunk history_chunk = 58;
     HistorySynced history_synced = 59;
+    // How a SyncProject went (agent -> hub).
+    SyncResult sync_result = 61;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -461,6 +463,27 @@ message AgentCommand {
     SyncHistory sync_history = 17;
     // The hub took a HistoryChunk up to offset; the next chunk starts there.
     HistoryAck history_ack = 18;
+    // Push a project folder to its repository on the hub, or pull it from
+    // there; answered with a SyncResult.
+    SyncProject sync_project = 19;
+  }
+
+  // Keeps a remote chat's project folder in step with the hub's repository
+  // for it (docs/plans/remote-projects.md). The agent reaches the repository
+  // with its own token at <hub>/git/<repo>.git.
+  message SyncProject {
+    // Echoed in the SyncResult.
+    string id = 1;
+    string chat = 2;
+    // "push": snapshot the folder and send it; "pull": make the folder match.
+    string direction = 3;
+    // The folder on this node; empty on a pull makes one under the agent's
+    // projects folder, named after the repository.
+    string cwd = 4;
+    string repo = 5;
+    string branch = 6;
+    // Paths in the folder that hold secrets, kept out of the repository.
+    repeated string exclude = 7;
   }
 
   message StartRun {
@@ -902,6 +925,19 @@ message CommandResult {
   // "interrupt".
   string command = 2;
   string error = 3;
+}
+
+message SyncResult {
+  string id = 1;
+  string chat = 2;
+  string direction = 3;
+  bool ok = 4;
+  string error = 5;
+  // The folder the sync used, which a pull may have chosen.
+  string cwd = 6;
+  // The commit the folder is at afterwards.
+  string head = 7;
+  bool changed = 8;
 }
 
 message ModeResult {

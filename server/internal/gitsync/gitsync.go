@@ -104,36 +104,41 @@ func Exclude(dir string, paths ...string) error {
 	return err
 }
 
-// Snapshot commits the folder as it is now (what git would add, so
-// .gitignore and Exclude are respected) to the sync ref for branch, on top
-// of its last snapshot or, for the first, the folder's current commit. It
-// reports whether anything changed.
-func Snapshot(dir, branch, message string) (changed bool, err error) {
-	if err := ensureRepo(dir); err != nil {
-		return false, err
-	}
+// workTree is the tree of the folder as it is now (what git would add, so
+// .gitignore and Exclude are respected), built in a private index on top of
+// parent so the folder's own index is left alone.
+func workTree(dir, parent string) (string, error) {
 	gd, err := git(dir, nil, "rev-parse", "--absolute-git-dir")
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	index := filepath.Join(gd, "tether-index")
 	defer os.Remove(index)
 	env := []string{"GIT_INDEX_FILE=" + index}
+	if parent != "" {
+		if _, err := git(dir, env, "read-tree", parent); err != nil {
+			return "", err
+		}
+	}
+	if _, err := git(dir, env, "add", "-A"); err != nil {
+		return "", err
+	}
+	return git(dir, env, "write-tree")
+}
 
+// Snapshot commits the folder as it is now to the sync ref for branch, on
+// top of its last snapshot or, for the first, the folder's current commit.
+// It reports whether anything changed.
+func Snapshot(dir, branch, message string) (changed bool, err error) {
+	if err := ensureRepo(dir); err != nil {
+		return false, err
+	}
 	last, _ := git(dir, nil, "rev-parse", "-q", "--verify", ref(branch))
 	parent := last
 	if parent == "" {
 		parent, _ = git(dir, nil, "rev-parse", "-q", "--verify", "HEAD")
 	}
-	if parent != "" {
-		if _, err := git(dir, env, "read-tree", parent); err != nil {
-			return false, err
-		}
-	}
-	if _, err := git(dir, env, "add", "-A"); err != nil {
-		return false, err
-	}
-	tree, err := git(dir, env, "write-tree")
+	tree, err := workTree(dir, parent)
 	if err != nil {
 		return false, err
 	}
@@ -172,10 +177,11 @@ func Push(dir string, r Remote, branch string) error {
 }
 
 // Pull makes dir match the hub's copy of branch: a folder with no
-// repository gets one, then the branch is fetched and checked out, unless
-// the folder has changes of its own.
+// repository gets one, then the branch is fetched and checked out. A folder
+// that has changed since it was last synced is left alone (ErrDirty). The
+// folder that was the writer until now counts as unchanged when it still
+// matches what it last pushed, even though its own branch differs.
 func Pull(dir string, r Remote, branch string) error {
-	local := "tether/" + branch
 	if !isRepo(dir) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
@@ -184,18 +190,47 @@ func Pull(dir string, r Remote, branch string) error {
 			return err
 		}
 	}
-	if st, err := git(dir, nil, "status", "--porcelain"); err != nil {
+	tip, _ := git(dir, nil, "rev-parse", "-q", "--verify", ref(branch))
+	if tip != "" {
+		tree, err := workTree(dir, tip)
+		if err != nil {
+			return err
+		}
+		if old, _ := git(dir, nil, "rev-parse", tip+"^{tree}"); old != tree {
+			return ErrDirty
+		}
+	} else if st, err := git(dir, nil, "status", "--porcelain"); err != nil {
 		return err
 	} else if st != "" {
 		return ErrDirty
 	}
-	fetch := append(r.flags(), "fetch", r.URL, "+refs/heads/tether/"+branch+":refs/remotes/tether/"+branch)
-	if _, err := git(dir, nil, fetch...); err != nil {
+	remoteRef := "refs/remotes/tether/" + branch
+	if _, err := git(dir, nil, append(r.flags(), "fetch", r.URL, "+refs/heads/tether/"+branch+":"+remoteRef)...); err != nil {
 		return err
 	}
-	_, err := git(dir, nil, "checkout", "-q", "-B", local, "refs/remotes/tether/"+branch)
+	if tip != "" {
+		// Files the last push had that the new copy does not stay behind
+		// otherwise, being untracked in this folder's own branch.
+		if gone, err := git(dir, nil, "diff", "--name-only", "--diff-filter=D", tip, remoteRef); err == nil {
+			for _, f := range strings.Split(gone, "\n") {
+				if f = strings.TrimSpace(f); f != "" {
+					_ = os.Remove(filepath.Join(dir, filepath.FromSlash(f)))
+				}
+			}
+		}
+	}
+	if _, err := git(dir, nil, "checkout", "-q", "-f", "-B", "tether/"+branch, remoteRef); err != nil {
+		return err
+	}
+	_, err := git(dir, nil, "update-ref", ref(branch), remoteRef)
 	return err
 }
 
 // Head is the commit the folder is at.
 func Head(dir string) (string, error) { return git(dir, nil, "rev-parse", "HEAD") }
+
+// Tip is the last snapshot of branch, empty if there is none.
+func Tip(dir, branch string) string {
+	sha, _ := git(dir, nil, "rev-parse", "-q", "--verify", ref(branch))
+	return sha
+}

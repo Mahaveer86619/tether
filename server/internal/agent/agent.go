@@ -265,6 +265,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.setMode(op.SetMode)
 		case *v1.AgentCommand_Backup:
 			go a.backup(op.Backup.Stored)
+		case *v1.AgentCommand_SyncProject_:
+			go a.syncProject(op.SyncProject)
 		case *v1.AgentCommand_SelfUpdate_:
 			go a.selfUpdate(op.SelfUpdate)
 		case *v1.AgentCommand_SyncHistory_:

@@ -152,3 +152,68 @@ func TestASecondWriterIsToldItDiverged(t *testing.T) {
 		t.Fatalf("got %v, want ErrDiverged", err)
 	}
 }
+
+func TestTheWriterCanHandTheWorkToTheOtherDeviceAndTakeItBack(t *testing.T) {
+	need(t)
+	remote := bareRemote(t)
+	a, b := t.TempDir(), t.TempDir()
+	who := []string{"GIT_AUTHOR_NAME=x", "GIT_AUTHOR_EMAIL=x@x", "GIT_COMMITTER_NAME=x", "GIT_COMMITTER_EMAIL=x@x"}
+	// a is somebody's own repository, with a commit and work past it.
+	write(t, a, "keep.txt", "k")
+	write(t, a, "old.txt", "o")
+	for _, args := range [][]string{{"init", "--initial-branch=main"}, {"add", "."}, {"commit", "-m", "mine"}} {
+		if _, err := git(a, who, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(t, a, "keep.txt", "k2")
+	write(t, a, "scratch.txt", "s")
+	if _, err := Snapshot(a, "c", "a1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Push(a, remote, "c"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Pull(b, remote, "c"); err != nil {
+		t.Fatal(err)
+	}
+
+	// b works: changes one file, deletes another, adds one.
+	write(t, b, "keep.txt", "k3")
+	if err := os.Remove(filepath.Join(b, "scratch.txt")); err != nil {
+		t.Fatal(err)
+	}
+	write(t, b, "new.txt", "n")
+	if _, err := Snapshot(b, "c", "b1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Push(b, remote, "c"); err != nil {
+		t.Fatalf("the new writer's push: %v", err)
+	}
+
+	// a, which was the writer, follows, though its own branch differs.
+	if err := Pull(a, remote, "c"); err != nil {
+		t.Fatalf("the old writer's pull: %v", err)
+	}
+	if read(t, a, "keep.txt") != "k3" || read(t, a, "new.txt") != "n" {
+		t.Fatal("the new work did not arrive")
+	}
+	if read(t, a, "scratch.txt") != "<missing>" {
+		t.Fatal("a file that was deleted is still there")
+	}
+
+	// And back: a writes again, on top of what it pulled.
+	write(t, a, "keep.txt", "k4")
+	if _, err := Snapshot(a, "c", "a2"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Push(a, remote, "c"); err != nil {
+		t.Fatalf("taking the work back: %v", err)
+	}
+	if err := Pull(b, remote, "c"); err != nil {
+		t.Fatal(err)
+	}
+	if read(t, b, "keep.txt") != "k4" {
+		t.Fatal("the work did not come back")
+	}
+}

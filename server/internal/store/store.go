@@ -167,6 +167,19 @@ var migrations = []string{
 		chat    TEXT NOT NULL,
 		session TEXT NOT NULL
 	)`,
+	// Chats whose project folder is kept in step across devices.
+	`CREATE TABLE chat_remote (
+		chat        TEXT PRIMARY KEY,
+		repo        TEXT NOT NULL,
+		branch      TEXT NOT NULL,
+		source_node TEXT NOT NULL,
+		source_cwd  TEXT NOT NULL,
+		mirror_node TEXT NOT NULL,
+		mirror_cwd  TEXT NOT NULL,
+		state       TEXT NOT NULL,
+		error       TEXT NOT NULL,
+		synced_ms   INTEGER NOT NULL
+	)`,
 }
 
 type Store struct {

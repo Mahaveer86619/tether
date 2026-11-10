@@ -58,6 +58,7 @@ enum Frame_Body {
   historyChunk,
   historySynced,
   agentCommand,
+  syncResult,
   notSet
 }
 
@@ -103,6 +104,7 @@ class Frame extends $pb.GeneratedMessage {
     HistoryChunk? historyChunk,
     HistorySynced? historySynced,
     AgentCommand? agentCommand,
+    SyncResult? syncResult,
   }) {
     final result = Frame._();
     if (v != null) result.v = v;
@@ -144,6 +146,7 @@ class Frame extends $pb.GeneratedMessage {
     if (historyChunk != null) result.historyChunk = historyChunk;
     if (historySynced != null) result.historySynced = historySynced;
     if (agentCommand != null) result.agentCommand = agentCommand;
+    if (syncResult != null) result.syncResult = syncResult;
     return result;
   }
 
@@ -192,6 +195,7 @@ class Frame extends $pb.GeneratedMessage {
     58: Frame_Body.historyChunk,
     59: Frame_Body.historySynced,
     60: Frame_Body.agentCommand,
+    61: Frame_Body.syncResult,
     0: Frame_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
@@ -233,7 +237,8 @@ class Frame extends $pb.GeneratedMessage {
       57,
       58,
       59,
-      60
+      60,
+      61
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
     ..aOS(2, _omitFieldNames ? '' : 'id')
@@ -310,6 +315,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: HistorySynced.$_createMessage)
     ..aOM<AgentCommand>(60, _omitFieldNames ? '' : 'agentCommand',
         subBuilder: AgentCommand.$_createMessage)
+    ..aOM<SyncResult>(61, _omitFieldNames ? '' : 'syncResult',
+        subBuilder: SyncResult.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -367,6 +374,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(58)
   @$pb.TagNumber(59)
   @$pb.TagNumber(60)
+  @$pb.TagNumber(61)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
@@ -403,6 +411,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(58)
   @$pb.TagNumber(59)
   @$pb.TagNumber(60)
+  @$pb.TagNumber(61)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -847,6 +856,18 @@ class Frame extends $pb.GeneratedMessage {
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
   AgentCommand ensureAgentCommand() => $_ensure(38);
+
+  /// How a SyncProject went (agent -> hub).
+  @$pb.TagNumber(61)
+  SyncResult get syncResult => $_getN(39);
+  @$pb.TagNumber(61)
+  set syncResult(SyncResult value) => $_setField(61, value);
+  @$pb.TagNumber(61)
+  $core.bool hasSyncResult() => $_has(39);
+  @$pb.TagNumber(61)
+  void clearSyncResult() => $_clearField(61);
+  @$pb.TagNumber(61)
+  SyncResult ensureSyncResult() => $_ensure(39);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -3678,6 +3699,140 @@ class RawEvents extends $pb.GeneratedMessage {
   void clearEndOffset() => $_clearField(4);
 }
 
+/// Keeps a remote chat's project folder in step with the hub's repository
+/// for it (docs/plans/remote-projects.md). The agent reaches the repository
+/// with its own token at <hub>/git/<repo>.git.
+class AgentCommand_SyncProject extends $pb.GeneratedMessage {
+  factory AgentCommand_SyncProject({
+    $core.String? id,
+    $core.String? chat,
+    $core.String? direction,
+    $core.String? cwd,
+    $core.String? repo,
+    $core.String? branch,
+    $core.Iterable<$core.String>? exclude,
+  }) {
+    final result = AgentCommand_SyncProject._();
+    if (id != null) result.id = id;
+    if (chat != null) result.chat = chat;
+    if (direction != null) result.direction = direction;
+    if (cwd != null) result.cwd = cwd;
+    if (repo != null) result.repo = repo;
+    if (branch != null) result.branch = branch;
+    if (exclude != null) result.exclude.addAll(exclude);
+    return result;
+  }
+
+  AgentCommand_SyncProject._();
+
+  factory AgentCommand_SyncProject.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SyncProject()..mergeFromBuffer(data, registry);
+  factory AgentCommand_SyncProject.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_SyncProject()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.SyncProject',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_SyncProject.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'chat')
+    ..aOS(3, _omitFieldNames ? '' : 'direction')
+    ..aOS(4, _omitFieldNames ? '' : 'cwd')
+    ..aOS(5, _omitFieldNames ? '' : 'repo')
+    ..aOS(6, _omitFieldNames ? '' : 'branch')
+    ..pPS(7, _omitFieldNames ? '' : 'exclude')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SyncProject clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_SyncProject copyWith(
+          void Function(AgentCommand_SyncProject) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_SyncProject))
+          as AgentCommand_SyncProject;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_SyncProject() / AgentCommand_SyncProject.new instead')
+  static AgentCommand_SyncProject create() => AgentCommand_SyncProject._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_SyncProject._();
+  @$core.override
+  AgentCommand_SyncProject createEmptyInstance() =>
+      AgentCommand_SyncProject._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_SyncProject getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_SyncProject>(
+          AgentCommand_SyncProject.$_createMessage);
+  static AgentCommand_SyncProject? _defaultInstance;
+
+  /// Echoed in the SyncResult.
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get chat => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set chat($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasChat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearChat() => $_clearField(2);
+
+  /// "push": snapshot the folder and send it; "pull": make the folder match.
+  @$pb.TagNumber(3)
+  $core.String get direction => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set direction($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDirection() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDirection() => $_clearField(3);
+
+  /// The folder on this node; empty on a pull makes one under the agent's
+  /// projects folder, named after the repository.
+  @$pb.TagNumber(4)
+  $core.String get cwd => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set cwd($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCwd() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCwd() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get repo => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set repo($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasRepo() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearRepo() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get branch => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set branch($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBranch() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBranch() => $_clearField(6);
+
+  /// Paths in the folder that hold secrets, kept out of the repository.
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get exclude => $_getList(6);
+}
+
 class AgentCommand_StartRun extends $pb.GeneratedMessage {
   factory AgentCommand_StartRun({
     $core.String? session,
@@ -5034,6 +5189,7 @@ enum AgentCommand_Op {
   selfUpdate,
   syncHistory,
   historyAck,
+  syncProject,
   notSet
 }
 
@@ -5057,6 +5213,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_SelfUpdate? selfUpdate,
     AgentCommand_SyncHistory? syncHistory,
     AgentCommand_HistoryAck? historyAck,
+    AgentCommand_SyncProject? syncProject,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -5077,6 +5234,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (selfUpdate != null) result.selfUpdate = selfUpdate;
     if (syncHistory != null) result.syncHistory = syncHistory;
     if (historyAck != null) result.historyAck = historyAck;
+    if (syncProject != null) result.syncProject = syncProject;
     return result;
   }
 
@@ -5108,13 +5266,14 @@ class AgentCommand extends $pb.GeneratedMessage {
     16: AgentCommand_Op.selfUpdate,
     17: AgentCommand_Op.syncHistory,
     18: AgentCommand_Op.historyAck,
+    19: AgentCommand_Op.syncProject,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -5152,6 +5311,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_SyncHistory.$_createMessage)
     ..aOM<AgentCommand_HistoryAck>(18, _omitFieldNames ? '' : 'historyAck',
         subBuilder: AgentCommand_HistoryAck.$_createMessage)
+    ..aOM<AgentCommand_SyncProject>(19, _omitFieldNames ? '' : 'syncProject',
+        subBuilder: AgentCommand_SyncProject.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5194,6 +5355,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -5213,6 +5375,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(16)
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
+  @$pb.TagNumber(19)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -5427,6 +5590,19 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearHistoryAck() => $_clearField(18);
   @$pb.TagNumber(18)
   AgentCommand_HistoryAck ensureHistoryAck() => $_ensure(17);
+
+  /// Push a project folder to its repository on the hub, or pull it from
+  /// there; answered with a SyncResult.
+  @$pb.TagNumber(19)
+  AgentCommand_SyncProject get syncProject => $_getN(18);
+  @$pb.TagNumber(19)
+  set syncProject(AgentCommand_SyncProject value) => $_setField(19, value);
+  @$pb.TagNumber(19)
+  $core.bool hasSyncProject() => $_has(18);
+  @$pb.TagNumber(19)
+  void clearSyncProject() => $_clearField(19);
+  @$pb.TagNumber(19)
+  AgentCommand_SyncProject ensureSyncProject() => $_ensure(18);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -8644,6 +8820,147 @@ class CommandResult extends $pb.GeneratedMessage {
   $core.bool hasError() => $_has(2);
   @$pb.TagNumber(3)
   void clearError() => $_clearField(3);
+}
+
+class SyncResult extends $pb.GeneratedMessage {
+  factory SyncResult({
+    $core.String? id,
+    $core.String? chat,
+    $core.String? direction,
+    $core.bool? ok,
+    $core.String? error,
+    $core.String? cwd,
+    $core.String? head,
+    $core.bool? changed,
+  }) {
+    final result = SyncResult._();
+    if (id != null) result.id = id;
+    if (chat != null) result.chat = chat;
+    if (direction != null) result.direction = direction;
+    if (ok != null) result.ok = ok;
+    if (error != null) result.error = error;
+    if (cwd != null) result.cwd = cwd;
+    if (head != null) result.head = head;
+    if (changed != null) result.changed = changed;
+    return result;
+  }
+
+  SyncResult._();
+
+  factory SyncResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncResult()..mergeFromBuffer(data, registry);
+  factory SyncResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SyncResult',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: SyncResult.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'chat')
+    ..aOS(3, _omitFieldNames ? '' : 'direction')
+    ..aOB(4, _omitFieldNames ? '' : 'ok')
+    ..aOS(5, _omitFieldNames ? '' : 'error')
+    ..aOS(6, _omitFieldNames ? '' : 'cwd')
+    ..aOS(7, _omitFieldNames ? '' : 'head')
+    ..aOB(8, _omitFieldNames ? '' : 'changed')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncResult copyWith(void Function(SyncResult) updates) =>
+      super.copyWith((message) => updates(message as SyncResult)) as SyncResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SyncResult() / SyncResult.new instead')
+  static SyncResult create() => SyncResult._();
+  static $pb.GeneratedMessage $_createMessage() => SyncResult._();
+  @$core.override
+  SyncResult createEmptyInstance() => SyncResult._();
+  @$core.pragma('dart2js:noInline')
+  static SyncResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SyncResult>(SyncResult.$_createMessage);
+  static SyncResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get chat => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set chat($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasChat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearChat() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get direction => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set direction($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasDirection() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearDirection() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get ok => $_getBF(3);
+  @$pb.TagNumber(4)
+  set ok($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasOk() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearOk() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get error => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set error($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasError() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearError() => $_clearField(5);
+
+  /// The folder the sync used, which a pull may have chosen.
+  @$pb.TagNumber(6)
+  $core.String get cwd => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set cwd($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCwd() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCwd() => $_clearField(6);
+
+  /// The commit the folder is at afterwards.
+  @$pb.TagNumber(7)
+  $core.String get head => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set head($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasHead() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearHead() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get changed => $_getBF(7);
+  @$pb.TagNumber(8)
+  set changed($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasChanged() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearChanged() => $_clearField(8);
 }
 
 class ModeResult extends $pb.GeneratedMessage {

@@ -413,6 +413,7 @@ func (h *Hub) noteTurnEnded(session string) {
 	h.runChatJobs(c)
 	h.putChat(c)
 	h.reportTask(c, session)
+	h.syncAfterTurn(c.Id)
 }
 
 // reportTask adds a note to the chat's lead session when a task it started

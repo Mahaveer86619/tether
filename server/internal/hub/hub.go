@@ -88,6 +88,7 @@ type Hub struct {
 
 	mu        sync.Mutex
 	agents    map[string]*wire.Conn
+	syncWait  map[string]func(*v1.SyncResult) // project syncs waiting for a node's answer, see remote.go
 	clients   map[*client]struct{}
 	nodes     map[string]*v1.NodeStatus
 	sessions  map[string]*v1.SessionInfo
@@ -222,6 +223,7 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("/ws", h.serveWS)
 	h.routes(mux)
 	h.repoRoutes(mux)
+	h.remoteRoutes(mux)
 	mux.HandleFunc("GET /api/v1/hello", h.hello)
 	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
@@ -727,6 +729,8 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteScreen(node, b.ScreenSnapshot)
 	case *v1.Frame_ModeResult:
 		h.noteModeResult(node, b.ModeResult)
+	case *v1.Frame_SyncResult:
+		h.noteSyncResult(b.SyncResult)
 	case *v1.Frame_CommandResult:
 		h.noteCommandResult(node, b.CommandResult)
 	case *v1.Frame_HistoryChunk:
