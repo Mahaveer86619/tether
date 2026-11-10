@@ -221,6 +221,7 @@ func (h *Hub) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.serveWS)
 	h.routes(mux)
+	h.repoRoutes(mux)
 	mux.HandleFunc("GET /api/v1/hello", h.hello)
 	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
