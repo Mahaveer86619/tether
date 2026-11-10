@@ -45,13 +45,7 @@ class _Entry {
 
 /// The history: start a chat, find one, pick up where you left off.
 class ChatsPage extends StatefulWidget {
-  const ChatsPage({super.key, this.header, this.limit});
-
-  /// Shown above the search box: the start-a-chat box on the home screen.
-  final Widget? header;
-
-  /// On Home: show only this many of the latest, without search, and a way to all of them.
-  final int? limit;
+  const ChatsPage({super.key});
 
   @override
   State<ChatsPage> createState() => _ChatsPageState();
@@ -79,7 +73,7 @@ class _ChatsPageState extends State<ChatsPage> {
     final c = context.colors;
     final nav = context.read<NavCubit>();
     final all = _historyOf(hub, archived: _archived).where(_found).toList();
-    final entries = widget.limit == null ? all : all.take(widget.limit!).toList();
+    final entries = all;
     final groups = <String, List<_Entry>>{};
     for (final e in entries) {
       groups.putIfAbsent(_period(e.updated), () => []).add(e);
@@ -89,9 +83,6 @@ class _ChatsPageState extends State<ChatsPage> {
       bottom: 96,
       onRefresh: context.read<HubCubit>().refresh,
       children: [
-        ?widget.header,
-        const SizedBox(height: 8),
-        if (widget.limit == null)
         Row(
           children: [
             Expanded(
@@ -113,7 +104,7 @@ class _ChatsPageState extends State<ChatsPage> {
             ],
           ],
         ),
-        if (!hub.chatsSupported && hub.connected && widget.limit == null)
+        if (!hub.chatsSupported && hub.connected)
           Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Text('This hub is older than 0.16, so it keeps sessions rather than chats. They are listed here instead.',
@@ -153,11 +144,6 @@ class _ChatsPageState extends State<ChatsPage> {
               ),
               ),
           ],
-        if (widget.limit != null && all.length > entries.length)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton(key: const Key('all-chats'), onPressed: () => nav.select(Destination.chats), child: Text('All ${all.length} chats')),
-          ),
       ],
     );
   }
@@ -393,55 +379,23 @@ class _RenameDialogState extends State<_RenameDialog> {
       );
 }
 
-/// The sidebar's recents: chats as single lines, the open one highlighted.
-class RecentChats extends StatelessWidget {
-  const RecentChats({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final hub = context.select<HubCubit, HubSnapshot>((c) => c.state.hub);
-    final selected = context.select<NavCubit, String>((n) => n.state.selectedChat.isNotEmpty ? n.state.selectedChat : n.state.selectedSession);
-    final nav = context.read<NavCubit>();
-    final c = context.colors;
-    final entries = _historyOf(hub).take(40).toList();
-    if (entries.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
-        child: Text('Chats you start show up here.', style: TextStyle(color: c.faint, fontSize: 12.5)),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      children: [
-        for (final e in entries)
-          _RecentRow(
-            key: Key('recent-${e.id}'),
-            title: e.chat?.displayTitle ?? e.session!.displayTitle,
-            live: (e.chat != null ? hub.sessions[e.chat!.activeSession] : e.session)?.isLive ?? false,
-            state: (e.chat != null ? hub.sessions[e.chat!.activeSession] : e.session)?.state,
-            selected: e.id == selected,
-            menu: e.chat == null ? null : ChatMenu(chat: e.chat!),
-            onTap: () => e.chat != null ? nav.openChat(e.id, replace: true) : nav.show(SessionEntry(e.id)),
-          ),
-      ],
-    );
-  }
-}
-
-class _RecentRow extends StatefulWidget {
-  const _RecentRow({super.key, required this.title, required this.live, required this.selected, required this.onTap, this.state, this.menu});
+/// A chat or session as a single line in the sidebar: the open one
+/// highlighted, its menu on hover.
+class SidebarRow extends StatefulWidget {
+  const SidebarRow({super.key, required this.title, required this.selected, required this.onTap, this.live = false, this.state, this.menu, this.indent = 0});
 
   final String title;
   final bool live, selected;
   final SessionState? state;
   final Widget? menu;
   final VoidCallback onTap;
+  final double indent;
 
   @override
-  State<_RecentRow> createState() => _RecentRowState();
+  State<SidebarRow> createState() => _SidebarRowState();
 }
 
-class _RecentRowState extends State<_RecentRow> {
+class _SidebarRowState extends State<SidebarRow> {
   bool _hover = false;
 
   @override
@@ -457,17 +411,17 @@ class _RecentRowState extends State<_RecentRow> {
           borderRadius: context.round(8),
           onTap: widget.onTap,
           child: SizedBox(
-            height: 34,
+            height: 38,
             child: Row(
               children: [
-                const SizedBox(width: 10),
+                SizedBox(width: 10 + widget.indent),
                 if (widget.live && widget.state != null) ...[StateDot(state: widget.state!, size: 6), const SizedBox(width: 8)],
                 Expanded(
                   child: Text(
                     widget.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: widget.selected ? c.text : c.text.withValues(alpha: 0.85), fontWeight: widget.selected ? FontWeight.w600 : null),
+                    style: TextStyle(fontSize: 14, color: widget.selected ? c.text : c.text.withValues(alpha: 0.88), fontWeight: widget.selected ? FontWeight.w600 : null),
                   ),
                 ),
                 if (widget.menu != null && (_hover || widget.selected)) SizedBox(width: 32, child: widget.menu) else const SizedBox(width: 8),
@@ -476,6 +430,34 @@ class _RecentRowState extends State<_RecentRow> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A chat as a sidebar row.
+class ChatRow extends StatelessWidget {
+  const ChatRow({super.key, required this.chat, required this.selected, required this.onTap, this.indent = 0, this.keyPrefix = 'recent'});
+
+  final Chat chat;
+  final bool selected;
+  final VoidCallback onTap;
+  final double indent;
+
+  /// Tells a chat's rows apart where it is listed twice.
+  final String keyPrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = context.select<HubCubit, Session?>((h) => h.state.hub.sessions[chat.activeSession]);
+    return SidebarRow(
+      key: Key('$keyPrefix-${chat.id}'),
+      title: chat.displayTitle,
+      live: session?.isLive ?? false,
+      state: session?.state,
+      selected: selected,
+      indent: indent,
+      menu: ChatMenu(chat: chat),
+      onTap: onTap,
     );
   }
 }

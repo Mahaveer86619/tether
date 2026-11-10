@@ -83,11 +83,19 @@ void main() {
       await t.pumpWidget(const TetherApp());
       await _settle(t);
       if (go != null) {
+        if (find.byKey(Key(go)).evaluate().isEmpty && find.byKey(const Key('open-sidebar')).evaluate().isNotEmpty) {
+          await t.tap(find.byKey(const Key('open-sidebar')));
+          await _settle(t);
+        }
         await t.tap(find.byKey(Key(go)));
         await _settle(t);
       }
       if (chat != null) {
-        await t.tap(find.byKey(Key('chat-$chat')));
+        if (find.byKey(const Key('open-sidebar')).evaluate().isNotEmpty) {
+          await t.tap(find.byKey(const Key('open-sidebar')));
+          await _settle(t);
+        }
+        await t.tap(find.byKey(Key('recent-$chat')));
         await _settle(t);
         repo.emitTimeline('s1', [
           rpb.TimelineItem(itemId: 'u1', ord: Int64(1), user: rpb.UserText(text: 'Webhook retries are double-charging. Find the cause and fix it on the laptop.')),

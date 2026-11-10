@@ -349,6 +349,37 @@ class HubSnapshot extends Equatable {
   /// The chat a session belongs to, if any.
   Chat? chatOf(String session) => chats.values.where((c) => c.links.any((l) => l.session == session)).firstOrNull;
 
+  /// The folder a chat works in, when it is a project: not a scratch folder,
+  /// and not a home folder, where one-off questions run.
+  ({String node, String cwd})? projectOf(Chat c) {
+    final s = sessions[c.activeSession];
+    if (c.target.scratch || (s?.scratch ?? false)) return null;
+    final cwd = (s != null && s.cwd.isNotEmpty) ? s.cwd : c.target.cwd;
+    final node = (s != null && s.node.isNotEmpty) ? s.node : c.target.node;
+    if (node.isEmpty || !isProjectFolder(cwd)) return null;
+    return (node: node, cwd: cwd);
+  }
+
+  /// Chats grouped by project folder, the project with the newest chat first.
+  /// One-off chats, which have no project, are in none of them.
+  List<ChatProject> chatProjects({bool archived = false}) {
+    final by = <String, List<Chat>>{};
+    final where = <String, ({String node, String cwd})>{};
+    for (final c in chats.values) {
+      if (c.archived != archived) continue;
+      final p = projectOf(c);
+      if (p == null) continue;
+      final key = '${p.node}|${p.cwd}';
+      where[key] = p;
+      by.putIfAbsent(key, () => []).add(c);
+    }
+    DateTime when(Chat c) => chatUpdated(c) ?? DateTime(0);
+    final out = [
+      for (final e in by.entries) ChatProject(node: where[e.key]!.node, cwd: where[e.key]!.cwd, chats: e.value..sort((a, b) => when(b).compareTo(when(a)))),
+    ]..sort((a, b) => when(b.chats.first).compareTo(when(a.chats.first)));
+    return out;
+  }
+
   /// When a chat last moved: its own time or its active session's.
   DateTime? chatUpdated(Chat c) {
     final s = sessions[c.activeSession]?.updated;
@@ -512,6 +543,33 @@ class Project extends Equatable {
   @override
   List<Object?> get props => [node, cwd, sessions];
 }
+
+/// A folder on a node and the chats that work in it, newest first.
+class ChatProject extends Equatable {
+  const ChatProject({required this.node, required this.cwd, required this.chats});
+
+  final String node, cwd;
+  final List<Chat> chats;
+
+  String get key => '$node|$cwd';
+
+  String get name {
+    final parts = cwd.split(RegExp(r'[\\/]')).where((p) => p.isNotEmpty);
+    return parts.isEmpty ? cwd : parts.last;
+  }
+
+  /// [name], with the device when another project in [all] has the same name.
+  String labelAmong(Iterable<ChatProject> all) => all.any((p) => p.key != key && p.name == name) ? '$name · $node' : name;
+
+  @override
+  List<Object?> get props => [node, cwd, chats];
+}
+
+final _homeFolder = RegExp(r'^(/home/[^/]+|/Users/[^/]+|/root|[A-Za-z]:[\\/]Users[\\/][^\\/]+)[\\/]*$');
+
+/// Whether a folder is somewhere a project lives, rather than a home folder
+/// or nothing at all.
+bool isProjectFolder(String cwd) => cwd.trim().isNotEmpty && !_homeFolder.hasMatch(cwd.trim());
 
 int compareSessions(Session a, Session b) {
   if (a.isLive != b.isLive) return a.isLive ? -1 : 1;

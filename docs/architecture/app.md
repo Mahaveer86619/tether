@@ -49,10 +49,10 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - Opening a session that is a chat's active session opens the chat, so you stay in the conversation. Other sessions open on their own.
   - A new chat becomes its chat in place, so Back skips the empty composer.
 - **Layouts** (`home/shell.dart`), by window width:
-  - **Under 600 px (phones):** a bottom bar with Home (badged with what needs you), Devices and Activity. Files, Usage and Settings are in the header's menu and open with a back arrow. Chats, sessions, new chats and devices open as pages on top, through a `Navigator` built from the nav state, so the system back button and the state can't disagree.
-  - **600 to 999 px (tablets, narrow windows):** an icon rail with labels, a New chat button and Settings, beside the main pane.
-  - **1000 px and wider:** a sidebar with New chat, the destinations, then **Recents** (chats as single lines, the open one highlighted, with a menu on hover) or **Projects** (the session tree by project or device), and the connection line with Settings at the bottom.
-  - The current destination is tinted in the accent colour with a filled icon, in the sidebar, the rail and the bottom bar alike.
+  - **Home is where a chat starts** (`chats/new_chat_page.dart`): a greeting, the folders you work in as chips, what needs you or is running, and the message box at the bottom, as in a chat app. A switch in the header (`home/home_toggle.dart`), **New | Chats**, goes between it and the list of every chat.
+  - **The sidebar** (`home/sidebar.dart`) holds a New chat button, icons for Devices, History, Files, Routines and Usage, **Projects** (the folders chats continue in, each opening to its chats) and **Chats** (every chat, recent first), then the connection line and Settings. A chat is in a project when it works in a folder that is not a home folder or a scratch folder (`HubSnapshot.projectOf`); a one-off question is only in Chats.
+  - **Under 600 px (phones):** no bottom bar; the sidebar is a drawer opened from the header's menu button, and closes when you choose something. Chats, sessions, new chats and devices open as pages on top, through a `Navigator` built from the nav state, so the system back button and the state can't disagree. Places other than Home and Chats open with a back arrow.
+  - **600 px and wider:** the sidebar sits beside the main pane, open from 1000 px and folded away below that; its button folds it, and a strip with a menu button, New chat and Settings stays.
 - **Chats** (`chats/`; see [chats.md](chats.md)):
   - **History** (`chats_page.dart`): chats grouped by Today, Yesterday, Previous 7 days, Previous 30 days and Older, with search and an Archived filter. Each row shows its title, where it runs, its session's state while live, how many sessions are linked, and a menu: Rename, Copy conversation (from the hub's stored context), Archive or Restore. On a hub before 0.16 the history lists sessions instead and starts plain sessions.
   - **New chat** (`new_chat_page.dart`): "What should Claude work on?", a message box with attachments, and a target chip. While the target is Auto, the chip shows what the hub would pick for the text so far ("Auto · tether on laptop", with why), refreshed as you type. The draft is kept on the device.
@@ -88,7 +88,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 - **Drafts:** unsent text in a session's composer, and in the new-chat box, is kept on the device per session, saved half a second after typing stops, and cleared once sent. It survives restarts.
 - **Message source:** your messages show where they came from (the phone, a desktop app, `tetherctl`, or typed in the terminal), as recorded by the hub.
 - **Tailnet:** Settings → Devices also lists every machine on the hub's tailnet, with tags for the hub, its Tether agent and its apps. Machines without Tether are marked too.
-- **Projects tree:** groups sessions by project or by device. Sessions marked done sit in a collapsed "Done" section at the end. Projects start collapsed, apart from the one holding the open session.
+- **Projects:** the sidebar groups chats by the folder they work in, per device; a project is open when it holds the chat on screen.
 - **Workspaces:**
   - Projects are the folders sessions ran in, remembered per device.
   - Workspace roots are folders where new projects are made. They're stored on the hub, managed in Settings → Workspaces, and suggested from the parents of recent projects.

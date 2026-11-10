@@ -109,8 +109,8 @@ A mockup is not a spec. These elements need a data source, or they go.
 ### Navigation
 
 ```
-Phone (bottom bar)     Home · Chats · Devices · More (History, Files, Routines, Settings)
-Tablet (icon rail)     the same, as a rail, with the chat list collapsed
+Phone (drawer)         Home = new chat; New | Chats switch in the header; the menu opens the sidebar
+Tablet / desktop       the same sidebar beside the pane, foldable
 Desktop (sidebar 280)  connection · Home · Devices · History · Files · Routines · Settings
                        Chats (grouped, live dots) · account / this device
 Desktop top bar        target chooser · command palette (Ctrl+K) · notifications · account

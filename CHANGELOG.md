@@ -2,6 +2,11 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.7
+
+- **Home is a chat app.** It opens on a new chat: a greeting, the folders you work in to pick from, and the message box at the bottom. Tether still picks the folder for you when you don't. A switch at the top, New | Chats, goes to the list of every chat.
+- **One side menu, no bottom bar.** On a phone the menu button opens it; on a desktop it sits beside the page and folds away. It holds New chat, Devices, History, Files, Routines and Usage, **Projects** (the folders you continue work in, each with its chats) and **Chats** (everything, one-off questions included).
+
 ## 0.17.6
 
 - **Smooth, like a phone.** Lists bounce at their ends, pages slide in and swipe back, switching between Home, Chats, Devices and the rest cross-fades, and chats, files and messages fade in as they are loaded, including the ones you scroll up to. Every page leaves 15% of the screen empty under its last item.

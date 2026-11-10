@@ -127,13 +127,13 @@ void main() {
 
     testWidgets('scrolls with a bounce, as on iOS', (tester) async {
       await open(tester, const Size(500, 900));
-      expect(ScrollConfiguration.of(tester.element(find.byType(ListView).first)).getScrollPhysics(tester.element(find.byType(ListView).first)), isA<BouncingScrollPhysics>());
+      expect(ScrollConfiguration.of(tester.element(find.byType(Scrollable).first)).getScrollPhysics(tester.element(find.byType(Scrollable).first)), isA<BouncingScrollPhysics>());
     });
 
     testWidgets('Home refreshes the hub when pulled down', (tester) async {
       await open(tester, const Size(500, 900));
       final before = repo.retries;
-      await tester.drag(find.byType(ListView).first, const Offset(0, 400));
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 400));
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 100));
       }

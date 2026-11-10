@@ -1,6 +1,6 @@
 /// This app's version, sent to the hub so the devices screen can show
 /// which apps need an update. Keep in step with pubspec.yaml.
-const appVersion = '0.17.6';
+const appVersion = '0.17.7';
 
 /// Where releases are published. The apps look here first, so a release does
 /// not depend on the hub being reachable; the hub's own copy is the fallback.

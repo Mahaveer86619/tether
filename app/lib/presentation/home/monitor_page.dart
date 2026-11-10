@@ -28,10 +28,14 @@ int attentionCount(HubSnapshot hub) => hub.approvals.length + needingYou(hub).le
 /// What's connected, what needs you and what's running: the live part of
 /// the home screen.
 class LiveSections extends StatelessWidget {
-  const LiveSections({super.key, required this.onSession, required this.onDevices});
+  const LiveSections({super.key, required this.onSession, required this.onDevices, this.overview = true});
 
   final ValueChanged<String> onSession;
   final VoidCallback onDevices;
+
+  /// Whether to show the devices strip and say when the hub is not connected,
+  /// or only what needs you and what is running.
+  final bool overview;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +43,7 @@ class LiveSections extends StatelessWidget {
     final c = context.colors;
 
     if (!hub.connected && hub.sessions.isEmpty) {
+      if (!overview) return const SizedBox.shrink();
       final connecting = hub.status == ConnectionStatus.connecting;
       return EmptyState(
         icon: Icons.cloud_off_rounded,
@@ -55,7 +60,7 @@ class LiveSections extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _DevicesStrip(hub: hub, onTap: onDevices),
+        if (overview) _DevicesStrip(hub: hub, onTap: onDevices),
         if (approvals.isNotEmpty || waiting.isNotEmpty) ...[
           SectionLabel('Needs you', dot: c.warning, trailing: Text('${approvals.length + waiting.length}', style: Type.meta(context, color: c.warning))),
           for (final a in approvals)
