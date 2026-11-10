@@ -34,6 +34,7 @@ Start with [overview.md](product/overview.md) for what Tether is made of and how
 | Doc | What it covers |
 |---|---|
 | [terminal-mode.md](plans/terminal-mode.md) | A second way to see a session: the assistant's own interface, live, with a key row on the phone |
+| [remote-projects.md](plans/remote-projects.md) | A chat made remote: the code kept in step on another device through a repo on the hub, secrets served from the vault, live progress |
 | [deliverables.md](plans/deliverables.md) | Asking for a thing and getting the file in the chat: builds, exports, reports, with Download and Install |
 | [first-run.md](plans/first-run.md) | Setup that assumes nothing about the owner's machine: the doctor, the hub installer, the guided flow |
 | [notifications.md](plans/notifications.md) | What notifies, and how it reaches a sleeping phone |
