@@ -110,6 +110,11 @@ END
 
 
 
+// WinSparkle (the Windows updater): the key an update's signature is checked
+// against. The private half is kept off this repository; see docs/operations/releasing.md.
+DSAPub      DSAPEM      "../../dsa_pub.pem"
+
+
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //

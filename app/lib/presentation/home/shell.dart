@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/entities.dart';
 import '../artifacts/files_page.dart';
 import '../chats/chat_page.dart';
 import '../chats/chats_cubit.dart';
 import '../chats/chats_page.dart';
 import '../chats/new_chat_page.dart';
 import '../hub/hub_cubit.dart';
+import '../onboarding/find_hubs_card.dart';
 import '../nav/nav_cubit.dart';
 import '../session/session_page.dart';
 import '../settings/settings_cubit.dart';
@@ -23,15 +23,17 @@ import '../usage/usage_page.dart';
 import '../widgets/common.dart';
 import 'activity_page.dart';
 import 'devices_page.dart';
-import 'monitor_page.dart';
-import 'session_navigator.dart';
+import 'home_toggle.dart';
+import 'sidebar.dart';
 
-/// Below this the app is a phone: one pane and a bottom bar.
+/// Below this the app is a phone: one pane, and the sidebar is a drawer.
 const double phoneBreakpoint = 600;
 
-/// From here the sidebar shows labels and recent chats; between the two it
-/// is an icon rail.
+/// From here the sidebar is open to begin with; below it, a tablet or a
+/// narrow window starts with it folded away.
 const double sidebarBreakpoint = 1000;
+
+const double _sidebarWidth = 280;
 
 /// Picks the layout for the window size, and shows app-wide failures and
 /// notices. Every layout renders from [NavCubit].
@@ -57,53 +59,41 @@ class Shell extends StatelessWidget {
         ),
       ],
       child: !configured
-          ? Scaffold(appBar: AppBar(title: const Text('Connect to your hub')), body: const SettingsPage())
+          ? const Scaffold(body: SafeArea(child: SettingsPage(header: FindHubsCard())))
           : LayoutBuilder(
-              builder: (context, box) => box.maxWidth < phoneBreakpoint ? const _PhoneShell() : _WideShell(compact: box.maxWidth < sidebarBreakpoint),
+              builder: (context, box) => box.maxWidth < phoneBreakpoint ? const _PhoneShell() : _WideShell(startOpen: box.maxWidth >= sidebarBreakpoint),
             ),
     );
   }
 }
 
-/// A destination's look in navigation.
-typedef _Dest = ({Destination d, IconData icon, IconData selected, String label});
-
-const List<_Dest> _destinations = [
-  (d: Destination.chats, icon: Icons.home_outlined, selected: Icons.home_rounded, label: 'Home'),
-  (d: Destination.devices, icon: Icons.devices_outlined, selected: Icons.devices_rounded, label: 'Devices'),
-  (d: Destination.activity, icon: Icons.history_rounded, selected: Icons.history_rounded, label: 'Activity'),
-  (d: Destination.files, icon: Icons.folder_open_outlined, selected: Icons.folder_open_rounded, label: 'Files'),
-  (d: Destination.routines, icon: Icons.auto_awesome_outlined, selected: Icons.auto_awesome_rounded, label: 'Routines'),
-  (d: Destination.usage, icon: Icons.insights_outlined, selected: Icons.insights_rounded, label: 'Usage'),
-];
-
-/// The phone's bottom bar; the rest sit in the header's menu.
-const _phoneBar = [Destination.chats, Destination.devices, Destination.activity];
-
 String _title(Destination d) => switch (d) {
+      Destination.home => 'New chat',
+      Destination.chats => 'Chats',
+      Destination.devices => 'Devices',
+      Destination.activity => 'History',
+      Destination.files => 'Files',
+      Destination.routines => 'Routines',
+      Destination.usage => 'Usage',
       Destination.settings => 'Settings',
-      _ => _destinations.firstWhere((x) => x.d == d).label,
     };
+
+/// The header's centre for a place: the New and Chats switch on the first
+/// two, the name on the rest.
+bool _hasToggle(Destination d) => d == Destination.home || d == Destination.chats;
 
 /// The page for a destination with nothing open on top.
 Widget _destinationPage(BuildContext context, Destination d) {
   final nav = context.read<NavCubit>();
   return switch (d) {
-    Destination.chats => ChatsPage(
-        header: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const NewChatPage(embedded: true),
-            LiveSections(onSession: nav.openSession, onDevices: () => nav.select(Destination.devices)),
-          ],
-        ),
-      ),
+    Destination.chats => const ChatsPage(),
+    Destination.home => const NewChatPage(),
     Destination.devices => DevicesPage(onNode: nav.openNode),
     Destination.activity => ActivityPage(onSession: nav.openSession),
     Destination.files => FilesPage(onSession: nav.openSession),
     Destination.routines => const RoutinesPage(),
     Destination.usage => UsagePage(onSession: nav.openSession),
-    Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.chats)),
+    Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.home)),
   };
 }
 
@@ -114,11 +104,17 @@ Widget? _destinationAction(BuildContext context, Destination d) {
 
 // ---- tablet and desktop ----
 
-class _WideShell extends StatelessWidget {
-  const _WideShell({required this.compact});
+class _WideShell extends StatefulWidget {
+  const _WideShell({required this.startOpen});
 
-  /// An icon rail rather than the full sidebar.
-  final bool compact;
+  final bool startOpen;
+
+  @override
+  State<_WideShell> createState() => _WideShellState();
+}
+
+class _WideShellState extends State<_WideShell> {
+  late bool _open = widget.startOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -128,7 +124,14 @@ class _WideShell extends StatelessWidget {
     return Scaffold(
       body: Row(
         children: [
-          compact ? const _Rail() : const _Sidebar(),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.centerLeft,
+            child: _open
+                ? SizedBox(width: _sidebarWidth, child: SidebarBody(onCollapse: () => setState(() => _open = false)))
+                : _FoldedSidebar(onOpen: () => setState(() => _open = true)),
+          ),
           VerticalDivider(width: 1, color: c.border),
           // Its own messenger so toasts centre on this pane, not the window.
           Expanded(
@@ -160,6 +163,43 @@ class _WideShell extends StatelessWidget {
   }
 }
 
+/// What is left of the sidebar when it is folded away: a way to open it,
+/// start a chat and reach Settings.
+class _FoldedSidebar extends StatelessWidget {
+  const _FoldedSidebar({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final nav = context.read<NavCubit>();
+    final onSettings = context.select<NavCubit, bool>((n) => n.state.destination == Destination.settings && n.state.top == null);
+    return Container(
+      width: 56,
+      color: c.sidebar,
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            IconButton(key: const Key('open-sidebar'), tooltip: 'Show the sidebar', icon: const Icon(Icons.menu_rounded), onPressed: onOpen),
+            const SizedBox(height: 4),
+            IconButton.filled(key: const Key('new-chat'), tooltip: 'New chat', onPressed: () => nav.select(Destination.home), icon: const Icon(Icons.edit_square, size: 19)),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Settings',
+              icon: Icon(onSettings ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
+              color: onSettings ? c.accent : null,
+              onPressed: () => nav.select(Destination.settings),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _WidePane extends StatelessWidget {
   const _WidePane({required this.state});
 
@@ -168,7 +208,11 @@ class _WidePane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = context.read<NavCubit>();
-    final back = state.history.isEmpty && state.stack.isEmpty ? null : nav.back;
+    final back = state.atRoot ? null : nav.back;
+    return _Fade(id: state.top == null ? state.destination.name : '${state.top.runtimeType}:${state.top!.props.join(',')}', child: _pane(context, nav, back));
+  }
+
+  Widget _pane(BuildContext context, NavCubit nav, VoidCallback? back) {
     return switch (state.top) {
       ChatEntry(:final chatId) => ChatPage(key: ValueKey('chat-$chatId'), chatId: chatId),
       SessionEntry(:final sessionId) => SessionScreen(key: ValueKey(sessionId), sessionId: sessionId, onOpenSession: (id) => nav.push(SessionEntry(id))),
@@ -181,7 +225,7 @@ class _WidePane extends StatelessWidget {
         ),
       null => _Titled(
           title: _title(state.destination),
-          onBack: back,
+          heading: _hasToggle(state.destination) ? const HomeToggle() : null,
           action: _destinationAction(context, state.destination),
           child: _destinationPage(context, state.destination),
         ),
@@ -189,165 +233,31 @@ class _WidePane extends StatelessWidget {
   }
 }
 
-class _Sidebar extends StatefulWidget {
-  const _Sidebar();
+/// Cross-fades to what is shown when the place or the open screen changes,
+/// so moving about is a dissolve and not a cut.
+class _Fade extends StatelessWidget {
+  const _Fade({required this.id, required this.child});
+
+  final Object id;
+  final Widget child;
 
   @override
-  State<_Sidebar> createState() => _SidebarState();
-}
-
-class _SidebarState extends State<_Sidebar> {
-  // Which list fills the sidebar's lower half: recent chats or projects.
-  bool _projects = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final nav = context.read<NavCubit>();
-    final s = context.watch<NavCubit>().state;
-    final (status, attention) = context.select<HubCubit, (ConnectionStatus, int)>((h) => (h.state.hub.status, attentionCount(h.state.hub)));
-    return Container(
-      width: 280,
-      color: c.sidebar,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
-              child: Row(
-                children: [
-                  Icon(Icons.hub_rounded, size: 20, color: c.accent),
-                  const SizedBox(width: 8),
-                  const Text('Tether', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: FilledButton.icon(
-                key: const Key('new-chat'),
-                onPressed: () => nav.newChat(replace: true),
-                icon: const Icon(Icons.edit_square, size: 17),
-                label: const Text('New chat'),
-                style: FilledButton.styleFrom(alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14)),
-              ),
-            ),
-            for (final d in _destinations)
-              _NavItem(
-                key: Key('nav-${d.d.name}'),
-                icon: d.icon,
-                selectedIcon: d.selected,
-                label: d.label,
-                badge: d.d == Destination.chats ? attention : 0,
-                selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
-                onTap: () => nav.select(d.d),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 10, 4),
-              child: Row(
-                children: [
-                  _ListTab(label: 'Recents', selected: !_projects, onTap: () => setState(() => _projects = false)),
-                  const SizedBox(width: 4),
-                  _ListTab(label: 'Projects', selected: _projects, onTap: () => setState(() => _projects = true)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: _projects
-                  ? SessionNavigator(
-                      selectedSession: s.selectedSession.isEmpty ? null : s.selectedSession,
-                      selectedNode: s.selectedNode.isEmpty ? null : s.selectedNode,
-                      onSession: (id) => nav.openSession(id, replace: true),
-                      onNode: nav.openNode,
-                    )
-                  : const RecentChats(),
-            ),
-            Divider(height: 1, color: c.border),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-              child: Row(
-                children: [
-                  const Expanded(child: HubConnectionLine()),
-                  IconButton(
-                    tooltip: 'Settings',
-                    icon: Icon(s.destination == Destination.settings && s.top == null ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
-                    color: s.destination == Destination.settings && s.top == null ? c.accent : null,
-                    onPressed: () => nav.select(Destination.settings),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The sidebar squeezed to icons, for tablets and narrow windows.
-class _Rail extends StatelessWidget {
-  const _Rail();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final nav = context.read<NavCubit>();
-    final s = context.watch<NavCubit>().state;
-    final (status, attention) = context.select<HubCubit, (ConnectionStatus, int)>((h) => (h.state.hub.status, attentionCount(h.state.hub)));
-    return Container(
-      width: 84,
-      color: c.sidebar,
-      child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 14),
-            Icon(Icons.hub_rounded, size: 22, color: c.accent),
-            const SizedBox(height: 12),
-            IconButton.filled(
-              key: const Key('new-chat'),
-              tooltip: 'New chat',
-              onPressed: () => nav.newChat(replace: true),
-              icon: const Icon(Icons.edit_square, size: 20),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    for (final d in _destinations)
-                      _RailItem(
-                        key: Key('nav-${d.d.name}'),
-                        icon: d.icon,
-                        selectedIcon: d.selected,
-                        label: d.label,
-                        badge: d.d == Destination.chats ? attention : 0,
-                        selected: s.top == null && s.destination == d.d || d.d == Destination.devices && s.top is NodeEntry,
-                        onTap: () => nav.select(d.d),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            Tooltip(message: switch (status) { ConnectionStatus.connected => 'Connected', _ => 'Not connected' }, child: OnlineDot(online: status == ConnectionStatus.connected)),
-            IconButton(
-              tooltip: 'Settings',
-              icon: Icon(s.destination == Destination.settings && s.top == null ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
-              color: s.destination == Destination.settings && s.top == null ? c.accent : null,
-              onPressed: () => nav.select(Destination.settings),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AnimatedSwitcher(
+        duration: const Duration(milliseconds: 220),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        child: KeyedSubtree(key: ValueKey(id), child: child),
+      );
 }
 
 class _Titled extends StatelessWidget {
-  const _Titled({required this.title, required this.child, this.action, this.onBack});
+  const _Titled({required this.title, required this.child, this.action, this.onBack, this.heading});
 
   final String title;
+
+  /// Stands in for the title, e.g. the New and Chats switch.
+  final Widget? heading;
   final Widget child;
   final Widget? action;
   final VoidCallback? onBack;
@@ -366,7 +276,7 @@ class _Titled extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 4),
                     child: IconButton(tooltip: 'Back (Esc)', icon: const Icon(Icons.arrow_back_rounded), onPressed: onBack),
                   ),
-                Expanded(child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600))),
+                Expanded(child: heading != null ? Align(alignment: Alignment.centerLeft, child: heading) : Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600))),
                 ?action,
               ],
             ),
@@ -376,129 +286,11 @@ class _Titled extends StatelessWidget {
       );
 }
 
-/// A sidebar destination: icon and label, filled and tinted when current.
-class _NavItem extends StatefulWidget {
-  const _NavItem({super.key, required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, this.badge = 0});
-
-  final IconData icon, selectedIcon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final int badge;
-
-  @override
-  State<_NavItem> createState() => _NavItemState();
-}
-
-class _NavItemState extends State<_NavItem> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final on = widget.selected;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: Material(
-          color: on ? c.accent.withValues(alpha: 0.12) : (_hover ? c.raised : Colors.transparent),
-          borderRadius: BorderRadius.circular(9),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(9),
-            onTap: widget.onTap,
-            child: SizedBox(
-              height: 38,
-              child: Row(
-                children: [
-                  const SizedBox(width: 12),
-                  Icon(on ? widget.selectedIcon : widget.icon, size: 19, color: on ? c.accent : c.muted),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(widget.label,
-                        style: TextStyle(fontSize: 13.5, color: on ? c.text : c.text.withValues(alpha: 0.85), fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
-                  ),
-                  if (widget.badge > 0) Pill('${widget.badge}', color: c.warning),
-                  const SizedBox(width: 10),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RailItem extends StatelessWidget {
-  const _RailItem({super.key, required this.icon, required this.selectedIcon, required this.label, required this.selected, required this.onTap, this.badge = 0});
-
-  final IconData icon, selectedIcon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final int badge;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Tooltip(
-      message: label,
-      waitDuration: const Duration(milliseconds: 600),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            children: [
-              Container(
-                width: 52,
-                height: 30,
-                decoration: BoxDecoration(color: selected ? c.accent.withValues(alpha: 0.14) : Colors.transparent, borderRadius: BorderRadius.circular(15)),
-                child: Badge(
-                  isLabelVisible: badge > 0,
-                  label: Text('$badge'),
-                  child: Icon(selected ? selectedIcon : icon, size: 20, color: selected ? c.accent : c.muted),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(label, style: TextStyle(fontSize: 11, color: selected ? c.text : c.muted, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ListTab extends StatelessWidget {
-  const _ListTab({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return InkWell(
-      borderRadius: BorderRadius.circular(6),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        child: Text(label.toUpperCase(),
-            style: TextStyle(fontSize: 11, letterSpacing: 0.8, fontWeight: FontWeight.w600, color: selected ? c.text : c.faint)),
-      ),
-    );
-  }
-}
-
 // ---- phone ----
 
-/// One pane: the destination with a bottom bar, and anything opened on top
-/// of it as pages, all from [NavCubit]. System back goes through it too.
+/// One pane: the destination, with the sidebar as a drawer, and anything
+/// opened on top of it as pages, all from [NavCubit]. System back goes
+/// through it too.
 class _PhoneShell extends StatelessWidget {
   const _PhoneShell();
 
@@ -536,67 +328,28 @@ class _PhoneRoot extends StatelessWidget {
   Widget build(BuildContext context) {
     final nav = context.read<NavCubit>();
     final d = context.select<NavCubit, Destination>((n) => n.state.destination);
-    final (status, attention) = context.select<HubCubit, (ConnectionStatus, int)>((h) => (h.state.hub.status, attentionCount(h.state.hub)));
-    final onBar = _phoneBar.contains(d);
-    Widget badged(IconData icon) => Badge(isLabelVisible: attention > 0, label: Text('$attention'), child: Icon(icon));
+    final toggle = _hasToggle(d);
     return Scaffold(
+      drawer: Drawer(
+        width: 304,
+        child: Builder(builder: (context) => SidebarBody(onNavigate: () => Scaffold.of(context).closeDrawer())),
+      ),
       appBar: AppBar(
-        leading: onBar ? null : BackButton(onPressed: nav.back),
-        title: d == Destination.chats
-            ? Row(
-                children: [
-                  Icon(Icons.hub_rounded, size: 20, color: context.colors.accent),
-                  const SizedBox(width: 8),
-                  const Text('Tether'),
-                  const SizedBox(width: 12),
-                  const Flexible(child: HubConnectionLine()),
-                ],
-              )
-            : Text(_title(d)),
-        actions: [
-          PopupMenuButton<Destination>(
-            key: const Key('more-destinations'),
-            tooltip: 'More',
-            onSelected: nav.select,
-            itemBuilder: (_) => [
-              for (final x in _destinations.where((x) => !_phoneBar.contains(x.d)))
-                PopupMenuItem(value: x.d, child: Row(children: [Icon(x.icon, size: 18), const SizedBox(width: 12), Text(x.label)])),
-              const PopupMenuItem(
-                value: Destination.settings,
-                child: Row(children: [Icon(Icons.settings_outlined, size: 18), SizedBox(width: 12), Text('Settings')]),
-              ),
-            ],
-          ),
-        ],
+        centerTitle: true,
+        leading: toggle
+            ? Builder(builder: (context) => IconButton(key: const Key('open-sidebar'), tooltip: 'Menu', icon: const Icon(Icons.menu_rounded), onPressed: () => Scaffold.of(context).openDrawer()))
+            : BackButton(onPressed: nav.back),
+        title: toggle ? const HomeToggle() : Text(_title(d)),
       ),
       body: Column(
         children: [
           const TailscaleBanner(),
           const UpdateBanner(),
           Expanded(
-            child: d == Destination.chats
-                ? RefreshIndicator(onRefresh: () async => context.read<HubCubit>().retry(), child: _destinationPage(context, d))
-                : _destinationPage(context, d),
+            child: _Fade(id: d, child: _destinationPage(context, d)),
           ),
         ],
       ),
-      bottomNavigationBar: onBar
-          ? NavigationBar(
-              selectedIndex: _phoneBar.indexOf(d),
-              onDestinationSelected: (i) => nav.select(_phoneBar[i]),
-              height: 64,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: [
-                for (final x in _destinations.where((x) => _phoneBar.contains(x.d)))
-                  NavigationDestination(
-                    key: Key('nav-${x.d.name}'),
-                    icon: x.d == Destination.chats ? badged(x.icon) : Icon(x.icon),
-                    selectedIcon: x.d == Destination.chats ? badged(x.selected) : Icon(x.selected),
-                    label: x.label,
-                  ),
-              ],
-            )
-          : null,
     );
   }
 }

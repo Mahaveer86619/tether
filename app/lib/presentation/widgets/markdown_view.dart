@@ -67,7 +67,7 @@ class BlockView extends StatelessWidget {
         return const Padding(padding: EdgeInsets.symmetric(vertical: 4), child: Divider());
       case pb.Block_Kind.image:
         return ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           child: Image.network(
             block.image.url,
             errorBuilder: (_, _, _) => Text('[image: ${block.image.alt}]', style: TextStyle(color: context.colors.muted)),
@@ -197,7 +197,7 @@ class _TableView extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Container(
-          decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(8)),
           clipBehavior: Clip.antiAlias,
           child: Table(
             // Long cells wrap instead of stretching their column off screen.
@@ -239,7 +239,7 @@ class CodeBox extends StatelessWidget {
       );
     }
     return Container(
-      decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.border)),
+      decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(10), border: Border.all(color: c.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -293,7 +293,7 @@ class _CursorState extends State<_Cursor> with SingleTickerProviderStateMixin {
           width: 8,
           height: 16,
           margin: const EdgeInsets.only(left: 2),
-          decoration: BoxDecoration(color: context.colors.accent, borderRadius: BorderRadius.circular(2)),
+          decoration: BoxDecoration(color: context.colors.accent, borderRadius: context.round(2)),
         ),
       );
 }

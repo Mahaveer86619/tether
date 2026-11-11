@@ -7,6 +7,9 @@ import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
+import 'pinned_skills_cubit.dart';
 import 'routines_cubit.dart';
 
 /// What you keep asking for, read from the hub's history, and the skills made
@@ -42,8 +45,10 @@ class _RoutinesBody extends StatelessWidget {
         final cubit = context.read<RoutinesCubit>();
         final report = s.report;
         final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-        return ListView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 40),
+        return PullRefresh(
+          onRefresh: cubit.load,
+          child: ListView(
+          padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context)),
           children: [
             Center(
               child: ConstrainedBox(
@@ -113,6 +118,7 @@ class _RoutinesBody extends StatelessWidget {
               ),
             ),
           ],
+        ),
         );
       },
     );
@@ -137,7 +143,7 @@ class _SkillCard extends StatelessWidget {
         color: c.surface,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: k.proposed ? c.warning.withValues(alpha: 0.6) : c.border),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: context.round(12),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -153,7 +159,22 @@ class _SkillCard extends StatelessWidget {
                     Icon(k.proposed ? Icons.hourglass_top_rounded : Icons.check_circle_rounded, size: 17, color: k.proposed ? c.warning : c.success),
                     const SizedBox(width: 8),
                     Expanded(child: Text(k.name, style: monoStyle(context, size: 14, color: c.text).copyWith(fontWeight: FontWeight.w600))),
-                    if (busy) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) else Icon(Icons.chevron_right_rounded, size: 20, color: c.faint),
+                    if (busy)
+                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                    else if (!k.proposed)
+                      BlocBuilder<PinnedSkillsCubit, List<String>>(
+                        builder: (context, pinned) {
+                          final on = pinned.contains(k.name);
+                          return IconButton(
+                            key: Key('pin-${k.name}'),
+                            tooltip: on ? 'Unpin from Home' : 'Pin to Home',
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(on ? Icons.push_pin_rounded : Icons.push_pin_outlined, size: 18, color: on ? c.accent : c.faint),
+                            onPressed: () => context.read<PinnedSkillsCubit>().toggle(k.name),
+                          );
+                        },
+                      ),
+                    Icon(Icons.chevron_right_rounded, size: 20, color: c.faint),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -244,7 +265,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                     Container(
                       margin: const EdgeInsets.only(top: 10),
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.1), borderRadius: context.round(8)),
                       child: Text('Some steps change things. Claude is told to confirm with you before it runs them.', style: TextStyle(fontSize: 12.5, color: c.text)),
                     ),
                   const SizedBox(height: 12),
@@ -253,7 +274,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                       key: const Key('skill-text'),
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+                      decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8), border: Border.all(color: c.border)),
                       child: SelectableText(v.text, style: monoStyle(context, size: 12, color: c.text)),
                     ),
                   if (d.versions.length > 1) ...[
@@ -411,7 +432,7 @@ class _RoutineCardState extends State<_RoutineCard> {
       padding: const EdgeInsets.only(top: 10),
       child: Material(
         color: c.surface,
-        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: Key('routine-${r.example.hashCode}'),

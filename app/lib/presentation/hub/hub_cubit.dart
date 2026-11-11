@@ -86,6 +86,17 @@ class HubCubit extends Cubit<HubState> {
 
   void retry() => _retry();
 
+  /// Reconnects and waits for the answer, for a page's pull-to-refresh: at
+  /// least a moment (so the pull feels answered), at most a few seconds.
+  Future<void> refresh() async {
+    _retry();
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final deadline = DateTime.now().add(const Duration(seconds: 4));
+    while (state.hub.status == ConnectionStatus.connecting && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+  }
+
   @override
   Future<void> close() async {
     await _sub.cancel();

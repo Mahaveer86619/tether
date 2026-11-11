@@ -8,7 +8,7 @@
 #        setup-runner.sh --keystore FILE.jks   also set up APK signing for `make dist`
 # TOKEN is a runner registration token: repo Settings > Actions > Runners >
 # New self-hosted runner, or `gh api -X POST repos/OWNER/tether/actions/runners/registration-token`.
-# See docs/releasing.md.
+# See docs/operations/releasing.md.
 set -euo pipefail
 
 ci=${CI_HOME:-$HOME/ci}

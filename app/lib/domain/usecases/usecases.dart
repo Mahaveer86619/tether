@@ -1,4 +1,8 @@
 
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math' as math;
+
 import '../../core/error/failures.dart';
 import '../../core/result.dart';
 import '../entities/entities.dart';
@@ -114,6 +118,8 @@ class Chats {
   Future<Result<Chat>> rename(String chatId, String title) => _hub.renameChat(chatId, title.trim());
 
   Future<Result<Chat>> archive(String chatId, {bool archived = true}) => _hub.setChatArchived(chatId, archived: archived);
+
+  Future<Result<void>> delete(String chatId) => _hub.deleteChat(chatId);
 
   Future<Result<String>> send(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
     if (text.trim().isEmpty && attachments.isEmpty) return const Err(ValidationFailure('Message is empty.'));
@@ -332,6 +338,7 @@ class SaveConnection {
     final saved = await _settings.saveConnection(conn);
     return saved.fold(Err.new, (_) {
       _hub.connect(conn);
+      unawaited(_settings.rememberHub(KnownHub(url: normalized, name: hubNameOf(normalized), lastConnected: DateTime.now())));
       return Ok(conn);
     });
   }
@@ -344,13 +351,14 @@ class ConnectOverTailnet {
   final SettingsRepository _settings;
   final HubRepository _hub;
 
-  Future<Result<HubConnection>> call(String url) async {
+  Future<Result<HubConnection>> call(String url, {String name = ''}) async {
     final normalized = normalizeHubUrl(url);
     if (normalized == null) return const Err(ValidationFailure('Enter the Tailscale name or address of the hub, e.g. minipc or 100.64.0.1.'));
     final conn = HubConnection(url: normalized, token: '', viaTailnet: true);
     final saved = await _settings.saveConnection(conn);
     return saved.fold(Err.new, (_) {
       _hub.connect(conn);
+      unawaited(_settings.rememberHub(KnownHub(url: normalized, name: name.isEmpty ? hubNameOf(normalized) : name, lastConnected: DateTime.now())));
       return Ok(conn);
     });
   }
@@ -423,6 +431,19 @@ class LoadRoutines {
   const LoadRoutines(this._hub);
   final HubRepository _hub;
   Future<Result<RoutineReport>> call({int days = 30, int runs = 3}) => _hub.routines(days: days, runs: runs);
+}
+
+/// A chat's project kept in step on another device, and the files the hub
+/// keeps for it.
+class RemoteProjects {
+  const RemoteProjects(this._hub);
+  final HubRepository _hub;
+  Future<Result<ChatRemote>> status(String chatId) => _hub.chatRemote(chatId);
+  Future<Result<void>> start(String chatId, {required String node, required bool allowSecrets}) => _hub.setChatRemote(chatId, on: true, node: node, allowSecrets: allowSecrets);
+  Future<Result<void>> stop(String chatId) => _hub.setChatRemote(chatId, on: false);
+  Future<Result<List<ProjectFile>>> files(String repo) => _hub.projectFiles(repo);
+  Future<Result<void>> saveFile(String repo, String path, String content) => _hub.putProjectFile(repo, path, content);
+  Future<Result<void>> removeFile(String repo, String path) => _hub.deleteProjectFile(repo, path);
 }
 
 /// The skills library: read it, decide on a proposal, go back a version, ask for a draft.
@@ -512,6 +533,60 @@ class ThemeSettings {
 
 /// Accepts "100.64.0.1", "100.64.0.1:7420", "http://…" or a full ws:// URL;
 /// returns null when it can't be a hub address.
+/// A hub's name for a list: its host.
+String hubNameOf(String url) => Uri.tryParse(url)?.host ?? url;
+
+/// Finds the Tether hubs this device can connect to: the ones it has used
+/// before, and (where the platform can list the tailnet) any that answer on
+/// the other devices there. Most devices on a tailnet do not run Tether, so
+/// each is asked and the silent ones are left out.
+class FindHubs {
+  const FindHubs(this._tailscale, this._probe, this._settings);
+
+  final TailscaleRepository _tailscale;
+  final HubProbe _probe;
+  final SettingsRepository _settings;
+
+  /// Whether this platform can search the tailnet at all.
+  bool get canSearch => _tailscale.canStart;
+
+  Future<List<FoundHub>> known() async => [
+        for (final h in await _settings.loadKnownHubs()) FoundHub(name: h.name, url: h.url, known: true),
+      ];
+
+  /// Everything found, remembered hubs first. A remembered hub that does not
+  /// answer is still listed, marked unreachable.
+  Future<List<FoundHub>> call() async {
+    final known = await _settings.loadKnownHubs();
+    final byUrl = <String, FoundHub>{};
+    final peers = (await _tailscale.peers()).where((p) => p.online).toList();
+
+    final probes = <Future<void>>[];
+    for (final p in peers) {
+      probes.add(() async {
+        final hello = await _probe.hello(p.ip);
+        if (hello == null) return;
+        final url = normalizeHubUrl(p.ip)!;
+        byUrl[url] = FoundHub(name: p.name, url: url, version: hello.version, trusted: hello.trusted, known: known.any((k) => k.url == url));
+      }());
+    }
+    for (final k in known) {
+      if (peers.any((p) => normalizeHubUrl(p.ip) == k.url)) continue;
+      probes.add(() async {
+        final uri = Uri.tryParse(k.url);
+        final hello = uri == null ? null : await _probe.hello(uri.host, port: uri.port);
+        byUrl[k.url] = FoundHub(name: k.name, url: k.url, version: hello?.version ?? '', trusted: hello?.trusted ?? false, known: true, reachable: hello != null);
+      }());
+    }
+    await Future.wait(probes);
+    return byUrl.values.toList()
+      ..sort((a, b) {
+        if (a.known != b.known) return a.known ? -1 : 1;
+        return a.name.compareTo(b.name);
+      });
+  }
+}
+
 String? normalizeHubUrl(String input) {
   var s = input.trim();
   if (s.isEmpty) return null;
@@ -558,3 +633,82 @@ class AppUpdates {
   Future<void> setNotified(String version) => _updates.setNotified(version);
   Future<void> notify(String title, String body) => _updates.notify(title, body);
 }
+
+/// The hub's HTTP address for its websocket one: `ws://host:7420/ws` is
+/// `http://host:7420`.
+String? httpBaseOf(String wsUrl) {
+  final u = Uri.tryParse(wsUrl);
+  if (u == null || u.host.isEmpty) return null;
+  return Uri(scheme: u.scheme == 'wss' || u.scheme == 'https' ? 'https' : 'http', host: u.host, port: u.hasPort ? u.port : null).toString();
+}
+
+/// Being told things with the app closed: whether it is on, for which kinds,
+/// and the token the background service listens with. The settings live on
+/// the device; the hub only issues the token.
+class Notifications {
+  Notifications(this._hub, this._settings, this._device);
+
+  final HubRepository _hub;
+  final SettingsRepository _settings;
+  final NotifyDevice _device;
+
+  static const _key = 'notifications';
+  static final _rand = math.Random.secure();
+
+  bool get available => _device.available;
+
+  Future<NotifySettings> load() async {
+    var s = const NotifySettings();
+    final raw = await _settings.loadDraft(_key);
+    if (raw.isNotEmpty) {
+      try {
+        final m = jsonDecode(raw) as Map<String, dynamic>;
+        s = NotifySettings(
+          enabled: m['enabled'] == true,
+          kinds: {for (final k in m['kinds'] as List<dynamic>? ?? const []) ...NotifyKind.values.where((v) => v.name == k)},
+          installId: m['installId'] as String? ?? '',
+          token: m['token'] as String? ?? '',
+        );
+      } on FormatException {
+        // Start again from the defaults.
+      } on TypeError {
+        // Same.
+      }
+    }
+    if (s.installId.isEmpty) {
+      s = s.copyWith(installId: List.generate(12, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join());
+      await save(s);
+    }
+    return s;
+  }
+
+  Future<void> save(NotifySettings s) => _settings.saveDraft(
+        _key,
+        jsonEncode({'enabled': s.enabled, 'kinds': [for (final k in s.kinds) k.name], 'installId': s.installId, 'token': s.token}),
+      );
+
+  /// Gives the background service what it needs: a token (asked for once and
+  /// kept), and the addresses to listen at, the tailnet one first and the
+  /// tunnel after it. Returns the settings with the token filled in.
+  Future<Result<NotifySettings>> apply(NotifySettings s, {required String hubUrl, required String tunnel}) async {
+    var token = s.token;
+    if (s.enabled && token.isEmpty) {
+      final got = await _hub.notifyAccess(s.installId);
+      if (got.failureOrNull case final f?) return Err(f);
+      token = got.valueOrNull!.token;
+    }
+    final base = httpBaseOf(hubUrl);
+    await _device.configure(enabled: s.enabled, token: token, urls: [?base, if (tunnel.isNotEmpty) tunnel], kinds: s.kinds);
+    final next = s.copyWith(token: token);
+    await save(next);
+    return Ok(next);
+  }
+
+  Future<Result<void>> test() => _hub.sendTestNotification();
+
+  Future<bool> permitted() => _device.permitted();
+  Future<void> askPermission() => _device.askPermission();
+  Future<NotifyStatus> status() => _device.status();
+  Future<void> appActive(bool active) => _device.setActive(active);
+}
+

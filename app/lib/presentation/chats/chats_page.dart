@@ -7,6 +7,8 @@ import '../home/cards.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/motion.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'chats_cubit.dart';
@@ -43,10 +45,7 @@ class _Entry {
 
 /// The history: start a chat, find one, pick up where you left off.
 class ChatsPage extends StatefulWidget {
-  const ChatsPage({super.key, this.header});
-
-  /// Shown above the search box: the start-a-chat box on the home screen.
-  final Widget? header;
+  const ChatsPage({super.key});
 
   @override
   State<ChatsPage> createState() => _ChatsPageState();
@@ -55,6 +54,9 @@ class ChatsPage extends StatefulWidget {
 class _ChatsPageState extends State<ChatsPage> {
   String _query = '';
   bool _archived = false;
+
+  /// Rows that have already come in, so scrolling back to one does not play it again.
+  final _shown = <Object>{};
 
   bool _found(_Entry e) {
     if (_query.isEmpty) return true;
@@ -70,7 +72,8 @@ class _ChatsPageState extends State<ChatsPage> {
     final hub = context.select<HubCubit, HubSnapshot>((c) => c.state.hub);
     final c = context.colors;
     final nav = context.read<NavCubit>();
-    final entries = _historyOf(hub, archived: _archived).where(_found).toList();
+    final all = _historyOf(hub, archived: _archived).where(_found).toList();
+    final entries = all;
     final groups = <String, List<_Entry>>{};
     for (final e in entries) {
       groups.putIfAbsent(_period(e.updated), () => []).add(e);
@@ -78,9 +81,8 @@ class _ChatsPageState extends State<ChatsPage> {
     final archivedCount = hub.chats.values.where((c) => c.archived).length;
     return PageColumn(
       bottom: 96,
+      onRefresh: context.read<HubCubit>().refresh,
       children: [
-        ?widget.header,
-        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
@@ -123,21 +125,24 @@ class _ChatsPageState extends State<ChatsPage> {
         else
           for (final MapEntry(key: period, value: list) in groups.entries) ...[
             SectionLabel(period),
-            Material(
-              color: c.surface,
-              shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (final (i, e) in list.indexed) ...[
-                    if (i > 0) Divider(height: 1, color: c.border),
-                    e.chat != null
-                        ? ChatTile(chat: e.chat!, onTap: () => nav.openChat(e.id))
-                        : _SessionRow(session: e.session!, onTap: () => nav.push(SessionEntry(e.id))),
-                  ],
-                ],
+            for (final (i, e) in list.indexed)
+              FadeIn(
+                key: ValueKey('fade-${e.id}'),
+                shown: _shown,
+                id: e.id,
+                delay: stagger(i),
+                child: Padding(
+                padding: const EdgeInsets.only(bottom: Gap.sm),
+                child: Material(
+                  color: c.surface,
+                  shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(10)),
+                  clipBehavior: Clip.antiAlias,
+                  child: e.chat != null
+                      ? ChatTile(chat: e.chat!, onTap: () => nav.openChat(e.id))
+                      : _SessionRow(session: e.session!, onTap: () => nav.push(SessionEntry(e.id))),
+                ),
               ),
-            ),
+              ),
           ],
       ],
     );
@@ -180,47 +185,44 @@ class ChatTile extends StatelessWidget {
       (h) => (h.state.hub.sessions[chat.activeSession], h.state.hub.chatUpdated(chat)),
     );
     final extra = chat.links.length - 1;
+    final summary = session?.lastPrompt.replaceAll(RegExp(r'\s+'), ' ') ?? '';
     return InkWell(
       key: Key('chat-${chat.id}'),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+        padding: const EdgeInsets.fromLTRB(Gap.lg, Gap.md, Gap.xs, Gap.md),
         child: Row(
           children: [
-            SizedBox(
-              width: 18,
-              child: session != null && session.isLive ? StateDot(state: session.state, size: 8) : Icon(Icons.chat_bubble_outline_rounded, size: 16, color: c.faint),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(chat.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(targetIcon(chat.target), size: 13, color: chat.target.detecting ? c.accent : c.faint),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          [
-                            targetLabel(chat.target),
-                            if (session != null && session.isLive) stateLabel(session.state),
-                            if (extra > 0) '$extra linked',
-                          ].join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 12, color: c.muted),
-                        ),
-                      ),
+                      if (session != null && session.isLive) ...[StateDot(state: session.state, size: 7), const SizedBox(width: Gap.sm)],
+                      Expanded(child: Text(chat.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.title(context))),
                     ],
+                  ),
+                  if (summary.isNotEmpty) ...[
+                    const SizedBox(height: Gap.xs),
+                    Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
+                  ],
+                  const SizedBox(height: Gap.sm),
+                  Text(
+                    [
+                      targetLabel(chat.target),
+                      if (session != null && session.isLive) stateLabel(session.state),
+                      if (extra > 0) '$extra linked',
+                    ].join('  ·  '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Type.meta(context, color: chat.target.detecting ? c.accent : c.faint, size: 11.5),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(ago(updated), style: TextStyle(fontSize: 11.5, color: c.faint)),
+            const SizedBox(width: Gap.sm),
+            Text(ago(updated), style: Type.meta(context, color: c.faint, size: 11.5)),
             ChatMenu(chat: chat),
           ],
         ),
@@ -286,6 +288,11 @@ class ChatMenu extends StatelessWidget {
             if (title != null) await cubit.rename(chat.id, title);
           case 'archive':
             await cubit.archive(chat.id, archived: !chat.archived);
+          case 'delete':
+            final nav = context.read<NavCubit>();
+            if (!await _confirmDelete(context, chat)) return;
+            final gone = await cubit.delete(chat.id);
+            if (gone && nav.state.selectedChat == chat.id) nav.back();
           case 'copy':
             final text = await cubit.transcript(chat.id);
             if (text != null) {
@@ -298,6 +305,7 @@ class ChatMenu extends StatelessWidget {
         _item('rename', Icons.edit_outlined, 'Rename'),
         _item('copy', Icons.content_copy_rounded, 'Copy conversation'),
         _item('archive', chat.archived ? Icons.unarchive_outlined : Icons.archive_outlined, chat.archived ? 'Restore' : 'Archive'),
+        _item('delete', Icons.delete_outline_rounded, 'Delete'),
       ],
     );
   }
@@ -307,6 +315,25 @@ class ChatMenu extends StatelessWidget {
         child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 12), Flexible(child: Text(label))]),
       );
 }
+
+Future<bool> _confirmDelete(BuildContext context, Chat chat) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${chat.displayTitle}"?'),
+        content: const Text('The chat goes away. Its sessions stay, and are listed on their own.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            key: const Key('confirm-delete-chat'),
+            style: FilledButton.styleFrom(backgroundColor: ctx.colors.danger, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    ) ??
+    false;
 
 /// Asks for a chat's new title. An empty one hands naming back to Tether.
 Future<String?> showRenameChat(BuildContext context, Chat chat) => showDialog<String>(
@@ -352,55 +379,23 @@ class _RenameDialogState extends State<_RenameDialog> {
       );
 }
 
-/// The sidebar's recents: chats as single lines, the open one highlighted.
-class RecentChats extends StatelessWidget {
-  const RecentChats({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final hub = context.select<HubCubit, HubSnapshot>((c) => c.state.hub);
-    final selected = context.select<NavCubit, String>((n) => n.state.selectedChat.isNotEmpty ? n.state.selectedChat : n.state.selectedSession);
-    final nav = context.read<NavCubit>();
-    final c = context.colors;
-    final entries = _historyOf(hub).take(40).toList();
-    if (entries.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 16, 8),
-        child: Text('Chats you start show up here.', style: TextStyle(color: c.faint, fontSize: 12.5)),
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      children: [
-        for (final e in entries)
-          _RecentRow(
-            key: Key('recent-${e.id}'),
-            title: e.chat?.displayTitle ?? e.session!.displayTitle,
-            live: (e.chat != null ? hub.sessions[e.chat!.activeSession] : e.session)?.isLive ?? false,
-            state: (e.chat != null ? hub.sessions[e.chat!.activeSession] : e.session)?.state,
-            selected: e.id == selected,
-            menu: e.chat == null ? null : ChatMenu(chat: e.chat!),
-            onTap: () => e.chat != null ? nav.openChat(e.id, replace: true) : nav.show(SessionEntry(e.id)),
-          ),
-      ],
-    );
-  }
-}
-
-class _RecentRow extends StatefulWidget {
-  const _RecentRow({super.key, required this.title, required this.live, required this.selected, required this.onTap, this.state, this.menu});
+/// A chat or session as a single line in the sidebar: the open one
+/// highlighted, its menu on hover.
+class SidebarRow extends StatefulWidget {
+  const SidebarRow({super.key, required this.title, required this.selected, required this.onTap, this.live = false, this.state, this.menu, this.indent = 0});
 
   final String title;
   final bool live, selected;
   final SessionState? state;
   final Widget? menu;
   final VoidCallback onTap;
+  final double indent;
 
   @override
-  State<_RecentRow> createState() => _RecentRowState();
+  State<SidebarRow> createState() => _SidebarRowState();
 }
 
-class _RecentRowState extends State<_RecentRow> {
+class _SidebarRowState extends State<SidebarRow> {
   bool _hover = false;
 
   @override
@@ -411,22 +406,22 @@ class _RecentRowState extends State<_RecentRow> {
       onExit: (_) => setState(() => _hover = false),
       child: Material(
         color: widget.selected ? c.accent.withValues(alpha: 0.12) : (_hover ? c.raised : Colors.transparent),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: context.round(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: context.round(8),
           onTap: widget.onTap,
           child: SizedBox(
-            height: 34,
+            height: 38,
             child: Row(
               children: [
-                const SizedBox(width: 10),
+                SizedBox(width: 10 + widget.indent),
                 if (widget.live && widget.state != null) ...[StateDot(state: widget.state!, size: 6), const SizedBox(width: 8)],
                 Expanded(
                   child: Text(
                     widget.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: widget.selected ? c.text : c.text.withValues(alpha: 0.85), fontWeight: widget.selected ? FontWeight.w600 : null),
+                    style: TextStyle(fontSize: 14, color: widget.selected ? c.text : c.text.withValues(alpha: 0.88), fontWeight: widget.selected ? FontWeight.w600 : null),
                   ),
                 ),
                 if (widget.menu != null && (_hover || widget.selected)) SizedBox(width: 32, child: widget.menu) else const SizedBox(width: 8),
@@ -435,6 +430,34 @@ class _RecentRowState extends State<_RecentRow> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A chat as a sidebar row.
+class ChatRow extends StatelessWidget {
+  const ChatRow({super.key, required this.chat, required this.selected, required this.onTap, this.indent = 0, this.keyPrefix = 'recent'});
+
+  final Chat chat;
+  final bool selected;
+  final VoidCallback onTap;
+  final double indent;
+
+  /// Tells a chat's rows apart where it is listed twice.
+  final String keyPrefix;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = context.select<HubCubit, Session?>((h) => h.state.hub.sessions[chat.activeSession]);
+    return SidebarRow(
+      key: Key('$keyPrefix-${chat.id}'),
+      title: chat.displayTitle,
+      live: session?.isLive ?? false,
+      state: session?.state,
+      selected: selected,
+      indent: indent,
+      menu: ChatMenu(chat: chat),
+      onTap: onTap,
     );
   }
 }

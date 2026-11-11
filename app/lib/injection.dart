@@ -5,8 +5,11 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
+import 'data/datasources/desktop_updater.dart';
 import 'data/datasources/file_downloads.dart';
 import 'data/datasources/hub_cache.dart';
+import 'data/datasources/hub_probe.dart';
+import 'data/datasources/notify_platform.dart';
 import 'data/datasources/hub_rest_api.dart';
 import 'data/datasources/hub_socket.dart';
 import 'data/datasources/hub_tls.dart';
@@ -18,7 +21,6 @@ import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
 import 'data/repositories/update_repository_impl.dart';
 import 'data/datasources/update_platform.dart';
-import 'domain/entities/entities.dart';
 import 'domain/repositories/repositories.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
@@ -30,13 +32,13 @@ import 'presentation/nav/nav_cubit.dart';
 import 'presentation/update/update_cubit.dart';
 import 'presentation/settings/codebases_section.dart';
 import 'presentation/hub/hub_cubit.dart';
-import 'presentation/new_session/new_session_cubit.dart';
 import 'presentation/session/session_bloc.dart';
 import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
+import 'presentation/onboarding/onboarding_cubit.dart';
 import 'presentation/tailscale/tailscale_cubit.dart';
 import 'presentation/usage/usage_cubit.dart';
 
@@ -68,6 +70,9 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton<FileDownloads>(BackgroundFileDownloads.new)
       ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
       ..registerLazySingleton<TailscaleRepository>(_tailscale)
+      ..registerLazySingleton<HubProbe>(HttpHubProbe.new)
+      ..registerLazySingleton<NotifyDevice>(_notifyDevice)
+      ..registerLazySingleton<DesktopUpdater>(() => Platform.isWindows ? WinSparkleUpdater() : const NoDesktopUpdater())
       ..registerLazySingleton<UpdateRepository>(() => UpdateRepositoryImpl(api: sl(), client: sl(), platform: sl(), local: sl()))
       ..registerLazySingleton<TransferRepository>(() => TransferRepositoryImpl(api: sl(), downloads: sl()), dispose: (r) => (r as TransferRepositoryImpl).dispose());
   }
@@ -97,7 +102,10 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => LoadUsage(sl()))
     ..registerLazySingleton(() => LoadRoutines(sl()))
     ..registerLazySingleton(() => EnsureTailscale(sl()))
+    ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
+    ..registerLazySingleton(() => Notifications(sl(), sl(), sl()))
     ..registerLazySingleton(() => Skills(sl()))
+    ..registerLazySingleton(() => RemoteProjects(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
     ..registerLazySingleton(() => ContinueOnHub(sl()))
@@ -116,7 +124,7 @@ void configureDependencies({bool withData = true}) {
     // View models
     ..registerFactory(() => NavCubit(watchHub: sl()))
     ..registerFactory(() => ChatsCubit(chats: sl()))
-    ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), exit: () => exit(0)))
+    ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), desktop: sl()))
     ..registerFactoryParam<NewChatCubit, String, void>((node, _) => NewChatCubit(chats: sl(), drafts: sl(), watchHub: sl(), node: node))
     ..registerFactoryParam<TargetPickerCubit, String, String>((prompt, node) => TargetPickerCubit(chats: sl(), prompt: prompt, node: node))
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
@@ -124,6 +132,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => UsageCubit(load: sl()))
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
     ..registerFactory(() => TailscaleCubit(ensure: sl(), watchHub: sl(), retryHub: sl()))
+    ..registerFactory(() => OnboardingCubit(find: sl(), tailscale: sl(), viaTailnet: sl()))
     ..registerFactory(() => ArtifactsCubit(artifacts: sl(), transfers: sl()))
     ..registerFactory(() => PagesCubit(artifacts: sl()))
     ..registerLazySingleton(() => Codebases(sl()))
@@ -145,16 +154,6 @@ void configureDependencies({bool withData = true}) {
         outbox: sl(),
         uploads: sl(),
       ),
-    )
-    ..registerFactoryParam<NewSessionCubit, HubSnapshot, String?>(
-      (hub, preferredNode) => NewSessionCubit(
-        hub: hub,
-        createSession: sl(),
-        drafts: sl(),
-        loadWorkspaces: sl(),
-        setRoot: sl(),
-        preferredNode: preferredNode,
-      ),
     );
 }
 
@@ -162,6 +161,10 @@ String _title(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
 /// The device's network changing (Wi-Fi, mobile data, a VPN coming up),
 /// without the state it starts in.
+/// Where notifications come from with the app closed: a background service on
+/// Android, nothing elsewhere.
+NotifyDevice _notifyDevice() => Platform.isAndroid ? AndroidNotify() : const NoNotify();
+
 /// Tailscale as this kind of device allows: the desktop starts it itself, a
 /// phone is asked and pointed at the app.
 TailscaleRepository _tailscale() => Platform.isAndroid

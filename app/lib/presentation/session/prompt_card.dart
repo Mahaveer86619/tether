@@ -25,7 +25,7 @@ class PromptCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.warning.withValues(alpha: 0.55)),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: context.round(14),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
@@ -94,7 +94,7 @@ class StuckBanner extends StatelessWidget {
       key: const Key('stuck-banner'),
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: context.round(10)),
       child: Row(
         children: [
           Icon(Icons.help_outline_rounded, size: 18, color: c.warning),

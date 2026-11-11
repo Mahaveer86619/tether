@@ -11,7 +11,7 @@ import (
 )
 
 // Permission modes: shown on every session, switched from an app, and put
-// back by the hub when one was set for a while. See docs/hosting.md#permission-modes.
+// back by the hub when one was set for a while. See docs/architecture/hosting.md#permission-modes.
 
 const (
 	modeCheckEvery = 15 * time.Second

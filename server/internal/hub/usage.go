@@ -10,7 +10,7 @@ import (
 
 // Token usage per machine and session, read by agents from transcripts.
 // Each node uses only its own Claude login; this only reports. See
-// docs/plan.md#usage-tracking.
+// docs/plans/plan.md#usage-tracking.
 
 // Claude's usage limits reset over a rolling 5-hour window.
 const usageWindow = 5 * time.Hour

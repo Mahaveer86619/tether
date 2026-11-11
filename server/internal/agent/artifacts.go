@@ -99,7 +99,7 @@ func (a *Agent) noteToolFile(in hookInput) {
 }
 
 // pagePath reports "<name>/<file>" for a file of a generated page, one
-// under .tether/pages/<name>/ (see docs/plan.md#generated-pages).
+// under .tether/pages/<name>/ (see docs/plans/plan.md#generated-pages).
 func pagePath(path string) (string, bool) {
 	p := strings.ReplaceAll(path, `\`, "/")
 	_, rest, ok := strings.Cut(p, "/.tether/pages/")

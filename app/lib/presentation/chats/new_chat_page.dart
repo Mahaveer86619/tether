@@ -4,9 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
 import '../artifacts/attachments.dart';
+import '../home/monitor_page.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
+import '../routines/pinned_skills_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/refresh.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import '../widgets/prompt_box.dart';
@@ -15,27 +19,23 @@ import 'target_picker.dart';
 
 /// A blank chat: say what you want, optionally say where, and go.
 class NewChatPage extends StatelessWidget {
-  const NewChatPage({super.key, this.node = '', this.leading, this.embedded = false});
+  const NewChatPage({super.key, this.node = '', this.leading});
 
   /// Start on this device, when opened from its page.
   final String node;
   final Widget? leading;
 
-  /// Just the box, to sit at the top of another screen's list.
-  final bool embedded;
-
   @override
   Widget build(BuildContext context) => BlocProvider(
         create: (_) => sl<NewChatCubit>(param1: node),
-        child: _NewChat(leading: leading, embedded: embedded),
+        child: _NewChat(leading: leading),
       );
 }
 
 class _NewChat extends StatefulWidget {
-  const _NewChat({this.leading, this.embedded = false});
+  const _NewChat({this.leading});
 
   final Widget? leading;
-  final bool embedded;
 
   @override
   State<_NewChat> createState() => _NewChatState();
@@ -99,16 +99,15 @@ class _NewChatState extends State<_NewChat> {
         }
 
         final (label, hint) = _targetText(s);
-        Widget box() => Column(
+        final hub = context.select<HubCubit, HubSnapshot>((h) => h.state.hub);
+        final allProjects = hub.chatsSupported ? hub.chatProjects() : const <ChatProject>[];
+        final projects = allProjects.take(4).toList();
+        final box = Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.hub_rounded, size: 30, color: c.accent),
-            const SizedBox(height: 12),
-            Text('What should Claude work on?',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: narrow ? 21 : 25, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 22),
             PromptBox(
+              prompt: true,
               controller: _text,
               fieldKey: const Key('new-chat-input'),
               hint: 'Ask anything, or describe a task',
@@ -139,31 +138,105 @@ class _NewChatState extends State<_NewChat> {
                 ActionChip(
                   key: const Key('target-chip'),
                   avatar: Icon(_targetIcon(s), size: 16, color: c.accent),
-                  label: Text(label, overflow: TextOverflow.ellipsis),
+                  label: Text(label, overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.text)),
                   onPressed: connected ? () => _pickTarget(s) : null,
                 ),
                 if (hint.isNotEmpty) Text(hint, style: TextStyle(fontSize: 12, color: c.muted)),
               ],
             ),
+            BlocBuilder<PinnedSkillsCubit, List<String>>(
+              builder: (context, pinned) => pinned.isEmpty
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          for (final name in pinned)
+                            ActionChip(
+                              key: Key('pinned-$name'),
+                              label: Text('/$name', style: Type.meta(context, color: c.text)),
+                              onPressed: () {
+                                _text.text = 'Use the $name skill. ${_text.text}'.trimRight();
+                                _text.selection = TextSelection.collapsed(offset: _text.text.length);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+            ),
           ],
         );
-        if (widget.embedded) return Padding(padding: const EdgeInsets.only(top: 16, bottom: 4), child: box());
+        final nav = context.read<NavCubit>();
         return Column(
           children: [
             if (widget.leading != null) Align(alignment: Alignment.centerLeft, child: widget.leading!),
             Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: narrow ? 14 : 24, vertical: 24),
-                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: box()),
+              child: PullRefresh(
+                onRefresh: context.read<HubCubit>().refresh,
+                child: LayoutBuilder(
+                  builder: (context, box) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: narrow ? 20 : 32, vertical: 16),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: box.maxHeight - 32, maxWidth: 720),
+                      child: Center(
+                        child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.hub_rounded, size: 30, color: c.accent),
+                        const SizedBox(height: 14),
+                        Text(_greeting(DateTime.now()), key: const Key('greeting'), style: TextStyle(fontSize: narrow ? 28 : 34, fontWeight: FontWeight.w600, height: 1.15)),
+                        const SizedBox(height: 4),
+                        Text('What should Claude work on?', style: TextStyle(fontSize: narrow ? 20 : 24, color: c.muted, height: 1.2)),
+                        if (projects.isNotEmpty) ...[
+                          const SizedBox(height: 22),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final p in projects)
+                                FilterChip(
+                                  key: Key('project-chip-${p.key}'),
+                                  avatar: Icon(Icons.folder_outlined, size: 16, color: c.accent),
+                                  label: Text(p.labelAmong(allProjects), style: Type.meta(context, color: c.text)),
+                                  tooltip: '${p.node} · ${p.cwd}',
+                                  selected: s.target?.node == p.node && s.target?.cwd == p.cwd,
+                                  showCheckmark: false,
+                                  onSelected: connected
+                                      ? (on) => context.read<NewChatCubit>().setTarget(on ? ChatTarget(mode: TargetMode.manual, node: p.node, cwd: p.cwd) : null)
+                                      : null,
+                                ),
+                            ],
+                          ),
+                        ],
+                        LiveSections(overview: false, onSession: nav.openSession, onDevices: () => nav.select(Destination.devices)),
+                      ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(narrow ? 12 : 32, 4, narrow ? 12 : 32, narrow ? 12 : 24),
+              child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 720), child: box)),
             ),
           ],
         );
       },
     );
   }
+
+  String _greeting(DateTime now) => switch (now.hour) {
+        >= 5 && < 12 => 'Good morning',
+        >= 12 && < 17 => 'Good afternoon',
+        >= 17 && < 22 => 'Good evening',
+        _ => 'Hello',
+      };
 
   IconData _targetIcon(NewChatState s) => switch (s.target) {
         null => Icons.auto_awesome_outlined,

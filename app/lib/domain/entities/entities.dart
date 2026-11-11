@@ -26,11 +26,24 @@ class Node extends Equatable {
     this.lastSeen,
     this.runningSessions = 0,
     this.ip = '',
+    this.capabilities = const [],
+    this.checks = const [],
   });
 
   final String name;
   final bool online;
   final String os, hostname, claudeVersion, agentVersion;
+
+  /// What the machine can build or run: "flutter", "android-sdk", "docker"...
+  final List<String> capabilities;
+
+  /// What the agent checked about the machine.
+  final List<DoctorCheck> checks;
+
+  /// Checks that failed, required ones first.
+  List<DoctorCheck> get problems => [...checks.where((c) => !c.ok && c.required), ...checks.where((c) => !c.ok && !c.required)];
+
+  bool get needsAttention => checks.any((c) => !c.ok && c.required);
   final DateTime? lastSeen;
   final int runningSessions;
 
@@ -38,12 +51,12 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }
 
-/// Where a session's live process runs; see docs/hosting.md.
+/// Where a session's live process runs; see docs/architecture/hosting.md.
 enum SessionHost { none, headless, tmux, terminal }
 
 enum TodoStatus { pending, inProgress, completed }
@@ -271,6 +284,7 @@ class HubSnapshot extends Equatable {
     this.endpoint = '',
     this.lastError,
     this.preferences,
+    this.notifyUrl = '',
     this.hubNode = '',
     this.deviceId = '',
     this.clientIp = '',
@@ -296,6 +310,9 @@ class HubSnapshot extends Equatable {
 
   /// App settings shared by every client; null until one has saved them.
   final Appearance? preferences;
+
+  /// The hub's notification tunnel, which works without Tailscale; empty when it has none.
+  final String notifyUrl;
 
   /// The node on the hub's own machine, where hub sessions run.
   final String hubNode;
@@ -331,6 +348,37 @@ class HubSnapshot extends Equatable {
 
   /// The chat a session belongs to, if any.
   Chat? chatOf(String session) => chats.values.where((c) => c.links.any((l) => l.session == session)).firstOrNull;
+
+  /// The folder a chat works in, when it is a project: not a scratch folder,
+  /// and not a home folder, where one-off questions run.
+  ({String node, String cwd})? projectOf(Chat c) {
+    final s = sessions[c.activeSession];
+    if (c.target.scratch || (s?.scratch ?? false)) return null;
+    final cwd = (s != null && s.cwd.isNotEmpty) ? s.cwd : c.target.cwd;
+    final node = (s != null && s.node.isNotEmpty) ? s.node : c.target.node;
+    if (node.isEmpty || !isProjectFolder(cwd)) return null;
+    return (node: node, cwd: cwd);
+  }
+
+  /// Chats grouped by project folder, the project with the newest chat first.
+  /// One-off chats, which have no project, are in none of them.
+  List<ChatProject> chatProjects({bool archived = false}) {
+    final by = <String, List<Chat>>{};
+    final where = <String, ({String node, String cwd})>{};
+    for (final c in chats.values) {
+      if (c.archived != archived) continue;
+      final p = projectOf(c);
+      if (p == null) continue;
+      final key = '${p.node}|${p.cwd}';
+      where[key] = p;
+      by.putIfAbsent(key, () => []).add(c);
+    }
+    DateTime when(Chat c) => chatUpdated(c) ?? DateTime(0);
+    final out = [
+      for (final e in by.entries) ChatProject(node: where[e.key]!.node, cwd: where[e.key]!.cwd, chats: e.value..sort((a, b) => when(b).compareTo(when(a)))),
+    ]..sort((a, b) => when(b.chats.first).compareTo(when(a.chats.first)));
+    return out;
+  }
 
   /// When a chat last moved: its own time or its active session's.
   DateTime? chatUpdated(Chat c) {
@@ -380,14 +428,48 @@ class HubSnapshot extends Equatable {
     return out..sort((a, b) => (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0)));
   }
 
-  /// Parent folders of the projects used on a node: likely workspace roots.
-  List<String> suggestedRoots(String node) {
-    final seen = <String>{};
-    for (final f in recentFolders(node)) {
-      final i = f.lastIndexOf(RegExp(r'[\\/]'));
-      if (i > 0) seen.add(f.substring(0, i));
+  /// Parent folders that hold the projects worked in on a node: likely
+  /// workspace roots, best first. A folder qualifies with two or more
+  /// projects in it, or with one that is worked in often (three sessions).
+  /// Home folders, scratch and app-data folders are not projects, and a
+  /// folder whose projects are all roots themselves (`projects` above
+  /// `projects/personal`) is left out.
+  List<String> suggestedRoots(String node, {int limit = 5}) {
+    String norm(String p) => p.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+    bool skip(String p) {
+      final low = norm(p).toLowerCase();
+      return low.contains('/.tether/') ||
+          low.contains('/appdata/') ||
+          RegExp(r'^([a-z]:)?/(users|home)/[^/]+$').hasMatch(low) ||
+          low == '/root' ||
+          !low.contains('/');
     }
-    return seen.take(5).toList();
+
+    final uses = <String, int>{};
+    final latest = <String, DateTime>{};
+    for (final s in sessions.values) {
+      if (s.node != node || s.cwd.isEmpty || skip(s.cwd)) continue;
+      final f = norm(s.cwd);
+      uses[f] = (uses[f] ?? 0) + 1;
+      final t = s.updated ?? DateTime(0);
+      if (t.isAfter(latest[f] ?? DateTime(0))) latest[f] = t;
+    }
+    final children = <String, Set<String>>{};
+    for (final f in uses.keys) {
+      final parent = f.substring(0, f.lastIndexOf('/'));
+      if (!skip(parent)) children.putIfAbsent(parent, () => {}).add(f);
+    }
+    final candidates = {
+      for (final e in children.entries)
+        if (e.value.length >= 2 || uses[e.value.first]! >= 3) e.key,
+    };
+    final roots = [
+      for (final p in candidates)
+        if (!children[p]!.every(candidates.contains)) p,
+    ];
+    DateTime last(String p) => children[p]!.map((k) => latest[k]!).reduce((a, b) => a.isAfter(b) ? a : b);
+    roots.sort((a, b) => children[a]!.length != children[b]!.length ? children[b]!.length.compareTo(children[a]!.length) : last(b).compareTo(last(a)));
+    return roots.take(limit).toList();
   }
 
   /// Folders used recently on a node, newest first.
@@ -407,6 +489,7 @@ class HubSnapshot extends Equatable {
     String? endpoint,
     String? Function()? lastError,
     Appearance? Function()? preferences,
+    String? notifyUrl,
     String? hubNode,
     String? deviceId,
     String? clientIp,
@@ -425,6 +508,7 @@ class HubSnapshot extends Equatable {
         endpoint: endpoint ?? this.endpoint,
         lastError: lastError != null ? lastError() : this.lastError,
         preferences: preferences != null ? preferences() : this.preferences,
+        notifyUrl: notifyUrl ?? this.notifyUrl,
         hubNode: hubNode ?? this.hubNode,
         deviceId: deviceId ?? this.deviceId,
         clientIp: clientIp ?? this.clientIp,
@@ -436,7 +520,7 @@ class HubSnapshot extends Equatable {
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -459,6 +543,33 @@ class Project extends Equatable {
   @override
   List<Object?> get props => [node, cwd, sessions];
 }
+
+/// A folder on a node and the chats that work in it, newest first.
+class ChatProject extends Equatable {
+  const ChatProject({required this.node, required this.cwd, required this.chats});
+
+  final String node, cwd;
+  final List<Chat> chats;
+
+  String get key => '$node|$cwd';
+
+  String get name {
+    final parts = cwd.split(RegExp(r'[\\/]')).where((p) => p.isNotEmpty);
+    return parts.isEmpty ? cwd : parts.last;
+  }
+
+  /// [name], with the device when another project in [all] has the same name.
+  String labelAmong(Iterable<ChatProject> all) => all.any((p) => p.key != key && p.name == name) ? '$name · $node' : name;
+
+  @override
+  List<Object?> get props => [node, cwd, chats];
+}
+
+final _homeFolder = RegExp(r'^(/home/[^/]+|/Users/[^/]+|/root|[A-Za-z]:[\\/]Users[\\/][^\\/]+)[\\/]*$');
+
+/// Whether a folder is somewhere a project lives, rather than a home folder
+/// or nothing at all.
+bool isProjectFolder(String cwd) => cwd.trim().isNotEmpty && !_homeFolder.hasMatch(cwd.trim());
 
 int compareSessions(Session a, Session b) {
   if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
@@ -502,7 +613,7 @@ class HubConnection extends Equatable {
 
 /// How the app looks: light or dark, which theme, and an optional accent.
 class Appearance extends Equatable {
-  const Appearance({this.mode = ThemeMode.system, this.palette = 'claude', this.accent});
+  const Appearance({this.mode = ThemeMode.dark, this.palette = 'tether', this.accent});
 
   final ThemeMode mode;
   final String palette;
@@ -708,7 +819,7 @@ class NewSessionRequest extends Equatable {
 }
 
 /// A file in the hub's central artifact store.
-/// A folder on a device the hub keeps copies of; see docs/plan.md#codebases-on-the-hub.
+/// A folder on a device the hub keeps copies of; see docs/plans/plan.md#codebases-on-the-hub.
 class Codebase extends Equatable {
   const Codebase({
     required this.id,
@@ -751,7 +862,7 @@ class EnvFileInfo extends Equatable {
   List<Object?> get props => [path, keys];
 }
 
-/// A small site a session made, hosted by the hub; see docs/plan.md#generated-pages.
+/// A small site a session made, hosted by the hub; see docs/plans/plan.md#generated-pages.
 class HostedPage extends Equatable {
   const HostedPage({required this.session, required this.name, this.files = 0, this.size = 0, this.updated, this.url = ''});
 
@@ -953,7 +1064,7 @@ class ConnectedClient extends Equatable {
   List<Object?> get props => [name, platform, appVersion, deviceId, ip, connected];
 }
 
-/// How a chat's target was chosen; see docs/chats.md#targets.
+/// How a chat's target was chosen; see docs/architecture/chats.md#targets.
 enum TargetMode {
   /// The hub matched it from the prompt and recent work.
   auto('auto'),
@@ -1037,6 +1148,42 @@ class Chat extends Equatable {
 
   @override
   List<Object?> get props => [id, title, titleByUser, created, updated, archived, target, activeSession, links];
+}
+
+/// Whether a chat keeps its project folder in step on two devices, and how
+/// that is going. A project's files (the .env and config the hub keeps for
+/// it) are named by [repo], which is set even before the chat is remote.
+class ChatRemote extends Equatable {
+  const ChatRemote({this.on = false, this.repo = '', this.sourceNode = '', this.mirrorNode = '', this.state = '', this.error = '', this.synced});
+
+  final bool on;
+  final String repo;
+
+  /// The device whose folder is pushed after each turn, and the one that follows.
+  final String sourceNode, mirrorNode;
+
+  /// pending, syncing, synced or failed.
+  final String state, error;
+  final DateTime? synced;
+
+  bool get working => on && (state == 'syncing' || state == 'pending');
+  bool get failed => on && state == 'failed';
+
+  @override
+  List<Object?> get props => [on, repo, sourceNode, mirrorNode, state, error, synced];
+}
+
+/// A file the hub keeps for a project, for the devices that run it: its
+/// path and the names of the keys in it, never the values.
+class ProjectFile extends Equatable {
+  const ProjectFile({required this.path, this.keys = const [], this.updated});
+
+  final String path;
+  final List<String> keys;
+  final DateTime? updated;
+
+  @override
+  List<Object?> get props => [path, keys, updated];
 }
 
 class NewChatRequest extends Equatable {
@@ -1124,7 +1271,7 @@ class UpdateAsset extends Equatable {
   List<Object?> get props => [name, url, sha256, size];
 }
 
-/// The newest release the hub knows of; see docs/releasing.md.
+/// The newest release the hub knows of; see docs/operations/releasing.md.
 class Release extends Equatable {
   const Release({required this.version, this.notes = '', this.minSupported = '', this.published, this.assets = const {}});
 
@@ -1298,3 +1445,111 @@ class TailscaleStatus extends Equatable {
   @override
   List<Object?> get props => [state, loginUrl, message];
 }
+
+/// A hub this device has connected to before, remembered so it is offered
+/// again without searching.
+class KnownHub extends Equatable {
+  const KnownHub({required this.url, required this.name, this.lastConnected});
+
+  /// The hub's websocket address, as saved.
+  final String url;
+  final String name;
+  final DateTime? lastConnected;
+
+  @override
+  List<Object?> get props => [url, name, lastConnected];
+}
+
+/// Another device on the tailnet, as Tailscale lists it.
+class TailnetPeer extends Equatable {
+  const TailnetPeer({required this.name, required this.ip, this.online = true, this.os = ''});
+
+  final String name, ip, os;
+  final bool online;
+
+  @override
+  List<Object?> get props => [name, ip, online, os];
+}
+
+/// What a Tether hub says about itself to anyone who asks.
+class HubHello extends Equatable {
+  const HubHello({required this.version, required this.trusted});
+
+  final String version;
+
+  /// The hub would let this device in without a token or code.
+  final bool trusted;
+
+  @override
+  List<Object?> get props => [version, trusted];
+}
+
+/// A Tether hub found on the tailnet, or remembered.
+class FoundHub extends Equatable {
+  const FoundHub({required this.name, required this.url, this.version = '', this.trusted = false, this.known = false, this.reachable = true});
+
+  final String name, url, version;
+  final bool trusted, known;
+
+  /// A remembered hub that did not answer just now.
+  final bool reachable;
+
+  @override
+  List<Object?> get props => [name, url, version, trusted, known, reachable];
+}
+
+/// One thing an agent checked about its machine.
+class DoctorCheck extends Equatable {
+  const DoctorCheck({required this.id, required this.label, required this.ok, this.detail = '', this.required = false});
+
+  final String id, label, detail;
+  final bool ok, required;
+
+  @override
+  List<Object?> get props => [id, label, ok, detail, required];
+}
+
+/// What a device needs to be told things when the app is closed: a token that
+/// opens only the hub's notifications, and the tunnel address if there is one.
+class NotifyAccess extends Equatable {
+  const NotifyAccess({required this.token, this.tunnel = ''});
+
+  final String token, tunnel;
+
+  @override
+  List<Object?> get props => [token, tunnel];
+}
+
+/// The kinds of thing worth a notification.
+enum NotifyKind { finished, approval, failed }
+
+/// How notifications are set up on this device.
+class NotifySettings extends Equatable {
+  const NotifySettings({this.enabled = false, this.kinds = const {NotifyKind.finished, NotifyKind.approval, NotifyKind.failed}, this.installId = '', this.token = ''});
+
+  final bool enabled;
+  final Set<NotifyKind> kinds;
+
+  /// Names this install to the hub, so two devices do not share a token.
+  final String installId;
+  final String token;
+
+  NotifySettings copyWith({bool? enabled, Set<NotifyKind>? kinds, String? installId, String? token}) =>
+      NotifySettings(enabled: enabled ?? this.enabled, kinds: kinds ?? this.kinds, installId: installId ?? this.installId, token: token ?? this.token);
+
+  @override
+  List<Object?> get props => [enabled, kinds.map((k) => k.name).toList()..sort(), installId, token];
+}
+
+/// What the background listener last saw.
+class NotifyStatus extends Equatable {
+  const NotifyStatus({this.running = false, this.lastOk, this.error = ''});
+
+  final bool running;
+  final DateTime? lastOk;
+  final String error;
+
+  @override
+  List<Object?> get props => [running, lastOk, error];
+}
+

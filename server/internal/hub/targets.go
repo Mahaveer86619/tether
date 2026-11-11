@@ -2,15 +2,17 @@ package hub
 
 import (
 	"net/http"
+	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
 
 // Where a chat runs: picked by the user, matched by the hub from the
 // prompt and the folders the user works in, or worked out by Claude in a
-// scratch folder when nothing matches. See docs/chats.md#targets.
+// scratch folder when nothing matches. See docs/architecture/chats.md#targets.
 
 const (
 	scoreName  = 10 // the folder's whole name is in the prompt
@@ -32,26 +34,29 @@ var genericWords = map[string]bool{
 // prompt first, then most recently used. Caller holds h.mu.
 func (h *Hub) targetCandidates(prompt string) []*v1.TargetCandidate {
 	byKey := map[string]*v1.TargetCandidate{}
-	add := func(node, cwd string, used int64) {
-		if cwd == "" || strings.Contains(strings.ReplaceAll(cwd, `\`, "/"), "/.tether/") {
+	add := func(node, cwd string, used int64, session bool) {
+		if cwd == "" || notAProject(cwd) {
 			return
 		}
 		key := node + "\x00" + normPath(cwd)
 		c := byKey[key]
 		if c == nil {
-			c = &v1.TargetCandidate{Node: node, Cwd: cwd, Label: baseOf(cwd)}
+			c = &v1.TargetCandidate{Node: node, Cwd: cwd, Label: labelOf(cwd)}
 			byKey[key] = c
 		}
 		c.LastUsedMs = max(c.LastUsedMs, used)
+		if session {
+			c.Uses++
+		}
 	}
 	for _, s := range h.sessions {
 		if !s.Scratch && s.Codebase == "" {
-			add(s.Node, s.Cwd, s.UpdatedMs)
+			add(s.Node, s.Cwd, s.UpdatedMs, true)
 		}
 	}
 	if list, err := h.store.Codebases(); err == nil {
 		for _, cb := range list {
-			add(cb.Node, cb.Path, max(cb.SnapshotMs, cb.CreatedMs))
+			add(cb.Node, cb.Path, max(cb.SnapshotMs, cb.CreatedMs), false)
 		}
 	} else {
 		h.log.Error("list codebases", "err", err)
@@ -68,6 +73,10 @@ func (h *Hub) targetCandidates(prompt string) []*v1.TargetCandidate {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
 			return out[i].Score > out[j].Score
+		}
+		// Among equal matches, the folder worked in most, then the latest.
+		if out[i].Uses != out[j].Uses {
+			return out[i].Uses > out[j].Uses
 		}
 		if out[i].LastUsedMs != out[j].LastUsedMs {
 			return out[i].LastUsedMs > out[j].LastUsedMs
@@ -127,10 +136,38 @@ func autoPick(list []*v1.TargetCandidate) *v1.TargetCandidate {
 	if len(online) == 0 || online[0].Score < scorePick {
 		return nil
 	}
-	if len(online) > 1 && online[1].Score == online[0].Score {
+	if len(online) > 1 && online[1].Score == online[0].Score && !clearlyPreferred(online[0], online[1]) {
 		return nil
 	}
 	return online[0]
+}
+
+// clearlyPreferred says whether two equally good matches are not equally
+// good in practice: the owner works in one far more than in the other, or in
+// one lately and in the other not for a month.
+func clearlyPreferred(a, b *v1.TargetCandidate) bool {
+	if a.Uses >= 2 && a.Uses >= 2*b.Uses {
+		return true
+	}
+	const week, month = 7 * 24 * 3600 * 1000, 30 * 24 * 3600 * 1000
+	return a.LastUsedMs > 0 && a.LastUsedMs-b.LastUsedMs > month && time.Now().UnixMilli()-a.LastUsedMs < week
+}
+
+var homeFolder = regexp.MustCompile(`^(?i:[a-z]:/users/[^/]+|/home/[^/]+|/users/[^/]+|/root)$`)
+
+// notAProject is a folder no project lives in: Tether's own scratch and
+// attachment folders, and the app data a tool keeps on Windows.
+func notAProject(cwd string) bool {
+	p := strings.ReplaceAll(cwd, `\`, "/")
+	return strings.Contains(p, "/.tether/") || strings.Contains(strings.ToLower(p), "/appdata/")
+}
+
+// labelOf names a folder for a list: its last folder, or "Home folder".
+func labelOf(cwd string) string {
+	if homeFolder.MatchString(strings.TrimRight(strings.ReplaceAll(cwd, `\`, "/"), "/")) {
+		return "Home folder"
+	}
+	return baseOf(cwd)
 }
 
 func (h *Hub) targetSuggestions(prompt string) *v1.TargetSuggestions {

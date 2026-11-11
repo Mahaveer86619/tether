@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -47,8 +49,10 @@ class _UsageBody extends StatelessWidget {
           same == null ? accounts.add([n]) : same.add(n);
         }
         final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-        return ListView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 40),
+        return PullRefresh(
+          onRefresh: () => context.read<UsageCubit>().load(),
+          child: ListView(
+          padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context)),
           children: [
             Center(
               child: ConstrainedBox(
@@ -80,6 +84,7 @@ class _UsageBody extends StatelessWidget {
               ),
             ),
           ],
+        ),
         );
       },
     );
@@ -99,7 +104,7 @@ class _PlanCard extends StatelessWidget {
     final checked = [for (final n in nodes) n.plan!.checked].whereType<DateTime>().fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(14)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -123,7 +128,7 @@ class _PlanCard extends StatelessWidget {
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8)),
                 child: SelectableText(plan.raw, style: monoStyle(context, size: 12, color: c.muted)),
               ),
             ],
@@ -159,7 +164,7 @@ class _LimitBar extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: context.round(4),
             child: LinearProgressIndicator(value: (l.percent / 100).clamp(0, 1).toDouble(), minHeight: 6, backgroundColor: c.raised, color: color),
           ),
           if (l.resets.isNotEmpty)
@@ -185,7 +190,7 @@ class _NodeCard extends StatelessWidget {
     final u = usage;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(14)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -254,7 +259,7 @@ class _SessionRow extends StatelessWidget {
     final c = context.colors;
     final s = session;
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.round(8),
       onTap: s == null ? null : onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 9),

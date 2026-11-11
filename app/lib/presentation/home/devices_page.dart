@@ -8,6 +8,7 @@ import '../hub/hub_cubit.dart';
 import '../settings/devices_cubit.dart';
 import '../settings/pairing_widgets.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'cards.dart';
@@ -36,7 +37,12 @@ class DevicesPage extends StatelessWidget {
         );
     return BlocProvider(
       create: (_) => sl<DevicesCubit>()..load(),
-      child: PageColumn(
+      child: Builder(
+        builder: (context) => PageColumn(
+        onRefresh: () async {
+          await context.read<HubCubit>().refresh();
+          if (context.mounted) await context.read<DevicesCubit>().load();
+        },
         children: [
           const SectionLabel('1 · Hub'),
           _HubCard(hub: hub, onNode: onNode),
@@ -44,7 +50,7 @@ class DevicesPage extends StatelessWidget {
               trailing: Text('${hub.nodes.values.where((n) => n.online).length}/${hub.nodes.length} online', style: TextStyle(color: c.faint, fontSize: 12))),
           if (self != null) CardGrid(children: [card(self)]),
           if (others.isEmpty)
-            Text(self != null ? 'No other devices run Tether yet. See docs/running.md to add one.' : 'No agents have connected yet. See docs/running.md to install one.',
+            Text(self != null ? 'No other devices run Tether yet. See docs/operations/running.md to add one.' : 'No agents have connected yet. See docs/operations/running.md to install one.',
                 style: TextStyle(color: c.muted, fontSize: 13))
           else
             CardGrid(children: [for (final n in others) card(n)]),
@@ -70,6 +76,7 @@ class DevicesPage extends StatelessWidget {
             },
           ),
         ],
+        ),
       ),
     );
   }
@@ -93,7 +100,7 @@ class _HubCard extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: c.accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: c.accent.withValues(alpha: 0.12), borderRadius: context.round(10)),
             child: Icon(Icons.hub_outlined, color: c.accent, size: 20),
           ),
           const SizedBox(width: 12),
@@ -192,7 +199,7 @@ class _SetupGuide extends StatelessWidget {
           step('1', 'The hub', 'Runs on an always-on machine on your tailnet (tether-hub, systemd). Update it first: agents and apps are made to work with a hub at least as new.'),
           step('2', 'The agent on each machine', 'tether-agent next to Claude Code on every machine whose sessions you want here. Pair it with a code from "Add a device", or tetherctl pair.'),
           step('3', 'The apps', 'Android and Windows. Pair by scanning the QR code from "Add a device" on a paired app, or connect over Tailscale.'),
-          Text('Step by step, with commands: docs/running.md.', style: TextStyle(fontSize: 12, color: c.faint)),
+          Text('Step by step, with commands: docs/operations/running.md.', style: TextStyle(fontSize: 12, color: c.faint)),
         ],
       ),
     );
@@ -200,6 +207,49 @@ class _SetupGuide extends StatelessWidget {
 }
 
 /// One device and all of its sessions.
+/// What the agent checked about its machine, one line each; a failure says
+/// what to do about it.
+class _Checklist extends StatelessWidget {
+  const _Checklist({required this.checks});
+
+  final List<DoctorCheck> checks;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      key: const Key('checklist'),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(10)),
+      child: Column(
+        children: [
+          for (final (i, k) in checks.indexed) ...[
+            if (i > 0) Divider(height: 1, color: c.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm + 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(k.ok ? Icons.check_circle_rounded : (k.required ? Icons.error_rounded : Icons.info_outline_rounded), size: 18, color: k.ok ? c.success : (k.required ? c.danger : c.warning)),
+                  const SizedBox(width: Gap.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(k.label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                        if (k.detail.isNotEmpty) Text(k.detail, style: TextStyle(fontSize: 12.5, color: k.ok ? c.muted : c.text)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class DevicePage extends StatelessWidget {
   const DevicePage({super.key, required this.node, required this.onSession});
 
@@ -217,6 +267,7 @@ class DevicePage extends StatelessWidget {
     final online = status?.online ?? false;
     return PageColumn(
       bottom: 96,
+      onRefresh: context.read<HubCubit>().refresh,
       children: [
         if (status != null)
           Padding(
@@ -232,6 +283,10 @@ class DevicePage extends StatelessWidget {
               style: TextStyle(color: c.muted, fontSize: 13),
             ),
           ),
+        if (status != null && status.checks.isNotEmpty) ...[
+          SectionLabel('Checks', dot: status.needsAttention ? c.warning : c.success, trailing: Text('${status.checks.where((k) => k.ok).length}/${status.checks.length}', style: Type.meta(context, color: c.faint))),
+          _Checklist(checks: status.checks),
+        ],
         SectionLabel('Live', trailing: Text('${live.length}', style: TextStyle(color: c.faint, fontSize: 12))),
         if (live.isEmpty)
           Text('No live sessions on this device.', style: TextStyle(color: c.muted, fontSize: 13))

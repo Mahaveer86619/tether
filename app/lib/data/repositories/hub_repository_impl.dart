@@ -183,6 +183,7 @@ class HubRepositoryImpl implements HubRepository {
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
           chats: {for (final c in w.chats) c.id: chatFromPb(c)},
           update: () => w.hasUpdate() ? releaseFromPb(w.update) : null,
+          notifyUrl: w.notifyUrl,
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
           lastError: () => null,
           preferences: () => w.hasPreferences() ? appearanceFromPb(w.preferences) : null,
@@ -198,6 +199,8 @@ class HubRepositoryImpl implements HubRepository {
         _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
       case pb.Frame_Body.chat:
         _putChat(f.chat);
+      case pb.Frame_Body.notifyEndpoint:
+        _emit(_snap.copyWith(notifyUrl: f.notifyEndpoint.url));
       case pb.Frame_Body.updateAvailable:
         _emit(_snap.copyWith(update: () => releaseFromPb(f.updateAvailable)));
       case pb.Frame_Body.preferences:
@@ -241,6 +244,8 @@ class HubRepositoryImpl implements HubRepository {
         claudeVersion: n.claudeVersion,
         agentVersion: n.agentVersion,
         lastSeen: n.lastSeen,
+        capabilities: n.capabilities,
+        checks: n.checks,
       );
 
   /// Keeps sessions that are working subscribed even when no screen shows
@@ -399,7 +404,29 @@ class HubRepositoryImpl implements HubRepository {
     return r.map(chatFromPb);
   }
 
+  void _removeChat(String id) {
+    _wireChats.remove(id);
+    _emit(_snap.copyWith(chats: {..._snap.chats}..remove(id)));
+    _scheduleStateSave();
+  }
+
+  @override
+  Future<Result<NotifyAccess>> notifyAccess(String installId) => _command(() async {
+        final j = await _api.notifyToken(installId);
+        return NotifyAccess(token: '${j['token'] ?? ''}', tunnel: '${j['tunnel'] ?? ''}');
+      });
+
+  @override
+  Future<Result<void>> sendTestNotification() => _command(_api.notifyTest);
+
+  @override
+  Future<Result<void>> deleteChat(String chatId) => _command(() async {
+        await _api.deleteChat(chatId);
+        _removeChat(chatId);
+      });
+
   void _putChat(pb.Chat c) {
+    if (c.deleted) return _removeChat(c.id);
     _wireChats[c.id] = c;
     _emit(_snap.copyWith(chats: {..._snap.chats, c.id: chatFromPb(c)}));
     _scheduleStateSave();
@@ -457,6 +484,22 @@ class HubRepositoryImpl implements HubRepository {
 
   @override
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
+
+  @override
+  Future<Result<ChatRemote>> chatRemote(String chatId) => _command(() async => chatRemoteFromJson(await _api.chatRemote(chatId)));
+
+  @override
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false}) =>
+      _command(() => _api.setChatRemote(chatId, {'on': on, if (node.isNotEmpty) 'node': node, 'allow_secrets': allowSecrets}));
+
+  @override
+  Future<Result<List<ProjectFile>>> projectFiles(String repo) => _command(() async => projectFilesFromJson(await _api.projectFiles(repo)));
+
+  @override
+  Future<Result<void>> putProjectFile(String repo, String path, String content) => _command(() => _api.putProjectFile(repo, path, content));
+
+  @override
+  Future<Result<void>> deleteProjectFile(String repo, String path) => _command(() => _api.deleteProjectFile(repo, path));
 
   @override
   Future<Result<List<SkillInfo>>> skills() => _command(() async => skillsFromJson(await _api.skills()));

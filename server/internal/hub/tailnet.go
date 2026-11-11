@@ -11,7 +11,7 @@ import (
 )
 
 // The hub's view of its tailnet, so the app can show every machine and
-// whether a Tether agent or app runs there. See docs/plan.md#connecting-devices.
+// whether a Tether agent or app runs there. See docs/plans/plan.md#connecting-devices.
 
 const prefsKey = "preferences"
 

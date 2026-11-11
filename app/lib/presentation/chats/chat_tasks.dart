@@ -111,7 +111,7 @@ class _TaskRow extends StatelessWidget {
                   if (s.isBusy && steps > 0) ...[
                     const SizedBox(height: 6),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: context.round(3),
                       child: LinearProgressIndicator(value: s.todosDone / steps, minHeight: 4, color: c.accent, backgroundColor: c.border),
                     ),
                   ],

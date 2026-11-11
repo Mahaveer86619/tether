@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../session/session_page.dart';
 import '../widgets/common.dart';
 import 'cards.dart';
@@ -27,10 +28,14 @@ int attentionCount(HubSnapshot hub) => hub.approvals.length + needingYou(hub).le
 /// What's connected, what needs you and what's running: the live part of
 /// the home screen.
 class LiveSections extends StatelessWidget {
-  const LiveSections({super.key, required this.onSession, required this.onDevices});
+  const LiveSections({super.key, required this.onSession, required this.onDevices, this.overview = true});
 
   final ValueChanged<String> onSession;
   final VoidCallback onDevices;
+
+  /// Whether to show the devices strip and say when the hub is not connected,
+  /// or only what needs you and what is running.
+  final bool overview;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +43,7 @@ class LiveSections extends StatelessWidget {
     final c = context.colors;
 
     if (!hub.connected && hub.sessions.isEmpty) {
+      if (!overview) return const SizedBox.shrink();
       final connecting = hub.status == ConnectionStatus.connecting;
       return EmptyState(
         icon: Icons.cloud_off_rounded,
@@ -54,9 +60,9 @@ class LiveSections extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _DevicesStrip(hub: hub, onTap: onDevices),
+        if (overview) _DevicesStrip(hub: hub, onTap: onDevices),
         if (approvals.isNotEmpty || waiting.isNotEmpty) ...[
-          SectionLabel('Needs you', trailing: Pill('${approvals.length + waiting.length}', color: c.warning)),
+          SectionLabel('Needs you', dot: c.warning, trailing: Text('${approvals.length + waiting.length}', style: Type.meta(context, color: c.warning))),
           for (final a in approvals)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -66,8 +72,8 @@ class LiveSections extends StatelessWidget {
             CardGrid(children: [for (final s in waiting) SessionCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
         ],
         if (running.isNotEmpty) ...[
-          SectionLabel('Running now', trailing: Text('${running.length}', style: TextStyle(color: c.faint, fontSize: 12))),
-          CardGrid(children: [for (final s in running) SessionCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
+          SectionLabel('Running now', dot: c.accent, trailing: Text('${running.length}', style: Type.meta(context, color: c.accent))),
+          CardGrid(children: [for (final s in running) RunCard(session: s, online: online(s), onTap: () => onSession(s.id))]),
         ],
       ],
     );
@@ -91,7 +97,7 @@ class _DevicesStrip extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8),
       child: Material(
         color: c.surface,
-        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: const Key('devices-strip'),

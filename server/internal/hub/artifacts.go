@@ -31,7 +31,7 @@ import (
 // people attach. Content is stored once per SHA-256 under
 // <data dir>/artifacts/<sha[:2]>/<sha>; the artifacts table holds the rest.
 // Nothing deletes artifacts on its own: they outlive the files they came
-// from, for the app and the second brain. See docs/plan.md.
+// from, for the app and the second brain. See docs/plans/plan.md.
 
 const (
 	defaultLinkTTL = time.Hour

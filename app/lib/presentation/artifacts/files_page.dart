@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
 import '../hub/hub_cubit.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
@@ -42,6 +44,9 @@ class _FilesPageState extends State<FilesPage> {
   late String _session = widget.session;
   final _search = TextEditingController();
   int _uploading = 0;
+
+  /// Rows that have come in already, so scrolling back to one does not play it again.
+  final _shownRows = <Object>{};
 
   @override
   void dispose() {
@@ -129,7 +134,7 @@ class _FilesPageState extends State<FilesPage> {
       itemBuilder: (_) => [for (final (v, text) in options) PopupMenuItem(value: v, child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis))],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(8)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 160),
@@ -168,7 +173,9 @@ class _FilesPageState extends State<FilesPage> {
             }
           }
         },
-        child: CustomScrollView(
+        child: PullRefresh(
+          onRefresh: context.read<HubCubit>().refresh,
+          child: CustomScrollView(
           slivers: [
             SliverPadding(
               padding: EdgeInsets.fromLTRB(side, 12, side, 4),
@@ -184,7 +191,7 @@ class _FilesPageState extends State<FilesPage> {
                           isDense: true,
                           prefixIcon: const Icon(Icons.search_rounded, size: 18),
                           hintText: 'Search names and notes',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          border: OutlineInputBorder(borderRadius: context.round(10)),
                         ),
                       ),
                     ),
@@ -278,7 +285,7 @@ class _FilesPageState extends State<FilesPage> {
                   child: Container(
                     key: const Key('transfers'),
                     padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(12)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -309,14 +316,20 @@ class _FilesPageState extends State<FilesPage> {
                   separatorBuilder: (_, _) => const SizedBox(height: 6),
                   itemBuilder: (context, i) {
                     final a = files[i];
-                    return _FileRow(
-                      key: ValueKey('file-${a.id}'),
-                      artifact: a,
-                      from: hub.sessions[a.session],
-                      transfer: transfers[a.id],
-                      onDelete: () => _delete(a),
-                      onCopyLink: () => _copyLink(a),
-                      onSession: widget.onSession,
+                    return FadeIn(
+                      key: ValueKey('fade-${a.id}'),
+                      shown: _shownRows,
+                      id: a.id,
+                      delay: stagger(i),
+                      child: _FileRow(
+                        key: ValueKey('file-${a.id}'),
+                        artifact: a,
+                        from: hub.sessions[a.session],
+                        transfer: transfers[a.id],
+                        onDelete: () => _delete(a),
+                        onCopyLink: () => _copyLink(a),
+                        onSession: widget.onSession,
+                      ),
                     );
                   },
                 ),
@@ -329,7 +342,9 @@ class _FilesPageState extends State<FilesPage> {
                       textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: c.faint)),
                 ),
               ),
+            SliverToBoxAdapter(child: SizedBox(height: bottomRoom(context))),
           ],
+        ),
         ),
       ),
     );
@@ -361,7 +376,7 @@ class _FileRow extends StatelessWidget {
     final busy = t?.active ?? false;
     return Material(
       color: c.surface,
-      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(12)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => openArtifact(context, a),
@@ -378,7 +393,7 @@ class _FileRow extends StatelessWidget {
                     child: a.isImage && a.previewable
                         ? IgnorePointer(child: ArtifactImage(artifact: a, height: 44))
                         : Container(
-                            decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: c.raised, borderRadius: context.round(8)),
                             child: Icon(artifactIcon(a), size: 22, color: c.faint),
                           ),
                   ),

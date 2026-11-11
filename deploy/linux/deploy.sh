@@ -8,7 +8,7 @@
 #   4. checks the hub answers with the new version, and the agent
 #      reconnects with it, and rolls back on its own if either doesn't.
 # Usage: deploy.sh <dist-dir> [--no-agent]
-# The dist folder is what tools/release/build.sh makes. See docs/releasing.md.
+# The dist folder is what tools/release/build.sh makes. See docs/operations/releasing.md.
 set -euo pipefail
 
 dist=$(cd "${1:?usage: deploy.sh <dist-dir> [--no-agent]}" && pwd)

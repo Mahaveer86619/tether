@@ -72,7 +72,7 @@ class TransferBar extends StatelessWidget {
               if (!t.finished) ...[
                 const SizedBox(height: 4),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: context.round(3),
                   child: LinearProgressIndicator(
                     minHeight: 4,
                     value: t.state == TransferState.preparing || t.state == TransferState.verifying ? null : t.progress,
@@ -143,7 +143,7 @@ class ArtifactImage extends StatelessWidget {
     return GestureDetector(
       onTap: () => openArtifact(context, artifact),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: context.round(10),
         child: Container(
           height: height.isFinite ? height : null,
           // An infinite height fills whatever space it's given.
@@ -181,9 +181,9 @@ class ArtifactTile extends StatelessWidget {
     final c = context.colors;
     return Material(
       color: c.raised,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: context.round(10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: context.round(10),
         onTap: () => openArtifact(context, artifact),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

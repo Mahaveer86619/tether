@@ -12,6 +12,7 @@ import '../../domain/usecases/usecases.dart' show parsePairingLink;
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/collapsible.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'devices_cubit.dart';
@@ -55,10 +56,10 @@ class _PairFormState extends State<PairForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Connect this device', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const Text('With a code or a name', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Text(
-          "Over Tailscale, enter the hub's machine name and connect. Otherwise, on a device that is already connected, open Settings and choose \"Add a device\", then scan its QR code or type the code.",
+          "On a device that is already connected, open Settings and choose \"Add a device\", then scan its QR code or type the code. Over Tailscale you can also enter the hub's machine name and connect.",
           style: TextStyle(color: c.muted, fontSize: 13),
         ),
         const SizedBox(height: 16),
@@ -177,21 +178,22 @@ class _DevicesBody extends StatelessWidget {
           showFailure(context, s.failure!);
         }
       },
-      builder: (context, s) => Column(
+      builder: (context, s) => CollapsibleSection(
+        title: 'Devices',
+        count: s.devices.length,
+        summary: 'Apps and agents paired with this hub',
+        initiallyOpen: true,
+        actions: [
+          FilledButton.icon(
+            key: const Key('add-device'),
+            onPressed: cubit.invite,
+            icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+            label: const Text('Add a device'),
+          ),
+        ],
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const Expanded(child: Text('Devices', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-              FilledButton.icon(
-                key: const Key('add-device'),
-                onPressed: cubit.invite,
-                icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                label: const Text('Add a device'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
           Text('Apps and agents paired with their own token. Revoking one disconnects it at once.',
               style: TextStyle(color: c.muted, fontSize: 13)),
           const SizedBox(height: 10),
@@ -268,6 +270,7 @@ class _DevicesBody extends StatelessWidget {
           else
             for (final d in s.tailnet) TailnetRow(device: d, isSelf: d.ips.contains(clientIp)),
         ],
+        ),
       ),
     );
   }
@@ -369,7 +372,7 @@ class _InviteDialogState extends State<_InviteDialog> {
                 opacity: expired ? 0.2 : 1,
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: context.round(12)),
                   child: QrImageView(data: inv.link, size: 220, backgroundColor: Colors.white),
                 ),
               ),
@@ -390,7 +393,7 @@ class _InviteDialogState extends State<_InviteDialog> {
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
-              decoration: BoxDecoration(color: c.codeBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: c.border)),
+              decoration: BoxDecoration(color: c.codeBg, borderRadius: context.round(8), border: Border.all(color: c.border)),
               child: Row(
                 children: [
                   Expanded(child: SelectableText(agent, style: monoStyle(context, size: 11.5))),

@@ -14,7 +14,7 @@ import (
 // Switching a live session's permission mode. A headless run takes a
 // control request; an interactive one cycles modes with Shift+Tab, so the
 // agent presses it until the mode line at the bottom of the screen shows
-// the one asked for. See docs/hosting.md#permission-modes.
+// the one asked for. See docs/architecture/hosting.md#permission-modes.
 
 var modeLines = []struct {
 	re   *regexp.Regexp

@@ -131,7 +131,7 @@ class ForcedUpdatePage extends StatelessWidget {
                 if (r.notes.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(10)),
                     child: SelectableText(r.notes.replaceAll('**', ''), style: const TextStyle(fontSize: 13.5)),
                   ),
                 const SizedBox(height: 20),

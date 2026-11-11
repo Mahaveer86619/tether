@@ -141,6 +141,8 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)
 	h.skillRoutes(mux)
+	h.auditRoutes(mux)
+	h.notifyRoutes(mux)
 	h.skillLibraryRoutes(mux)
 	h.screenRoutes(mux)
 	h.modeRoutes(mux)

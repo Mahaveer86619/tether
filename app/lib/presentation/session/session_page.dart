@@ -7,13 +7,19 @@ import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../artifacts/artifact_widgets.dart' show artifactIcon, fileSize;
 import '../artifacts/attachments.dart';
+import '../artifacts/file_card.dart';
 import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
+import '../widgets/changes_pane.dart';
 import '../widgets/prompt_box.dart';
+import '../widgets/terminal_view.dart';
 import '../widgets/timeline_item_view.dart';
 import '../widgets/todo_checklist.dart';
 import '../widgets/tool_card.dart';
@@ -45,11 +51,46 @@ class SessionScreen extends StatelessWidget {
   }
 }
 
-class _SessionBody extends StatelessWidget {
+/// How the session is drawn, from the same timeline: as chat, as chat beside
+/// the files Claude is changing, or as a terminal transcript.
+enum ViewMode { chat, files, terminal }
+
+class _SessionBody extends StatefulWidget {
   const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
 
   final ValueChanged<String> onOpenSession;
   final Widget? leading, title, subtitle;
+
+  @override
+  State<_SessionBody> createState() => _SessionBodyState();
+}
+
+class _SessionBodyState extends State<_SessionBody> {
+  ViewMode _mode = ViewMode.chat;
+
+  ValueChanged<String> get onOpenSession => widget.onOpenSession;
+  Widget? get leading => widget.leading;
+  Widget? get title => widget.title;
+  Widget? get subtitle => widget.subtitle;
+
+  Widget _timeline(SessionViewState s, double width) {
+    final items = s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet);
+    final working = s.session?.isBusy ?? false;
+    return switch (_mode) {
+      ViewMode.chat => _Timeline(state: s),
+      ViewMode.terminal => TerminalTranscript(items: items, working: working),
+      // Beside the chat on a wide window; on a narrow one, in its place.
+      ViewMode.files => width < 900
+          ? ChangesPane(items: items, working: working)
+          : Row(
+              children: [
+                Expanded(flex: 5, child: _Timeline(state: s)),
+                VerticalDivider(width: 1, color: context.colors.border),
+                Expanded(flex: 4, child: ChangesPane(items: items, working: working)),
+              ],
+            ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,9 +115,16 @@ class _SessionBody extends StatelessWidget {
           }
           return Column(
             children: [
-              SessionHeader(session: session, leading: leading, onOpenSession: onOpenSession, title: title),
+              SessionHeader(
+                session: session,
+                leading: leading,
+                onOpenSession: onOpenSession,
+                title: title,
+                mode: _mode,
+                onMode: (m) => setState(() => _mode = m),
+              ),
               ?subtitle,
-              Expanded(child: _Timeline(state: s)),
+              Expanded(child: LayoutBuilder(builder: (context, box) => _timeline(s, box.maxWidth))),
               Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: contentWidth + 32),
@@ -86,6 +134,7 @@ class _SessionBody extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        DeliveredFiles(sessionId: session.id),
                         if (s.approvals.isNotEmpty)
                           // Cards can be taller than the screen (several questions); they scroll here, and the timeline keeps the rest.
                           ConstrainedBox(
@@ -121,12 +170,81 @@ class _SessionBody extends StatelessWidget {
   }
 }
 
+/// Chat, Files and Terminal as one small switch in the header.
+class _ViewSwitch extends StatelessWidget {
+  const _ViewSwitch({required this.mode, required this.onChanged});
+
+  final ViewMode mode;
+  final ValueChanged<ViewMode> onChanged;
+
+  static const _labels = {ViewMode.chat: ('Chat', Icons.chat_bubble_outline_rounded), ViewMode.files: ('Files', Icons.difference_outlined), ViewMode.terminal: ('Terminal', Icons.terminal_rounded)};
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    // On a phone the three views do not fit in the header: one button opens them.
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return PopupMenuButton<ViewMode>(
+        key: const Key('view-menu'),
+        tooltip: 'View: ${_labels[mode]!.$1}',
+        initialValue: mode,
+        onSelected: onChanged,
+        icon: Icon(_labels[mode]!.$2, size: 20, color: mode == ViewMode.chat ? c.muted : c.accent),
+        itemBuilder: (_) => [
+          for (final m in ViewMode.values)
+            PopupMenuItem(key: Key('view-${m.name}'), value: m, child: Row(children: [Icon(_labels[m]!.$2, size: 18), const SizedBox(width: 12), Text(_labels[m]!.$1)])),
+        ],
+      );
+    }
+    Widget seg(ViewMode m, String label, IconData icon) {
+      final on = mode == m;
+      return Tooltip(
+        message: label,
+        child: InkWell(
+          key: Key('view-${m.name}'),
+          borderRadius: context.round(8),
+          onTap: () => onChanged(m),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: MediaQuery.sizeOf(context).width < 600 ? 7 : 10, vertical: 6),
+            decoration: BoxDecoration(color: on ? c.raised : Colors.transparent, borderRadius: context.round(8)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: on ? c.accent : c.muted),
+                if (MediaQuery.sizeOf(context).width >= 900) ...[
+                  const SizedBox(width: 6),
+                  Text(label, style: Type.meta(context, color: on ? c.text : c.muted, size: 12)),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final m in ViewMode.values) seg(m, _labels[m]!.$1, _labels[m]!.$2),
+        ],
+      ),
+    );
+  }
+}
+
 class SessionHeader extends StatelessWidget {
-  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title});
+  const SessionHeader({super.key, required this.session, this.leading, this.onOpenSession, this.title, this.mode = ViewMode.chat, this.onMode});
 
   final Session session;
   final Widget? leading, title;
   final ValueChanged<String>? onOpenSession;
+  final ViewMode mode;
+
+  /// Set to offer the Chat, Terminal and Split switch.
+  final ValueChanged<ViewMode>? onMode;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +292,7 @@ class SessionHeader extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: InkWell(
                       key: const Key('forked-from'),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: context.round(4),
                       onTap: parent == null || onOpenSession == null ? null : () => onOpenSession!(parent.id),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -196,6 +314,11 @@ class SessionHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (onMode != null)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: narrow ? 0 : 4),
+              child: _ViewSwitch(mode: mode, onChanged: onMode!),
+            ),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: ModeChip(session: session)),
           if (forks.isNotEmpty && onOpenSession != null)
             PopupMenuButton<String>(
@@ -440,7 +563,7 @@ class _TimelineState extends State<_Timeline> {
 
   /// Rows present when the history finished loading; only rows arriving
   /// after that animate in.
-  Set<String>? _initial;
+  final _shownRows = <Object>{};
 
   @override
   void initState() {
@@ -473,9 +596,6 @@ class _TimelineState extends State<_Timeline> {
       for (final o in s.outbox)
         if (o.state != OutboxState.sent || !Outbox.queuedOnHub(o, s.items)) o,
     ];
-    if (_initial == null && (!s.loading || items.isNotEmpty)) {
-      _initial = {for (final e in entries) e.key};
-    }
     if (entries.isEmpty && outbox.isEmpty) {
       if (busy) {
         return Align(
@@ -503,7 +623,9 @@ class _TimelineState extends State<_Timeline> {
     final side = MediaQuery.sizeOf(context).width < 600 ? 14.0 : 16.0;
     return Stack(
       children: [
-        SelectionArea(
+        EdgeRefresh(
+          onRefresh: context.read<HubCubit>().refresh,
+          child: SelectionArea(
           onSelectionChanged: (content) => _selected = content?.plainText ?? '',
           contextMenuBuilder: (context, area) => AdaptiveTextSelectionToolbar.buttonItems(
             anchors: area.contextMenuAnchors,
@@ -550,8 +672,10 @@ class _TimelineState extends State<_Timeline> {
               final e = entries[entries.length - i];
               key = ValueKey(e.key);
               final splitHere = s.session?.forkPoint.isNotEmpty == true && e.items.any((i) => i.itemId == s.session!.forkPoint);
-              child = _Appear(
-                animate: !(_initial?.contains(e.key) ?? true),
+              child = FadeIn(
+                shown: _shownRows,
+                id: e.key,
+                delay: stagger(i - 1),
                 child: splitHere
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -573,6 +697,7 @@ class _TimelineState extends State<_Timeline> {
               child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: contentWidth), child: child)),
             );
           },
+          ),
           ),
         ),
         Positioned(
@@ -624,7 +749,7 @@ class _OutboxBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: c.userBubble.withValues(alpha: failed ? 0.5 : 0.8),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: context.round(16),
                 border: failed ? Border.all(color: c.danger.withValues(alpha: 0.5)) : null,
               ),
               child: Text(SendMessage.wording(e.text), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
@@ -718,44 +843,6 @@ class _ForkMarker extends StatelessWidget {
 }
 
 /// Fades a new row in once, rising a few pixels, when it first appears.
-class _Appear extends StatefulWidget {
-  const _Appear({required this.animate, required this.child});
-
-  final bool animate;
-  final Widget child;
-
-  @override
-  State<_Appear> createState() => _AppearState();
-}
-
-class _AppearState extends State<_Appear> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 260), value: widget.animate ? 0 : 1);
-  late final _curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.animate) _c.forward();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: _curve,
-        // A fixed offset: a relative one makes tall messages jump.
-        builder: (context, child) => Opacity(
-          opacity: _curve.value,
-          child: Transform.translate(offset: Offset(0, 10 * (1 - _curve.value)), child: child),
-        ),
-        child: widget.child,
-      );
-}
-
 /// Shown at the end of the chat while Claude works between messages.
 class _Working extends StatefulWidget {
   const _Working({required this.waitingForApproval, this.stopping = false});
@@ -831,7 +918,7 @@ class _StillWorking extends StatelessWidget {
       key: const Key('still-working'),
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
-      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.10), borderRadius: context.round(10)),
       child: Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 4,
@@ -919,12 +1006,12 @@ class _ProgressState extends State<_Progress> {
     final c = context.colors;
     final s = widget.session;
     return Container(
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: context.round(12),
             onTap: () => setState(() => _open = !_open),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
@@ -941,7 +1028,7 @@ class _ProgressState extends State<_Progress> {
                   SizedBox(
                     width: 60,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: context.round(4),
                       child: LinearProgressIndicator(value: s.todosDone / s.todos.length, minHeight: 4, backgroundColor: c.raised, color: c.accent),
                     ),
                   ),
@@ -967,7 +1054,7 @@ class _TerminalNotice extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(16)),
       child: Row(
         children: [
           Icon(Icons.terminal_rounded, size: 18, color: c.info),
@@ -1077,6 +1164,7 @@ class _ComposerState extends State<Composer> {
     final canSubmit = s.canType && !s.sending && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
     final canStop = s.session?.canInterrupt ?? false;
     return PromptBox(
+      prompt: true,
       controller: _text,
       focusNode: _focus,
       fieldKey: const Key('composer'),
@@ -1207,7 +1295,7 @@ class ApprovalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: c.warning.withValues(alpha: 0.55)),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: context.round(14),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(

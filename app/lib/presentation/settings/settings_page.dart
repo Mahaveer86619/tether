@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../core/version.dart';
 import '../hub/hub_cubit.dart';
+import '../notifications/notifications_section.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
+import '../update/update_cubit.dart';
 import '../theme/theme.dart';
 import '../widgets/common.dart';
 import 'appearance_picker.dart';
@@ -13,9 +18,12 @@ import 'settings_cubit.dart';
 
 /// Hub connection and appearance. Also the first-run screen.
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, this.onSaved});
+  const SettingsPage({super.key, this.onSaved, this.header});
 
   final VoidCallback? onSaved;
+
+  /// Above the connect form on a first run.
+  final Widget? header;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -48,8 +56,10 @@ class _SettingsPageState extends State<SettingsPage> {
         _url.text = s.connection.url;
         if (s.savedId > 0) widget.onSaved?.call();
       },
-      builder: (context, s) => ListView(
-        padding: const EdgeInsets.all(24),
+      builder: (context, s) => PullRefresh(
+        onRefresh: context.read<HubCubit>().refresh,
+        child: ListView(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, bottomRoom(context)),
         children: [
           Center(
             child: ConstrainedBox(
@@ -58,6 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!s.connection.isComplete) ...[
+                    ?widget.header,
                     const PairForm(),
                     const SizedBox(height: 16),
                     Theme(
@@ -74,6 +85,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   if (s.connection.isComplete && hub.status == ConnectionStatus.connected) ...[
                     const SizedBox(height: 32),
                     const DevicesSection(),
+                    const SizedBox(height: 16),
+                    const NotificationsSection(),
                     const SizedBox(height: 32),
                     const WorkspacesSection(),
                     const SizedBox(height: 32),
@@ -93,11 +106,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 20),
                   AppearancePicker(appearance: s.appearance),
+                  const SizedBox(height: 32),
+                  const _AboutSection(),
                 ],
               ),
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -164,6 +180,67 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(hub.error!, style: TextStyle(color: c.danger, fontSize: 12)),
           ),
+      ],
+    );
+  }
+}
+
+/// This app's version and a way to look for a newer one.
+class _AboutSection extends StatefulWidget {
+  const _AboutSection();
+
+  @override
+  State<_AboutSection> createState() => _AboutSectionState();
+}
+
+class _AboutSectionState extends State<_AboutSection> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    final updates = context.read<UpdateCubit>();
+    setState(() => _checking = true);
+    final found = await updates.checkNow();
+    if (!mounted) return;
+    setState(() => _checking = false);
+    // The Windows updater answers in its own dialog.
+    if (updates.nativeDialog) return;
+    showToast(
+      context,
+      switch (found) {
+        true => 'A new version is ready: see the banner at the top',
+        false => 'You are on the latest version',
+        null => 'Could not reach the hub to ask',
+      },
+      icon: found == null ? Icons.error_outline_rounded : Icons.check_rounded,
+      error: found == null,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hubVersion = context.select<HubCubit, String>((h) => h.state.hub.hubVersion);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Tether $appVersion${hubVersion.isEmpty ? '' : '  ·  hub $hubVersion'}',
+                style: monoStyle(context, size: 13, color: c.muted),
+              ),
+            ),
+            OutlinedButton.icon(
+              key: const Key('check-updates'),
+              onPressed: _checking ? null : _check,
+              icon: _checking ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.system_update_alt_rounded, size: 18),
+              label: const Text('Check for updates'),
+            ),
+          ],
+        ),
       ],
     );
   }

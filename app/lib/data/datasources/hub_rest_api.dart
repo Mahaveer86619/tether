@@ -56,6 +56,9 @@ class HubRestApi {
 
   Future<pb.Chat> createChat(pb.CreateChat body) => _post('/chats', body, pb.Chat());
 
+  Future<void> deleteChat(String chat) =>
+      _send(() => _client.delete(_endpoint.api('/chats/${Uri.encodeComponent(chat)}'), headers: _headers), pb.Ack());
+
   Future<pb.Chat> updateChat(String chat, pb.UpdateChat body) => _send(
         () => _client.patch(
           _endpoint.api('/chats/${Uri.encodeComponent(chat)}'),
@@ -84,7 +87,7 @@ class HubRestApi {
   Future<pb.ArtifactList> artifacts({String session = '', int limit = 300}) =>
       _get('/artifacts', pb.ArtifactList(), query: {if (session.isNotEmpty) 'session': session, 'limit': '$limit'});
 
-  /// Starts a resumable upload (see docs/plan.md#large-files).
+  /// Starts a resumable upload (see docs/plans/plan.md#large-files).
   Future<pb.Upload> startUpload({
     required String name,
     required int size,
@@ -226,13 +229,40 @@ class HubRestApi {
     return json['session'] as String? ?? '';
   }
 
+  /// A chat's remote setup; plain JSON.
+  Future<Map<String, dynamic>> chatRemote(String chat) =>
+      _jsonMap(() => _client.get(_endpoint.api('/chats/${Uri.encodeComponent(chat)}/remote'), headers: _headers));
+
+  Future<void> setChatRemote(String chat, Map<String, Object?> body) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/remote'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
+  Future<Map<String, dynamic>> projectFiles(String repo) =>
+      _jsonMap(() => _client.get(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files'), headers: _headers));
+
+  Future<void> putProjectFile(String repo, String path, String content) => _jsonMap(
+        () => _client.put(
+          _endpoint.api('/projects/${Uri.encodeComponent(repo)}/files'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode({'path': path, 'content': content}),
+        ),
+      );
+
+  Future<void> deleteProjectFile(String repo, String path) => _jsonMap(
+        () => _client.delete(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files', {'path': path}), headers: _headers),
+      );
+
   Future<Map<String, dynamic>> _jsonMap(Future<http.Response> Function() request) async {
     final json = await _sendJson(request);
     if (json is! Map<String, dynamic>) throw const ProtocolException('unexpected response shape');
     return json;
   }
 
-  /// The routines found in the hub's history (see docs/skills.md). Plain JSON,
+  /// The routines found in the hub's history (see docs/plans/skills.md). Plain JSON,
   /// not a protobuf message.
   Future<Map<String, dynamic>> routines({required int days, required int runs}) async {
     final json = await _sendJson(() => _client.get(_endpoint.api('/skills/candidates', {'days': '$days', 'runs': '$runs'}), headers: _headers));
@@ -240,6 +270,15 @@ class HubRestApi {
     return json;
   }
 
+
+  /// A token for [label]'s install that opens only the notifications (plain JSON).
+  Future<Map<String, dynamic>> notifyToken(String label) => _jsonMap(() => _client.post(
+        _endpoint.api('/notify-token'),
+        headers: {..._headers, 'Content-Type': 'application/json'},
+        body: jsonEncode({'label': label}),
+      ));
+
+  Future<void> notifyTest() => _jsonMap(() => _client.post(_endpoint.api('/notifications/test'), headers: _headers));
 
   Future<pb.PairingCode> createPairingCode() => _post('/pairing-codes', null, pb.PairingCode());
 

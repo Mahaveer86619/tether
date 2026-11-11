@@ -80,7 +80,7 @@ class ActivityPage extends StatelessWidget {
       }
       rows.add(_EventRow(event: e));
     }
-    return PageColumn(children: rows);
+    return PageColumn(onRefresh: context.read<HubCubit>().refresh, children: rows);
   }
 }
 
@@ -94,7 +94,7 @@ class _EventRow extends StatelessWidget {
     final c = context.colors;
     final e = event;
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: context.round(8),
       onTap: e.onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
@@ -104,7 +104,7 @@ class _EventRow extends StatelessWidget {
             Container(
               width: 30,
               height: 30,
-              decoration: BoxDecoration(color: e.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: e.color.withValues(alpha: 0.12), borderRadius: context.round(8)),
               child: Icon(e.icon, size: 16, color: e.color),
             ),
             const SizedBox(width: 12),

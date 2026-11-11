@@ -13,7 +13,7 @@ import (
 // Background backups: while an app is in the foreground somewhere, the hub
 // keeps a copy of every session's transcript (with its subagents' and its
 // details), asking each node only for what changed. See
-// docs/plan.md#session-backups.
+// docs/plans/plan.md#session-backups.
 
 const (
 	backupEvery  = 10 * time.Minute

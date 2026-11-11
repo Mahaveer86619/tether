@@ -77,6 +77,10 @@ class AndroidTailscale implements TailscaleRepository {
       // Not on a phone.
     }
   }
+
+  /// A phone's Tailscale app does not say who else is on the tailnet.
+  @override
+  Future<List<TailnetPeer>> peers() async => const [];
 }
 
 /// Where Tailscale can't be checked: iOS, the web, anything else.
@@ -94,4 +98,7 @@ class NoTailscale implements TailscaleRepository {
 
   @override
   Future<void> openApp() async {}
+
+  @override
+  Future<List<TailnetPeer>> peers() async => const [];
 }

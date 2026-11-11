@@ -57,6 +57,9 @@ class ChatsCubit extends Cubit<ChatsState> {
   Future<void> archive(String chatId, {bool archived = true}) =>
       _run(chatId, () => _chats.archive(chatId, archived: archived), done: archived ? 'Chat archived' : 'Chat restored');
 
+  /// True when the chat is gone.
+  Future<bool> delete(String chatId) async => await _run(chatId, () => _chats.delete(chatId).then((r) => r.map((_) => true)), done: 'Chat deleted') ?? false;
+
   /// Moves the chat to [target], carrying the conversation, or with
   /// [move] false only records it for the next session.
   Future<Chat?> retarget(String chatId, ChatTarget target, {bool move = true}) =>

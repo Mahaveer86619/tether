@@ -21,6 +21,17 @@ func (s *Store) PutChat(c *v1.Chat) error {
 }
 
 // Chats returns every chat with its sessions, oldest link first.
+// DeleteChat removes a chat, its links, messages and notes. The sessions it
+// held are not touched.
+func (s *Store) DeleteChat(id string) error {
+	for _, q := range []string{`DELETE FROM chat_notes WHERE chat = ?`, `DELETE FROM chat_messages WHERE chat = ?`, `DELETE FROM chat_sessions WHERE chat = ?`, `DELETE FROM chats WHERE id = ?`} {
+		if _, err := s.db.Exec(q, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Store) Chats() ([]*v1.Chat, error) {
 	rows, err := s.db.Query(`SELECT info FROM chats ORDER BY updated_ms DESC`)
 	if err != nil {

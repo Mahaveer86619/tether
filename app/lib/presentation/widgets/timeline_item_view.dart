@@ -93,7 +93,7 @@ class _ActivityGroupState extends State<ActivityGroup> {
       decoration: BoxDecoration(
         color: c.surface,
         border: Border.all(color: failed > 0 ? c.danger.withValues(alpha: 0.45) : c.border),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: context.round(10),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -210,7 +210,7 @@ class _UserBubbleState extends State<_UserBubble> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
         color: c.userBubble,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: context.round(16),
         border: queued ? Border.all(color: c.border) : null,
       ),
       // Plain text: the timeline's SelectionArea makes it selectable across messages.
@@ -296,7 +296,7 @@ class _ThinkingState extends State<_Thinking> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: context.round(6),
           onTap: () => keepInPlace(context, () => setState(() => _open = !_open)),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),

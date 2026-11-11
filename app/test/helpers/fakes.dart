@@ -151,6 +151,35 @@ class FakeHubRepository implements HubRepository {
   final skillDecisions = <(String, SkillDecision, int)>[];
   final skillDrafts = <String>[];
 
+  ChatRemote remote = const ChatRemote();
+  final projectFileList = <String, List<ProjectFile>>{};
+  final remoteCalls = <String>[];
+
+  @override
+  Future<Result<ChatRemote>> chatRemote(String chatId) async => Ok(remote);
+
+  @override
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false}) async {
+    remoteCalls.add('${on ? 'on' : 'off'}:$chatId:$node:$allowSecrets');
+    remote = on ? ChatRemote(on: true, repo: remote.repo, sourceNode: node, mirrorNode: 'laptop', state: 'synced') : ChatRemote(repo: remote.repo);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<List<ProjectFile>>> projectFiles(String repo) async => Ok(projectFileList[repo] ?? const []);
+
+  @override
+  Future<Result<void>> putProjectFile(String repo, String path, String content) async {
+    projectFileList[repo] = [...(projectFileList[repo] ?? const []).where((f) => f.path != path), ProjectFile(path: path, keys: [for (final l in content.split('\n')) if (l.contains('=')) l.split('=').first])];
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteProjectFile(String repo, String path) async {
+    projectFileList[repo] = [...(projectFileList[repo] ?? const []).where((f) => f.path != path)];
+    return const Ok(null);
+  }
+
   @override
   Future<Result<List<SkillInfo>>> skills() async => Ok(skillList);
 
@@ -308,6 +337,31 @@ class FakeHubRepository implements HubRepository {
         (c) => Chat(id: c.id, title: title.isEmpty ? 'Auto title' : title, titleByUser: title.isNotEmpty, target: c.target, activeSession: c.activeSession, links: c.links, updated: c.updated),
       );
 
+  final deletedChats = <String>[];
+  var notifyTokens = 0;
+  var testNotifications = 0;
+  Failure? notifyFailure;
+
+  @override
+  Future<Result<NotifyAccess>> notifyAccess(String installId) async {
+    if (notifyFailure != null) return Err(notifyFailure!);
+    notifyTokens++;
+    return Ok(NotifyAccess(token: 'token-$notifyTokens'));
+  }
+
+  @override
+  Future<Result<void>> sendTestNotification() async {
+    testNotifications++;
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteChat(String chatId) async {
+    deletedChats.add(chatId);
+    emitHub(_snap.copyWith(chats: {..._snap.chats}..remove(chatId)));
+    return const Ok(null);
+  }
+
   @override
   Future<Result<Chat>> setChatArchived(String chatId, {required bool archived}) async => _updateChat(
         chatId,
@@ -401,6 +455,20 @@ class FakeHubRepository implements HubRepository {
 
 class FakeSettingsRepository implements SettingsRepository {
   final outboxes = <String, List<OutboxEntry>>{};
+  final knownHubs = <KnownHub>[];
+
+  @override
+  Future<List<KnownHub>> loadKnownHubs() async => [...knownHubs];
+
+  @override
+  Future<void> rememberHub(KnownHub hub) async {
+    knownHubs
+      ..removeWhere((h) => h.url == hub.url)
+      ..insert(0, hub);
+  }
+
+  @override
+  Future<void> forgetHub(String url) async => knownHubs.removeWhere((h) => h.url == url);
 
   @override
   Future<List<OutboxEntry>> loadOutbox(String session) async => outboxes[session] ?? const [];
@@ -485,7 +553,7 @@ class FakeHubSocket implements HubSocket {
   Future<void> close() => _events.close();
 }
 
-const laptop = Node(name: 'laptop', online: true, os: 'windows');
+const laptop = Node(name: 'laptop', online: true, os: 'windows', capabilities: ['android-sdk', 'flutter']);
 const minipc = Node(name: 'minipc', online: true, os: 'linux');
 
 Session session(String id,
@@ -650,6 +718,10 @@ class FakeTailscale implements TailscaleRepository {
 
   final bool startable;
   var current = const TailscaleStatus(TailscaleState.running);
+  var peerList = <TailnetPeer>[];
+
+  @override
+  Future<List<TailnetPeer>> peers() async => peerList;
 
   /// What [start] reports, in order.
   var steps = <TailscaleStatus>[];
@@ -675,3 +747,76 @@ class FakeTailscale implements TailscaleRepository {
   @override
   Future<void> openApp() async => opened++;
 }
+
+/// Hubs by host; anything not listed does not answer.
+class FakeHubProbe implements HubProbe {
+  FakeHubProbe([Map<String, HubHello>? hubs]) : hubs = hubs ?? {};
+
+  final Map<String, HubHello> hubs;
+  final asked = <String>[];
+
+  @override
+  Future<HubHello?> hello(String host, {int port = 7420}) async {
+    asked.add(host);
+    return hubs[host];
+  }
+}
+
+/// A background service that remembers what it was told.
+class FakeNotifyDevice implements NotifyDevice {
+  FakeNotifyDevice({this.canNotify = true});
+
+  final bool canNotify;
+  var allowed = false;
+  var asked = 0;
+  var active = false;
+  var enabled = false;
+  var token = '';
+  var urls = <String>[];
+  var kinds = <NotifyKind>{};
+  var configures = 0;
+  var state = const NotifyStatus();
+
+  @override
+  bool get available => canNotify;
+
+  @override
+  Future<void> configure({required bool enabled, required String token, required List<String> urls, required Set<NotifyKind> kinds}) async {
+    configures++;
+    this.enabled = enabled;
+    this.token = token;
+    this.urls = urls;
+    this.kinds = kinds;
+  }
+
+  @override
+  Future<void> setActive(bool active) async => this.active = active;
+
+  @override
+  Future<bool> permitted() async => allowed;
+
+  @override
+  Future<void> askPermission() async {
+    asked++;
+    allowed = true;
+  }
+
+  @override
+  Future<NotifyStatus> status() async => state;
+}
+
+class FakeDesktopUpdater implements DesktopUpdater {
+  FakeDesktopUpdater({this.available = false});
+
+  @override
+  final bool available;
+  var starts = 0;
+  var checks = 0;
+
+  @override
+  Future<void> start() async => starts++;
+
+  @override
+  Future<void> checkNow() async => checks++;
+}
+

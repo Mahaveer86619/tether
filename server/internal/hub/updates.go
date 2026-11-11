@@ -24,7 +24,7 @@ import (
 // Releases reach the hub two ways: the deploy script puts a release's
 // latest.json and files in <updates>/<version>/, or the hub polls the
 // GitHub release feed and downloads them there. The hub serves them, tells
-// apps, and moves idle agents to the new version. See docs/releasing.md.
+// apps, and moves idle agents to the new version. See docs/operations/releasing.md.
 
 const (
 	feedEvery        = 30 * time.Minute

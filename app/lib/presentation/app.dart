@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,6 +10,8 @@ import 'nav/nav_cubit.dart';
 import 'tailscale/tailscale_cubit.dart';
 import 'update/update_cubit.dart';
 import 'hub/hub_cubit.dart';
+import 'notifications/notifications_cubit.dart';
+import 'routines/pinned_skills_cubit.dart';
 import 'settings/settings_cubit.dart';
 import 'theme/palettes.dart';
 import 'theme/theme.dart';
@@ -26,6 +29,8 @@ class TetherApp extends StatelessWidget {
         BlocProvider(create: (_) => sl<NavCubit>()),
         BlocProvider(create: (_) => sl<ChatsCubit>()),
         BlocProvider(create: (_) => sl<UpdateCubit>()..start()),
+        BlocProvider(create: (_) => PinnedSkillsCubit(sl())..load()),
+        BlocProvider(create: (_) => NotificationsCubit(notifications: sl(), watchHub: sl())..load(), lazy: false),
         // Looks after Tailscale in the background when the hub is on the tailnet.
         BlocProvider(create: (_) => sl<TailscaleCubit>(), lazy: false),
       ],
@@ -53,6 +58,7 @@ class TetherApp extends StatelessWidget {
           theme: buildTheme(Brightness.light, palette: palette, accent: accent),
           darkTheme: buildTheme(Brightness.dark, palette: palette, accent: accent),
           themeMode: look.mode,
+          scrollBehavior: const TetherScrollBehavior(),
           home: settings.loaded ? const PresenceReporter(child: Shell()) : const Scaffold(body: SizedBox.shrink()),
           );
         },
@@ -60,6 +66,23 @@ class TetherApp extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Scrolling as on iOS everywhere: a list gives a little past its ends and
+/// springs back, which is also what makes pulling a page down to refresh it
+/// feel right. A mouse can drag a list as a finger does.
+class TetherScrollBehavior extends MaterialScrollBehavior {
+  const TetherScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {PointerDeviceKind.touch, PointerDeviceKind.mouse, PointerDeviceKind.stylus, PointerDeviceKind.trackpad};
+
+  // The bounce is the cue, so no glow or stretch on top of it.
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) => child;
 }
 
 /// Tells the hub when the app comes to the foreground or leaves it: the hub
@@ -94,6 +117,7 @@ class _PresenceReporterState extends State<PresenceReporter> with WidgetsBinding
       AppLifecycleState.hidden || AppLifecycleState.paused || AppLifecycleState.detached => false,
     };
     context.read<HubCubit>().setActive(active: active);
+    context.read<NotificationsCubit>().appActive(active);
   }
 
   @override

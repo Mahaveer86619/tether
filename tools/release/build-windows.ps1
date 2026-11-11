@@ -17,7 +17,26 @@ try {
 finally { Pop-Location }
 
 $release = Join-Path $root 'app\build\windows\x64\runner\Release'
+
 $zip = Join-Path $dist "tether-windows-$v.zip"
 Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $release '*') -DestinationPath $zip
 Write-Host "  $zip"
+
+# The installer the app's updater downloads (and a first install can run).
+# Inno Setup is on GitHub's Windows runners; on a machine without it the
+# zip alone is made, which is enough to try the app and for the hub to serve.
+$iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+if (-not $iscc) {
+    foreach ($p in "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe", "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") {
+        if (Test-Path $p) { $iscc = Get-Item $p; break }
+    }
+}
+if ($iscc) {
+    & $iscc.FullName "/DAppVersion=$v" (Join-Path $root 'deploy\windows\tether.iss')
+    if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
+    Write-Host "  Tether-Setup-$v.exe"
+}
+else {
+    Write-Warning 'Inno Setup (ISCC.exe) not found: no installer was made, so Windows apps cannot update from this release.'
+}

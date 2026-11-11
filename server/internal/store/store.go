@@ -146,6 +146,55 @@ var migrations = []string{
 		PRIMARY KEY (chat, kind)
 	)`,
 	historySchema,
+	// The audit log: who did what, when. Append only.
+	`CREATE TABLE audit (
+		id      INTEGER PRIMARY KEY AUTOINCREMENT,
+		at_ms   INTEGER NOT NULL,
+		actor   TEXT NOT NULL,
+		kind    TEXT NOT NULL,
+		subject TEXT NOT NULL,
+		detail  TEXT NOT NULL,
+		ok      INTEGER NOT NULL
+	);
+	CREATE INDEX audit_by_time ON audit (at_ms DESC)`,
+	// What the owner is told about: a turn finished, something needs approval.
+	`CREATE TABLE notifications (
+		id      INTEGER PRIMARY KEY AUTOINCREMENT,
+		at_ms   INTEGER NOT NULL,
+		kind    TEXT NOT NULL,
+		title   TEXT NOT NULL,
+		body    TEXT NOT NULL,
+		chat    TEXT NOT NULL,
+		session TEXT NOT NULL
+	)`,
+	// Chats whose project folder is kept in step across devices.
+	`CREATE TABLE chat_remote (
+		chat        TEXT PRIMARY KEY,
+		repo        TEXT NOT NULL,
+		branch      TEXT NOT NULL,
+		source_node TEXT NOT NULL,
+		source_cwd  TEXT NOT NULL,
+		mirror_node TEXT NOT NULL,
+		mirror_cwd  TEXT NOT NULL,
+		state       TEXT NOT NULL,
+		error       TEXT NOT NULL,
+		synced_ms   INTEGER NOT NULL
+	)`,
+	// Files a remote project needs that git does not hold (.env, config.json),
+	// sealed like the codebase vault, and the devices allowed to receive them.
+	`CREATE TABLE project_files (
+		repo       TEXT NOT NULL,
+		path       TEXT NOT NULL,
+		nonce      BLOB NOT NULL,
+		sealed     BLOB NOT NULL,
+		updated_ms INTEGER NOT NULL,
+		PRIMARY KEY (repo, path)
+	);
+	CREATE TABLE project_nodes (
+		repo TEXT NOT NULL,
+		node TEXT NOT NULL,
+		PRIMARY KEY (repo, node)
+	)`,
 }
 
 type Store struct {
@@ -636,6 +685,49 @@ func (s *Store) Artifacts(session string, limit int) ([]*v1.Artifact, error) {
 	}
 	q += ` ORDER BY created_ms DESC LIMIT ?`
 	rows, err := s.db.Query(q, append(args, limit)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.Artifact
+	for rows.Next() {
+		a, err := scanArtifact(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// ArtifactsOf lists the artifacts of any of the sessions, newest first,
+// created before the given time (0 for no bound), with names containing q.
+func (s *Store) ArtifactsOf(sessions, origins []string, q string, before int64, limit int) ([]*v1.Artifact, error) {
+	if len(sessions) == 0 {
+		return nil, nil
+	}
+	marks := func(n int) string { return strings.TrimSuffix(strings.Repeat("?,", n), ",") }
+	query := `SELECT ` + artifactCols + ` FROM artifacts WHERE session IN (` + marks(len(sessions)) + `)`
+	args := []any{}
+	for _, id := range sessions {
+		args = append(args, id)
+	}
+	if len(origins) > 0 {
+		query += ` AND origin IN (` + marks(len(origins)) + `)`
+		for _, o := range origins {
+			args = append(args, o)
+		}
+	}
+	if q != "" {
+		query += ` AND name LIKE ? ESCAPE '\'`
+		args = append(args, "%"+strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q)+"%")
+	}
+	if before > 0 {
+		query += ` AND created_ms < ?`
+		args = append(args, before)
+	}
+	query += ` ORDER BY created_ms DESC LIMIT ?`
+	rows, err := s.db.Query(query, append(args, limit)...)
 	if err != nil {
 		return nil, err
 	}

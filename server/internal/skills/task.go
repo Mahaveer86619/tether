@@ -1,6 +1,6 @@
 // Package skills turns finished sessions into task records: what the user
 // asked for and the steps Claude took. It is the first part of learning
-// skills from repeated work; see docs/skills.md.
+// skills from repeated work; see docs/plans/skills.md.
 package skills
 
 import (

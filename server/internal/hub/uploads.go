@@ -20,7 +20,7 @@ import (
 )
 
 // Resumable uploads, for files too big to send in one go over a phone's
-// connection. See docs/plan.md#large-files.
+// connection. See docs/plans/plan.md#large-files.
 
 const staleUpload = 24 * time.Hour
 

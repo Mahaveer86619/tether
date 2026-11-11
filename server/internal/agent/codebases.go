@@ -29,7 +29,7 @@ import (
 // Codebases on the hub, the agent's half: finding codebases under workspace
 // roots, snapshotting one into the hub (only files the hub lacks are sent),
 // sending its .env files to the hub's vault, and restoring a snapshot on the
-// hub's machine. See docs/plan.md#codebases-on-the-hub.
+// hub's machine. See docs/plans/plan.md#codebases-on-the-hub.
 
 const (
 	// A snapshot bigger than this is refused: add what's missing to .tetherignore.

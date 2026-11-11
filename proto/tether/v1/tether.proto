@@ -49,6 +49,8 @@ message Frame {
     Chat chat = 41;
     // A newer release is available (sent to every client).
     UpdateManifest update_available = 42;
+    // Where notifications can be fetched from outside the tailnet changed.
+    NotifyEndpoint notify_endpoint = 43;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -69,6 +71,8 @@ message Frame {
     // a sync run.
     HistoryChunk history_chunk = 58;
     HistorySynced history_synced = 59;
+    // How a SyncProject went (agent -> hub).
+    SyncResult sync_result = 61;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -93,6 +97,22 @@ message NodeStatus {
   string ip = 9;
   // When the node's transcripts were last fully synced to the hub's history.
   int64 history_synced_ms = 10;
+  // What this machine can build or run, found by the agent: tool names
+  // such as "flutter", "gradle", "android-sdk", "go", "docker", "tmux".
+  repeated string capabilities = 11;
+  // What the agent checked about this machine, for the device's checklist.
+  repeated DoctorCheck checks = 12;
+}
+
+// One thing the agent checked: is Claude Code here, are its hooks in, and so on.
+message DoctorCheck {
+  string id = 1;
+  string label = 2;
+  bool ok = 3;
+  // What was found, or what to do about it.
+  string detail = 4;
+  // Without it Tether cannot work on this machine (as opposed to a nicety).
+  bool required = 5;
 }
 
 enum SessionState {
@@ -161,7 +181,7 @@ message SessionInfo {
   // hub's machine when its own machine is closed or offline.
   bool global = 24;
   // The codebase its folder belongs to, and the snapshot the hub took of it
-  // for this session (set on forks); see docs/plan.md#codebases-on-the-hub.
+  // for this session (set on forks); see docs/plans/plan.md#codebases-on-the-hub.
   string codebase = 25;
   string snapshot = 26;
   // Claude Code's permission mode: default, acceptEdits, plan or auto. From
@@ -359,6 +379,14 @@ message Welcome {
   repeated Chat chats = 9;
   // The newest release the hub knows of; unset when it knows none.
   UpdateManifest update = 10;
+  // The public address that serves only notifications (a Cloudflare tunnel);
+  // empty when the hub has none. Changes are sent as NotifyEndpoint.
+  string notify_url = 11;
+}
+
+// Where notifications can be fetched without Tailscale.
+message NotifyEndpoint {
+  string url = 1;
 }
 
 message Ack {
@@ -435,6 +463,27 @@ message AgentCommand {
     SyncHistory sync_history = 17;
     // The hub took a HistoryChunk up to offset; the next chunk starts there.
     HistoryAck history_ack = 18;
+    // Push a project folder to its repository on the hub, or pull it from
+    // there; answered with a SyncResult.
+    SyncProject sync_project = 19;
+  }
+
+  // Keeps a remote chat's project folder in step with the hub's repository
+  // for it (docs/plans/remote-projects.md). The agent reaches the repository
+  // with its own token at <hub>/git/<repo>.git.
+  message SyncProject {
+    // Echoed in the SyncResult.
+    string id = 1;
+    string chat = 2;
+    // "push": snapshot the folder and send it; "pull": make the folder match.
+    string direction = 3;
+    // The folder on this node; empty on a pull makes one under the agent's
+    // projects folder, named after the repository.
+    string cwd = 4;
+    string repo = 5;
+    string branch = 6;
+    // Paths in the folder that hold secrets, kept out of the repository.
+    repeated string exclude = 7;
   }
 
   message StartRun {
@@ -878,6 +927,19 @@ message CommandResult {
   string error = 3;
 }
 
+message SyncResult {
+  string id = 1;
+  string chat = 2;
+  string direction = 3;
+  bool ok = 4;
+  string error = 5;
+  // The folder the sync used, which a pull may have chosen.
+  string cwd = 6;
+  // The commit the folder is at afterwards.
+  string head = 7;
+  bool changed = 8;
+}
+
 message ModeResult {
   string session = 1;
   string mode = 2;
@@ -936,7 +998,7 @@ message PageList {
 // A chat is the conversation the user sees; the sessions doing the work sit
 // behind it. One is active (messages go there); others are linked: forks,
 // sessions it started on other machines, or a move to another folder.
-// See docs/chats.md.
+// See docs/architecture/chats.md.
 
 message Chat {
   string id = 1;
@@ -951,6 +1013,8 @@ message Chat {
   string active_session = 8;
   // Oldest first, the active one included.
   repeated ChatLink sessions = 9;
+  // Sent once when the chat is deleted, so clients drop it. Its sessions stay.
+  bool deleted = 10;
 }
 
 // Where a chat's work runs.
@@ -1054,6 +1118,8 @@ message TargetCandidate {
   double score = 5;
   string reason = 6;
   int64 last_used_ms = 7;
+  // Sessions that ran in this folder.
+  int32 uses = 8;
 }
 
 // GET /api/v1/targets?prompt=
@@ -1066,7 +1132,7 @@ message TargetSuggestions {
 // ---- Updates ----
 //
 // A release's latest.json, as CI publishes it and the hub serves it at
-// GET /api/v1/updates/latest. See docs/releasing.md.
+// GET /api/v1/updates/latest. See docs/operations/releasing.md.
 
 message UpdateAsset {
   string name = 1;

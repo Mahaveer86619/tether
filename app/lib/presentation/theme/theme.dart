@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 import 'palettes.dart';
@@ -28,12 +29,16 @@ class TetherColors extends ThemeExtension<TetherColors> {
     required this.diffAdd,
     required this.diffRemove,
     required this.syntax,
+    this.shape = 1,
   });
 
   final Color canvas, sidebar, surface, raised, border, text, muted, faint;
   final Color accent, success, warning, danger, info;
   final Color codeBg, userBubble, diffAdd, diffRemove;
   final SyntaxColors syntax;
+
+  /// Scales the corner radii: 1 keeps them as written, below 1 squares them.
+  final double shape;
 
   static const light = TetherColors(
     canvas: Color(0xFFFAF9F5),
@@ -129,6 +134,7 @@ class TetherColors extends ThemeExtension<TetherColors> {
         diffAdd: diffAdd,
         diffRemove: diffRemove,
         syntax: syntax ?? this.syntax,
+        shape: shape,
       );
 
   @override
@@ -137,10 +143,21 @@ class TetherColors extends ThemeExtension<TetherColors> {
 
 extension TetherTheme on BuildContext {
   TetherColors get colors => Theme.of(this).extension<TetherColors>()!;
+
+  /// A corner radius of [r] in the current palette's shape. Pills and large
+  /// rounded surfaces (18 and over) keep their radius.
+  double shape(double r) => r >= 18 ? r : r * colors.shape;
+
+  BorderRadius round(double r) => BorderRadius.circular(shape(r));
 }
 
-final String monoFont = Platform.isWindows ? 'Cascadia Mono' : 'monospace';
-const List<String> monoFallback = ['Consolas', 'Menlo', 'monospace'];
+/// Text on the accent colour: dark on a light accent (emerald, amber), white
+/// on a dark one, whichever reads at 4.5:1 or better.
+Color onAccent(Color accent) => accent.computeLuminance() > 0.25 ? const Color(0xFF0A0E14) : Colors.white;
+
+const String monoFont = 'JetBrains Mono';
+const List<String> monoFallback = ['Cascadia Mono', 'Consolas', 'Menlo', 'monospace'];
+const String sansFont = 'Inter';
 
 TextStyle monoStyle(BuildContext context, {double size = 13, Color? color}) => TextStyle(
       fontFamily: monoFont,
@@ -154,9 +171,10 @@ TextStyle monoStyle(BuildContext context, {double size = 13, Color? color}) => T
 ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
   final colors = (palette ?? palettes.first).of(brightness);
   final c = accent == null ? colors : colors.copyWith(accent: accent);
+  double r(double n) => n >= 18 ? n : n * c.shape;
   final scheme = ColorScheme.fromSeed(seedColor: c.accent, brightness: brightness).copyWith(
     primary: c.accent,
-    onPrimary: Colors.white,
+    onPrimary: onAccent(c.accent),
     surface: c.canvas,
     onSurface: c.text,
     outline: c.border,
@@ -165,6 +183,7 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
   );
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: sansFont,
     brightness: brightness,
     colorScheme: scheme,
     textSelectionTheme: TextSelectionThemeData(
@@ -175,6 +194,14 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
     scaffoldBackgroundColor: c.canvas,
     extensions: [c],
     splashFactory: InkSparkle.splashFactory,
+    // A screen slides in from the right and can be swiped back, as on iOS.
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+    }),
   );
   final text = base.textTheme.apply(bodyColor: c.text, displayColor: c.text);
   return base.copyWith(
@@ -196,16 +223,16 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
       fillColor: c.surface,
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c.border)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c.border)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: c.accent)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(r(10)), borderSide: BorderSide(color: c.border)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(r(10)), borderSide: BorderSide(color: c.border)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(r(10)), borderSide: BorderSide(color: c.accent)),
       hintStyle: TextStyle(color: c.faint),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: c.accent,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        foregroundColor: onAccent(c.accent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(10))),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
@@ -213,20 +240,20 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
       style: OutlinedButton.styleFrom(
         foregroundColor: c.text,
         side: BorderSide(color: c.border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(10))),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: c.muted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(8))),
       ),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: c.canvas,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(16))),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: c.canvas,
@@ -236,19 +263,19 @@ ThemeData buildTheme(Brightness brightness, {Palette? palette, Color? accent}) {
     popupMenuTheme: PopupMenuThemeData(
       color: c.surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: c.border)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(r(10)), side: BorderSide(color: c.border)),
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: c.surface,
       contentTextStyle: TextStyle(color: c.text),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(r(12)),
         side: BorderSide(color: c.border),
       ),
     ),
     tooltipTheme: TooltipThemeData(
-      decoration: BoxDecoration(color: c.text, borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: c.text, borderRadius: BorderRadius.circular(r(6))),
       textStyle: TextStyle(color: c.canvas, fontSize: 12),
     ),
   );

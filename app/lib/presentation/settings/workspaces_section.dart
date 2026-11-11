@@ -9,6 +9,7 @@ import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
+import '../ui/collapsible.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 
@@ -68,11 +69,13 @@ class _WorkspacesBody extends StatelessWidget {
     return BlocConsumer<WorkspacesCubit, WorkspacesState>(
       listenWhen: (a, b) => a.failureId != b.failureId && b.failure != null,
       listener: (context, s) => showFailure(context, s.failure!),
-      builder: (context, s) => Column(
+      builder: (context, s) => CollapsibleSection(
+        title: 'Workspaces',
+        count: s.roots.length,
+        summary: 'Folders where new projects are created',
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Workspaces', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 4),
           Text('Folders on each device where new projects are created. Projects you worked in are remembered on their own.',
               style: TextStyle(color: c.muted, fontSize: 13)),
           for (final n in hub.sortedNodes) ...[
@@ -125,6 +128,7 @@ class _WorkspacesBody extends StatelessWidget {
             ),
           ],
         ],
+        ),
       ),
     );
   }

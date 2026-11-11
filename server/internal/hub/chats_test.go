@@ -363,3 +363,31 @@ func TestAFinishedTaskReportsItsResultIntoTheChat(t *testing.T) {
 		t.Fatalf("the lead is not a task: %q", notes())
 	}
 }
+
+func TestDeletingAChatKeepsItsSessions(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	agent, ctx := dialAgent(t, h, srv.URL)
+	c := postChat(t, srv, "/api/v1/chats", `{"prompt":"one thing","target":{"node":"laptop","cwd":"/src/tether"}}`)
+	nextCommand(t, agent, ctx, isStart)
+	keep := postChat(t, srv, "/api/v1/chats", `{"prompt":"another","target":{"node":"laptop","cwd":"/src/other"}}`)
+	nextCommand(t, agent, ctx, isStart)
+
+	if status, body := call(t, srv, "DELETE", "/api/v1/chats/"+c.Id, "secret", ""); status != 200 {
+		t.Fatalf("delete: %d %s", status, body)
+	}
+	status, body := call(t, srv, "GET", "/api/v1/chats", "secret", "")
+	list := &v1.ChatList{}
+	if status != 200 || protojson.Unmarshal([]byte(body), list) != nil || len(list.Chats) != 1 || list.Chats[0].Id != keep.Id {
+		t.Fatalf("chats after delete: %d %s", status, body)
+	}
+	h.mu.Lock()
+	_, stillThere := h.sessions[c.ActiveSession]
+	owner := h.chatOf[c.ActiveSession]
+	h.mu.Unlock()
+	if !stillThere || owner != "" {
+		t.Errorf("the session should stay, unattached: there=%v owner=%q", stillThere, owner)
+	}
+	if status, _ := call(t, srv, "DELETE", "/api/v1/chats/"+c.Id, "secret", ""); status != 404 {
+		t.Errorf("deleting twice: %d", status)
+	}
+}

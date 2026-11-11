@@ -4,6 +4,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tether/domain/entities/entities.dart';
@@ -24,9 +25,11 @@ Widget themed(Widget child) => MaterialApp(theme: buildTheme(Brightness.light), 
 
 /// Busy sessions pulse forever, so pumpAndSettle never returns; pump a
 /// fixed number of frames instead.
-/// Opens a session from Home's history, which lists sessions on a hub
-/// without chats; it sits below the start box and the live cards.
+/// Opens a session from the Chats list, which lists sessions on a hub
+/// without chats.
 Future<void> openSession(WidgetTester tester, String id) async {
+  await tester.tap(find.byKey(const Key('nav-chats')));
+  await settle(tester);
   final row = find.descendant(of: find.byType(ChatsPage), matching: find.text('Session $id')).last;
   await tester.ensureVisible(row);
   await tester.pump();
@@ -145,7 +148,10 @@ void main() {
         ..registerSingleton<TransferRepository>(transfers)
         ..registerSingleton<SettingsRepository>(settings)
         ..registerSingleton<UpdateRepository>(updates = FakeUpdateRepository())
-        ..registerSingleton<TailscaleRepository>(FakeTailscale());
+        ..registerSingleton<TailscaleRepository>(FakeTailscale())
+        ..registerSingleton<HubProbe>(FakeHubProbe())
+        ..registerSingleton<NotifyDevice>(FakeNotifyDevice())
+        ..registerSingleton<DesktopUpdater>(FakeDesktopUpdater());
       configureDependencies(withData: false);
     });
 
@@ -526,7 +532,7 @@ void main() {
         Node(name: 'laptop', online: true, os: 'windows', agentVersion: '0.13.0'),
       ]).copyWith(hubVersion: '0.15.0', hubNode: 'minipc'));
       await pumpApp(tester, const Size(1400, 1400));
-      await tester.tap(find.text('Devices').first);
+      await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.byKey(const Key('hub-card')), findsOneWidget);
       expect(find.textContaining('Hub 0.15.0'), findsOneWidget);
@@ -541,9 +547,9 @@ void main() {
       expect(find.textContaining('Update it first'), findsOneWidget);
 
       repo.clientList = null;
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byKey(const Key('new-chat')));
       await settle(tester);
-      await tester.tap(find.text('Devices').first);
+      await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.textContaining('too old to list its apps'), findsOneWidget);
     });
@@ -632,7 +638,7 @@ void main() {
     testWidgets('pages sessions made are listed under Files → Pages, ready to open', (tester) async {
       repo.hostedPages = [HostedPage(session: 's1', name: 'demo', files: 3, updated: DateTime(2026), url: 'http://hub/p/s1/demo/1/x/index.html')];
       await pumpApp(tester, const Size(1400, 900));
-      await tester.tap(find.text('Files').first);
+      await tester.tap(find.byKey(const Key('nav-files')));
       await settle(tester);
       await tester.tap(find.widgetWithText(ChoiceChip, 'Pages'));
       await settle(tester);
@@ -657,6 +663,10 @@ void main() {
       ];
       await pumpApp(tester, const Size(1400, 1600));
       await tester.tap(find.byTooltip('Settings'));
+      await settle(tester);
+      await tester.scrollUntilVisible(find.byKey(const Key('section-codebases')), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('shop'), findsNothing, reason: 'the section starts folded, with its count');
+      await tester.tap(find.byKey(const Key('section-codebases')));
       await settle(tester);
       await tester.scrollUntilVisible(find.text('shop'), 200, scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('120 files'), findsOneWidget);
@@ -704,7 +714,7 @@ void main() {
       expect(settings.saved.isComplete, isFalse);
     });
 
-    testWidgets('desktop: Back from settings returns to where you were', (tester) async {
+    testWidgets('desktop: Back from settings goes Home, not back into the chat opened before', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
       await openSession(tester, 's1');
       await settle(tester);
@@ -712,9 +722,105 @@ void main() {
       await tester.tap(find.byTooltip('Settings'));
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsNothing);
-      await tester.tap(find.byTooltip('Back (Esc)'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await settle(tester);
-      expect(find.byKey(const Key('composer')), findsOneWidget);
+      expect(find.byKey(const Key('composer')), findsNothing);
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home, with the start box');
+    });
+
+    testWidgets('a device lists what its agent checked, and flags one that needs attention', (tester) async {
+      repo.emitHub(repo.current.copyWith(nodes: {
+        ...repo.current.nodes,
+        'laptop': Node(name: 'laptop', online: true, os: 'windows', checks: const [
+          DoctorCheck(id: 'claude', label: 'Claude Code', ok: false, required: true, detail: 'Claude Code did not answer. Install it and sign in.'),
+          DoctorCheck(id: 'git', label: 'git', ok: true, detail: 'Found.'),
+        ]),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-devices')));
+      await settle(tester);
+      expect(find.byKey(const Key('attention-laptop')), findsOneWidget);
+      await tester.tap(find.text('laptop').first);
+      await settle(tester);
+      expect(find.byKey(const Key('checklist')), findsOneWidget);
+      expect(find.textContaining('Install it and sign in'), findsOneWidget);
+      expect(find.text('CHECKS'), findsOneWidget);
+    });
+
+    testWidgets('files a session delivered show as cards with Download, and a program says so', (tester) async {
+      repo.emitHub(repo.current.copyWith(artifacts: {
+        'f1': Artifact(id: 'f1', name: 'app-release.apk', mime: 'application/vnd.android.package-archive', size: 81487523, session: 's1', node: 'laptop', origin: 'result', created: DateTime.now()),
+        'f2': Artifact(id: 'f2', name: 'rows.csv', mime: 'text/csv', size: 2048, session: 's1', node: 'laptop', origin: 'result', created: DateTime.now().subtract(const Duration(minutes: 1)), note: 'the failing rows'),
+        'f3': Artifact(id: 'f3', name: 'shot.png', mime: 'image/png', size: 10, session: 's1', origin: 'attachment', created: DateTime.now()),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      expect(find.text('DELIVERED'), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f1')), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f2')), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f3')), findsNothing, reason: 'what you sent is not a delivery');
+      expect(find.text('a program'), findsOneWidget, reason: 'only the APK');
+      expect(find.text('the failing rows'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('file-card-download-f2')));
+      await settle(tester);
+      expect(transfers.downloads.map((a) => a.id), ['f2']);
+    });
+
+    testWidgets('a session is drawn as chat, beside the files it changes, or as a terminal transcript', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await openSession(tester, 's1');
+      await settle(tester);
+      repo.emitTimeline('s1', [
+        rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'run the tests')),
+        rpb.TimelineItem(
+          itemId: 'e1',
+          ord: Int64(2),
+          tool: rpb.ToolCard(
+            toolUseId: 'e1',
+            name: 'Edit',
+            status: rpbe.ToolCard_Status.STATUS_SUCCEEDED,
+            edit: rpb.EditCard(path: '/srv/app/main.go', added: 1, removed: 1, unifiedDiff: '@@ -1 +1 @@\n-old()\n+fresh()\n'),
+          ),
+        ),
+        rpb.TimelineItem(
+          itemId: 'e2',
+          ord: Int64(3),
+          tool: rpb.ToolCard(
+            toolUseId: 'e2',
+            name: 'Edit',
+            status: rpbe.ToolCard_Status.STATUS_SUCCEEDED,
+            edit: rpb.EditCard(path: '/srv/app/util.go', added: 2, removed: 0, unifiedDiff: '@@ -3 +3,2 @@\n+a()\n+b()\n'),
+          ),
+        ),
+      ]);
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsNothing);
+      expect(find.byKey(const Key('changes-pane')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('view-terminal')));
+      await settle(tester);
+      expect(find.byKey(const Key('terminal-transcript')), findsOneWidget);
+      expect(find.text('> run the tests'), findsOneWidget);
+      expect(find.byKey(const Key('composer')), findsOneWidget, reason: 'the composer stays in every view');
+
+      await tester.tap(find.byKey(const Key('view-files')));
+      await settle(tester);
+      expect(find.byKey(const Key('changes-pane')), findsOneWidget);
+      expect(find.text('run the tests'), findsOneWidget, reason: 'the chat stays beside it');
+      expect(find.byKey(const Key('change-tab-/srv/app/main.go')), findsOneWidget);
+      expect(find.byKey(const Key('change-tab-/srv/app/util.go')), findsOneWidget);
+      expect(find.text('following'), findsOneWidget, reason: 'it opens on the file touched last');
+      expect(find.textContaining('/srv/app/util.go'), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('change-tab-/srv/app/main.go')));
+      await settle(tester);
+      expect(find.text('pinned'), findsOneWidget);
+      expect(find.textContaining('/srv/app/main.go'), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('view-chat')));
+      await settle(tester);
+      expect(find.byKey(const Key('changes-pane')), findsNothing);
     });
 
     testWidgets('a fork links to its parent, and marks where it split off', (tester) async {
@@ -740,7 +846,7 @@ void main() {
 
     testWidgets('usage: the plan limits once per account, then tokens per machine', (tester) async {
       await pumpApp(tester, const Size(1400, 1000));
-      await tester.tap(find.text('Usage'));
+      await tester.tap(find.byKey(const Key('nav-usage')));
       await settle(tester);
       expect(find.text('Current session'), findsOneWidget, reason: 'two machines on one account share a card');
       expect(find.text('9% used'), findsOneWidget);
@@ -775,18 +881,18 @@ void main() {
       await pumpApp(tester, const Size(1400, 1000));
       expect(find.descendant(of: find.byType(CardShell), matching: find.text('Session e1')), findsOneWidget, reason: 'a fresh failure needs you');
 
-      await tester.tap(find.text('Devices').first);
+      await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.text('1 · HUB'), findsOneWidget);
       expect(find.text('2 · DEVICES RUNNING THE AGENT'), findsOneWidget);
       expect(find.text('3 · APPS'), findsOneWidget);
 
-      await tester.tap(find.text('Activity').first);
+      await tester.tap(find.byKey(const Key('nav-activity')));
       await settle(tester);
       expect(find.text('Saved notes.md'), findsOneWidget);
       expect(find.text('Failed: Session e1'), findsOneWidget);
 
-      await tester.tap(find.text('Files').first);
+      await tester.tap(find.byKey(const Key('nav-files')));
       await settle(tester);
       expect(find.text('notes.md'), findsOneWidget);
       expect(find.text('1 file · 2 KB'), findsOneWidget);
@@ -856,7 +962,7 @@ void main() {
         info: repo.skillList.single,
         versions: [SkillVersion(n: 1, text: '---\nname: v2-sync-progress\n---\n1. Read-only: tmux ls', note: 'first draft', by: 'Claude', at: DateTime.now())],
       );
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byKey(const Key('new-chat')));
       await settle(tester);
       await tester.tap(find.byKey(const Key('nav-routines')));
       await settle(tester);
@@ -907,7 +1013,7 @@ void main() {
         'doc': Artifact(id: 'doc', name: 'report.pdf', mime: 'application/pdf', size: 5 * 1024 * 1024, session: 's2', created: now.subtract(const Duration(hours: 2))),
       }));
       await pumpApp(tester, const Size(1400, 1000));
-      await tester.tap(find.text('Files').first);
+      await tester.tap(find.byKey(const Key('nav-files')));
       await settle(tester);
       expect(find.text('3 files · 605.0 MB'), findsOneWidget);
       expect(find.textContaining('600.0 MB · ', findRichText: true), findsOneWidget, reason: 'sizes are shown plainly');
@@ -1000,19 +1106,24 @@ void main() {
       expect(settings.appearance.accent, isNull);
     });
 
-    testWidgets('phone: home with the start box, the bottom tabs, a pushed session page, and Back through the nav state', (tester) async {
+    testWidgets('phone: home with the start box, the menu drawer, a pushed session page, and Back through the nav state', (tester) async {
       await pumpApp(tester, const Size(400, 860));
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home starts with the box for a new chat');
       expect(find.text('RUNNING NOW'), findsOneWidget);
-      expect(find.byKey(const Key('nav-monitor')), findsNothing);
-      expect(find.byKey(const Key('nav-sessions')), findsNothing, reason: 'sessions are opened from their chat, not from a tab');
+      expect(find.byType(NavigationBar), findsNothing, reason: 'the places are in the menu, not a bottom bar');
+      expect(find.byKey(const Key('nav-chats')), findsOneWidget, reason: 'the New and Chats switch is in the header');
 
+      await tester.tap(find.byKey(const Key('open-sidebar')));
+      await settle(tester);
       await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.byKey(const Key('new-chat-input')), findsNothing);
+      expect(find.text('flutter'), findsOneWidget, reason: 'a machine shows what it can build');
 
-      await tester.tap(find.byKey(const Key('nav-chats')));
+      await tester.tap(find.byType(BackButton));
       await settle(tester);
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Back from Devices is Home');
+
       await openSession(tester, 's1');
       await settle(tester);
       expect(find.byType(BackButton), findsOneWidget);
@@ -1021,24 +1132,20 @@ void main() {
       await tester.tap(find.byType(BackButton));
       await settle(tester);
       expect(find.byKey(const Key('composer')), findsNothing);
-      expect(find.text('RUNNING NOW'), findsOneWidget, reason: 'Back returns to Home');
+      expect(find.byType(ChatsPage), findsOneWidget, reason: 'Back returns to the list it was opened from');
 
-      // The system back button walks the same history: Home, Devices, Home.
-      for (var i = 0; i < 2; i++) {
-        await tester.binding.handlePopRoute();
-        await settle(tester);
-      }
+      await tester.binding.handlePopRoute();
+      await settle(tester);
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'back on Home, with the start box');
-      expect(find.byType(NavigationBar), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('more-destinations')));
+      await tester.tap(find.byKey(const Key('open-sidebar')));
       await settle(tester);
-      await tester.tap(find.text('Usage').last);
+      await tester.tap(find.byKey(const Key('nav-usage')));
       await settle(tester);
-      expect(find.byType(NavigationBar), findsNothing, reason: 'pages from the menu sit on top, with a back arrow');
+      expect(find.byType(BackButton), findsOneWidget, reason: 'a place from the menu has a back arrow');
       await tester.tap(find.byType(BackButton));
       await settle(tester);
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byKey(const Key('new-chat-input')), findsOneWidget);
     });
 
     testWidgets('chats: start one with an auto target, rename it inline, and see where it runs', (tester) async {
@@ -1048,7 +1155,7 @@ void main() {
         pick: TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"'),
       );
       await pumpApp(tester, const Size(1400, 900));
-      expect(find.text('No chats yet'), findsOneWidget);
+      expect(find.text('Chats you start show up here.'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('new-chat')));
       await settle(tester);
@@ -1113,6 +1220,8 @@ void main() {
         'c2': Chat(id: 'c2', title: 'Old idea', activeSession: 'gone', links: const [ChatLink(session: 'gone')], updated: now.subtract(const Duration(days: 40))),
       }));
       await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
       expect(find.text('TODAY'), findsOneWidget);
       expect(find.text('OLDER'), findsOneWidget);
       await tester.enterText(find.byKey(const Key('chat-search')), 'idea');
@@ -1143,11 +1252,40 @@ void main() {
       expect(find.text('Chat archived'), findsOneWidget);
     });
 
+    testWidgets('chats: Delete asks first, then the chat is gone and its session stays', (tester) async {
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.17.3', chats: {
+        'c1': Chat(id: 'c1', title: 'Fix login', activeSession: 's1', links: const [ChatLink(session: 's1')], updated: DateTime.now()),
+      }));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('chat-menu-c1')).first);
+      await settle(tester);
+      await tester.tap(find.text('Delete'));
+      await settle(tester);
+      await tester.tap(find.text('Cancel'));
+      await settle(tester);
+      expect(repo.deletedChats, isEmpty, reason: 'Cancel leaves it');
+
+      await tester.tap(find.byKey(const Key('chat-menu-c1')).first);
+      await settle(tester);
+      await tester.tap(find.text('Delete'));
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('confirm-delete-chat')));
+      await settle(tester);
+      expect(repo.deletedChats, ['c1']);
+      expect(find.byKey(const Key('chat-c1')), findsNothing);
+      expect(find.text('Chat deleted'), findsOneWidget);
+      expect(repo.current.sessions.containsKey('s1'), isTrue);
+    });
+
     testWidgets('chats: a monitored session that is a chat opens as the chat', (tester) async {
       repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', chats: {
         'c1': Chat(id: 'c1', title: 'Chat about s1', activeSession: 's1', links: const [ChatLink(session: 's1'), ChatLink(session: 't1', role: 'started')]),
       }));
       await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('nav-chats')));
+      await settle(tester);
       final tile = find.byKey(const Key('chat-c1'));
       await tester.ensureVisible(tile);
       await tester.pump();
@@ -1163,6 +1301,27 @@ void main() {
       await tester.tap(find.byKey(const Key('linked-sessions')));
       await settle(tester);
       expect(find.text('Started by Claude · laptop · app'), findsOneWidget);
+    });
+
+    testWidgets('updates: Settings has a Check for updates button that says what it found', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byTooltip('Settings'));
+      await settle(tester);
+      await tester.ensureVisible(find.byKey(const Key('check-updates')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('check-updates')));
+      await settle(tester);
+      expect(find.text('You are on the latest version'), findsOneWidget);
+
+      updates.release = release('9.0.0');
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.ensureVisible(find.byKey(const Key('check-updates')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('check-updates')));
+      await settle(tester);
+      expect(find.textContaining('A new version is ready'), findsOneWidget);
+      expect(find.byKey(const Key('update-banner')), findsOneWidget);
     });
 
     testWidgets('updates: a banner with the notes, Skip, and Update through to Install', (tester) async {
@@ -1193,7 +1352,7 @@ void main() {
       updates.release = release('9.0.0', minSupported: '8.0.0');
       await pumpApp(tester, const Size(1400, 900));
       expect(find.byKey(const Key('forced-update')), findsOneWidget);
-      expect(find.byKey(const Key('nav-chats')), findsNothing);
+      expect(find.byKey(const Key('nav-home')), findsNothing);
       await tester.tap(find.byKey(const Key('forced-update-now')));
       await settle(tester);
       expect(updates.installed, isNotEmpty);
@@ -1218,7 +1377,7 @@ void main() {
     testWidgets('tablet widths get the icon rail', (tester) async {
       await pumpApp(tester, const Size(800, 900));
       expect(find.text('RUNNING NOW'), findsOneWidget);
-      expect(find.byKey(const Key('nav-chats')), findsOneWidget);
+      expect(find.byKey(const Key('nav-home')), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
       expect(find.text('RECENTS'), findsNothing, reason: 'recents need the full sidebar');
     });

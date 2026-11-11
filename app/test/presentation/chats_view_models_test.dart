@@ -21,12 +21,12 @@ void main() {
     tearDown(() => nav.close());
 
     test('starts on Chats with nothing to go back to', () {
-      expect(nav.state.destination, Destination.chats);
+      expect(nav.state.destination, Destination.home);
       expect(nav.state.atRoot, isTrue);
       expect(nav.back(), isFalse);
     });
 
-    test('Back retraces destinations and screens in order', () {
+    test('Back pops the screens opened on top, then goes Home, then leaves', () {
       nav.select(Destination.devices);
       nav.openSession('s2');
       nav.push(const NodeEntry('laptop'));
@@ -36,9 +36,25 @@ void main() {
       nav.back();
       expect(nav.state.top, const SessionEntry('s2'));
       nav.back();
-      expect((nav.state.destination, nav.state.stack), (Destination.devices, const <NavEntry>[]));
+      expect(nav.state.destination, Destination.devices);
+      expect(nav.state.stack, isEmpty);
       nav.back();
+      expect(nav.state.atRoot, isTrue, reason: 'Back from a place with nothing open goes Home');
+      expect(nav.back(), isFalse);
+    });
+
+    test('switching places leaves nothing to go back to: a chat, Settings, Home, then Back leaves', () {
+      nav.openChat('c1');
+      nav.select(Destination.settings);
+      nav.select(Destination.home);
       expect(nav.state.atRoot, isTrue);
+      expect(nav.back(), isFalse, reason: 'the chat opened first is not revisited');
+
+      nav.openChat('c1');
+      nav.select(Destination.chats);
+      nav.select(Destination.devices);
+      nav.back();
+      expect(nav.state.destination, Destination.home);
     });
 
     test("a chat's active session opens as the chat; other sessions on their own", () {
@@ -61,17 +77,16 @@ void main() {
       nav.openChat('c2', replace: true);
       expect(nav.state.stack, [const ChatEntry('c2')]);
       nav.back();
-      expect(nav.state.stack, [const ChatEntry('c1'), const SessionEntry('s2')]);
+      expect(nav.state.stack, isEmpty, reason: 'a screen swapped in sidebar-style replaces the whole stack');
     });
 
-    test('opening what is already open adds no Back step; history is capped', () {
+    test('opening what is already open adds no Back step', () {
       nav.openChat('c1');
       nav.openChat('c1');
-      expect(nav.state.history.length, 1);
-      for (var i = 0; i < 80; i++) {
-        nav.push(SessionEntry('x$i'));
-      }
-      expect(nav.state.history.length, 50);
+      expect(nav.state.stack, [const ChatEntry('c1')]);
+      nav.select(Destination.home);
+      nav.select(Destination.home);
+      expect(nav.state.atRoot, isTrue);
     });
   });
 

@@ -8,6 +8,7 @@ import '../../domain/usecases/usecases.dart';
 import '../../injection.dart';
 import '../artifacts/artifact_widgets.dart' show fileSize;
 import '../theme/theme.dart';
+import '../ui/collapsible.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 
@@ -76,15 +77,14 @@ class CodebasesSection extends StatelessWidget {
             for (final cb in s.codebases) {
               byNode.putIfAbsent(cb.node, () => []).add(cb);
             }
-            return Column(
+            return CollapsibleSection(
+              title: 'Codebases',
+              count: s.codebases.length,
+              summary: 'Folders the hub keeps copies of',
+              actions: [IconButton(tooltip: 'Refresh', onPressed: context.read<CodebasesCubit>().load, icon: const Icon(Icons.refresh_rounded, size: 20))],
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    const Expanded(child: Text('Codebases', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
-                    IconButton(tooltip: 'Refresh', onPressed: context.read<CodebasesCubit>().load, icon: const Icon(Icons.refresh_rounded, size: 20)),
-                  ],
-                ),
                 Text(
                   'Each folder directly in a workspace root is a codebase. The hub keeps a copy whenever a session in it is forked, '
                   'so work can carry on with the device off. .env files are kept encrypted on the hub and only written back there; '
@@ -104,6 +104,7 @@ class CodebasesSection extends StatelessWidget {
                   for (final cb in entry.value) _CodebaseTile(codebase: cb, requested: s.requested.contains(cb.id)),
                 ],
               ],
+              ),
             );
           },
         ),

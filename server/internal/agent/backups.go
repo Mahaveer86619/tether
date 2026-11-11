@@ -18,7 +18,7 @@ import (
 // Background backups of every session to the hub, asked for by the hub
 // while an app is in the foreground. Only transcripts that changed since the
 // hub's copy go up, each with its subagents' transcripts and its details;
-// see docs/plan.md#session-backups.
+// see docs/plans/plan.md#session-backups.
 
 // backup uploads the sessions whose transcripts changed. One run at a time:
 // a request arriving mid-run is skipped, and the next one catches up.

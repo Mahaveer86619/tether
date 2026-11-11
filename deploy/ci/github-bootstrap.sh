@@ -8,7 +8,7 @@
 #   - the Android signing secrets (through the gh CLI, which encrypts them)
 #   - optionally: register the self-hosted runner, push main and the tags
 # Needs GH_TOKEN: a token with admin rights on the repository (the owner's).
-# See docs/GITHUB-SETUP.md.
+# See docs/operations/GITHUB-SETUP.md.
 #
 # Usage: GH_TOKEN=... deploy/ci/github-bootstrap.sh [options]
 #   --repo OWNER/NAME          default Mahaveer86619/tether
@@ -49,7 +49,7 @@ root=$(cd "$here/../.." && pwd)
 api_base=${GITHUB_API:-https://api.github.com}
 
 if [ "$dry" != 1 ] && [ -z "${GH_TOKEN:-}" ]; then
-  echo "GH_TOKEN is not set: it needs admin rights on $repo (see docs/GITHUB-SETUP.md)" >&2
+  echo "GH_TOKEN is not set: it needs admin rights on $repo (see docs/operations/GITHUB-SETUP.md)" >&2
   exit 1
 fi
 

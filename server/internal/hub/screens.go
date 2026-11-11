@@ -10,7 +10,7 @@ import (
 )
 
 // A session's terminal screen and key presses, relayed to its node: the way
-// out of a dialog Tether can't parse. See docs/hosting.md#dialogs-on-screen.
+// out of a dialog Tether can't parse. See docs/architecture/hosting.md#dialogs-on-screen.
 
 const screenWait = 4 * time.Second
 

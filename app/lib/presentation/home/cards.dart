@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
 import '../theme/theme.dart';
+import '../ui/motion.dart';
+import '../ui/refresh.dart';
+import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 
@@ -21,7 +24,7 @@ class CardShell extends StatelessWidget {
     final body = Padding(padding: const EdgeInsets.all(14), child: child);
     return Material(
       color: c.surface,
-      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(side: BorderSide(color: c.border), borderRadius: context.round(10)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -30,7 +33,7 @@ class CardShell extends StatelessWidget {
             : IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [Container(width: 3, color: accent), Expanded(child: body)],
+                  children: [Container(width: 2, color: accent), Expanded(child: body)],
                 ),
               ),
       ),
@@ -125,7 +128,7 @@ class SessionCard extends StatelessWidget {
           if (s.isBusy && s.todos.isNotEmpty) ...[
             const SizedBox(height: 8),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: context.round(4),
               child: LinearProgressIndicator(value: s.todosDone / s.todos.length, minHeight: 3, backgroundColor: c.raised, color: look.color),
             ),
           ],
@@ -142,6 +145,97 @@ class SessionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A working session: what it is doing now, how far along, and where.
+class RunCard extends StatelessWidget {
+  const RunCard({super.key, required this.session, required this.online, required this.onTap});
+
+  final Session session;
+  final bool online;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = session;
+    final steps = s.todos.length;
+    final where = [s.node, if (s.cwd.isNotEmpty) baseName(s.cwd) else if (s.scratch) 'scratch'].join(' · ');
+    return CardShell(
+      onTap: onTap,
+      accent: c.accent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              StateDot(state: online ? s.state : SessionState.idle, size: 8),
+              const SizedBox(width: Gap.sm),
+              Expanded(child: Text(s.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.title(context))),
+              const SizedBox(width: Gap.sm),
+              Text(ago(s.updated), style: Type.meta(context, color: c.faint)),
+            ],
+          ),
+          if (steps > 0) ...[
+            const SizedBox(height: Gap.md),
+            Row(
+              children: [
+                Text('STEP ${(s.todosDone + 1).clamp(1, steps)} OF $steps', style: Type.label(context)),
+                const SizedBox(width: Gap.sm),
+                Expanded(
+                  child: Text(s.currentTodo?.label ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: Type.meta(context, color: c.accent)),
+                ),
+              ],
+            ),
+            const SizedBox(height: Gap.sm),
+            StepBar(done: s.todosDone, total: steps),
+          ] else if (lastUpdate(s).isNotEmpty) ...[
+            const SizedBox(height: Gap.sm),
+            Text(lastUpdate(s), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: c.muted)),
+          ],
+          const SizedBox(height: Gap.md),
+          Row(
+            children: [
+              Expanded(child: Text(where, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.faint))),
+              Text('Open', style: TextStyle(fontSize: 12.5, color: c.accent, fontWeight: FontWeight.w600)),
+              Icon(Icons.arrow_forward_rounded, size: 14, color: c.accent),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Progress as a row of segments, one per step (at most 12, each standing
+/// for several steps when there are more).
+class StepBar extends StatelessWidget {
+  const StepBar({super.key, required this.done, required this.total});
+
+  final int done, total;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final n = total.clamp(1, 12);
+    final filled = (done * n / total).floor();
+    return Row(
+      children: [
+        for (var i = 0; i < n; i++) ...[
+          if (i > 0) const SizedBox(width: 3),
+          Expanded(
+            child: Container(
+              height: 3,
+              decoration: BoxDecoration(
+                color: i < filled ? c.accent : (i == filled ? c.accent.withValues(alpha: 0.45) : c.raised),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -178,7 +272,7 @@ class DeviceCard extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: c.raised, borderRadius: context.round(10)),
             child: Icon(osIcon(node.os), color: node.online ? c.muted : c.faint, size: 20),
           ),
           const SizedBox(width: 12),
@@ -186,17 +280,23 @@ class DeviceCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
-                    Flexible(child: Text(node.name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
-                    const SizedBox(width: 8),
-                    OnlineDot(online: node.online),
-                    if (isHub) ...[const SizedBox(width: 8), Pill('hub', color: c.accent)],
-                    if (isSelf) ...[const SizedBox(width: 8), const Pill('this device')],
-                    if (isOlderVersion(node.agentVersion, hubVersion)) ...[
-                      const SizedBox(width: 8),
-                      Pill('update', key: Key('update-${node.name}'), color: c.warning),
-                    ],
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(node.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 8),
+                        OnlineDot(online: node.online),
+                      ],
+                    ),
+                    if (isHub) Pill('hub', color: c.accent),
+                    if (isSelf) const Pill('this device'),
+                    if (node.needsAttention) Pill('needs attention', key: Key('attention-${node.name}'), color: c.danger),
+                    if (isOlderVersion(node.agentVersion, hubVersion)) Pill('update', key: Key('update-${node.name}'), color: c.warning),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -208,6 +308,10 @@ class DeviceCard extends StatelessWidget {
                   ].join(' · '),
                   style: TextStyle(fontSize: 12, color: c.muted),
                 ),
+                if (node.capabilities.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 4, runSpacing: 4, children: [for (final k in node.capabilities) Pill(k)]),
+                ],
               ],
             ),
           ),
@@ -226,16 +330,21 @@ class DeviceCard extends StatelessWidget {
 
 /// A centred, width-capped scrolling column, as every home page uses.
 class PageColumn extends StatelessWidget {
-  const PageColumn({super.key, required this.children, this.bottom = 40});
+  const PageColumn({super.key, required this.children, this.bottom = 40, this.onRefresh});
 
   final List<Widget> children;
+
+  /// The least empty space under the last item; a page always leaves 15% of the screen.
   final double bottom;
+
+  /// Pulling the page down from its top calls this.
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final side = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 16.0;
-    return ListView(
-      padding: EdgeInsets.fromLTRB(side, 8, side, bottom),
+    final list = ListView(
+      padding: EdgeInsets.fromLTRB(side, 8, side, bottomRoom(context, least: bottom)),
       children: [
         Center(
           child: ConstrainedBox(
@@ -245,5 +354,6 @@ class PageColumn extends StatelessWidget {
         ),
       ],
     );
+    return onRefresh == null ? list : PullRefresh(onRefresh: onRefresh!, child: list);
   }
 }

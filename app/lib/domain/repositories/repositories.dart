@@ -37,7 +37,7 @@ abstract interface class HubRepository {
   /// Continues a global session on the hub's machine; returns the new id.
   Future<Result<String>> continueOnHub(String sessionId, String text);
 
-  /// Starts a chat and its first session; see docs/chats.md.
+  /// Starts a chat and its first session; see docs/architecture/chats.md.
   Future<Result<Chat>> createChat(NewChatRequest request);
 
   /// Makes a chat of a session that has none, or returns the one it's in.
@@ -47,6 +47,16 @@ abstract interface class HubRepository {
   Future<Result<Chat>> renameChat(String chatId, String title);
 
   Future<Result<Chat>> setChatArchived(String chatId, {required bool archived});
+
+  /// Deletes a chat. The sessions it held stay, listed on their own.
+  Future<Result<void>> deleteChat(String chatId);
+
+  /// A token that opens only the hub's notifications, for [installId], and the
+  /// tunnel's address.
+  Future<Result<NotifyAccess>> notifyAccess(String installId);
+
+  /// Asks the hub to send a test notification.
+  Future<Result<void>> sendTestNotification();
 
   /// Sends to the chat's active session; returns the session that got it.
   Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''});
@@ -95,6 +105,12 @@ abstract interface class HubRepository {
   /// Token usage per machine and session.
   Future<Result<UsageSummary>> usage();
 
+  /// Whether a chat keeps its project folder in step on another device.
+  Future<Result<ChatRemote>> chatRemote(String chatId);
+  Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false});
+  Future<Result<List<ProjectFile>>> projectFiles(String repo);
+  Future<Result<void>> putProjectFile(String repo, String path, String content);
+  Future<Result<void>> deleteProjectFile(String repo, String path);
   Future<Result<List<SkillInfo>>> skills();
   Future<Result<SkillDetail>> skill(String name);
   Future<Result<SkillInfo>> decideSkill(String name, {required SkillDecision decision, int version = 0});
@@ -189,6 +205,33 @@ abstract interface class TailscaleRepository {
 
   /// Opens the Tailscale app, where there is one.
   Future<void> openApp();
+
+  /// The other devices on the tailnet, when this platform can list them
+  /// (the desktop can; a phone's Tailscale app does not say).
+  Future<List<TailnetPeer>> peers();
+}
+
+/// What a phone does to be told things with the app closed: a background
+/// service that asks the hub for news. Only Android has one.
+abstract interface class NotifyDevice {
+  bool get available;
+
+  /// Tells the service where to listen (tailnet address first, then the
+  /// tunnel), with which token, for which kinds, or stops it.
+  Future<void> configure({required bool enabled, required String token, required List<String> urls, required Set<NotifyKind> kinds});
+
+  /// The app is on screen, so the service leaves showing news to it.
+  Future<void> setActive(bool active);
+
+  Future<bool> permitted();
+  Future<void> askPermission();
+  Future<NotifyStatus> status();
+}
+
+/// Asks an address whether a Tether hub answers there.
+abstract interface class HubProbe {
+  /// A hub's hello, or null when nothing answers in time or it is not a hub.
+  Future<HubHello?> hello(String host, {int port = 7420});
 }
 
 abstract interface class SettingsRepository {
@@ -197,6 +240,12 @@ abstract interface class SettingsRepository {
 
   /// Forgets the hub address and token.
   Future<Result<void>> clearConnection();
+
+  /// Hubs connected to before, newest first.
+  Future<List<KnownHub>> loadKnownHubs();
+  Future<void> rememberHub(KnownHub hub);
+  Future<void> forgetHub(String url);
+
   /// Unsent text from a message box; empty when there is none.
   Future<String> loadDraft(String key);
   Future<void> saveDraft(String key, String text);
@@ -210,6 +259,18 @@ abstract interface class SettingsRepository {
 }
 
 /// Releases of the app: finding one, fetching it, installing it.
+/// The Windows app's own updater (WinSparkle): it checks the signed feed,
+/// shows its own dialogs, runs the installer and restarts the app.
+abstract interface class DesktopUpdater {
+  bool get available;
+
+  /// Points it at the feed and starts the scheduled checks.
+  Future<void> start();
+
+  /// Checks now, with its dialog.
+  Future<void> checkNow();
+}
+
 abstract interface class UpdateRepository {
   /// This platform's key in a release (android, windows), or null where
   /// the app can't update itself.

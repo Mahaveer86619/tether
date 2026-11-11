@@ -4,7 +4,7 @@
 #   publish                      makes the GitHub Release with latest.json
 #   deploy   (the hub's machine) installs the release there, with rollback;
 #                                it needs only the linux job, never Windows
-# See docs/releasing.md.
+# See docs/operations/releasing.md.
 name: release
 
 on:
@@ -48,7 +48,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::The ANDROID_KEYSTORE_* secrets aren't set; see docs/releasing.md#signing"
+            echo "::error::The ANDROID_KEYSTORE_* secrets aren't set; see docs/operations/releasing.md#signing"
             exit 1
           fi
           umask 077
@@ -81,13 +81,30 @@ jobs:
           flutter-version: 3.47.7
           channel: stable
           cache: true
-      - name: Build
+      - name: Build the app, its zip and the installer
         shell: pwsh
         run: ./tools/release/build-windows.ps1
+      - name: Sign the installer and write the appcast
+        shell: bash
+        env:
+          APPCAST_DSA_PRIVATE_KEY: ${{ secrets.APPCAST_DSA_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APPCAST_DSA_PRIVATE_KEY" ]; then
+            echo "::error::The APPCAST_DSA_PRIVATE_KEY secret isn't set; see docs/operations/releasing.md#windows-updates"
+            exit 1
+          fi
+          umask 077
+          printf '%s\n' "$APPCAST_DSA_PRIVATE_KEY" > "$RUNNER_TEMP/dsa_priv.pem"
+          V=$(tools/release/version.sh check)
+          APPCAST_KEY="$RUNNER_TEMP/dsa_priv.pem" tools/release/appcast.sh "dist/$V"
+          rm -f "$RUNNER_TEMP/dsa_priv.pem"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-windows
-          path: dist/*/tether-windows-*.zip
+          path: |
+            dist/*/tether-windows-*.zip
+            dist/*/Tether-Setup-*.exe
+            dist/*/appcast.xml
           if-no-files-found: error
           retention-days: 7
 

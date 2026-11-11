@@ -4,7 +4,7 @@ import v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 
 // Lineage: which session split off from which, and how. Sessions carry
 // parent, fork_point and lineage; every fork, branch, merge and abandon is
-// also kept as an event for the second brain. See docs/plan.md.
+// also kept as an event for the second brain. See docs/plans/plan.md.
 
 // recordLineage keeps an event. Caller holds h.mu.
 func (h *Hub) recordLineage(e *v1.LineageEvent) {

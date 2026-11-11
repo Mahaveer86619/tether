@@ -57,6 +57,9 @@ type Config struct {
 	// oldest sessions' when it outgrows this many MB; 0 keeps everything.
 	HistoryKeepDays int
 	HistoryMaxMB    int
+	// Send the text of notifications through the tunnel too. Off by default:
+	// the tunnel's operator can read what passes through it.
+	NotifyBodiesOnTunnel bool
 }
 
 type client struct {
@@ -85,6 +88,7 @@ type Hub struct {
 
 	mu        sync.Mutex
 	agents    map[string]*wire.Conn
+	syncWait  map[string]func(*v1.SyncResult) // project syncs waiting for a node's answer, see remote.go
 	clients   map[*client]struct{}
 	nodes     map[string]*v1.NodeStatus
 	sessions  map[string]*v1.SessionInfo
@@ -99,6 +103,8 @@ type Hub struct {
 	agentIPs     map[string]string     // node -> address it connects from
 	codes        map[string]time.Time  // pairing code -> expiry
 	fails        map[string][]time.Time
+	notifyCh     chan struct{} // closed when a notification is added, see notify.go
+	notifyURL    string        // where the notification tunnel can be reached, see tunnel.go
 	prefs        *v1.Preferences
 	plans        map[string]*v1.PlanUsage // node -> its latest /usage report
 	keyOnce      sync.Once
@@ -144,6 +150,7 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		screens:       map[string]*v1.ScreenSnapshot{},
 		queuedItems:   map[string]map[string]string{},
 		modeBefore:    map[string]modeSwitch{},
+		notifyCh:      make(chan struct{}),
 		screenWaiters: map[string][]chan *v1.ScreenSnapshot{},
 		pending:       map[string]*pendingItems{},
 		approvals:     map[string]*v1.ApprovalRequest{},
@@ -215,6 +222,11 @@ func (h *Hub) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.serveWS)
 	h.routes(mux)
+	h.repoRoutes(mux)
+	h.remoteRoutes(mux)
+	h.projectFileRoutes(mux)
+	mux.HandleFunc("GET /api/v1/hello", h.hello)
+	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
 	return mux
 }
@@ -317,7 +329,7 @@ func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip str
 // welcome is the full state for a client connecting with a paired device id
 // (or "") from ip.
 func (h *Hub) welcome(device, ip string) *v1.Welcome {
-	w := &v1.Welcome{HubVersion: h.cfg.Version, DeviceId: device, ClientIp: ip}
+	w := &v1.Welcome{HubVersion: h.cfg.Version, DeviceId: device, ClientIp: ip, NotifyUrl: h.notifyURL}
 	for _, n := range h.nodes {
 		w.Nodes = append(w.Nodes, proto.Clone(n).(*v1.NodeStatus))
 	}
@@ -706,6 +718,7 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		}
 		h.approvals[a.ApprovalId] = a
 		h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalRequested{ApprovalRequested: proto.Clone(a).(*v1.ApprovalRequest)}})
+		h.notifyApproval(a)
 	case *v1.Frame_ApprovalResolved:
 		// Answered on the node itself, usually in the terminal.
 		r := b.ApprovalResolved
@@ -717,6 +730,8 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteScreen(node, b.ScreenSnapshot)
 	case *v1.Frame_ModeResult:
 		h.noteModeResult(node, b.ModeResult)
+	case *v1.Frame_SyncResult:
+		h.noteSyncResult(b.SyncResult)
 	case *v1.Frame_CommandResult:
 		h.noteCommandResult(node, b.CommandResult)
 	case *v1.Frame_HistoryChunk:

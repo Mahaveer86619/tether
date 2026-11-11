@@ -72,7 +72,7 @@ class _TerminalSheetState extends State<_TerminalSheet> {
               Container(
                 key: const Key('terminal-screen'),
                 constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.45),
-                decoration: BoxDecoration(color: c.raised, borderRadius: BorderRadius.circular(10), border: Border.all(color: c.border)),
+                decoration: BoxDecoration(color: c.raised, borderRadius: context.round(10), border: Border.all(color: c.border)),
                 padding: const EdgeInsets.all(10),
                 child: s.loading && screen == null
                     ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)))

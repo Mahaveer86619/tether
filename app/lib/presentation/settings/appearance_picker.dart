@@ -71,14 +71,14 @@ class _PaletteChip extends StatelessWidget {
     final c = context.colors;
     final dots = [colors.accent, colors.syntax.keyword, colors.syntax.string, colors.syntax.function];
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: context.round(10),
       onTap: onTap,
       child: Container(
         width: 150,
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
           color: colors.canvas,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: context.round(10),
           border: Border.all(color: selected ? c.accent : c.border, width: selected ? 2 : 1),
         ),
         child: Row(
