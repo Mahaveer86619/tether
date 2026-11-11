@@ -64,16 +64,11 @@ The apps read releases from GitHub, not from the hub. For that to work:
 
 `make ship` and `tools/release/ship.sh` still deploy a build straight to the hub from your laptop for trying something out; the apps then see it only through the hub, and only while it is newer than what GitHub has.
 
-## The signing key (still to decide)
+## The signing key
 
-Since 0.17.0 the APK is signed with the **laptop's Android debug keystore**. It was copied to `~/ci/signing/release.jks` on the hub's machine, with alias `androiddebugkey` and passwords `android`. That's the key the installed app already has, so updates install over it without uninstalling or re-pairing.
+Since 0.17.7 the APK is signed with its own **release key** (alias `tether`, RSA 4096), made on the laptop and kept in `.local/keys/tether-release.jks` with its passwords in `.local/keys/tether-release.key.properties`. Both are ignored by git. **Back them up somewhere outside this machine**: losing them means every phone has to uninstall and re-pair again.
 
-**The weakness:** the debug keystore's passwords are public, and a debug key isn't meant to sign releases. Anyone with that file can sign an APK the phone accepts as an update. Keep the file private: it's ignored by git, and the copy on the hub's machine is mode 600.
+It is in four places: the laptop (`app/android/key.properties`, for `ship.sh`), the hub's machine (`~/ci/signing/`, mode 600, for `make dist`), and the GitHub secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`, which the release workflow turns into a key file for one run.
 
-**To move to a proper key later** (the phone then has to uninstall once and re-pair):
+Android only installs an update signed with the same key as the installed app, so a phone that has a build signed with the old debug key must **uninstall once and re-pair**. Builds can no longer be made without the key: `ship.sh` and `make dist` refuse.
 
-```sh
-keytool -genkeypair -v -keystore tether-release.jks -alias tether -keyalg RSA -keysize 4096 -validity 10000
-```
-
-Then run `github-bootstrap.sh --keystore tether-release.jks --alias tether` with its passwords, and `setup-runner.sh --keystore tether-release.jks`. Release the next version and install it once by hand.

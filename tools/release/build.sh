@@ -47,8 +47,8 @@ ld="-s -w -X github.com/Mahaveer86619/tether/server/internal/version.Version=$v"
 
 if [ $android -eq 1 ]; then
   if [ ! -f "$root/app/android/key.properties" ]; then
-    echo "app/android/key.properties is missing, so the APK would be signed with a debug key; see docs/operations/releasing.md#signing" >&2
-    [ "${ALLOW_DEBUG_SIGNING:-}" = 1 ] || exit 1
+    echo "app/android/key.properties is missing; the APK has to be signed with the release key, see docs/operations/releasing.md#signing" >&2
+    exit 1
   fi
   (
     cd "$root/app"
