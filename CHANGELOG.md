@@ -2,6 +2,12 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.17.8
+
+- **Delivered files start folded.** The files a session handed over show as one line (the count and the newest file) above the message box, and open on tap, so they no longer push the conversation up.
+- **A usable Files view in a chat.** The files Claude changed are listed newest first, six as tabs and the rest under an "older" menu, and a file you pick from the menu stays on screen. It still follows the newest change until you pick one.
+- **Settings lines up.** The theme chips are equal columns across the width, the devices on your tailnet line up with the paired devices above them, a long list of tags no longer squeezes a device's name into a column of letters, and the version line under About wraps instead of breaking.
+
 ## 0.17.7
 
 - **Home is a chat app.** It opens on a new chat: a greeting, the folders you work in to pick from, and the message box at the bottom. Tether still picks the folder for you when you don't. A switch at the top, New | Chats, goes to the list of every chat.
