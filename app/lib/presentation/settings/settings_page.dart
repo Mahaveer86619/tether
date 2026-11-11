@@ -225,13 +225,16 @@ class _AboutSectionState extends State<_AboutSection> {
       children: [
         const Text('About', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 12),
-        Row(
+        // Wraps under the version on a narrow screen, instead of squeezing the text.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 8,
           children: [
-            Expanded(
-              child: Text(
-                'Tether $appVersion${hubVersion.isEmpty ? '' : '  ·  hub $hubVersion'}',
-                style: monoStyle(context, size: 13, color: c.muted),
-              ),
+            Text(
+              'Tether $appVersion${hubVersion.isEmpty ? '' : '  ·  hub $hubVersion'}',
+              style: monoStyle(context, size: 13, color: c.muted),
             ),
             OutlinedButton.icon(
               key: const Key('check-updates'),

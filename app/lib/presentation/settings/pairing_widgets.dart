@@ -305,8 +305,9 @@ class TailnetRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: d.online ? c.muted : c.faint),
-          const SizedBox(width: 12),
+          // The same icon column as the paired devices above, so the names line up.
+          Icon(icon, size: 24, color: d.online ? c.muted : c.faint),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
