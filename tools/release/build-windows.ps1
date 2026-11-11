@@ -26,14 +26,14 @@ Write-Host "  $zip"
 # The installer the app's updater downloads (and a first install can run).
 # Inno Setup is on GitHub's Windows runners; on a machine without it the
 # zip alone is made, which is enough to try the app and for the hub to serve.
-$iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+$iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
 if (-not $iscc) {
     foreach ($p in "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe", "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe") {
-        if (Test-Path $p) { $iscc = Get-Item $p; break }
+        if (Test-Path $p) { $iscc = $p; break }
     }
 }
 if ($iscc) {
-    & $iscc.FullName "/DAppVersion=$v" (Join-Path $root 'deploy\windows\tether.iss')
+    & $iscc "/DAppVersion=$v" (Join-Path $root 'deploy\windows\tether.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
     Write-Host "  Tether-Setup-$v.exe"
 }
