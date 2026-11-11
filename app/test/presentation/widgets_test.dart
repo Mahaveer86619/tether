@@ -757,6 +757,9 @@ void main() {
       await openSession(tester, 's1');
       await settle(tester);
       expect(find.text('DELIVERED'), findsOneWidget);
+      expect(find.byKey(const Key('file-card-f1')), findsNothing, reason: 'folded until opened');
+      await tester.tap(find.byKey(const Key('delivered-toggle')));
+      await settle(tester);
       expect(find.byKey(const Key('file-card-f1')), findsOneWidget);
       expect(find.byKey(const Key('file-card-f2')), findsOneWidget);
       expect(find.byKey(const Key('file-card-f3')), findsNothing, reason: 'what you sent is not a delivery');

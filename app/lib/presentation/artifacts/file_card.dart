@@ -88,17 +88,25 @@ class FileCard extends StatelessWidget {
   }
 }
 
-/// The files a session handed over, newest first, above the composer.
-class DeliveredFiles extends StatelessWidget {
+/// The files a session handed over, newest first, above the composer. Folded to
+/// its header until opened, so it does not push the conversation up.
+class DeliveredFiles extends StatefulWidget {
   const DeliveredFiles({super.key, required this.sessionId});
 
   final String sessionId;
 
   @override
+  State<DeliveredFiles> createState() => _DeliveredFilesState();
+}
+
+class _DeliveredFilesState extends State<DeliveredFiles> {
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
     final files = context.select<HubCubit, List<Artifact>>((h) => [
           for (final a in h.state.hub.sortedArtifacts)
-            if (a.session == sessionId && a.origin == 'result') a,
+            if (a.session == widget.sessionId && a.origin == 'result') a,
         ]);
     if (files.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
@@ -107,21 +115,34 @@ class DeliveredFiles extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: Gap.xs),
-            child: Row(
-              children: [
-                Icon(Icons.inventory_2_outlined, size: 14, color: c.accent),
-                const SizedBox(width: Gap.sm),
-                Text('DELIVERED', style: Type.label(context, color: c.accent)),
-                const Spacer(),
-                Text('${files.length}', style: Type.meta(context, color: c.accent)),
-              ],
+          InkWell(
+            key: const Key('delivered-toggle'),
+            borderRadius: context.round(6),
+            onTap: () => setState(() => _open = !_open),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: Gap.xs),
+              child: Row(
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 14, color: c.accent),
+                  const SizedBox(width: Gap.sm),
+                  Text('DELIVERED', style: Type.label(context, color: c.accent)),
+                  const SizedBox(width: Gap.sm),
+                  Text('${files.length}', style: Type.meta(context, color: c.accent)),
+                  if (!_open) ...[
+                    const SizedBox(width: Gap.md),
+                    Expanded(child: Text(files.first.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.faint, size: 11.5))),
+                  ] else
+                    const Spacer(),
+                  Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: c.faint),
+                ],
+              ),
             ),
           ),
-          for (final a in files.take(3))
-            Padding(padding: const EdgeInsets.only(bottom: Gap.xs), child: FileCard(artifact: a)),
-          if (files.length > 3) Text('and ${files.length - 3} more under Files', style: Type.meta(context, color: c.faint, size: 11.5)),
+          if (_open) ...[
+            for (final a in files.take(3))
+              Padding(padding: const EdgeInsets.only(bottom: Gap.xs), child: FileCard(artifact: a)),
+            if (files.length > 3) Text('and ${files.length - 3} more under Files', style: Type.meta(context, color: c.faint, size: 11.5)),
+          ],
         ],
       ),
     );

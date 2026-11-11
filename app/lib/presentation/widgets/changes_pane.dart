@@ -80,13 +80,17 @@ class ChangesPane extends StatefulWidget {
 }
 
 class _ChangesPaneState extends State<ChangesPane> {
+  /// How many files get a tab; the older ones are in a menu.
+  static const _tabs = 6;
+
   String? _picked;
   String _lastSeen = '';
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final files = fileChanges(widget.items);
+    // Newest first, so what Claude just touched is always the first tab.
+    final files = fileChanges(widget.items)..sort((a, b) => b.lastTouched.compareTo(a.lastTouched));
     if (files.isEmpty) {
       return Container(
         key: const Key('changes-pane'),
@@ -102,6 +106,7 @@ class _ChangesPaneState extends State<ChangesPane> {
       _picked = null;
     }
     final shown = files.firstWhere((f) => f.path == _picked, orElse: () => latest);
+    final pinnedOld = files.indexOf(shown) >= _tabs;
     final following = _picked == null;
     return Container(
       key: const Key('changes-pane'),
@@ -131,10 +136,37 @@ class _ChangesPaneState extends State<ChangesPane> {
           ),
           SizedBox(
             height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: Gap.sm, vertical: 6),
-              children: [for (final f in files) _Tab(file: f, selected: f.path == shown.path, onTap: () => setState(() => _picked = f.path))],
+            child: Row(
+              children: [
+                Expanded(
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: Gap.sm, vertical: 6),
+                    children: [
+                      for (final f in [...files.take(pinnedOld ? _tabs - 1 : _tabs), if (pinnedOld) shown])
+                        _Tab(file: f, selected: f.path == shown.path, onTap: () => setState(() => _picked = f.path)),
+                    ],
+                  ),
+                ),
+                if (files.length > _tabs)
+                  Padding(
+                    padding: const EdgeInsets.only(right: Gap.sm),
+                    child: PopupMenuButton<String>(
+                      key: const Key('more-changed-files'),
+                      tooltip: 'Older changed files',
+                      onSelected: (path) => setState(() => _picked = path),
+                      itemBuilder: (_) => [
+                        for (final f in files.skip(_tabs - (pinnedOld ? 1 : 0)).where((f) => f.path != shown.path))
+                          PopupMenuItem(value: f.path, child: Text(f.name, style: Type.meta(context, color: c.text, size: 12.5))),
+                      ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: 6),
+                        decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: context.round(8)),
+                        child: Text('${files.length - _tabs} older', style: Type.meta(context, color: c.muted, size: 12.5)),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           Divider(height: 1, color: c.border),

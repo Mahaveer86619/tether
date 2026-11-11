@@ -322,10 +322,14 @@ class TailnetRow extends StatelessWidget {
                   [d.os, if (!d.online && d.lastSeen != null) 'seen ${ago(d.lastSeen)}'].where((x) => x.isNotEmpty).join(' · '),
                   style: TextStyle(fontSize: 12, color: c.faint),
                 ),
+                // Under the name, so a long list of tags cannot squeeze it to a column of letters.
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(spacing: 4, runSpacing: 4, children: [for (final (t, color) in tags) Pill(t, color: color)]),
+                ),
               ],
             ),
           ),
-          Wrap(spacing: 4, children: [for (final (t, color) in tags) Pill(t, color: color)]),
         ],
       ),
     );
