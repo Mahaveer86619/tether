@@ -124,7 +124,8 @@ jobs:
         if: needs.windows.result == 'success'
         with:
           name: dist-windows
-          path: dist/${{ needs.linux.outputs.version }}
+          # The artifact keeps its dist/<version>/ folders, so it unpacks over dist itself.
+          path: dist
       - name: latest.json and SHA256SUMS
         run: tools/release/manifest.sh "dist/${{ needs.linux.outputs.version }}"
       - name: Release
