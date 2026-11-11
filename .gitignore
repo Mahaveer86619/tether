@@ -42,3 +42,5 @@ Thumbs.db
 secrets.key
 tether.env
 *.pem
+# The update feed's public key is embedded in the Windows app; the private one stays in .local/keys.
+!/app/dsa_pub.pem
