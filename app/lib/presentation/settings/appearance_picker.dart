@@ -31,13 +31,20 @@ class AppearancePicker extends StatelessWidget {
       children: [
         Text('Theme', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted)),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final p in palettes)
-              _PaletteChip(palette: p, colors: p.of(brightness), selected: p.id == palette.id, onTap: () => cubit.setPalette(p.id)),
-          ],
+        // Equal columns across the full width, so the chips line up with the controls above and below.
+        LayoutBuilder(
+          builder: (context, box) {
+            final columns = box.maxWidth >= 470 ? 3 : 2;
+            final width = (box.maxWidth - 8 * (columns - 1)) / columns;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in palettes)
+                  _PaletteChip(palette: p, colors: p.of(brightness), selected: p.id == palette.id, width: width, onTap: () => cubit.setPalette(p.id)),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 18),
         Text('Accent', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c.muted)),
@@ -59,11 +66,12 @@ class AppearancePicker extends StatelessWidget {
 }
 
 class _PaletteChip extends StatelessWidget {
-  const _PaletteChip({required this.palette, required this.colors, required this.selected, required this.onTap});
+  const _PaletteChip({required this.palette, required this.colors, required this.selected, required this.width, required this.onTap});
 
   final Palette palette;
   final TetherColors colors;
   final bool selected;
+  final double width;
   final VoidCallback onTap;
 
   @override
@@ -74,12 +82,13 @@ class _PaletteChip extends StatelessWidget {
       borderRadius: context.round(10),
       onTap: onTap,
       child: Container(
-        width: 150,
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        width: width,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
           color: colors.canvas,
           borderRadius: context.round(10),
-          border: Border.all(color: selected ? c.accent : c.border, width: selected ? 2 : 1),
+          // The same width either way, so choosing one does not nudge the others.
+          border: Border.all(color: selected ? c.accent : c.border, width: 2),
         ),
         child: Row(
           children: [

@@ -305,8 +305,9 @@ class TailnetRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: d.online ? c.muted : c.faint),
-          const SizedBox(width: 12),
+          // The same icon column as the paired devices above, so the names line up.
+          Icon(icon, size: 24, color: d.online ? c.muted : c.faint),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,10 +323,14 @@ class TailnetRow extends StatelessWidget {
                   [d.os, if (!d.online && d.lastSeen != null) 'seen ${ago(d.lastSeen)}'].where((x) => x.isNotEmpty).join(' · '),
                   style: TextStyle(fontSize: 12, color: c.faint),
                 ),
+                // Under the name, so a long list of tags cannot squeeze it to a column of letters.
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(spacing: 4, runSpacing: 4, children: [for (final (t, color) in tags) Pill(t, color: color)]),
+                ),
               ],
             ),
           ),
-          Wrap(spacing: 4, children: [for (final (t, color) in tags) Pill(t, color: color)]),
         ],
       ),
     );

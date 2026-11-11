@@ -145,6 +145,16 @@ void main() {
       testWidgets('$d on a desktop', (t) => shoot(t, '$d-desktop', const Size(1400, 900), go: 'nav-$d'), skip: !on);
     }
     testWidgets('devices on a phone', (t) => shoot(t, 'devices-phone', const Size(400, 860), go: 'nav-devices'), skip: !on);
+    for (final (name, size) in [('settings-phone', const Size(400, 2600)), ('settings-desktop', const Size(1400, 2000))]) {
+      testWidgets(name, (t) async {
+        repo.devices = [
+          PairedDevice(id: 'd1', kind: 'client', name: 'Android device', platform: 'android', lastSeen: DateTime.now().subtract(const Duration(hours: 1))),
+          const PairedDevice(id: 'd2', kind: 'node', name: 'thinkpad-laptop', platform: 'windows'),
+          const PairedDevice(id: 'd3', kind: 'client', name: 'mahaveer86619', platform: 'windows'),
+        ];
+        await shoot(t, name, size, go: 'nav-settings');
+      }, skip: !on);
+    }
     testWidgets('home on a desktop', (t) => shoot(t, 'home-desktop', const Size(1400, 900)), skip: !on);
   });
 }

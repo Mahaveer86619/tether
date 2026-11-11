@@ -135,6 +135,7 @@ class _SidebarBodyState extends State<SidebarBody> {
                 children: [
                   const Expanded(child: HubConnectionLine()),
                   IconButton(
+                    key: const Key('nav-settings'),
                     tooltip: 'Settings',
                     icon: Icon(onSettings ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
                     color: onSettings ? c.accent : null,

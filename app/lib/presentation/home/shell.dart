@@ -187,6 +187,7 @@ class _FoldedSidebar extends StatelessWidget {
             IconButton.filled(key: const Key('new-chat'), tooltip: 'New chat', onPressed: () => nav.select(Destination.home), icon: const Icon(Icons.edit_square, size: 19)),
             const Spacer(),
             IconButton(
+              key: const Key('nav-settings'),
               tooltip: 'Settings',
               icon: Icon(onSettings ? Icons.settings_rounded : Icons.settings_outlined, size: 20),
               color: onSettings ? c.accent : null,
