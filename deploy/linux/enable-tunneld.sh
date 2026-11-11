@@ -46,6 +46,8 @@ elif grep -q '^TETHER_HUB_FLAGS=' "$env_file"; then
 else
   echo "TETHER_HUB_FLAGS=$flag" >> "$env_file"
 fi
+# deploy.sh sources this file, so a value with spaces needs quotes; systemd reads them too.
+sed -i -E '/^TETHER_HUB_FLAGS=[^"]/ s/^TETHER_HUB_FLAGS=(.*)$/TETHER_HUB_FLAGS="\1"/' "$env_file"
 if grep -q '^TETHER_TUNNELD_TOKEN=' "$env_file"; then
   sed -i "s|^TETHER_TUNNELD_TOKEN=.*|TETHER_TUNNELD_TOKEN=$token|" "$env_file"
 else
