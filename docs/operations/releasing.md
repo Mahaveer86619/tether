@@ -59,7 +59,7 @@ make release              # make test, make dist, make deploy
 make dist-go deploy       # when only the server changed: no APK
 ```
 
-`make dist` signs the APK with `app/android/key.properties`. Link it from `~/ci/signing` (see [Signing](#signing)). Without it, the build stops, unless `ALLOW_DEBUG_SIGNING=1` is set.
+`make dist` signs the APK with `app/android/key.properties`. Link it from `~/ci/signing` (see [Signing](#signing)). Without it, the build stops.
 
 ## `latest.json`
 
@@ -156,21 +156,16 @@ An app older than this one (0.17.x) updates through the hub's zip once, to the f
 
 The APK is signed with a release key, so updates install over each other. The key never goes in the repo; `*.jks`, `*.keystore` and `app/android/key.properties` are ignored.
 
-**One-off: changing keys.** Android only installs an update signed with the same key as the installed app. Builds up to 0.16 were signed with the laptop's debug key. So you can either:
+**The key.** Since 0.17.7 the APK is signed with a release key made for Tether (alias `tether`). Phones that had a build signed with the old debug key (up to 0.17.6) uninstall once and re-pair; after that, updates install over each other. The release build refuses to run without the key, so there is no unsigned or debug-signed fallback in `ship.sh` or `make dist`.
 
-- **(a)** make a new release key. The phone then has to uninstall the old app once, which loses its pairing (re-pair afterwards); or
-- **(b)** use the laptop's existing debug keystore (`%USERPROFILE%\.android\debug.keystore`, alias `androiddebugkey`, passwords `android`) as the release key. Nothing to reinstall, but it's a weak, well-known key.
-
-(a) is the safer choice.
-
-**A new key:**
+**A new key** (only if the key is lost or leaked; every phone then reinstalls):
 
 ```sh
 keytool -genkeypair -v -keystore tether-release.jks -alias tether -keyalg RSA -keysize 4096 -validity 10000
 base64 -w0 tether-release.jks > tether-release.jks.b64
 ```
 
-Keep the `.jks` and its passwords somewhere safe, outside the repo; losing them means users reinstall.
+Keep the `.jks` and its passwords somewhere safe, outside the repo.
 
 **GitHub secrets** (repo Settings → Secrets and variables → Actions):
 

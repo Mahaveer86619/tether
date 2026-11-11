@@ -49,9 +49,8 @@ dist=dist/$v
 rm -rf "$dist"
 flags=(--no-manifest)
 [ $apk -eq 0 ] && flags+=(--no-android)
-# The APK is signed with the key in app/android/key.properties; without it,
-# the debug key, which keeps updating the installed app in place.
-[ -f app/android/key.properties ] || export ALLOW_DEBUG_SIGNING=1
+# The APK is signed with the key in app/android/key.properties; build.sh
+# refuses to run without it.
 tools/release/build.sh "${flags[@]}"
 if [ $windows -eq 1 ]; then
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w tools/release/build-windows.ps1)"
