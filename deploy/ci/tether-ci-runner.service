@@ -5,7 +5,8 @@ Wants=network-online.target
 
 [Service]
 WorkingDirectory=@RUNNER@
-ExecStart=@RUNNER@/run.sh
+# The runner does not read its .path file here, so builds get Go, Flutter and the JDK from ci-env.sh.
+ExecStart=/bin/bash -c '. %h/ci/ci-env.sh && exec @RUNNER@/run.sh'
 Restart=always
 RestartSec=10
 # Builds share the machine with the hub and staging services.
