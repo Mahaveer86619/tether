@@ -42,6 +42,14 @@ if [ "$("$ci/go/bin/go" version 2>/dev/null | awk '{print $3}')" != "go$go_versi
   tar -C "$ci" -xzf "$ci/go.tgz" && rm "$ci/go.tgz"
 fi
 
+# The release workflow publishes with the GitHub CLI.
+if [ ! -x "$ci/gh/bin/gh" ]; then
+  echo "GitHub CLI"
+  gh_version=$(curl -fsSL https://api.github.com/repos/cli/cli/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')
+  fetch "https://github.com/cli/cli/releases/download/v$gh_version/gh_${gh_version}_linux_amd64.tar.gz" "$ci/gh.tgz"
+  mkdir -p "$ci/gh" && tar -C "$ci/gh" --strip-components=1 -xzf "$ci/gh.tgz" && rm "$ci/gh.tgz"
+fi
+
 if [ ! -x "$ci/jdk/bin/java" ]; then
   echo "JDK 17"
   fetch "https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse" "$ci/jdk.tgz"
@@ -71,7 +79,7 @@ fi
 # The environment builds run with: the runner reads .env and .path from its
 # folder, and `make` gets the same through ci-env.sh.
 cat > "$ci/ci-env.sh" <<EOF
-export PATH=$ci/go/bin:$ci/flutter/bin:$ci/jdk/bin:$sdk/platform-tools:$ci/gopath/bin:\$PATH
+export PATH=$ci/go/bin:$ci/gh/bin:$ci/flutter/bin:$ci/jdk/bin:$sdk/platform-tools:$ci/gopath/bin:\$PATH
 export JAVA_HOME=$ci/jdk
 export ANDROID_HOME=$sdk
 export ANDROID_SDK_ROOT=$sdk
