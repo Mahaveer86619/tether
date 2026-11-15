@@ -60,6 +60,8 @@ type Config struct {
 	// Send the text of notifications through the tunnel too. Off by default:
 	// the tunnel's operator can read what passes through it.
 	NotifyBodiesOnTunnel bool
+	// Where the second brain's MCP server listens (tether-brain serve), if there is one.
+	BrainURL string
 }
 
 type client struct {
@@ -225,6 +227,7 @@ func (h *Hub) Handler() http.Handler {
 	h.repoRoutes(mux)
 	h.remoteRoutes(mux)
 	h.projectFileRoutes(mux)
+	h.brainRoutes(mux)
 	mux.HandleFunc("GET /api/v1/hello", h.hello)
 	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })

@@ -40,6 +40,7 @@ func main() {
 	notifyAddr := flag.String("notify-addr", "", "where the notification listener binds (default: a free local port); needed with -notify-url")
 	tunneldURL := flag.String("tunneld", "", "an on-demand-tunnel-cf server (like http://127.0.0.1:7171) that owns the notification tunnel and says its address; its token is TETHER_TUNNELD_TOKEN")
 	tunneldName := flag.String("tunneld-name", "tether-notify", "the notification tunnel's name in tunneld")
+	brainURL := flag.String("brain", "", "where the second brain's MCP server listens (tether-brain serve), e.g. http://127.0.0.1:7433; the hub serves it at /brain/mcp")
 	notifyBodies := flag.Bool("notify-bodies", false, "send notification text through the tunnel too; the tunnel's operator can read it")
 	flag.Parse()
 
@@ -89,7 +90,7 @@ func main() {
 
 	h, err := hub.New(hub.Config{Token: token, Version: version.Version, Log: log, CertFingerprint: fp, TrustTailnet: *trustTailnet, DataDir: filepath.Dir(*dbPath),
 		UpdatesDir: *updatesDir, UpdateFeed: *updateFeed, AutoUpdateAgents: *autoAgents,
-		HistoryRedact: *redact, HistoryKeepDays: *keepDays, HistoryMaxMB: *maxMB, NotifyBodiesOnTunnel: *notifyBodies}, st)
+		HistoryRedact: *redact, HistoryKeepDays: *keepDays, HistoryMaxMB: *maxMB, NotifyBodiesOnTunnel: *notifyBodies, BrainURL: *brainURL}, st)
 	if err != nil {
 		log.Error("start hub", "err", err)
 		os.Exit(1)
