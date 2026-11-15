@@ -28,9 +28,22 @@ openssl dgst -sha1 -binary < "$installer" | openssl dgst -sha1 -verify "$pub" -s
 rm -f "$dist/.sig.bin"
 
 len=$(wc -c < "$installer" | tr -d ' ')
-# This version's notes from CHANGELOG.md, as a short HTML list.
-notes=$(awk -v h="## $v" '$0==h{f=1;next} /^## /{f=0} f' "$root/CHANGELOG.md" \
-  | sed -e 's/\r$//' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/^- \(.*\)$/<li>\1<\/li>/' -e 's/\*\*\([^*]*\)\*\*/<b>\1<\/b>/g' -e '/^$/d')
+# This version's notes from CHANGELOG.md as HTML for the updater's window: a
+# list of changes, each with its title in bold and `code` set apart. The window
+# is a plain web view, so the styling is inline and plain.
+items=$(awk -v h="## $v" '$0==h{f=1;next} /^## /{f=0} f' "$root/CHANGELOG.md" \
+  | sed -e 's/\r$//' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/^- \(.*\)$/<li>\1<\/li>/' \
+        -e 's/\*\*\([^*]*\)\*\*/<b>\1<\/b>/g' -e 's/`\([^`]*\)`/<code>\1<\/code>/g' -e '/^$/d')
+notes="<style>
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#24292f;margin:14px 16px}
+h3{font-size:15px;margin:0 0 10px}
+ul{margin:0;padding-left:20px}
+li{margin:0 0 10px;line-height:1.5;color:#57606a}
+li b{color:#0b7a5a;font-weight:600}
+code{font-family:Consolas,monospace;font-size:12px;background:#eef1f0;color:#24292f;padding:1px 4px}
+</style>
+<h3>What's new in $v</h3>
+<ul>$items</ul>"
 cat > "$dist/appcast.xml" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -38,7 +51,7 @@ cat > "$dist/appcast.xml" <<EOF
     <title>Tether</title>
     <item>
       <title>Tether $v</title>
-      <description><![CDATA[<ul>$notes</ul>]]></description>
+      <description><![CDATA[$notes]]></description>
       <pubDate>$(date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
       <enclosure url="https://github.com/$repo/releases/download/v$v/Tether-Setup-$v.exe"
                  sparkle:version="$v+$code"
