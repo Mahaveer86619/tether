@@ -1,0 +1,20 @@
+[Unit]
+Description=Tether second brain (memories for Claude Code sessions)
+After=network.target
+
+[Service]
+ExecStart=%h/tether/bin/tether-brain --db %h/tether/brain/brain.db serve --listen 127.0.0.1:7433
+Restart=on-failure
+RestartSec=5
+# Never felt: low priority, and memory that is held back at 500 MB and capped at 1.5 GB. The
+# brain itself needs a few MB; the cap is for the code graph tool it runs, while it indexes a project.
+Nice=10
+CPUWeight=20
+MemoryHigh=500M
+MemoryMax=1500M
+NoNewPrivileges=true
+# No filesystem sandbox (ProtectSystem, PrivateTmp): the code graph tool checks its own folders
+# and refuses to start inside a private mount namespace.
+
+[Install]
+WantedBy=default.target
