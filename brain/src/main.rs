@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
+use tether_brain::graph::{Graph, Process};
 use tether_brain::{markdown, mcp, Brain, Context, Link, NewMemory, Query, Scope};
 
 #[derive(Parser)]
@@ -12,6 +13,9 @@ struct Cli {
     /// The brain's database file.
     #[arg(long, global = true, env = "TETHER_BRAIN_DB")]
     db: Option<PathBuf>,
+    /// The codebase-memory-mcp program, for notes about code. Found in ~/.local/bin if not given.
+    #[arg(long, global = true, env = "TETHER_BRAIN_CBM")]
+    cbm: Option<PathBuf>,
     /// Print JSON instead of text.
     #[arg(long, global = true)]
     json: bool,
@@ -138,6 +142,26 @@ fn default_db() -> PathBuf {
     home.join(".local").join("share").join("tether-brain").join("brain.db")
 }
 
+/// The code graph, if the program for it is on this machine.
+fn graph_for(cli: &Cli) -> Option<Box<dyn Graph>> {
+    let path = cli.cbm.clone().or_else(|| {
+        let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)?;
+        Some(home.join(".local").join("bin").join("codebase-memory-mcp"))
+    })?;
+    if !path.is_file() {
+        return None;
+    }
+    eprintln!("tether-brain: code graph from {}", path.display());
+    Some(Box::new(Process::new(path)))
+}
+
+fn server_for(cli: &Cli, brain: Brain) -> mcp::Server {
+    match graph_for(cli) {
+        Some(g) => mcp::Server::with_graph(brain, g),
+        None => mcp::Server::new(brain),
+    }
+}
+
 fn open(cli: &Cli) -> Result<Brain, Box<dyn std::error::Error>> {
     let path = cli.db.clone().unwrap_or_else(default_db);
     if let Some(dir) = path.parent() {
@@ -157,6 +181,7 @@ fn parse_link(s: &str) -> Result<Link, String> {
         target: p[2].into(),
         file: p.get(3).copied().unwrap_or("").into(),
         commit: p.get(4).copied().unwrap_or("").into(),
+        code_hash: String::new(),
     })
 }
 
@@ -166,8 +191,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut brain = open(&cli)?;
     match &cli.cmd {
-        Cmd::Mcp => return serve_stdio(brain),
-        Cmd::Serve { listen } => return serve_http(brain, listen),
+        Cmd::Mcp => return serve_stdio(server_for(&cli, brain)),
+        Cmd::Serve { listen } => return serve_http(server_for(&cli, brain), listen),
         Cmd::Remember { text, scope, key, kind, title, source, source_ref, tags, links } => {
             let body = if text == "-" {
                 let mut s = String::new();
@@ -252,9 +277,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn serve_stdio(brain: Brain) -> Result<(), Box<dyn std::error::Error>> {
+fn serve_stdio(server: mcp::Server) -> Result<(), Box<dyn std::error::Error>> {
     use std::io::{BufRead, Write};
-    let server = mcp::Server::new(brain);
     let stdin = std::io::stdin();
     let mut out = std::io::stdout().lock();
     for line in stdin.lock().lines() {
@@ -275,10 +299,9 @@ fn serve_stdio(brain: Brain) -> Result<(), Box<dyn std::error::Error>> {
 
 /// One JSON-RPC message (or a batch) per POST, answered in the response; the
 /// hub does the authentication, so this listens on the loopback.
-fn serve_http(brain: Brain, listen: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn serve_http(server: mcp::Server, listen: &str) -> Result<(), Box<dyn std::error::Error>> {
     use tiny_http::{Header, Method, Response, Server};
     let http = Server::http(listen).map_err(|e| format!("cannot listen on {listen}: {e}"))?;
-    let server = mcp::Server::new(brain);
     eprintln!("tether-brain: listening on {listen}");
     let json = Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap();
     for mut req in http.incoming_requests() {

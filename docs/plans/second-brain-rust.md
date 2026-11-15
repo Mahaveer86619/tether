@@ -1,6 +1,6 @@
 # The second brain, in Rust, beside codebase-memory
 
-Steps 1 and 2 (the memory store and recall, then the MCP server and its wiring) are built; the rest is plan. It replaces the Postgres stack in [plan.md](plan.md#second-brain-on-the-mini-pc) with one small Rust program, and says how it works with `codebase-memory-mcp`, which the owner already uses. The decisions in plan.md still hold: storage behind interfaces, local light embeddings, memories scoped global, project and task, markdown first, a brain MCP.
+Steps 1, 2 and 4 (the memory store, the MCP server and its wiring, and the code links) are built; ingest and the app page are plan. It replaces the Postgres stack in [plan.md](plan.md#second-brain-on-the-mini-pc) with one small Rust program, and says how it works with `codebase-memory-mcp`, which the owner already uses. The decisions in plan.md still hold: storage behind interfaces, local light embeddings, memories scoped global, project and task, markdown first, a brain MCP.
 
 ## What codebase-memory-mcp does (read from its docs and the installed 0.10.8)
 
@@ -49,6 +49,10 @@ Measured on the mini PC (4 cores, idle, 20,000 synthetic memories with a project
 - **The hub forwards it.** `tether-hub -brain http://127.0.0.1:7433` serves it at `POST /brain/mcp` behind the hub's own token (`GET /brain/healthz` says whether it is there), so every device reaches it the way it reaches the hub's MCP server.
 - **Agents register it.** When an agent registers the hub's MCP server with Claude Code it asks the hub whether a brain is there: if so it registers `tether-brain` (user scope, same token handling), and if not it removes it, so no device lists a server that cannot answer.
 - **On the mini PC** it runs as a user service (`deploy/linux/tether-brain.service`: loopback only, `Nice=10`, `MemoryMax=300M`, read-only filesystem except its own folder). `deploy/linux/enable-brain.sh <binary>` installs the program and service and adds `-brain` to the hub's flags; `brain/build.sh` builds the Linux binary in Docker. It needs a hub that knows `-brain`, which is the release after 0.17.9. The service is already running there on its own (1.6 MB of memory) and answers over HTTP and stdio.
+
+## Built so far: code links
+
+The brain keeps one `codebase-memory-mcp` process warm (about 11 MB idle, a few seconds to start, then milliseconds a call) and asks it over MCP; it does not index code itself. A note's symbol link is completed from the graph when written (the qualified name, the file, and a fingerprint of the symbol's source that ignores line endings and trailing spaces). New tools: `index_project` (have the graph read a folder), `symbol_context` (where a symbol is, its callers and callees, and every note about it or its file), `check_stale` (compare each linked symbol with the code now: changed or gone marks its notes stale, matching again clears it), and `project_brief` now ends with the graph's architecture summary. Found by running it on the mini PC: the graph tool refuses to start inside a systemd filesystem sandbox (`ProtectSystem`, `PrivateTmp`), so the brain's unit has none, and it starts its own temporary daemon behind the stdio server, which is where the first call's few seconds go.
 
 ## Order of work
 

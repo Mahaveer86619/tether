@@ -62,6 +62,20 @@ pub struct Link {
     pub file: String,
     #[serde(default)]
     pub commit: String,
+    /// A fingerprint of the symbol's code when the note was written, so a later
+    /// check can tell the code has changed under it.
+    #[serde(default)]
+    pub code_hash: String,
+}
+
+/// A link and what it belongs to, for checking links against the code.
+#[derive(Debug, Clone)]
+pub struct LinkRef {
+    pub link_id: i64,
+    pub memory: i64,
+    pub link: Link,
+    /// Whether the memory is stale now.
+    pub stale: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -171,7 +185,8 @@ CREATE TABLE IF NOT EXISTS links (
     project TEXT NOT NULL DEFAULT '',
     target  TEXT NOT NULL,
     file    TEXT NOT NULL DEFAULT '',
-    commit_sha TEXT NOT NULL DEFAULT ''
+    commit_sha TEXT NOT NULL DEFAULT '',
+    code_hash  TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS links_by_target ON links (project, target);
 CREATE INDEX IF NOT EXISTS links_by_memory ON links (memory);
@@ -213,6 +228,11 @@ impl Brain {
         db.pragma_update(None, "foreign_keys", "ON")?;
         db.busy_timeout(std::time::Duration::from_secs(5))?;
         db.execute_batch(SCHEMA)?;
+        // Databases made before links carried a code hash get the column.
+        let has_hash = db.prepare("PRAGMA table_info(links)")?.query_map([], |r| r.get::<_, String>(1))?.filter_map(|c| c.ok()).any(|c| c == "code_hash");
+        if !has_hash {
+            db.execute_batch("ALTER TABLE links ADD COLUMN code_hash TEXT NOT NULL DEFAULT ''")?;
+        }
         Ok(Brain { db })
     }
 
@@ -238,8 +258,8 @@ impl Brain {
         let id = tx.last_insert_rowid();
         for l in &m.links {
             tx.execute(
-                "INSERT INTO links (memory, kind, project, target, file, commit_sha) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![id, l.kind, l.project, l.target, l.file, l.commit],
+                "INSERT INTO links (memory, kind, project, target, file, commit_sha, code_hash) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![id, l.kind, l.project, l.target, l.file, l.commit, l.code_hash],
             )?;
         }
         tx.commit()?;
@@ -282,8 +302,8 @@ impl Brain {
     }
 
     fn links_of(&self, id: i64) -> Result<Vec<Link>> {
-        let mut st = self.db.prepare("SELECT kind, project, target, file, commit_sha FROM links WHERE memory = ?1 ORDER BY id")?;
-        let rows = st.query_map([id], |r| Ok(Link { kind: r.get(0)?, project: r.get(1)?, target: r.get(2)?, file: r.get(3)?, commit: r.get(4)? }))?;
+        let mut st = self.db.prepare("SELECT kind, project, target, file, commit_sha, code_hash FROM links WHERE memory = ?1 ORDER BY id")?;
+        let rows = st.query_map([id], |r| Ok(Link { kind: r.get(0)?, project: r.get(1)?, target: r.get(2)?, file: r.get(3)?, commit: r.get(4)?, code_hash: r.get(5)? }))?;
         Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
     }
 
@@ -414,6 +434,33 @@ impl Brain {
         )?)
     }
 
+    /// Every link to a symbol in a project, with the memory it belongs to.
+    pub fn symbol_links(&self, project: &str) -> Result<Vec<LinkRef>> {
+        let mut st = self.db.prepare(
+            "SELECT l.id, l.memory, l.kind, l.project, l.target, l.file, l.commit_sha, l.code_hash, m.stale
+             FROM links l JOIN memories m ON m.id = l.memory WHERE l.project = ?1 AND l.kind = 'symbol' ORDER BY l.id",
+        )?;
+        let rows = st.query_map([project], |r| {
+            Ok(LinkRef {
+                link_id: r.get(0)?,
+                memory: r.get(1)?,
+                link: Link { kind: r.get(2)?, project: r.get(3)?, target: r.get(4)?, file: r.get(5)?, commit: r.get(6)?, code_hash: r.get(7)? },
+                stale: r.get::<_, i64>(8)? != 0,
+            })
+        })?;
+        Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+    }
+
+    pub fn set_link_hash(&mut self, link_id: i64, hash: &str) -> Result<()> {
+        self.db.execute("UPDATE links SET code_hash = ?2 WHERE id = ?1", params![link_id, hash])?;
+        Ok(())
+    }
+
+    pub fn set_stale(&mut self, memory: i64, stale: bool) -> Result<()> {
+        self.db.execute("UPDATE memories SET stale = ?2 WHERE id = ?1", params![memory, stale as i64])?;
+        Ok(())
+    }
+
     pub fn count(&self) -> Result<i64> {
         Ok(self.db.query_row("SELECT COUNT(*) FROM memories", [], |r| r.get(0))?)
     }
@@ -502,7 +549,7 @@ mod tests {
                 body: "The hub stores every session's history in SQLite.".into(),
                 source: "you".into(),
                 tags: vec!["Hub".into(), " history ".into()],
-                links: vec![Link { kind: "symbol".into(), project: "tether".into(), target: "hub.Hub.commit".into(), file: "server/internal/hub/hub.go".into(), commit: "abc123".into() }],
+                links: vec![Link { kind: "symbol".into(), project: "tether".into(), target: "hub.Hub.commit".into(), file: "server/internal/hub/hub.go".into(), commit: "abc123".into(), ..Default::default() }],
                 ..Default::default()
             })
             .unwrap();
@@ -594,7 +641,7 @@ mod tests {
     #[test]
     fn notes_for_a_symbol_and_staleness() {
         let mut b = brain();
-        let link = |t: &str, f: &str| Link { kind: "symbol".into(), project: "tether".into(), target: t.into(), file: f.into(), commit: "c1".into() };
+        let link = |t: &str, f: &str| Link { kind: "symbol".into(), project: "tether".into(), target: t.into(), file: f.into(), commit: "c1".into(), ..Default::default() };
         let a = b.remember(NewMemory { links: vec![link("hub.commit", "hub.go")], ..note(Scope::Project, "tether", "a", "commit stores items") }).unwrap();
         b.remember(NewMemory { links: vec![link("hub.other", "other.go")], ..note(Scope::Project, "tether", "b", "unrelated") }).unwrap();
 

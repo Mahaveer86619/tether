@@ -94,6 +94,7 @@ type Agent struct {
 	claudeV       string
 	capabilities  []string // tools found on this machine, see capabilities.go
 	mcpState      string   // "ok", or why the hub's MCP server is not registered; see doctor.go
+	brainState    int      // 0 not looked at yet, 1 the hub has a second brain and it is registered, 2 it has none
 }
 
 func New(cfg Config) (*Agent, error) {
@@ -158,6 +159,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	go a.planLoop(ctx)
 	if a.cfg.MCP {
 		go a.registerMCP()
+		go a.brainLoop(ctx)
 	}
 
 	backoff := time.Second

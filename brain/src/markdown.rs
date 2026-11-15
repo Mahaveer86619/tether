@@ -106,7 +106,7 @@ mod tests {
             scope: Some(Scope::Project),
             scope_key: "tether".into(),
             body: "second".into(),
-            links: vec![Link { kind: "symbol".into(), project: "tether".into(), target: "hub.commit".into(), file: "hub.go".into(), commit: String::new() }],
+            links: vec![Link { kind: "symbol".into(), project: "tether".into(), target: "hub.commit".into(), file: "hub.go".into(), commit: String::new(), ..Default::default() }],
             ..Default::default()
         })
         .unwrap();

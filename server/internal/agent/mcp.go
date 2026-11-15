@@ -48,12 +48,46 @@ func (a *Agent) registerMCP() {
 	a.registerBrain(claude, hubToken)
 }
 
+// brainLoop looks again, now and then, for a second brain on the hub: it can be
+// set up after this agent started, and nobody should have to restart agents for it.
+func (a *Agent) brainLoop(ctx context.Context) {
+	t := time.NewTicker(20 * time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if a.cfg.HubFingerprint != "" {
+				continue
+			}
+			cctx, cancel := context.WithTimeout(ctx, time.Minute)
+			claude := func(args ...string) ([]byte, error) {
+				cmd := exec.CommandContext(cctx, a.cfg.Claude, args...)
+				cmd.Dir = os.TempDir()
+				hideWindow(cmd)
+				return cmd.CombinedOutput()
+			}
+			a.registerBrain(claude, a.cfg.Token != "" && !a.hubTrustsUs())
+			cancel()
+		}
+	}
+}
+
 // registerBrain adds the second brain's MCP server (the hub forwards /brain/mcp
 // to it) when the hub has one, and takes it away when it has not, so Claude
 // Code never lists a server that cannot answer.
 func (a *Agent) registerBrain(claude func(args ...string) ([]byte, error), hubToken bool) {
 	base := wire.HTTPBase(a.cfg.HubURL)
-	if !a.brainUp(base, hubToken) {
+	up := a.brainUp(base, hubToken)
+	a.mu.Lock()
+	same := a.brainState == map[bool]int{true: 1, false: 2}[up]
+	a.brainState = map[bool]int{true: 1, false: 2}[up]
+	a.mu.Unlock()
+	if same {
+		return // nothing has changed since the last look
+	}
+	if !up {
 		_, _ = claude("mcp", "remove", "tether-brain", "--scope", "user")
 		return
 	}

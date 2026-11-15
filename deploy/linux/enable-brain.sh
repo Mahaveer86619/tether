@@ -6,7 +6,7 @@
 #   3. adds -brain to the hub's flags (a copy of tether.env is kept first) and
 #      restarts the hub, which then serves the brain at /brain/mcp; agents
 #      register it with Claude Code on their own.
-# Needs a hub that knows -brain (0.18 or later). Build the program with
+# Needs a hub that knows -brain (0.18.0 or later). Build the program with
 # brain/build.sh. Undo: put tether.env.pre-brain back and restart the hub,
 # then `systemctl --user disable --now tether-brain`.
 # Usage: enable-brain.sh <path to the tether-brain binary>
@@ -52,4 +52,6 @@ fi
 systemctl --user restart tether-hub
 sleep 3
 systemctl --user is-active tether-hub >/dev/null || { echo "the hub did not come back; put $env_file.pre-brain back" >&2; exit 1; }
-echo "the hub now serves the brain at /brain/mcp; agents pick it up when they next start"
+# This machine's agent registers the brain with Claude Code now; others do within 20 minutes, or when they restart.
+systemctl --user restart tether-agent 2>/dev/null || true
+echo "the hub now serves the brain at /brain/mcp"
