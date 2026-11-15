@@ -255,6 +255,11 @@ class DesktopTailscale implements TailscaleRepository {
     }
   }
 
+  /// A desktop's tunnel is the daemon's own, which does not go stale the way a
+  /// phone's does, so there is nothing to switch.
+  @override
+  Future<bool> reconnect() async => false;
+
   static String? _loginUrl(String text) => RegExp(r'https://[^\s"]+').firstMatch(text)?.group(0);
 
   /// The arguments of the `tailscale up ...` command that `up` suggests when it

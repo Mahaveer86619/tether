@@ -7,6 +7,7 @@ import 'home/shell.dart';
 import 'artifacts/artifacts_cubit.dart';
 import 'chats/chats_cubit.dart';
 import 'nav/nav_cubit.dart';
+import 'health/connection_doctor.dart';
 import 'tailscale/tailscale_cubit.dart';
 import 'update/update_cubit.dart';
 import 'hub/hub_cubit.dart';
@@ -33,6 +34,8 @@ class TetherApp extends StatelessWidget {
         BlocProvider(create: (_) => NotificationsCubit(notifications: sl(), watchHub: sl())..load(), lazy: false),
         // Looks after Tailscale in the background when the hub is on the tailnet.
         BlocProvider(create: (_) => sl<TailscaleCubit>(), lazy: false),
+        // Checks the connection when the app comes back, and mends it quietly.
+        BlocProvider(create: (_) => sl<ConnectionDoctor>(), lazy: false),
       ],
       // Settings are shared through the hub: take what another device saved,
       // or offer ours when the hub has none yet.
@@ -98,10 +101,16 @@ class PresenceReporter extends StatefulWidget {
 }
 
 class _PresenceReporterState extends State<PresenceReporter> with WidgetsBindingObserver {
+  bool _away = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Starting from nothing, as after the system cleared the app from memory.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ConnectionDoctor>().run();
+    });
   }
 
   @override
@@ -118,6 +127,11 @@ class _PresenceReporterState extends State<PresenceReporter> with WidgetsBinding
     };
     context.read<HubCubit>().setActive(active: active);
     context.read<NotificationsCubit>().appActive(active);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) _away = true;
+    if (state == AppLifecycleState.resumed && _away) {
+      _away = false;
+      context.read<ConnectionDoctor>().run();
+    }
   }
 
   @override

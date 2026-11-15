@@ -25,6 +25,7 @@ class HubRepositoryImpl implements HubRepository {
     required this._cache,
     this.keepTimeline = const Duration(seconds: 30),
     this.keepBackground = const Duration(minutes: 2),
+    this.offlineGrace = Duration.zero,
     Stream<void>? networkChanges,
   }) {
     _socketSub = _socket.events.listen(_onSocket);
@@ -41,6 +42,15 @@ class HubRepositoryImpl implements HubRepository {
   /// How long a session that stopped working stays subscribed in the
   /// background.
   final Duration keepBackground;
+
+  /// How long a lost connection shows as "connecting" before the app says the
+  /// hub and its devices are offline. A phone that has just woken usually gets
+  /// the connection back within seconds, and flashing every device as offline
+  /// meanwhile is wrong, not just ugly.
+  final Duration offlineGrace;
+  DateTime? _downSince;
+  Timer? _offlineTimer;
+  SocketClosed? _lastClosed;
   late final StreamSubscription<SocketEvent> _socketSub;
 
   final _hub = StreamController<HubSnapshot>.broadcast();
@@ -122,6 +132,9 @@ class HubRepositoryImpl implements HubRepository {
   void retryNow() => _socket.retryNow();
 
   @override
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)}) => _socket.probe(timeout: timeout);
+
+  @override
   void setActive({required bool active}) => _socket.setPresence(active: active);
 
   @override
@@ -142,25 +155,52 @@ class HubRepositoryImpl implements HubRepository {
     switch (ev) {
       case SocketConnecting(:final attempt):
         _emit(_snap.copyWith(status: ConnectionStatus.connecting, retryAt: () => null, attempts: attempt - 1));
-      case SocketClosed(:final error, :final unauthorized, :final retryAt, :final attempts):
-        _emit(_snap.copyWith(
-          status: unauthorized ? ConnectionStatus.unauthorized : ConnectionStatus.offline,
-          nodes: {for (final n in _snap.nodes.values) n.name: _offline(n)},
-          lastError: () => unauthorized ? const UnauthorizedFailure().userMessage : error,
-          retryAt: () => retryAt,
-          attempts: attempts,
-        ));
-        for (final t in _timelines.values) {
-          t.subscribed = false;
+      case SocketClosed closed:
+        if (!closed.unauthorized && offlineGrace > Duration.zero) {
+          _downSince ??= DateTime.now();
+          final left = offlineGrace - DateTime.now().difference(_downSince!);
+          if (left > Duration.zero) {
+            // Still inside the grace: keep the devices as they were and look like trying.
+            _lastClosed = closed;
+            _emit(_snap.copyWith(status: ConnectionStatus.connecting, retryAt: () => null, attempts: 0));
+            _offlineTimer?.cancel();
+            _offlineTimer = Timer(left, () {
+              final last = _lastClosed;
+              if (last != null && !_snap.connected) _showOffline(last);
+            });
+            _unsubscribeAll();
+            return;
+          }
         }
+        _showOffline(closed);
       case SocketFrame(:final frame):
         _onFrame(frame);
+    }
+  }
+
+  void _showOffline(SocketClosed ev) {
+    _emit(_snap.copyWith(
+      status: ev.unauthorized ? ConnectionStatus.unauthorized : ConnectionStatus.offline,
+      nodes: {for (final n in _snap.nodes.values) n.name: _offline(n)},
+      lastError: () => ev.unauthorized ? const UnauthorizedFailure().userMessage : ev.error,
+      retryAt: () => ev.retryAt,
+      attempts: ev.attempts,
+    ));
+    _unsubscribeAll();
+  }
+
+  void _unsubscribeAll() {
+    for (final t in _timelines.values) {
+      t.subscribed = false;
     }
   }
 
   void _onFrame(pb.Frame f) {
     switch (f.whichBody()) {
       case pb.Frame_Body.welcome:
+        _downSince = null;
+        _lastClosed = null;
+        _offlineTimer?.cancel();
         final w = f.welcome;
         _wireNodes
           ..clear()

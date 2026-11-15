@@ -39,6 +39,7 @@ import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
 import 'presentation/onboarding/onboarding_cubit.dart';
+import 'presentation/health/connection_doctor.dart';
 import 'presentation/tailscale/tailscale_cubit.dart';
 import 'presentation/usage/usage_cubit.dart';
 
@@ -63,7 +64,7 @@ void configureDependencies({bool withData = true}) {
       ..registerLazySingleton(SettingsLocalDataSource.new)
       ..registerLazySingleton<HubCache>(FileHubCache.new)
       ..registerLazySingleton<HubRepository>(
-        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl(), networkChanges: _networkChanges()),
+        () => HubRepositoryImpl(api: sl(), socket: sl(), cache: sl(), offlineGrace: const Duration(seconds: 12), networkChanges: _networkChanges()),
         dispose: (r) => r.dispose(),
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
@@ -105,6 +106,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
     ..registerLazySingleton(() => Notifications(sl(), sl(), sl()))
     ..registerLazySingleton(() => Skills(sl()))
+    ..registerLazySingleton(() => ConnectionHealth(sl(), sl(), sl(), _hasNetwork))
     ..registerLazySingleton(() => RemoteProjects(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
     ..registerLazySingleton(() => SetSessionGlobal(sl()))
@@ -132,6 +134,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => UsageCubit(load: sl()))
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
     ..registerFactory(() => TailscaleCubit(ensure: sl(), watchHub: sl(), retryHub: sl()))
+    ..registerFactory(() => ConnectionDoctor(health: sl()))
     ..registerFactory(() => OnboardingCubit(find: sl(), tailscale: sl(), viaTailnet: sl()))
     ..registerFactory(() => ArtifactsCubit(artifacts: sl(), transfers: sl()))
     ..registerFactory(() => PagesCubit(artifacts: sl()))
@@ -170,5 +173,7 @@ NotifyDevice _notifyDevice() => Platform.isAndroid ? AndroidNotify() : const NoN
 TailscaleRepository _tailscale() => Platform.isAndroid
     ? AndroidTailscale()
     : (Platform.isWindows || Platform.isMacOS || Platform.isLinux ? DesktopTailscale() : const NoTailscale());
+
+Future<bool> _hasNetwork() async => !(await Connectivity().checkConnectivity()).every((r) => r == ConnectivityResult.none);
 
 Stream<void> _networkChanges() => Connectivity().onConnectivityChanged.map((r) => (r.map((e) => e.name).toList()..sort()).join(',')).distinct().skip(1);

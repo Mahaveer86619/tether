@@ -469,6 +469,29 @@ class EnsureTailscale {
   Future<void> openApp() => _tailscale.openApp();
 }
 
+/// What the connection doctor can look at and do: the live connection, the
+/// network, Tailscale and the hub's machine.
+class ConnectionHealth {
+  const ConnectionHealth(this._hub, this._tailscale, this._probe, this._network);
+
+  final HubRepository _hub;
+  final TailscaleRepository _tailscale;
+  final HubProbe _probe;
+  final Future<bool> Function() _network;
+
+  HubSnapshot get hub => _hub.current;
+  Future<bool> alive(Duration timeout) => _hub.probe(timeout: timeout);
+  void reconnectSocket() => _hub.retryNow();
+  Future<bool> online() => _network();
+  Future<TailscaleStatus> tailscale() => _tailscale.status();
+  Stream<TailscaleStatus> startTailscale() => _tailscale.start();
+  Future<bool> reconnectTailscale() => _tailscale.reconnect();
+  Future<void> openTailscale() => _tailscale.openApp();
+
+  /// Whether something on [host] answers as a Tether hub, without the live connection.
+  Future<bool> hubAnswers(String host, int port) async => await _probe.hello(host, port: port) != null;
+}
+
 class ListClients {
   const ListClients(this._hub);
   final HubRepository _hub;

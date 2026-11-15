@@ -78,6 +78,17 @@ class AndroidTailscale implements TailscaleRepository {
     }
   }
 
+  @override
+  Future<bool> reconnect() async {
+    try {
+      return await _channel.invokeMethod<bool>('reconnect') ?? false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   /// A phone's Tailscale app does not say who else is on the tailnet.
   @override
   Future<List<TailnetPeer>> peers() async => const [];
@@ -98,6 +109,9 @@ class NoTailscale implements TailscaleRepository {
 
   @override
   Future<void> openApp() async {}
+
+  @override
+  Future<bool> reconnect() async => false;
 
   @override
   Future<List<TailnetPeer>> peers() async => const [];
