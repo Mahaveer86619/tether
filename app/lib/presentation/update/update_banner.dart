@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/version.dart';
 import '../theme/theme.dart';
 import '../artifacts/artifact_widgets.dart';
+import 'release_notes.dart';
 import 'update_cubit.dart';
 
 /// Says a newer release is out, with its notes, Update and Skip; then its
@@ -82,14 +83,14 @@ class UpdateBanner extends StatelessWidget {
   }
 }
 
-/// The release's notes, as plain text.
+/// The release's notes, laid out to be read.
 Future<void> showReleaseNotes(BuildContext context, String version, String notes) => showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text("What's new in $version"),
         content: SizedBox(
           width: 480,
-          child: SingleChildScrollView(child: SelectableText(notes.isEmpty ? 'No notes for this release.' : notes.replaceAll('**', ''))),
+          child: SingleChildScrollView(child: ReleaseNotesView(notes: notes)),
         ),
         actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
       ),
@@ -132,7 +133,7 @@ class ForcedUpdatePage extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(color: c.surface, border: Border.all(color: c.border), borderRadius: context.round(10)),
-                    child: SelectableText(r.notes.replaceAll('**', ''), style: const TextStyle(fontSize: 13.5)),
+                    child: ReleaseNotesView(notes: r.notes),
                   ),
                 const SizedBox(height: 20),
                 if (s.stage == UpdateStage.downloading) ...[
