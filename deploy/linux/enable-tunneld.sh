@@ -41,6 +41,9 @@ nport=${NOTIFY_PORT:-7421}
 flag="-tunneld http://127.0.0.1:$port -notify-addr 0.0.0.0:$nport"
 if grep -q -- '-tunneld' "$env_file"; then
   echo "tether.env already has -tunneld"
+elif grep -q '^TETHER_HUB_FLAGS="' "$env_file"; then
+  # Already quoted: the new flags go inside the quotes.
+  sed -i -E "s|^(TETHER_HUB_FLAGS=\"[^\"]*)\"|\1 $flag\"|" "$env_file"
 elif grep -q '^TETHER_HUB_FLAGS=' "$env_file"; then
   sed -i "s|^TETHER_HUB_FLAGS=\(.*\)$|TETHER_HUB_FLAGS=\1 $flag|" "$env_file"
 else

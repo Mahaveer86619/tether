@@ -41,7 +41,10 @@ cp -p "$env_file" "$env_file.pre-brain"
 if grep -q -- '-brain' "$env_file"; then
   echo "tether.env already has -brain"
 else
-  if grep -q '^TETHER_HUB_FLAGS=' "$env_file"; then
+  if grep -q '^TETHER_HUB_FLAGS="' "$env_file"; then
+    # Already quoted: the new flag goes inside the quotes.
+    sed -i -E 's|^(TETHER_HUB_FLAGS="[^"]*)"|\1 -brain http://127.0.0.1:7433"|' "$env_file"
+  elif grep -q '^TETHER_HUB_FLAGS=' "$env_file"; then
     sed -i "s|^TETHER_HUB_FLAGS=\(.*\)$|TETHER_HUB_FLAGS=\1 -brain http://127.0.0.1:7433|" "$env_file"
   else
     echo "TETHER_HUB_FLAGS=-brain http://127.0.0.1:7433" >> "$env_file"
