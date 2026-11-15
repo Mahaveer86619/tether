@@ -1,0 +1,19 @@
+[Unit]
+Description=Tether second brain (memories for Claude Code sessions)
+After=network.target
+
+[Service]
+ExecStart=%h/tether/bin/tether-brain --db %h/tether/brain/brain.db serve --listen 127.0.0.1:7433
+Restart=on-failure
+RestartSec=5
+# A small program that should never be felt: low priority and a hard memory cap.
+Nice=10
+CPUWeight=20
+MemoryMax=300M
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=%h/tether/brain
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

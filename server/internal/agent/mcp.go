@@ -25,7 +25,8 @@ func (a *Agent) registerMCP() {
 	args := []string{"mcp", "add", "--transport", "http", "--scope", "user", "tether", url}
 	// Only put the token in Claude Code's config if the hub needs it, i.e.
 	// it doesn't already trust this machine through Tailscale.
-	if a.cfg.Token != "" && !a.hubTrustsUs() {
+	hubToken := a.cfg.Token != "" && !a.hubTrustsUs()
+	if hubToken {
 		args = append(args, "--header", "Authorization: Bearer "+a.cfg.Token)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -44,6 +45,47 @@ func (a *Agent) registerMCP() {
 	}
 	a.log.Info("registered the hub's MCP server with Claude Code", "url", url)
 	a.setMCP("ok")
+	a.registerBrain(claude, hubToken)
+}
+
+// registerBrain adds the second brain's MCP server (the hub forwards /brain/mcp
+// to it) when the hub has one, and takes it away when it has not, so Claude
+// Code never lists a server that cannot answer.
+func (a *Agent) registerBrain(claude func(args ...string) ([]byte, error), hubToken bool) {
+	base := wire.HTTPBase(a.cfg.HubURL)
+	if !a.brainUp(base, hubToken) {
+		_, _ = claude("mcp", "remove", "tether-brain", "--scope", "user")
+		return
+	}
+	args := []string{"mcp", "add", "--transport", "http", "--scope", "user", "tether-brain", base + "/brain/mcp"}
+	if hubToken {
+		args = append(args, "--header", "Authorization: Bearer "+a.cfg.Token)
+	}
+	_, _ = claude("mcp", "remove", "tether-brain", "--scope", "user")
+	if out, err := claude(args...); err != nil {
+		a.log.Warn("register the brain's MCP server", "err", err, "output", strings.TrimSpace(string(out)))
+		return
+	}
+	a.log.Info("registered the second brain's MCP server with Claude Code", "url", base+"/brain/mcp")
+}
+
+// brainUp asks the hub whether its second brain is there and answering.
+func (a *Agent) brainUp(base string, hubToken bool) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/brain/healthz", nil)
+	if err != nil {
+		return false
+	}
+	if hubToken {
+		req.Header.Set("Authorization", "Bearer "+a.cfg.Token)
+	}
+	res, err := wire.HTTPClient(a.cfg.HubFingerprint).Do(req)
+	if err != nil {
+		return false
+	}
+	res.Body.Close()
+	return res.StatusCode == http.StatusOK
 }
 
 func (a *Agent) setMCP(state string) {

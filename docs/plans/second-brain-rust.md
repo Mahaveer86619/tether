@@ -1,6 +1,6 @@
 # The second brain, in Rust, beside codebase-memory
 
-Step 1 (the memory store and recall, `brain/`) is built; the rest is plan. It replaces the Postgres stack in [plan.md](plan.md#second-brain-on-the-mini-pc) with one small Rust program, and says how it works with `codebase-memory-mcp`, which the owner already uses. The decisions in plan.md still hold: storage behind interfaces, local light embeddings, memories scoped global, project and task, markdown first, a brain MCP.
+Steps 1 and 2 (the memory store and recall, then the MCP server and its wiring) are built; the rest is plan. It replaces the Postgres stack in [plan.md](plan.md#second-brain-on-the-mini-pc) with one small Rust program, and says how it works with `codebase-memory-mcp`, which the owner already uses. The decisions in plan.md still hold: storage behind interfaces, local light embeddings, memories scoped global, project and task, markdown first, a brain MCP.
 
 ## What codebase-memory-mcp does (read from its docs and the installed 0.10.8)
 
@@ -42,6 +42,13 @@ One Rust program, **`tether-brain`**: a single static binary, SQLite (WAL) for e
 A Rust crate, `tether-brain` (library and command line). SQLite in WAL mode; memories with scope (global, project, task, session), kind, source, tags and links to symbols or files; keyword ranking (FTS5 with BM25) and likeness ranking (256-dimension hashed vectors, one signed byte each) merged by reciprocal rank fusion, with narrower scopes winning ties; `notes_for`, staleness marks, and `brief`, the markdown a session reads first. `tether-brain bench N` measures it.
 
 Measured on the mini PC (4 cores, idle, 20,000 synthetic memories with a project and task context): about 29 ms per recall, 2,850 memories stored per second, an 18 MB database, 7.7 MB peak memory, a 3 MB binary. Real stores are smaller, so single-digit milliseconds is what to expect. The laptop gave noisy and slower figures (a loaded Windows machine), so the mini PC's are the ones that count. Possible speed-ups if ever needed: keep vectors in one contiguous table so a scan is a memory sweep, and cache the prepared statements.
+
+## Built so far: the MCP server and its wiring
+
+- **`tether-brain mcp`** speaks MCP on standard input and output; **`tether-brain serve --listen 127.0.0.1:7433`** speaks it over HTTP (one JSON-RPC message or batch per POST, answered in the response). One handler (`mcp.rs`) answers both. Tools: `remember`, `recall`, `project_brief`, `notes_for`, `mark_stale`, `forget`. `remember` takes the narrowest scope it is given (task, then project, then global) unless told, and links to symbols and files.
+- **The hub forwards it.** `tether-hub -brain http://127.0.0.1:7433` serves it at `POST /brain/mcp` behind the hub's own token (`GET /brain/healthz` says whether it is there), so every device reaches it the way it reaches the hub's MCP server.
+- **Agents register it.** When an agent registers the hub's MCP server with Claude Code it asks the hub whether a brain is there: if so it registers `tether-brain` (user scope, same token handling), and if not it removes it, so no device lists a server that cannot answer.
+- **On the mini PC** it runs as a user service (`deploy/linux/tether-brain.service`: loopback only, `Nice=10`, `MemoryMax=300M`, read-only filesystem except its own folder). `deploy/linux/enable-brain.sh <binary>` installs the program and service and adds `-brain` to the hub's flags; `brain/build.sh` builds the Linux binary in Docker. It needs a hub that knows `-brain`, which is the release after 0.17.9. The service is already running there on its own (1.6 MB of memory) and answers over HTTP and stdio.
 
 ## Order of work
 

@@ -4,7 +4,7 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
-use tether_brain::{markdown, Brain, Context, Link, NewMemory, Query, Scope};
+use tether_brain::{markdown, mcp, Brain, Context, Link, NewMemory, Query, Scope};
 
 #[derive(Parser)]
 #[command(name = "tether-brain", version, about = "Tether's second brain: memories, notes and references")]
@@ -106,6 +106,13 @@ enum Cmd {
         #[arg(long)]
         clear: bool,
     },
+    /// Run as an MCP server on standard input and output, for a Claude Code session on this machine.
+    Mcp,
+    /// Run as an MCP server over HTTP, for the hub to forward to. Listens on the loopback by default.
+    Serve {
+        #[arg(long, default_value = "127.0.0.1:7433")]
+        listen: String,
+    },
     /// Measure: fill a scratch database with memories and time recall.
     Bench {
         #[arg(default_value_t = 20000)]
@@ -159,6 +166,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut brain = open(&cli)?;
     match &cli.cmd {
+        Cmd::Mcp => return serve_stdio(brain),
+        Cmd::Serve { listen } => return serve_http(brain, listen),
         Cmd::Remember { text, scope, key, kind, title, source, source_ref, tags, links } => {
             let body = if text == "-" {
                 let mut s = String::new();
@@ -239,6 +248,65 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             println!("{n} memories {}", if *clear { "marked current" } else { "marked stale" });
         }
         Cmd::Bench { .. } => unreachable!(),
+    }
+    Ok(())
+}
+
+fn serve_stdio(brain: Brain) -> Result<(), Box<dyn std::error::Error>> {
+    use std::io::{BufRead, Write};
+    let server = mcp::Server::new(brain);
+    let stdin = std::io::stdin();
+    let mut out = std::io::stdout().lock();
+    for line in stdin.lock().lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) else {
+            continue;
+        };
+        if let Some(answer) = server.handle(&msg) {
+            writeln!(out, "{answer}")?;
+            out.flush()?;
+        }
+    }
+    Ok(())
+}
+
+/// One JSON-RPC message (or a batch) per POST, answered in the response; the
+/// hub does the authentication, so this listens on the loopback.
+fn serve_http(brain: Brain, listen: &str) -> Result<(), Box<dyn std::error::Error>> {
+    use tiny_http::{Header, Method, Response, Server};
+    let http = Server::http(listen).map_err(|e| format!("cannot listen on {listen}: {e}"))?;
+    let server = mcp::Server::new(brain);
+    eprintln!("tether-brain: listening on {listen}");
+    let json = Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap();
+    for mut req in http.incoming_requests() {
+        let reply = match (req.method(), req.url()) {
+            (Method::Get, "/healthz") => Response::from_string("ok
+").boxed(),
+            (Method::Post, _) => {
+                let mut body = String::new();
+                let _ = req.as_reader().take(4 << 20).read_to_string(&mut body);
+                match serde_json::from_str::<serde_json::Value>(&body) {
+                    Ok(serde_json::Value::Array(batch)) => {
+                        let answers: Vec<_> = batch.iter().filter_map(|m| server.handle(m)).collect();
+                        if answers.is_empty() {
+                            Response::empty(202).boxed()
+                        } else {
+                            Response::from_string(serde_json::Value::Array(answers).to_string()).with_header(json.clone()).boxed()
+                        }
+                    }
+                    Ok(msg) => match server.handle(&msg) {
+                        Some(answer) => Response::from_string(answer.to_string()).with_header(json.clone()).boxed(),
+                        None => Response::empty(202).boxed(),
+                    },
+                    Err(_) => Response::from_string("{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"parse error\"}}").with_status_code(400).with_header(json.clone()).boxed(),
+                }
+            }
+            _ => Response::empty(405).boxed(),
+        };
+        let _ = req.respond(reply);
     }
     Ok(())
 }
