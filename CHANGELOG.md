@@ -2,8 +2,9 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
-## 0.17.9
+## 0.18.0
 
+- **A second brain for your Claude Code sessions.** Memories, decisions and references that every session on any of your devices can keep and find again: `remember`, `recall`, `project_brief` and more, reached through the hub like its other tools. Memories belong to everything, one project, one task or one session, and a note can be tied to a function or file, so it is marked out of date when that code changes. It is one small program with one database file (about 3 MB, a few MB of memory idle, a recall in a few milliseconds), and runs on the hub's machine. When `codebase-memory-mcp` is installed there, the brain also reads your code graph: `index_project`, `symbol_context` (where a function is, what calls it, and every note about it) and `check_stale`. It needs one setup step on the hub's machine, `deploy/linux/enable-brain.sh`; see `docs/operations/running.md`.
 - **Coming back to Tether just works.** Open it from the recents, or after the system cleared it from memory, and it no longer says a device is offline when it is not. It checks the connection to the hub and quietly mends it: a fresh connection, a look at the network, and Tailscale started, or switched off and on when its tunnel went stale in the background. A lost connection shows as connecting for a few seconds with your devices as they were, and only goes offline if it stays down.
 - **A clear message when it cannot be mended.** If every fix fails, a card says what is wrong (no internet, Tailscale off or signed out, Tailscale on but not getting through, the hub's machine not answering, or the hub refusing this app) and what to do about it, with Try again and Open Tailscale.
 - **Release notes you can read.** What's new before an update is laid out as a list of changes with their titles in bold and the details beneath, in the app and in the Windows updater's window, instead of plain text with the marks left in.
