@@ -83,6 +83,10 @@ abstract interface class HubSocket {
   /// The device's network changed (Wi-Fi, mobile data, a VPN): the socket
   /// may be bound to a route that's gone, so connect again.
   void networkChanged();
+
+  /// Whether the hub answers within [timeout], right now: false when there is
+  /// no connection, or one that has gone quiet. It does not close anything.
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)});
   Future<void> close();
 }
 
@@ -115,6 +119,7 @@ class WebSocketHubSocket implements HubSocket {
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _sub;
   Timer? _retry, _heartbeat, _deadline;
+  final _probes = <Completer<bool>>[];
   bool _closed = false;
   bool _rejected = false;
   int _generation = 0;
@@ -202,6 +207,7 @@ class WebSocketHubSocket implements HubSocket {
     // Anything from the hub proves the connection is alive.
     _deadline?.cancel();
     _deadline = null;
+    _endProbes(true);
     final pb.Frame f;
     try {
       f = pb.Frame()..mergeFromProto3Json(jsonDecode(data as String), ignoreUnknownFields: true);
@@ -228,7 +234,28 @@ class WebSocketHubSocket implements HubSocket {
     _retry = Timer(wait, _start);
   }
 
+  void _endProbes(bool alive) {
+    for (final p in _probes.toList()) {
+      if (!p.isCompleted) p.complete(alive);
+    }
+    _probes.clear();
+  }
+
+  @override
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)}) {
+    if (_endpoint == null || !_open) return Future.value(false);
+    final done = Completer<bool>();
+    _probes.add(done);
+    _write(pb.Frame(id: _id(), heartbeat: pb.Heartbeat()));
+    Timer(timeout, () {
+      if (!done.isCompleted) done.complete(false);
+      _probes.remove(done);
+    });
+    return done.future;
+  }
+
   void _teardown() {
+    _endProbes(false);
     _generation++;
     _retry?.cancel();
     _heartbeat?.cancel();

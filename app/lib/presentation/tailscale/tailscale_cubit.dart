@@ -66,7 +66,7 @@ class TailscaleCubit extends Cubit<TailscaleViewState> {
     required this._ensure,
     required WatchHub watchHub,
     required this._retryHub,
-    this.grace = const Duration(seconds: 4),
+    this.grace = const Duration(seconds: 14),
     this.minGap = const Duration(seconds: 45),
   }) : super(const TailscaleViewState()) {
     _sub = watchHub().listen(_onHub);

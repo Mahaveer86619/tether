@@ -69,7 +69,19 @@ class FakeHubRepository implements HubRepository {
   var retries = 0;
 
   @override
-  void retryNow() => retries++;
+  void retryNow() {
+    retries++;
+    onRetry?.call();
+  }
+
+  /// What a retry does in a test, e.g. connecting.
+  void Function()? onRetry;
+
+  /// What [probe] answers.
+  var alive = true;
+
+  @override
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)}) async => alive;
 
   @override
   Stream<HubSnapshot> watchHub() async* {
@@ -549,6 +561,12 @@ class FakeHubSocket implements HubSocket {
   @override
   void networkChanged() => networkChanges++;
 
+  /// What [probe] answers.
+  var alive = true;
+
+  @override
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)}) async => alive;
+
   @override
   Future<void> close() => _events.close();
 }
@@ -746,6 +764,15 @@ class FakeTailscale implements TailscaleRepository {
 
   @override
   Future<void> openApp() async => opened++;
+
+  var reconnects = 0;
+  var reconnectWorks = true;
+
+  @override
+  Future<bool> reconnect() async {
+    reconnects++;
+    return reconnectWorks;
+  }
 }
 
 /// Hubs by host; anything not listed does not answer.

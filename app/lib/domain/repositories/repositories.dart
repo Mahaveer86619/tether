@@ -12,6 +12,9 @@ abstract interface class HubRepository {
 
   void retryNow();
 
+  /// Whether the hub answers right now over the live connection; see [HubSocket.probe].
+  Future<bool> probe({Duration timeout = const Duration(seconds: 3)});
+
   /// Whether the app is in the foreground; see [HubSocket.setPresence].
   void setActive({required bool active});
 
@@ -205,6 +208,10 @@ abstract interface class TailscaleRepository {
 
   /// Opens the Tailscale app, where there is one.
   Future<void> openApp();
+
+  /// Switches Tailscale off and on again, as the owner would by hand, for a
+  /// tunnel that says it is up but carries nothing. False where that can't be done here.
+  Future<bool> reconnect();
 
   /// The other devices on the tailnet, when this platform can list them
   /// (the desktop can; a phone's Tailscale app does not say).

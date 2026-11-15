@@ -9,6 +9,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -25,6 +27,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "installed" -> result.success(tailscaleInstalled())
                 "connect" -> result.success(tailscaleConnect())
+                "reconnect" -> result.success(tailscaleReconnect())
                 "open" -> result.success(tailscaleOpen())
                 else -> result.notImplemented()
             }
@@ -98,6 +101,14 @@ class MainActivity : FlutterActivity() {
     private fun tailscaleConnect(): Boolean {
         if (!tailscaleInstalled()) return false
         sendBroadcast(Intent("com.tailscale.ipn.CONNECT_VPN").setPackage(tailscalePackage))
+        return true
+    }
+
+    /** Switches Tailscale off and on again, which is what clears a tunnel that went stale in the background. */
+    private fun tailscaleReconnect(): Boolean {
+        if (!tailscaleInstalled()) return false
+        sendBroadcast(Intent("com.tailscale.ipn.DISCONNECT_VPN").setPackage(tailscalePackage))
+        Handler(Looper.getMainLooper()).postDelayed({ tailscaleConnect() }, 1500)
         return true
     }
 

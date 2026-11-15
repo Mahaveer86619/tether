@@ -156,6 +156,35 @@ void main() {
     expect(repo.current.status, ConnectionStatus.unauthorized);
   });
 
+  test('a lost connection shows as connecting, devices unchanged, until the grace runs out', () async {
+    final socket2 = FakeHubSocket();
+    final graced = HubRepositoryImpl(
+      api: HubRestApi(MockClient((_) async => http.Response('{}', 200)), clientName: 'test'),
+      socket: socket2,
+      cache: MemoryHubCache(),
+      offlineGrace: const Duration(milliseconds: 200),
+    );
+    addTearDown(graced.dispose);
+    graced.connect(const HubConnection(url: 'ws://100.64.0.1:7420/ws', token: 'tok'));
+    socket2.push(SocketFrame(welcome()));
+    socket2.push(const SocketClosed(error: 'reset', attempts: 1));
+    expect(graced.current.status, ConnectionStatus.connecting, reason: 'nothing alarming yet');
+    expect(graced.current.nodes['minipc']!.online, isTrue);
+    expect(graced.current.lastError, isNull);
+
+    await eventually(() {
+      expect(graced.current.status, ConnectionStatus.offline);
+      expect(graced.current.nodes['minipc']!.online, isFalse);
+    });
+
+    socket2.push(SocketFrame(welcome()));
+    expect(graced.current.status, ConnectionStatus.connected);
+    socket2.push(const SocketClosed(error: 'reset', attempts: 1));
+    socket2.push(SocketFrame(welcome()));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(graced.current.status, ConnectionStatus.connected, reason: 'a connection back inside the grace never shows offline');
+  });
+
   test('timeline loads history over REST, then subscribes after its seq and merges live updates', () async {
     socket.push(SocketFrame(welcome()));
     final snapshots = <TimelineSnapshot>[];

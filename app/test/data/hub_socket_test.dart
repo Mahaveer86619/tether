@@ -150,6 +150,36 @@ void main() {
     });
   });
 
+  test('probing says whether the hub answers right now, and closes nothing', () {
+    fakeAsync((async) {
+      socket = make();
+      bool? first;
+      socket.probe().then((v) => first = v);
+      async.flushMicrotasks();
+      expect(first, isFalse, reason: 'no connection is no answer');
+
+      socket.connect(endpoint);
+      async.flushMicrotasks();
+      final ch = channels.single;
+      ch.say({'welcome': {'hubVersion': '0.17.0'}});
+      async.flushMicrotasks();
+
+      bool? answered;
+      socket.probe(timeout: const Duration(seconds: 3)).then((v) => answered = v);
+      async.flushMicrotasks();
+      ch.say({'replyTo': ch.written.last['id'], 'ack': {}});
+      async.flushMicrotasks();
+      expect(answered, isTrue);
+
+      bool? silent;
+      socket.probe(timeout: const Duration(seconds: 3)).then((v) => silent = v);
+      async.elapse(const Duration(seconds: 3));
+      expect(silent, isFalse);
+      expect(ch.closed, isFalse, reason: 'the doctor decides what to do about it');
+      socket.close();
+    });
+  });
+
   test('an older hub answering a heartbeat with an error still counts as alive', () {
     fakeAsync((async) {
       socket = make()..connect(endpoint);
