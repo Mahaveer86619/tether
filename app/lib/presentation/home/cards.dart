@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
+import '../chats/chats_cubit.dart';
+import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import '../ui/motion.dart';
 import '../ui/refresh.dart';
@@ -116,6 +119,7 @@ class SessionCard extends StatelessWidget {
               if (s.global && !s.scratch) ...[Icon(Icons.cloud_done_outlined, size: 14, color: c.faint), const SizedBox(width: 6)],
               if (s.isFork) ...[Icon(Icons.call_split_rounded, size: 14, color: c.faint), const SizedBox(width: 6)],
               Pill(s.node),
+              SessionMenu(session: s),
             ],
           ),
           const SizedBox(height: 8),
@@ -145,6 +149,37 @@ class SessionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// What can be done with a session from a list: for one that is in a project
+/// folder and in no chat, adding it to the projects as a chat.
+class SessionMenu extends StatelessWidget {
+  const SessionMenu({super.key, required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) {
+    final canAdd = context.select<HubCubit, bool>((h) {
+      final hub = h.state.hub;
+      return hub.chatsSupported && !session.scratch && session.node.isNotEmpty && isProjectFolder(session.cwd) && hub.chatOf(session.id) == null;
+    });
+    if (!canAdd) return const SizedBox.shrink();
+    return PopupMenuButton<String>(
+      key: Key('session-menu-${session.id}'),
+      tooltip: 'Session options',
+      padding: EdgeInsets.zero,
+      iconSize: 18,
+      icon: const Icon(Icons.more_horiz_rounded, size: 18),
+      onSelected: (_) async {
+        final id = await context.read<ChatsCubit>().adopt(session.id);
+        if (id != null && context.mounted) showToast(context, 'Added to ${baseName(session.cwd)}', icon: Icons.folder_outlined);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'add', child: Row(children: [Icon(Icons.create_new_folder_outlined, size: 18), SizedBox(width: 12), Flexible(child: Text('Add to projects'))])),
+      ],
     );
   }
 }

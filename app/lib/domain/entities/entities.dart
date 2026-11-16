@@ -360,10 +360,13 @@ class HubSnapshot extends Equatable {
     return (node: node, cwd: cwd);
   }
 
-  /// Chats grouped by project folder, the project with the newest chat first.
-  /// One-off chats, which have no project, are in none of them.
+  /// Chats grouped by project folder, the project with the newest activity
+  /// first. One-off chats, which have no project, are in none of them. A
+  /// session in a project folder that no chat holds, one started in a terminal,
+  /// is listed under its folder too, and makes the folder a project by itself.
   List<ChatProject> chatProjects({bool archived = false}) {
     final by = <String, List<Chat>>{};
+    final loose = <String, List<Session>>{};
     final where = <String, ({String node, String cwd})>{};
     for (final c in chats.values) {
       if (c.archived != archived) continue;
@@ -373,10 +376,22 @@ class HubSnapshot extends Equatable {
       where[key] = p;
       by.putIfAbsent(key, () => []).add(c);
     }
+    for (final s in sessions.values) {
+      if (s.archived != archived || s.scratch || s.node.isEmpty || !isProjectFolder(s.cwd) || _appFolder(s.cwd) || chatOf(s.id) != null) continue;
+      final key = '${s.node}|${s.cwd}';
+      where[key] = (node: s.node, cwd: s.cwd);
+      loose.putIfAbsent(key, () => []).add(s);
+    }
     DateTime when(Chat c) => chatUpdated(c) ?? DateTime(0);
     final out = [
-      for (final e in by.entries) ChatProject(node: where[e.key]!.node, cwd: where[e.key]!.cwd, chats: e.value..sort((a, b) => when(b).compareTo(when(a)))),
-    ]..sort((a, b) => when(b.chats.first).compareTo(when(a.chats.first)));
+      for (final key in {...by.keys, ...loose.keys})
+        ChatProject(
+          node: where[key]!.node,
+          cwd: where[key]!.cwd,
+          chats: (by[key] ?? [])..sort((a, b) => when(b).compareTo(when(a))),
+          sessions: (loose[key] ?? [])..sort(compareSessions),
+        ),
+    ]..sort((a, b) => (b.updated(this) ?? DateTime(0)).compareTo(a.updated(this) ?? DateTime(0)));
     return out;
   }
 
@@ -546,10 +561,21 @@ class Project extends Equatable {
 
 /// A folder on a node and the chats that work in it, newest first.
 class ChatProject extends Equatable {
-  const ChatProject({required this.node, required this.cwd, required this.chats});
+  const ChatProject({required this.node, required this.cwd, required this.chats, this.sessions = const []});
 
   final String node, cwd;
   final List<Chat> chats;
+
+  /// Sessions in the folder that no chat holds, newest first.
+  final List<Session> sessions;
+
+  /// When anything in the project last moved.
+  DateTime? updated(HubSnapshot hub) {
+    final times = [for (final c in chats) hub.chatUpdated(c), for (final s in sessions) s.updated].whereType<DateTime>();
+    return times.isEmpty ? null : times.reduce((a, b) => a.isAfter(b) ? a : b);
+  }
+
+  int get count => chats.length + sessions.length;
 
   String get key => '$node|$cwd';
 
@@ -562,7 +588,12 @@ class ChatProject extends Equatable {
   String labelAmong(Iterable<ChatProject> all) => all.any((p) => p.key != key && p.name == name) ? '$name · $node' : name;
 
   @override
-  List<Object?> get props => [node, cwd, chats];
+  List<Object?> get props => [node, cwd, chats, sessions];
+}
+
+bool _appFolder(String cwd) {
+  final low = cwd.replaceAll(r'\', '/').toLowerCase();
+  return low.contains('/.tether/') || low.contains('/appdata/');
 }
 
 final _homeFolder = RegExp(r'^(/home/[^/]+|/Users/[^/]+|/root|[A-Za-z]:[\\/]Users[\\/][^\\/]+)[\\/]*$');

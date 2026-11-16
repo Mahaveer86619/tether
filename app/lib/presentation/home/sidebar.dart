@@ -153,7 +153,7 @@ class _SidebarBodyState extends State<SidebarBody> {
   List<Widget> _project(BuildContext context, ChatProject p, List<ChatProject> all, String selected) {
     final c = context.colors;
     final nav = context.read<NavCubit>();
-    final open = _open[p.key] ?? p.chats.any((x) => x.id == selected);
+    final open = _open[p.key] ?? (p.chats.any((x) => x.id == selected) || p.sessions.any((x) => x.id == selected));
     return [
       Material(
         color: Colors.transparent,
@@ -170,7 +170,7 @@ class _SidebarBodyState extends State<SidebarBody> {
                 Icon(open ? Icons.folder_open_outlined : Icons.folder_outlined, size: 18, color: c.accent),
                 const SizedBox(width: 10),
                 Expanded(child: Text(p.labelAmong(all), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
-                Text('${p.chats.length}', style: TextStyle(fontSize: 12, color: c.faint)),
+                Text('${p.count}', style: TextStyle(fontSize: 12, color: c.faint)),
                 const SizedBox(width: 10),
               ],
             ),
@@ -179,6 +179,26 @@ class _SidebarBodyState extends State<SidebarBody> {
       ),
       if (open)
         for (final chat in p.chats) ChatRow(keyPrefix: 'project-chat', chat: chat, indent: 18, selected: chat.id == selected, onTap: () => _go(() => nav.openChat(chat.id, replace: true))),
+      if (open)
+        for (final session in p.sessions)
+          InkWell(
+            key: Key('project-session-${session.id}'),
+            borderRadius: context.round(8),
+            onTap: () => _go(() => nav.openSession(session.id, replace: true)),
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.only(left: 18 + 10),
+              decoration: BoxDecoration(color: session.id == selected ? c.accent.withValues(alpha: 0.12) : null, borderRadius: context.round(8)),
+              child: Row(
+                children: [
+                  Icon(Icons.terminal_rounded, size: 14, color: session.isLive ? c.accent : c.faint),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(session.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
+          ),
     ];
   }
 }
