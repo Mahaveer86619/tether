@@ -22,6 +22,7 @@ message TimelineItem {
     Thinking thinking = 13;
     Notice notice = 14;
     ResultSummary result = 15;
+    TaskReport task_report = 16;
   }
 }
 
@@ -53,6 +54,25 @@ message Markdown {
 message Thinking {
   string text = 1;
   bool streaming = 2;
+}
+
+// What a task session said when it finished a turn, put into its chat's lead
+// session by the hub so the chat shows the result as a card.
+message TaskReport {
+  // The task failed rather than finished.
+  bool failed = 1;
+  string title = 2;
+  // The machine and folder it ran in.
+  string node = 3;
+  string folder = 4;
+  // The task's session, which the card can open.
+  string session = 5;
+  // What it said last, parsed like any other reply.
+  repeated Block blocks = 6;
+  // What it said was longer than this and was cut.
+  bool clipped = 7;
+  // Why it failed, when it did.
+  string detail = 8;
 }
 
 message Notice {

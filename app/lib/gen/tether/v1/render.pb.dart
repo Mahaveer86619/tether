@@ -28,6 +28,7 @@ enum TimelineItem_Kind {
   thinking,
   notice,
   result,
+  taskReport,
   notSet
 }
 
@@ -47,6 +48,7 @@ class TimelineItem extends $pb.GeneratedMessage {
     Thinking? thinking,
     Notice? notice,
     ResultSummary? result,
+    TaskReport? taskReport,
   }) {
     final result$ = TimelineItem._();
     if (itemId != null) result$.itemId = itemId;
@@ -59,6 +61,7 @@ class TimelineItem extends $pb.GeneratedMessage {
     if (thinking != null) result$.thinking = thinking;
     if (notice != null) result$.notice = notice;
     if (result != null) result$.result = result;
+    if (taskReport != null) result$.taskReport = taskReport;
     return result$;
   }
 
@@ -79,13 +82,14 @@ class TimelineItem extends $pb.GeneratedMessage {
     13: TimelineItem_Kind.thinking,
     14: TimelineItem_Kind.notice,
     15: TimelineItem_Kind.result,
+    16: TimelineItem_Kind.taskReport,
     0: TimelineItem_Kind.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'TimelineItem',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: TimelineItem.$_createMessage)
-    ..oo(0, [10, 11, 12, 13, 14, 15])
+    ..oo(0, [10, 11, 12, 13, 14, 15, 16])
     ..aOS(1, _omitFieldNames ? '' : 'itemId')
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'ord', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
@@ -103,6 +107,8 @@ class TimelineItem extends $pb.GeneratedMessage {
         subBuilder: Notice.$_createMessage)
     ..aOM<ResultSummary>(15, _omitFieldNames ? '' : 'result',
         subBuilder: ResultSummary.$_createMessage)
+    ..aOM<TaskReport>(16, _omitFieldNames ? '' : 'taskReport',
+        subBuilder: TaskReport.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -133,6 +139,7 @@ class TimelineItem extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
   TimelineItem_Kind whichKind() => _TimelineItem_KindByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
@@ -140,6 +147,7 @@ class TimelineItem extends $pb.GeneratedMessage {
   @$pb.TagNumber(13)
   @$pb.TagNumber(14)
   @$pb.TagNumber(15)
+  @$pb.TagNumber(16)
   void clearKind() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -244,6 +252,17 @@ class TimelineItem extends $pb.GeneratedMessage {
   void clearResult() => $_clearField(15);
   @$pb.TagNumber(15)
   ResultSummary ensureResult() => $_ensure(9);
+
+  @$pb.TagNumber(16)
+  TaskReport get taskReport => $_getN(10);
+  @$pb.TagNumber(16)
+  set taskReport(TaskReport value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasTaskReport() => $_has(10);
+  @$pb.TagNumber(16)
+  void clearTaskReport() => $_clearField(16);
+  @$pb.TagNumber(16)
+  TaskReport ensureTaskReport() => $_ensure(10);
 }
 
 class UserText extends $pb.GeneratedMessage {
@@ -493,6 +512,148 @@ class Thinking extends $pb.GeneratedMessage {
   $core.bool hasStreaming() => $_has(1);
   @$pb.TagNumber(2)
   void clearStreaming() => $_clearField(2);
+}
+
+/// What a task session said when it finished a turn, put into its chat's lead
+/// session by the hub so the chat shows the result as a card.
+class TaskReport extends $pb.GeneratedMessage {
+  factory TaskReport({
+    $core.bool? failed,
+    $core.String? title,
+    $core.String? node,
+    $core.String? folder,
+    $core.String? session,
+    $core.Iterable<Block>? blocks,
+    $core.bool? clipped,
+    $core.String? detail,
+  }) {
+    final result = TaskReport._();
+    if (failed != null) result.failed = failed;
+    if (title != null) result.title = title;
+    if (node != null) result.node = node;
+    if (folder != null) result.folder = folder;
+    if (session != null) result.session = session;
+    if (blocks != null) result.blocks.addAll(blocks);
+    if (clipped != null) result.clipped = clipped;
+    if (detail != null) result.detail = detail;
+    return result;
+  }
+
+  TaskReport._();
+
+  factory TaskReport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TaskReport()..mergeFromBuffer(data, registry);
+  factory TaskReport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TaskReport()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TaskReport',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: TaskReport.$_createMessage)
+    ..aOB(1, _omitFieldNames ? '' : 'failed')
+    ..aOS(2, _omitFieldNames ? '' : 'title')
+    ..aOS(3, _omitFieldNames ? '' : 'node')
+    ..aOS(4, _omitFieldNames ? '' : 'folder')
+    ..aOS(5, _omitFieldNames ? '' : 'session')
+    ..pPM<Block>(6, _omitFieldNames ? '' : 'blocks',
+        subBuilder: Block.$_createMessage)
+    ..aOB(7, _omitFieldNames ? '' : 'clipped')
+    ..aOS(8, _omitFieldNames ? '' : 'detail')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TaskReport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TaskReport copyWith(void Function(TaskReport) updates) =>
+      super.copyWith((message) => updates(message as TaskReport)) as TaskReport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TaskReport() / TaskReport.new instead')
+  static TaskReport create() => TaskReport._();
+  static $pb.GeneratedMessage $_createMessage() => TaskReport._();
+  @$core.override
+  TaskReport createEmptyInstance() => TaskReport._();
+  @$core.pragma('dart2js:noInline')
+  static TaskReport getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<TaskReport>(TaskReport.$_createMessage);
+  static TaskReport? _defaultInstance;
+
+  /// The task failed rather than finished.
+  @$pb.TagNumber(1)
+  $core.bool get failed => $_getBF(0);
+  @$pb.TagNumber(1)
+  set failed($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFailed() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFailed() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get title => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set title($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTitle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTitle() => $_clearField(2);
+
+  /// The machine and folder it ran in.
+  @$pb.TagNumber(3)
+  $core.String get node => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set node($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get folder => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set folder($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFolder() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFolder() => $_clearField(4);
+
+  /// The task's session, which the card can open.
+  @$pb.TagNumber(5)
+  $core.String get session => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set session($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSession() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSession() => $_clearField(5);
+
+  /// What it said last, parsed like any other reply.
+  @$pb.TagNumber(6)
+  $pb.PbList<Block> get blocks => $_getList(5);
+
+  /// What it said was longer than this and was cut.
+  @$pb.TagNumber(7)
+  $core.bool get clipped => $_getBF(6);
+  @$pb.TagNumber(7)
+  set clipped($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasClipped() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearClipped() => $_clearField(7);
+
+  /// Why it failed, when it did.
+  @$pb.TagNumber(8)
+  $core.String get detail => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set detail($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDetail() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDetail() => $_clearField(8);
 }
 
 class Notice extends $pb.GeneratedMessage {

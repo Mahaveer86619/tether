@@ -441,6 +441,28 @@ func (s *Store) Item(session, itemID string) (*v1.TimelineItem, error) {
 	return it, proto.Unmarshal(b, it)
 }
 
+// RecentItems is a session's newest items, newest first.
+func (s *Store) RecentItems(session string, n int) ([]*v1.TimelineItem, error) {
+	rows, err := s.db.Query(`SELECT payload FROM items WHERE session = ? ORDER BY ord DESC LIMIT ?`, session, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.TimelineItem
+	for rows.Next() {
+		var b []byte
+		if err := rows.Scan(&b); err != nil {
+			return nil, err
+		}
+		it := &v1.TimelineItem{}
+		if err := proto.Unmarshal(b, it); err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) TranscriptOffset(session string) (int64, error) {
 	var off int64
 	err := s.db.QueryRow(`SELECT transcript_offset FROM sessions WHERE id = ?`, session).Scan(&off)

@@ -111,6 +111,27 @@ void main() {
               rpb.ListItem(checked: false, blocks: [rpb.Block(paragraph: rpb.Paragraph(spans: [span('deploy to staging')]))]),
             ])),
           ])),
+          rpb.TimelineItem(
+            itemId: 'task:t1:m1',
+            ord: Int64(6),
+            taskReport: rpb.TaskReport(
+              title: 'Clean up the repo and re-run step 7',
+              node: 'laptop',
+              folder: 'fk-ims-wvs',
+              session: 't1',
+              blocks: [
+                rpb.Block(paragraph: rpb.Paragraph(spans: [span('The repo is ready: once the PR is merged, '), span('git pull', code: true), span(' then '), span('make deploy ENV=prod', code: true), span(' will deploy it. Nothing was deleted, committed or pushed.')])),
+                rpb.Block(table: rpb.Table(
+                  header: [for (final h in ['Path', 'Class', 'What it is']) rpb.TableCell(spans: [span(h)])],
+                  rows: [
+                    for (final r in [['cmd/scripts/v2sync/main.go', '(b)', 'older local copy, now identical to origin/dev'], ['cmd/scripts/v2sync_reregister', '(a)', 'load keys on tid, fsn']])
+                      rpb.TableRow(cells: [for (final c in r) rpb.TableCell(spans: [span(c)])]),
+                  ],
+                )),
+                rpb.Block(paragraph: rpb.Paragraph(spans: [span('Step 2 stash: none of it is new work, so there is nothing to keep or turn into a PR.')])),
+              ],
+            ),
+          ),
         ]);
         await _settle(t);
         if (view != null) {

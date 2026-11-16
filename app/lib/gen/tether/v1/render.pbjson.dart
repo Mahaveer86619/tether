@@ -83,6 +83,15 @@ const TimelineItem$json = {
       '9': 0,
       '10': 'result'
     },
+    {
+      '1': 'task_report',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.TaskReport',
+      '9': 0,
+      '10': 'taskReport'
+    },
   ],
   '8': [
     {'1': 'kind'},
@@ -98,7 +107,8 @@ final $typed_data.Uint8List timelineItemDescriptor = $convert.base64Decode(
     'b29sGAwgASgLMhMudGV0aGVyLnYxLlRvb2xDYXJkSABSBHRvb2wSMQoIdGhpbmtpbmcYDSABKA'
     'syEy50ZXRoZXIudjEuVGhpbmtpbmdIAFIIdGhpbmtpbmcSKwoGbm90aWNlGA4gASgLMhEudGV0'
     'aGVyLnYxLk5vdGljZUgAUgZub3RpY2USMgoGcmVzdWx0GA8gASgLMhgudGV0aGVyLnYxLlJlc3'
-    'VsdFN1bW1hcnlIAFIGcmVzdWx0QgYKBGtpbmQ=');
+    'VsdFN1bW1hcnlIAFIGcmVzdWx0EjgKC3Rhc2tfcmVwb3J0GBAgASgLMhUudGV0aGVyLnYxLlRh'
+    'c2tSZXBvcnRIAFIKdGFza1JlcG9ydEIGCgRraW5k');
 
 @$core.Deprecated('Use userTextDescriptor instead')
 const UserText$json = {
@@ -154,6 +164,35 @@ const Thinking$json = {
 final $typed_data.Uint8List thinkingDescriptor = $convert.base64Decode(
     'CghUaGlua2luZxISCgR0ZXh0GAEgASgJUgR0ZXh0EhwKCXN0cmVhbWluZxgCIAEoCFIJc3RyZW'
     'FtaW5n');
+
+@$core.Deprecated('Use taskReportDescriptor instead')
+const TaskReport$json = {
+  '1': 'TaskReport',
+  '2': [
+    {'1': 'failed', '3': 1, '4': 1, '5': 8, '10': 'failed'},
+    {'1': 'title', '3': 2, '4': 1, '5': 9, '10': 'title'},
+    {'1': 'node', '3': 3, '4': 1, '5': 9, '10': 'node'},
+    {'1': 'folder', '3': 4, '4': 1, '5': 9, '10': 'folder'},
+    {'1': 'session', '3': 5, '4': 1, '5': 9, '10': 'session'},
+    {
+      '1': 'blocks',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.Block',
+      '10': 'blocks'
+    },
+    {'1': 'clipped', '3': 7, '4': 1, '5': 8, '10': 'clipped'},
+    {'1': 'detail', '3': 8, '4': 1, '5': 9, '10': 'detail'},
+  ],
+};
+
+/// Descriptor for `TaskReport`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List taskReportDescriptor = $convert.base64Decode(
+    'CgpUYXNrUmVwb3J0EhYKBmZhaWxlZBgBIAEoCFIGZmFpbGVkEhQKBXRpdGxlGAIgASgJUgV0aX'
+    'RsZRISCgRub2RlGAMgASgJUgRub2RlEhYKBmZvbGRlchgEIAEoCVIGZm9sZGVyEhgKB3Nlc3Np'
+    'b24YBSABKAlSB3Nlc3Npb24SKAoGYmxvY2tzGAYgAygLMhAudGV0aGVyLnYxLkJsb2NrUgZibG'
+    '9ja3MSGAoHY2xpcHBlZBgHIAEoCFIHY2xpcHBlZBIWCgZkZXRhaWwYCCABKAlSBmRldGFpbA==');
 
 @$core.Deprecated('Use noticeDescriptor instead')
 const Notice$json = {
