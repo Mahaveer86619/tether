@@ -17,15 +17,32 @@ Each release's notes are its section in `CHANGELOG.md` (`## X.Y.Z`). They go int
 
 ## Making a release
 
-1. On `main`: bump the version, write the `CHANGELOG.md` section, and commit.
-2. Tag and push:
+What goes into a release is decided by hand, and so is merging it. `make release` only starts after that, and does everything from the tag on.
+
+1. **Merge what belongs in the release.** Review and merge the pull requests into `main`. Nothing in the release flow merges anything.
+2. **Open the release pull request**: the version bump and its changelog section. Write the section's bullets in a file (lines like `- **A title.** What it means for you.`), then:
 
    ```sh
-   git tag -a v0.18.0 -m "Tether 0.18.0"
-   git push origin main v0.18.0
+   make release-prepare BUMP=patch NOTES=notes.md     # BUMP: patch, minor, major or X.Y.Z
    ```
 
-3. `.github/workflows/release.yml` then runs these jobs:
+   It branches from `origin/main`, runs `version.sh set`, adds the notes as `## X.Y.Z` above the newest section, and opens the pull request. Merge it last. (By hand: `tools/release/version.sh set X.Y.Z`, the changelog section, a pull request.)
+3. **Release what is on `main`:**
+
+   ```sh
+   make release-check     # what would happen; changes nothing
+   make release           # tag, watch the build, deploy, check it
+   ```
+
+   `tools/release/release.sh` reads `origin/main` without touching your working tree and refuses unless: the version on `main` is newer than the newest release and is not tagged yet, the app's version files agree, the changelog has the section, and the checks on `main`'s latest commit passed (`FORCE_CI=1` overrides that last one). It lists the pull requests still open, asks you to type the tag, tags `main`'s commit `vX.Y.Z`, pushes the tag and follows the release run until it ends. On a failure it prints the failed jobs and the end of their log. Afterwards it checks the release has its installer, APK, update feed and hub binary, that the update feed lists the version, and (through `TETHER_SHIP_HOST` in `.local/ship.env`) that the hub's machine runs it. `make release-status` shows the newest release and the hub's version at any time; `make release-test` runs the script's own tests.
+4. By hand, the same is:
+
+   ```sh
+   git tag -a v0.18.0 -m "Tether 0.18.0" origin/main
+   git push origin v0.18.0
+   ```
+
+`.github/workflows/release.yml` then runs these jobs:
 
    | Job | Runs on | Does |
    |---|---|---|
@@ -55,7 +72,7 @@ The same steps, without GitHub:
 
 ```sh
 . ~/ci/ci-env.sh          # the toolchains setup-runner.sh installed
-make release              # make test, make dist, make deploy
+make release-local        # make test, make dist, make deploy
 make dist-go deploy       # when only the server changed: no APK
 ```
 
