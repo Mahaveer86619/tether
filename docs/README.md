@@ -4,6 +4,15 @@ The docs are grouped by what you are doing: **product/** (what Tether is and wha
 
 Start with [overview.md](product/overview.md) for what Tether is made of and how a chat becomes work on a device, then [features.md](product/features.md) for what exists and what is pending.
 
+## Getting started
+
+| Doc | What it covers |
+|---|---|
+| [getting-started/](getting-started/README.md) | Which path to take, and what every setup needs |
+| [using-releases.md](getting-started/using-releases.md) | Install from a GitHub release: hub, agents, apps, pairing, updating, troubleshooting |
+| [from-source.md](getting-started/from-source.md) | Clone, build, test and run every part |
+| [contributing.md](getting-started/contributing.md) | Where things live, conventions, branches and pull requests |
+
 ## Where things stand
 
 | Doc | What it covers |

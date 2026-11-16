@@ -15,7 +15,7 @@ The app's Devices screen follows the same order: the hub, then the devices runni
 For releases, CI and updates, see [releasing.md](releasing.md); this section is for building by hand.
 
 
-Requires Go 1.24+. From `server/`:
+Requires the Go version in `server/go.mod`. From `server/`:
 
 ```sh
 go test ./...
