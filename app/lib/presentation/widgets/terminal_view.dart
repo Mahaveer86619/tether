@@ -195,6 +195,9 @@ List<TermLine> transcriptLines(Iterable<TimelineItem> items, {int outputLines = 
         }
       case TimelineItem_Kind.notice:
         out.add(TermLine(it.notice.level == Notice_Level.LEVEL_ERROR ? TermKind.error : TermKind.warning, '! ${it.notice.text}'));
+      case TimelineItem_Kind.taskReport:
+        final t = it.taskReport;
+        out.add(TermLine(t.failed ? TermKind.error : TermKind.dim, '── ${t.failed ? 'task failed' : 'task finished'}: ${t.title} (${[t.node, t.folder].where((x) => x.isNotEmpty).join(', ')})'));
       case TimelineItem_Kind.result:
         final r = it.result;
         out.add(TermLine(r.isError ? TermKind.error : TermKind.dim, [

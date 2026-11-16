@@ -1,3 +1,4 @@
+import 'task_report_card.dart';
 import 'package:flutter/material.dart';
 
 import '../../gen/tether/v1/render.pb.dart' as pb;
@@ -35,6 +36,7 @@ class TimelineItemView extends StatelessWidget {
       pb.TimelineItem_Kind.thinking => _Thinking(thinking: item.thinking),
       pb.TimelineItem_Kind.notice => _NoticeView(notice: item.notice),
       pb.TimelineItem_Kind.result => _ResultView(result: item.result),
+      pb.TimelineItem_Kind.taskReport => TaskReportCard(report: item.taskReport),
       pb.TimelineItem_Kind.notSet => const SizedBox.shrink(),
     };
     if (item.parentToolUseId.isNotEmpty) {

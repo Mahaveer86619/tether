@@ -139,6 +139,13 @@ func (p *printer) item(it *v1.TimelineItem) {
 		out = renderCard(k.Tool)
 	case *v1.TimelineItem_Notice:
 		out = fmt.Sprintf("%s· %s%s", yellow, k.Notice.Text, reset)
+	case *v1.TimelineItem_TaskReport:
+		r := k.TaskReport
+		head, color := "Task finished", green
+		if r.Failed {
+			head, color = "Task failed", red
+		}
+		out = fmt.Sprintf("%s── %s: %s (%s %s)%s\n%s", color, head, r.Title, r.Node, r.Folder, reset, renderBlocks(r.Blocks))
 	case *v1.TimelineItem_Result:
 		r := k.Result
 		color := green

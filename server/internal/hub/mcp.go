@@ -422,8 +422,30 @@ func itemText(it *v1.TimelineItem) string {
 		return fmt.Sprintf("[%s] %s (%s)", k.Tool.Name, k.Tool.Title, strings.ToLower(strings.TrimPrefix(k.Tool.Status.String(), "STATUS_")))
 	case *v1.TimelineItem_Notice:
 		return "Note: " + k.Notice.Text
+	case *v1.TimelineItem_TaskReport:
+		return taskReportText(k.TaskReport)
 	}
 	return ""
+}
+
+// taskReportText is a task's report as plain text: who it was, and what it said.
+func taskReportText(r *v1.TaskReport) string {
+	head := "Task finished"
+	if r.Failed {
+		head = "Task failed"
+	}
+	where := strings.Trim(r.Node+", "+r.Folder, ", ")
+	text := head + ": " + r.Title + " (" + where + ")"
+	if r.Detail != "" {
+		text += "\n" + r.Detail
+	}
+	if said := blocksText(r.Blocks); said != "" {
+		text += "\n\n" + said
+	}
+	if r.Clipped {
+		text += "\n\n[cut short; read the task's own session for the rest]"
+	}
+	return text
 }
 
 func blocksText(blocks []*v1.Block) string {

@@ -70,7 +70,7 @@ func (x Notice_Level) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Notice_Level.Descriptor instead.
 func (Notice_Level) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{4, 0}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{5, 0}
 }
 
 type Table_Align int32
@@ -122,7 +122,7 @@ func (x Table_Align) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Table_Align.Descriptor instead.
 func (Table_Align) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{13, 0}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{14, 0}
 }
 
 type ToolCard_Status int32
@@ -177,7 +177,7 @@ func (x ToolCard_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ToolCard_Status.Descriptor instead.
 func (ToolCard_Status) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{19, 0}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{20, 0}
 }
 
 type Todo_Status int32
@@ -229,7 +229,7 @@ func (x Todo_Status) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Todo_Status.Descriptor instead.
 func (Todo_Status) EnumDescriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{26, 0}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{27, 0}
 }
 
 // One entry in a session's timeline. Clients key items by item_id, replace
@@ -251,6 +251,7 @@ type TimelineItem struct {
 	//	*TimelineItem_Thinking
 	//	*TimelineItem_Notice
 	//	*TimelineItem_Result
+	//	*TimelineItem_TaskReport
 	Kind          isTimelineItem_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -375,6 +376,15 @@ func (x *TimelineItem) GetResult() *ResultSummary {
 	return nil
 }
 
+func (x *TimelineItem) GetTaskReport() *TaskReport {
+	if x != nil {
+		if x, ok := x.Kind.(*TimelineItem_TaskReport); ok {
+			return x.TaskReport
+		}
+	}
+	return nil
+}
+
 type isTimelineItem_Kind interface {
 	isTimelineItem_Kind()
 }
@@ -403,6 +413,10 @@ type TimelineItem_Result struct {
 	Result *ResultSummary `protobuf:"bytes,15,opt,name=result,proto3,oneof"`
 }
 
+type TimelineItem_TaskReport struct {
+	TaskReport *TaskReport `protobuf:"bytes,16,opt,name=task_report,json=taskReport,proto3,oneof"`
+}
+
 func (*TimelineItem_User) isTimelineItem_Kind() {}
 
 func (*TimelineItem_Markdown) isTimelineItem_Kind() {}
@@ -414,6 +428,8 @@ func (*TimelineItem_Thinking) isTimelineItem_Kind() {}
 func (*TimelineItem_Notice) isTimelineItem_Kind() {}
 
 func (*TimelineItem_Result) isTimelineItem_Kind() {}
+
+func (*TimelineItem_TaskReport) isTimelineItem_Kind() {}
 
 type UserText struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -614,6 +630,114 @@ func (x *Thinking) GetStreaming() bool {
 	return false
 }
 
+// What a task session said when it finished a turn, put into its chat's lead
+// session by the hub so the chat shows the result as a card.
+type TaskReport struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The task failed rather than finished.
+	Failed bool   `protobuf:"varint,1,opt,name=failed,proto3" json:"failed,omitempty"`
+	Title  string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// The machine and folder it ran in.
+	Node   string `protobuf:"bytes,3,opt,name=node,proto3" json:"node,omitempty"`
+	Folder string `protobuf:"bytes,4,opt,name=folder,proto3" json:"folder,omitempty"`
+	// The task's session, which the card can open.
+	Session string `protobuf:"bytes,5,opt,name=session,proto3" json:"session,omitempty"`
+	// What it said last, parsed like any other reply.
+	Blocks []*Block `protobuf:"bytes,6,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	// What it said was longer than this and was cut.
+	Clipped bool `protobuf:"varint,7,opt,name=clipped,proto3" json:"clipped,omitempty"`
+	// Why it failed, when it did.
+	Detail        string `protobuf:"bytes,8,opt,name=detail,proto3" json:"detail,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskReport) Reset() {
+	*x = TaskReport{}
+	mi := &file_tether_v1_render_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskReport) ProtoMessage() {}
+
+func (x *TaskReport) ProtoReflect() protoreflect.Message {
+	mi := &file_tether_v1_render_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskReport.ProtoReflect.Descriptor instead.
+func (*TaskReport) Descriptor() ([]byte, []int) {
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TaskReport) GetFailed() bool {
+	if x != nil {
+		return x.Failed
+	}
+	return false
+}
+
+func (x *TaskReport) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *TaskReport) GetNode() string {
+	if x != nil {
+		return x.Node
+	}
+	return ""
+}
+
+func (x *TaskReport) GetFolder() string {
+	if x != nil {
+		return x.Folder
+	}
+	return ""
+}
+
+func (x *TaskReport) GetSession() string {
+	if x != nil {
+		return x.Session
+	}
+	return ""
+}
+
+func (x *TaskReport) GetBlocks() []*Block {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+func (x *TaskReport) GetClipped() bool {
+	if x != nil {
+		return x.Clipped
+	}
+	return false
+}
+
+func (x *TaskReport) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
 type Notice struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Level         Notice_Level           `protobuf:"varint,1,opt,name=level,proto3,enum=tether.v1.Notice_Level" json:"level,omitempty"`
@@ -624,7 +748,7 @@ type Notice struct {
 
 func (x *Notice) Reset() {
 	*x = Notice{}
-	mi := &file_tether_v1_render_proto_msgTypes[4]
+	mi := &file_tether_v1_render_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -636,7 +760,7 @@ func (x *Notice) String() string {
 func (*Notice) ProtoMessage() {}
 
 func (x *Notice) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[4]
+	mi := &file_tether_v1_render_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,7 +773,7 @@ func (x *Notice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Notice.ProtoReflect.Descriptor instead.
 func (*Notice) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{4}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Notice) GetLevel() Notice_Level {
@@ -679,7 +803,7 @@ type ResultSummary struct {
 
 func (x *ResultSummary) Reset() {
 	*x = ResultSummary{}
-	mi := &file_tether_v1_render_proto_msgTypes[5]
+	mi := &file_tether_v1_render_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -691,7 +815,7 @@ func (x *ResultSummary) String() string {
 func (*ResultSummary) ProtoMessage() {}
 
 func (x *ResultSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[5]
+	mi := &file_tether_v1_render_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -704,7 +828,7 @@ func (x *ResultSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResultSummary.ProtoReflect.Descriptor instead.
 func (*ResultSummary) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{5}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ResultSummary) GetIsError() bool {
@@ -756,7 +880,7 @@ type Span struct {
 
 func (x *Span) Reset() {
 	*x = Span{}
-	mi := &file_tether_v1_render_proto_msgTypes[6]
+	mi := &file_tether_v1_render_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -768,7 +892,7 @@ func (x *Span) String() string {
 func (*Span) ProtoMessage() {}
 
 func (x *Span) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[6]
+	mi := &file_tether_v1_render_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,7 +905,7 @@ func (x *Span) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Span.ProtoReflect.Descriptor instead.
 func (*Span) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{6}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Span) GetText() string {
@@ -845,7 +969,7 @@ type Block struct {
 
 func (x *Block) Reset() {
 	*x = Block{}
-	mi := &file_tether_v1_render_proto_msgTypes[7]
+	mi := &file_tether_v1_render_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -857,7 +981,7 @@ func (x *Block) String() string {
 func (*Block) ProtoMessage() {}
 
 func (x *Block) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[7]
+	mi := &file_tether_v1_render_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -870,7 +994,7 @@ func (x *Block) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Block.ProtoReflect.Descriptor instead.
 func (*Block) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{7}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *Block) GetKind() isBlock_Kind {
@@ -1014,7 +1138,7 @@ type Heading struct {
 
 func (x *Heading) Reset() {
 	*x = Heading{}
-	mi := &file_tether_v1_render_proto_msgTypes[8]
+	mi := &file_tether_v1_render_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1026,7 +1150,7 @@ func (x *Heading) String() string {
 func (*Heading) ProtoMessage() {}
 
 func (x *Heading) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[8]
+	mi := &file_tether_v1_render_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1039,7 +1163,7 @@ func (x *Heading) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Heading.ProtoReflect.Descriptor instead.
 func (*Heading) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{8}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Heading) GetLevel() int32 {
@@ -1065,7 +1189,7 @@ type Paragraph struct {
 
 func (x *Paragraph) Reset() {
 	*x = Paragraph{}
-	mi := &file_tether_v1_render_proto_msgTypes[9]
+	mi := &file_tether_v1_render_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1077,7 +1201,7 @@ func (x *Paragraph) String() string {
 func (*Paragraph) ProtoMessage() {}
 
 func (x *Paragraph) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[9]
+	mi := &file_tether_v1_render_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1090,7 +1214,7 @@ func (x *Paragraph) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Paragraph.ProtoReflect.Descriptor instead.
 func (*Paragraph) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{9}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Paragraph) GetSpans() []*Span {
@@ -1111,7 +1235,7 @@ type ListBlock struct {
 
 func (x *ListBlock) Reset() {
 	*x = ListBlock{}
-	mi := &file_tether_v1_render_proto_msgTypes[10]
+	mi := &file_tether_v1_render_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1123,7 +1247,7 @@ func (x *ListBlock) String() string {
 func (*ListBlock) ProtoMessage() {}
 
 func (x *ListBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[10]
+	mi := &file_tether_v1_render_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1136,7 +1260,7 @@ func (x *ListBlock) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBlock.ProtoReflect.Descriptor instead.
 func (*ListBlock) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{10}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListBlock) GetOrdered() bool {
@@ -1170,7 +1294,7 @@ type ListItem struct {
 
 func (x *ListItem) Reset() {
 	*x = ListItem{}
-	mi := &file_tether_v1_render_proto_msgTypes[11]
+	mi := &file_tether_v1_render_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1182,7 +1306,7 @@ func (x *ListItem) String() string {
 func (*ListItem) ProtoMessage() {}
 
 func (x *ListItem) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[11]
+	mi := &file_tether_v1_render_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1195,7 +1319,7 @@ func (x *ListItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListItem.ProtoReflect.Descriptor instead.
 func (*ListItem) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{11}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListItem) GetChecked() bool {
@@ -1222,7 +1346,7 @@ type CodeBlock struct {
 
 func (x *CodeBlock) Reset() {
 	*x = CodeBlock{}
-	mi := &file_tether_v1_render_proto_msgTypes[12]
+	mi := &file_tether_v1_render_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1234,7 +1358,7 @@ func (x *CodeBlock) String() string {
 func (*CodeBlock) ProtoMessage() {}
 
 func (x *CodeBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[12]
+	mi := &file_tether_v1_render_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1247,7 +1371,7 @@ func (x *CodeBlock) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CodeBlock.ProtoReflect.Descriptor instead.
 func (*CodeBlock) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{12}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CodeBlock) GetLang() string {
@@ -1275,7 +1399,7 @@ type Table struct {
 
 func (x *Table) Reset() {
 	*x = Table{}
-	mi := &file_tether_v1_render_proto_msgTypes[13]
+	mi := &file_tether_v1_render_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1287,7 +1411,7 @@ func (x *Table) String() string {
 func (*Table) ProtoMessage() {}
 
 func (x *Table) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[13]
+	mi := &file_tether_v1_render_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1300,7 +1424,7 @@ func (x *Table) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Table.ProtoReflect.Descriptor instead.
 func (*Table) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{13}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *Table) GetAlign() []Table_Align {
@@ -1333,7 +1457,7 @@ type TableRow struct {
 
 func (x *TableRow) Reset() {
 	*x = TableRow{}
-	mi := &file_tether_v1_render_proto_msgTypes[14]
+	mi := &file_tether_v1_render_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1345,7 +1469,7 @@ func (x *TableRow) String() string {
 func (*TableRow) ProtoMessage() {}
 
 func (x *TableRow) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[14]
+	mi := &file_tether_v1_render_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1358,7 +1482,7 @@ func (x *TableRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableRow.ProtoReflect.Descriptor instead.
 func (*TableRow) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{14}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TableRow) GetCells() []*TableCell {
@@ -1377,7 +1501,7 @@ type TableCell struct {
 
 func (x *TableCell) Reset() {
 	*x = TableCell{}
-	mi := &file_tether_v1_render_proto_msgTypes[15]
+	mi := &file_tether_v1_render_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1389,7 +1513,7 @@ func (x *TableCell) String() string {
 func (*TableCell) ProtoMessage() {}
 
 func (x *TableCell) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[15]
+	mi := &file_tether_v1_render_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1402,7 +1526,7 @@ func (x *TableCell) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TableCell.ProtoReflect.Descriptor instead.
 func (*TableCell) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{15}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *TableCell) GetSpans() []*Span {
@@ -1421,7 +1545,7 @@ type Quote struct {
 
 func (x *Quote) Reset() {
 	*x = Quote{}
-	mi := &file_tether_v1_render_proto_msgTypes[16]
+	mi := &file_tether_v1_render_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1433,7 +1557,7 @@ func (x *Quote) String() string {
 func (*Quote) ProtoMessage() {}
 
 func (x *Quote) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[16]
+	mi := &file_tether_v1_render_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1446,7 +1570,7 @@ func (x *Quote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Quote.ProtoReflect.Descriptor instead.
 func (*Quote) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{16}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Quote) GetBlocks() []*Block {
@@ -1464,7 +1588,7 @@ type Divider struct {
 
 func (x *Divider) Reset() {
 	*x = Divider{}
-	mi := &file_tether_v1_render_proto_msgTypes[17]
+	mi := &file_tether_v1_render_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1476,7 +1600,7 @@ func (x *Divider) String() string {
 func (*Divider) ProtoMessage() {}
 
 func (x *Divider) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[17]
+	mi := &file_tether_v1_render_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1489,7 +1613,7 @@ func (x *Divider) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Divider.ProtoReflect.Descriptor instead.
 func (*Divider) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{17}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{18}
 }
 
 type Image struct {
@@ -1502,7 +1626,7 @@ type Image struct {
 
 func (x *Image) Reset() {
 	*x = Image{}
-	mi := &file_tether_v1_render_proto_msgTypes[18]
+	mi := &file_tether_v1_render_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1514,7 +1638,7 @@ func (x *Image) String() string {
 func (*Image) ProtoMessage() {}
 
 func (x *Image) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[18]
+	mi := &file_tether_v1_render_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1527,7 +1651,7 @@ func (x *Image) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Image.ProtoReflect.Descriptor instead.
 func (*Image) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{18}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Image) GetUrl() string {
@@ -1570,7 +1694,7 @@ type ToolCard struct {
 
 func (x *ToolCard) Reset() {
 	*x = ToolCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[19]
+	mi := &file_tether_v1_render_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1582,7 +1706,7 @@ func (x *ToolCard) String() string {
 func (*ToolCard) ProtoMessage() {}
 
 func (x *ToolCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[19]
+	mi := &file_tether_v1_render_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1595,7 +1719,7 @@ func (x *ToolCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolCard.ProtoReflect.Descriptor instead.
 func (*ToolCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{19}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ToolCard) GetToolUseId() string {
@@ -1791,7 +1915,7 @@ type ToolOutput struct {
 
 func (x *ToolOutput) Reset() {
 	*x = ToolOutput{}
-	mi := &file_tether_v1_render_proto_msgTypes[20]
+	mi := &file_tether_v1_render_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1803,7 +1927,7 @@ func (x *ToolOutput) String() string {
 func (*ToolOutput) ProtoMessage() {}
 
 func (x *ToolOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[20]
+	mi := &file_tether_v1_render_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1816,7 +1940,7 @@ func (x *ToolOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolOutput.ProtoReflect.Descriptor instead.
 func (*ToolOutput) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{20}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ToolOutput) GetText() string {
@@ -1851,7 +1975,7 @@ type ShellCard struct {
 
 func (x *ShellCard) Reset() {
 	*x = ShellCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[21]
+	mi := &file_tether_v1_render_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1863,7 +1987,7 @@ func (x *ShellCard) String() string {
 func (*ShellCard) ProtoMessage() {}
 
 func (x *ShellCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[21]
+	mi := &file_tether_v1_render_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1876,7 +2000,7 @@ func (x *ShellCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShellCard.ProtoReflect.Descriptor instead.
 func (*ShellCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{21}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ShellCard) GetShell() string {
@@ -1912,7 +2036,7 @@ type EditCard struct {
 
 func (x *EditCard) Reset() {
 	*x = EditCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[22]
+	mi := &file_tether_v1_render_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1924,7 +2048,7 @@ func (x *EditCard) String() string {
 func (*EditCard) ProtoMessage() {}
 
 func (x *EditCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[22]
+	mi := &file_tether_v1_render_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1937,7 +2061,7 @@ func (x *EditCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditCard.ProtoReflect.Descriptor instead.
 func (*EditCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{22}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *EditCard) GetPath() string {
@@ -1979,7 +2103,7 @@ type WriteCard struct {
 
 func (x *WriteCard) Reset() {
 	*x = WriteCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[23]
+	mi := &file_tether_v1_render_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1991,7 +2115,7 @@ func (x *WriteCard) String() string {
 func (*WriteCard) ProtoMessage() {}
 
 func (x *WriteCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[23]
+	mi := &file_tether_v1_render_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2004,7 +2128,7 @@ func (x *WriteCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WriteCard.ProtoReflect.Descriptor instead.
 func (*WriteCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{23}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *WriteCard) GetPath() string {
@@ -2039,7 +2163,7 @@ type ReadCard struct {
 
 func (x *ReadCard) Reset() {
 	*x = ReadCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[24]
+	mi := &file_tether_v1_render_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2051,7 +2175,7 @@ func (x *ReadCard) String() string {
 func (*ReadCard) ProtoMessage() {}
 
 func (x *ReadCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[24]
+	mi := &file_tether_v1_render_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2064,7 +2188,7 @@ func (x *ReadCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadCard.ProtoReflect.Descriptor instead.
 func (*ReadCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{24}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ReadCard) GetPath() string {
@@ -2099,7 +2223,7 @@ type SearchCard struct {
 
 func (x *SearchCard) Reset() {
 	*x = SearchCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[25]
+	mi := &file_tether_v1_render_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2111,7 +2235,7 @@ func (x *SearchCard) String() string {
 func (*SearchCard) ProtoMessage() {}
 
 func (x *SearchCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[25]
+	mi := &file_tether_v1_render_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2124,7 +2248,7 @@ func (x *SearchCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchCard.ProtoReflect.Descriptor instead.
 func (*SearchCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{25}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SearchCard) GetPattern() string {
@@ -2159,7 +2283,7 @@ type Todo struct {
 
 func (x *Todo) Reset() {
 	*x = Todo{}
-	mi := &file_tether_v1_render_proto_msgTypes[26]
+	mi := &file_tether_v1_render_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2171,7 +2295,7 @@ func (x *Todo) String() string {
 func (*Todo) ProtoMessage() {}
 
 func (x *Todo) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[26]
+	mi := &file_tether_v1_render_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2184,7 +2308,7 @@ func (x *Todo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Todo.ProtoReflect.Descriptor instead.
 func (*Todo) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{26}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Todo) GetContent() string {
@@ -2217,7 +2341,7 @@ type TodoCard struct {
 
 func (x *TodoCard) Reset() {
 	*x = TodoCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[27]
+	mi := &file_tether_v1_render_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2229,7 +2353,7 @@ func (x *TodoCard) String() string {
 func (*TodoCard) ProtoMessage() {}
 
 func (x *TodoCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[27]
+	mi := &file_tether_v1_render_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2242,7 +2366,7 @@ func (x *TodoCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TodoCard.ProtoReflect.Descriptor instead.
 func (*TodoCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{27}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *TodoCard) GetTodos() []*Todo {
@@ -2263,7 +2387,7 @@ type AgentCard struct {
 
 func (x *AgentCard) Reset() {
 	*x = AgentCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[28]
+	mi := &file_tether_v1_render_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2275,7 +2399,7 @@ func (x *AgentCard) String() string {
 func (*AgentCard) ProtoMessage() {}
 
 func (x *AgentCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[28]
+	mi := &file_tether_v1_render_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2288,7 +2412,7 @@ func (x *AgentCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AgentCard.ProtoReflect.Descriptor instead.
 func (*AgentCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{28}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AgentCard) GetDescription() string {
@@ -2322,7 +2446,7 @@ type WebCard struct {
 
 func (x *WebCard) Reset() {
 	*x = WebCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[29]
+	mi := &file_tether_v1_render_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2334,7 +2458,7 @@ func (x *WebCard) String() string {
 func (*WebCard) ProtoMessage() {}
 
 func (x *WebCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[29]
+	mi := &file_tether_v1_render_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2347,7 +2471,7 @@ func (x *WebCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WebCard.ProtoReflect.Descriptor instead.
 func (*WebCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{29}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *WebCard) GetUrl() string {
@@ -2374,7 +2498,7 @@ type GenericCard struct {
 
 func (x *GenericCard) Reset() {
 	*x = GenericCard{}
-	mi := &file_tether_v1_render_proto_msgTypes[30]
+	mi := &file_tether_v1_render_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2386,7 +2510,7 @@ func (x *GenericCard) String() string {
 func (*GenericCard) ProtoMessage() {}
 
 func (x *GenericCard) ProtoReflect() protoreflect.Message {
-	mi := &file_tether_v1_render_proto_msgTypes[30]
+	mi := &file_tether_v1_render_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2399,7 +2523,7 @@ func (x *GenericCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenericCard.ProtoReflect.Descriptor instead.
 func (*GenericCard) Descriptor() ([]byte, []int) {
-	return file_tether_v1_render_proto_rawDescGZIP(), []int{30}
+	return file_tether_v1_render_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GenericCard) GetInputJson() string {
@@ -2413,7 +2537,7 @@ var File_tether_v1_render_proto protoreflect.FileDescriptor
 
 const file_tether_v1_render_proto_rawDesc = "" +
 	"\n" +
-	"\x16tether/v1/render.proto\x12\ttether.v1\"\xa0\x03\n" +
+	"\x16tether/v1/render.proto\x12\ttether.v1\"\xda\x03\n" +
 	"\fTimelineItem\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12\x10\n" +
 	"\x03ord\x18\x02 \x01(\x04R\x03ord\x12+\n" +
@@ -2425,7 +2549,9 @@ const file_tether_v1_render_proto_rawDesc = "" +
 	"\x04tool\x18\f \x01(\v2\x13.tether.v1.ToolCardH\x00R\x04tool\x121\n" +
 	"\bthinking\x18\r \x01(\v2\x13.tether.v1.ThinkingH\x00R\bthinking\x12+\n" +
 	"\x06notice\x18\x0e \x01(\v2\x11.tether.v1.NoticeH\x00R\x06notice\x122\n" +
-	"\x06result\x18\x0f \x01(\v2\x18.tether.v1.ResultSummaryH\x00R\x06resultB\x06\n" +
+	"\x06result\x18\x0f \x01(\v2\x18.tether.v1.ResultSummaryH\x00R\x06result\x128\n" +
+	"\vtask_report\x18\x10 \x01(\v2\x15.tether.v1.TaskReportH\x00R\n" +
+	"taskReportB\x06\n" +
 	"\x04kind\"\xaf\x01\n" +
 	"\bUserText\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x16\n" +
@@ -2440,7 +2566,17 @@ const file_tether_v1_render_proto_rawDesc = "" +
 	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"<\n" +
 	"\bThinking\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1c\n" +
-	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"\x9f\x01\n" +
+	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"\xdc\x01\n" +
+	"\n" +
+	"TaskReport\x12\x16\n" +
+	"\x06failed\x18\x01 \x01(\bR\x06failed\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04node\x18\x03 \x01(\tR\x04node\x12\x16\n" +
+	"\x06folder\x18\x04 \x01(\tR\x06folder\x12\x18\n" +
+	"\asession\x18\x05 \x01(\tR\asession\x12(\n" +
+	"\x06blocks\x18\x06 \x03(\v2\x10.tether.v1.BlockR\x06blocks\x12\x18\n" +
+	"\aclipped\x18\a \x01(\bR\aclipped\x12\x16\n" +
+	"\x06detail\x18\b \x01(\tR\x06detail\"\x9f\x01\n" +
 	"\x06Notice\x12-\n" +
 	"\x05level\x18\x01 \x01(\x0e2\x17.tether.v1.Notice.LevelR\x05level\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"R\n" +
@@ -2597,7 +2733,7 @@ func file_tether_v1_render_proto_rawDescGZIP() []byte {
 }
 
 var file_tether_v1_render_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_tether_v1_render_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_tether_v1_render_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_tether_v1_render_proto_goTypes = []any{
 	(Notice_Level)(0),     // 0: tether.v1.Notice.Level
 	(Table_Align)(0),      // 1: tether.v1.Table.Align
@@ -2607,79 +2743,82 @@ var file_tether_v1_render_proto_goTypes = []any{
 	(*UserText)(nil),      // 5: tether.v1.UserText
 	(*Markdown)(nil),      // 6: tether.v1.Markdown
 	(*Thinking)(nil),      // 7: tether.v1.Thinking
-	(*Notice)(nil),        // 8: tether.v1.Notice
-	(*ResultSummary)(nil), // 9: tether.v1.ResultSummary
-	(*Span)(nil),          // 10: tether.v1.Span
-	(*Block)(nil),         // 11: tether.v1.Block
-	(*Heading)(nil),       // 12: tether.v1.Heading
-	(*Paragraph)(nil),     // 13: tether.v1.Paragraph
-	(*ListBlock)(nil),     // 14: tether.v1.ListBlock
-	(*ListItem)(nil),      // 15: tether.v1.ListItem
-	(*CodeBlock)(nil),     // 16: tether.v1.CodeBlock
-	(*Table)(nil),         // 17: tether.v1.Table
-	(*TableRow)(nil),      // 18: tether.v1.TableRow
-	(*TableCell)(nil),     // 19: tether.v1.TableCell
-	(*Quote)(nil),         // 20: tether.v1.Quote
-	(*Divider)(nil),       // 21: tether.v1.Divider
-	(*Image)(nil),         // 22: tether.v1.Image
-	(*ToolCard)(nil),      // 23: tether.v1.ToolCard
-	(*ToolOutput)(nil),    // 24: tether.v1.ToolOutput
-	(*ShellCard)(nil),     // 25: tether.v1.ShellCard
-	(*EditCard)(nil),      // 26: tether.v1.EditCard
-	(*WriteCard)(nil),     // 27: tether.v1.WriteCard
-	(*ReadCard)(nil),      // 28: tether.v1.ReadCard
-	(*SearchCard)(nil),    // 29: tether.v1.SearchCard
-	(*Todo)(nil),          // 30: tether.v1.Todo
-	(*TodoCard)(nil),      // 31: tether.v1.TodoCard
-	(*AgentCard)(nil),     // 32: tether.v1.AgentCard
-	(*WebCard)(nil),       // 33: tether.v1.WebCard
-	(*GenericCard)(nil),   // 34: tether.v1.GenericCard
+	(*TaskReport)(nil),    // 8: tether.v1.TaskReport
+	(*Notice)(nil),        // 9: tether.v1.Notice
+	(*ResultSummary)(nil), // 10: tether.v1.ResultSummary
+	(*Span)(nil),          // 11: tether.v1.Span
+	(*Block)(nil),         // 12: tether.v1.Block
+	(*Heading)(nil),       // 13: tether.v1.Heading
+	(*Paragraph)(nil),     // 14: tether.v1.Paragraph
+	(*ListBlock)(nil),     // 15: tether.v1.ListBlock
+	(*ListItem)(nil),      // 16: tether.v1.ListItem
+	(*CodeBlock)(nil),     // 17: tether.v1.CodeBlock
+	(*Table)(nil),         // 18: tether.v1.Table
+	(*TableRow)(nil),      // 19: tether.v1.TableRow
+	(*TableCell)(nil),     // 20: tether.v1.TableCell
+	(*Quote)(nil),         // 21: tether.v1.Quote
+	(*Divider)(nil),       // 22: tether.v1.Divider
+	(*Image)(nil),         // 23: tether.v1.Image
+	(*ToolCard)(nil),      // 24: tether.v1.ToolCard
+	(*ToolOutput)(nil),    // 25: tether.v1.ToolOutput
+	(*ShellCard)(nil),     // 26: tether.v1.ShellCard
+	(*EditCard)(nil),      // 27: tether.v1.EditCard
+	(*WriteCard)(nil),     // 28: tether.v1.WriteCard
+	(*ReadCard)(nil),      // 29: tether.v1.ReadCard
+	(*SearchCard)(nil),    // 30: tether.v1.SearchCard
+	(*Todo)(nil),          // 31: tether.v1.Todo
+	(*TodoCard)(nil),      // 32: tether.v1.TodoCard
+	(*AgentCard)(nil),     // 33: tether.v1.AgentCard
+	(*WebCard)(nil),       // 34: tether.v1.WebCard
+	(*GenericCard)(nil),   // 35: tether.v1.GenericCard
 }
 var file_tether_v1_render_proto_depIdxs = []int32{
 	5,  // 0: tether.v1.TimelineItem.user:type_name -> tether.v1.UserText
 	6,  // 1: tether.v1.TimelineItem.markdown:type_name -> tether.v1.Markdown
-	23, // 2: tether.v1.TimelineItem.tool:type_name -> tether.v1.ToolCard
+	24, // 2: tether.v1.TimelineItem.tool:type_name -> tether.v1.ToolCard
 	7,  // 3: tether.v1.TimelineItem.thinking:type_name -> tether.v1.Thinking
-	8,  // 4: tether.v1.TimelineItem.notice:type_name -> tether.v1.Notice
-	9,  // 5: tether.v1.TimelineItem.result:type_name -> tether.v1.ResultSummary
-	11, // 6: tether.v1.Markdown.blocks:type_name -> tether.v1.Block
-	0,  // 7: tether.v1.Notice.level:type_name -> tether.v1.Notice.Level
-	12, // 8: tether.v1.Block.heading:type_name -> tether.v1.Heading
-	13, // 9: tether.v1.Block.paragraph:type_name -> tether.v1.Paragraph
-	14, // 10: tether.v1.Block.list:type_name -> tether.v1.ListBlock
-	16, // 11: tether.v1.Block.code:type_name -> tether.v1.CodeBlock
-	17, // 12: tether.v1.Block.table:type_name -> tether.v1.Table
-	20, // 13: tether.v1.Block.quote:type_name -> tether.v1.Quote
-	21, // 14: tether.v1.Block.divider:type_name -> tether.v1.Divider
-	22, // 15: tether.v1.Block.image:type_name -> tether.v1.Image
-	10, // 16: tether.v1.Heading.spans:type_name -> tether.v1.Span
-	10, // 17: tether.v1.Paragraph.spans:type_name -> tether.v1.Span
-	15, // 18: tether.v1.ListBlock.items:type_name -> tether.v1.ListItem
-	11, // 19: tether.v1.ListItem.blocks:type_name -> tether.v1.Block
-	1,  // 20: tether.v1.Table.align:type_name -> tether.v1.Table.Align
-	19, // 21: tether.v1.Table.header:type_name -> tether.v1.TableCell
-	18, // 22: tether.v1.Table.rows:type_name -> tether.v1.TableRow
-	19, // 23: tether.v1.TableRow.cells:type_name -> tether.v1.TableCell
-	10, // 24: tether.v1.TableCell.spans:type_name -> tether.v1.Span
-	11, // 25: tether.v1.Quote.blocks:type_name -> tether.v1.Block
-	2,  // 26: tether.v1.ToolCard.status:type_name -> tether.v1.ToolCard.Status
-	25, // 27: tether.v1.ToolCard.shell:type_name -> tether.v1.ShellCard
-	26, // 28: tether.v1.ToolCard.edit:type_name -> tether.v1.EditCard
-	27, // 29: tether.v1.ToolCard.write:type_name -> tether.v1.WriteCard
-	28, // 30: tether.v1.ToolCard.read:type_name -> tether.v1.ReadCard
-	29, // 31: tether.v1.ToolCard.search:type_name -> tether.v1.SearchCard
-	31, // 32: tether.v1.ToolCard.todos:type_name -> tether.v1.TodoCard
-	32, // 33: tether.v1.ToolCard.agent:type_name -> tether.v1.AgentCard
-	33, // 34: tether.v1.ToolCard.web:type_name -> tether.v1.WebCard
-	34, // 35: tether.v1.ToolCard.generic:type_name -> tether.v1.GenericCard
-	24, // 36: tether.v1.ToolCard.output:type_name -> tether.v1.ToolOutput
-	3,  // 37: tether.v1.Todo.status:type_name -> tether.v1.Todo.Status
-	30, // 38: tether.v1.TodoCard.todos:type_name -> tether.v1.Todo
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	9,  // 4: tether.v1.TimelineItem.notice:type_name -> tether.v1.Notice
+	10, // 5: tether.v1.TimelineItem.result:type_name -> tether.v1.ResultSummary
+	8,  // 6: tether.v1.TimelineItem.task_report:type_name -> tether.v1.TaskReport
+	12, // 7: tether.v1.Markdown.blocks:type_name -> tether.v1.Block
+	12, // 8: tether.v1.TaskReport.blocks:type_name -> tether.v1.Block
+	0,  // 9: tether.v1.Notice.level:type_name -> tether.v1.Notice.Level
+	13, // 10: tether.v1.Block.heading:type_name -> tether.v1.Heading
+	14, // 11: tether.v1.Block.paragraph:type_name -> tether.v1.Paragraph
+	15, // 12: tether.v1.Block.list:type_name -> tether.v1.ListBlock
+	17, // 13: tether.v1.Block.code:type_name -> tether.v1.CodeBlock
+	18, // 14: tether.v1.Block.table:type_name -> tether.v1.Table
+	21, // 15: tether.v1.Block.quote:type_name -> tether.v1.Quote
+	22, // 16: tether.v1.Block.divider:type_name -> tether.v1.Divider
+	23, // 17: tether.v1.Block.image:type_name -> tether.v1.Image
+	11, // 18: tether.v1.Heading.spans:type_name -> tether.v1.Span
+	11, // 19: tether.v1.Paragraph.spans:type_name -> tether.v1.Span
+	16, // 20: tether.v1.ListBlock.items:type_name -> tether.v1.ListItem
+	12, // 21: tether.v1.ListItem.blocks:type_name -> tether.v1.Block
+	1,  // 22: tether.v1.Table.align:type_name -> tether.v1.Table.Align
+	20, // 23: tether.v1.Table.header:type_name -> tether.v1.TableCell
+	19, // 24: tether.v1.Table.rows:type_name -> tether.v1.TableRow
+	20, // 25: tether.v1.TableRow.cells:type_name -> tether.v1.TableCell
+	11, // 26: tether.v1.TableCell.spans:type_name -> tether.v1.Span
+	12, // 27: tether.v1.Quote.blocks:type_name -> tether.v1.Block
+	2,  // 28: tether.v1.ToolCard.status:type_name -> tether.v1.ToolCard.Status
+	26, // 29: tether.v1.ToolCard.shell:type_name -> tether.v1.ShellCard
+	27, // 30: tether.v1.ToolCard.edit:type_name -> tether.v1.EditCard
+	28, // 31: tether.v1.ToolCard.write:type_name -> tether.v1.WriteCard
+	29, // 32: tether.v1.ToolCard.read:type_name -> tether.v1.ReadCard
+	30, // 33: tether.v1.ToolCard.search:type_name -> tether.v1.SearchCard
+	32, // 34: tether.v1.ToolCard.todos:type_name -> tether.v1.TodoCard
+	33, // 35: tether.v1.ToolCard.agent:type_name -> tether.v1.AgentCard
+	34, // 36: tether.v1.ToolCard.web:type_name -> tether.v1.WebCard
+	35, // 37: tether.v1.ToolCard.generic:type_name -> tether.v1.GenericCard
+	25, // 38: tether.v1.ToolCard.output:type_name -> tether.v1.ToolOutput
+	3,  // 39: tether.v1.Todo.status:type_name -> tether.v1.Todo.Status
+	31, // 40: tether.v1.TodoCard.todos:type_name -> tether.v1.Todo
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_tether_v1_render_proto_init() }
@@ -2694,8 +2833,9 @@ func file_tether_v1_render_proto_init() {
 		(*TimelineItem_Thinking)(nil),
 		(*TimelineItem_Notice)(nil),
 		(*TimelineItem_Result)(nil),
+		(*TimelineItem_TaskReport)(nil),
 	}
-	file_tether_v1_render_proto_msgTypes[7].OneofWrappers = []any{
+	file_tether_v1_render_proto_msgTypes[8].OneofWrappers = []any{
 		(*Block_Heading)(nil),
 		(*Block_Paragraph)(nil),
 		(*Block_List)(nil),
@@ -2705,8 +2845,8 @@ func file_tether_v1_render_proto_init() {
 		(*Block_Divider)(nil),
 		(*Block_Image)(nil),
 	}
-	file_tether_v1_render_proto_msgTypes[11].OneofWrappers = []any{}
-	file_tether_v1_render_proto_msgTypes[19].OneofWrappers = []any{
+	file_tether_v1_render_proto_msgTypes[12].OneofWrappers = []any{}
+	file_tether_v1_render_proto_msgTypes[20].OneofWrappers = []any{
 		(*ToolCard_Shell)(nil),
 		(*ToolCard_Edit)(nil),
 		(*ToolCard_Write)(nil),
@@ -2723,7 +2863,7 @@ func file_tether_v1_render_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_tether_v1_render_proto_rawDesc), len(file_tether_v1_render_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   31,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

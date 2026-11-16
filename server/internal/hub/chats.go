@@ -437,22 +437,55 @@ func (h *Hub) reportTask(c *v1.Chat, task string) {
 	if it, _ := h.store.Item(c.ActiveSession, id); it != nil {
 		return
 	}
-	text := "Task finished"
-	level := v1.Notice_LEVEL_INFO
-	if s.State == v1.SessionState_SESSION_STATE_ERROR {
-		text, level = "Task failed", v1.Notice_LEVEL_ERROR
-	}
-	where := s.Node
+	folder := ""
 	if s.Cwd != "" {
-		where += ", " + path.Base(strings.ReplaceAll(s.Cwd, `\`, "/"))
+		folder = path.Base(strings.ReplaceAll(s.Cwd, `\`, "/"))
 	}
-	text += ": " + clip(firstNonEmpty(s.Title, "a task"), 80) + " (" + where + ")"
-	if said := h.lastAssistantText(c.Id, task); said != "" {
-		text += "\n\n" + clip(said, 600)
+	rep := &v1.TaskReport{
+		Failed: s.State == v1.SessionState_SESSION_STATE_ERROR,
+		Title:  clip(firstNonEmpty(s.Title, "a task"), 120),
+		Node:   s.Node,
+		Folder: folder,
+		Session: task,
 	}
+	if rep.Failed {
+		rep.Detail = clip(s.Error, 300)
+	}
+	rep.Blocks, rep.Clipped = h.lastReply(task)
 	h.commit(c.ActiveSession, []*v1.TimelineItem{{
-		ItemId: id, TsMs: time.Now().UnixMilli(), Kind: &v1.TimelineItem_Notice{Notice: &v1.Notice{Level: level, Text: text}},
+		ItemId: id, TsMs: time.Now().UnixMilli(), Kind: &v1.TimelineItem_TaskReport{TaskReport: rep},
 	}})
+}
+
+// reportLimit is how much of a task's last reply goes into its report, in
+// characters of text; the rest is a tap away in the task's own session.
+const reportLimit = 6000
+
+// lastReply is a task's last reply as it was drawn (paragraphs, lists, tables,
+// code), cut at reportLimit characters between blocks, and whether it was cut.
+func (h *Hub) lastReply(task string) ([]*v1.Block, bool) {
+	items, err := h.store.RecentItems(task, 40)
+	if err != nil {
+		return nil, false
+	}
+	for _, it := range items {
+		md, ok := it.Kind.(*v1.TimelineItem_Markdown)
+		if !ok || it.ParentToolUseId != "" || len(md.Markdown.Blocks) == 0 {
+			continue
+		}
+		var out []*v1.Block
+		used := 0
+		for _, bl := range md.Markdown.Blocks {
+			n := len(blocksText([]*v1.Block{bl}))
+			if used+n > reportLimit && len(out) > 0 {
+				return out, true
+			}
+			out = append(out, bl)
+			used += n
+		}
+		return out, false
+	}
+	return nil, false
 }
 
 // lastAssistantText is what a session last said in a chat's stored context.

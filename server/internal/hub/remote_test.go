@@ -145,12 +145,21 @@ func TestMakingAChatRemoteMovesItsProjectToAnotherDeviceAndKeepsBothInStep(t *te
 		t.Fatal(err)
 	}
 	h.mu.Lock()
+	before, _, _ := h.store.ChatRemote(c.Id)
 	h.noteTurnEnded(h.chats[c.Id].ActiveSession)
 	h.mu.Unlock()
+	// Wait for the whole sync to be reported, not just the file to appear: git
+	// still writes its refs after the files are in place, and the temporary
+	// folders must not be removed under it.
 	waitUntil(t, "laptop to get the edit", func() bool {
-		got, _ := os.ReadFile(filepath.Join(laptopDir, "main.go"))
-		return string(got) == "package main // edited on minipc"
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		rem, _, _ := h.store.ChatRemote(c.Id)
+		return rem.State == remoteSynced && rem.SyncedMs > before.SyncedMs
 	})
+	if got, _ := os.ReadFile(filepath.Join(laptopDir, "main.go")); string(got) != "package main // edited on minipc" {
+		t.Fatalf("laptop did not get the edit: %q", got)
+	}
 	if got, _ := os.ReadFile(filepath.Join(laptopDir, ".env")); string(got) != "KEY=secret" {
 		t.Fatal("laptop's own secret was touched")
 	}
