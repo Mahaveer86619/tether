@@ -600,7 +600,7 @@ func (h *Hub) leadPrompt(chat, request string) string {
 	sort.Strings(machines)
 	return "You lead this chat. Machines online now: " + strings.Join(machines, "; ") + ". " +
 		"Work that belongs on another machine, or that can run in parallel, goes to a session there: call the tether MCP tool start_session with node, cwd, " +
-		"chat=\"" + chat + "\" and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
+		"chat=\"" + chat + "\", a short title (3 to 6 words, shown in the chat's task list) and a self-contained prompt (the session can't see this conversation). Start independent tasks together, then follow them with " +
 		"wait_for_session or read_session. Don't do a delegated task yourself. When sessions finish, tell the user in plain words what each did and what is left. " +
 		"Small tasks that need no other machine you simply do here. " + filesPrompt + h.activeSkillsPrompt(request)
 }
@@ -609,6 +609,18 @@ func (h *Hub) leadPrompt(chat, request string) string {
 // delivers whatever lands in this folder. See docs/plans/deliverables.md.
 const filesPrompt = "When you make a file the user asked for (a build, an export, a report, a spreadsheet), copy or write it into .tether/out/ in your working folder; " +
 	"Tether delivers it to the user's chat as a file they can download. Say what it is in your reply; don't paste its contents."
+
+// taskTitle is the title of a task session: the one the lead gave, kept short,
+// or one made from its prompt, so the task list never shows a long first message.
+func taskTitle(given, prompt string) string {
+	if t := strings.Join(strings.Fields(given), " "); t != "" {
+		if r := []rune(t); len(r) > 60 {
+			t = strings.TrimSpace(string(r[:60])) + "…"
+		}
+		return t
+	}
+	return autoTitle(prompt)
+}
 
 // workerPrompt is for a session the lead started: do the one task and report.
 func workerPrompt(chat string) string {
