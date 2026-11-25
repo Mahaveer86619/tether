@@ -51,7 +51,7 @@ void main() {
         chats: {'c1': chat('c1', 'Fix login', 's1')},
       );
       final projects = withLoose.chatProjects();
-      expect([for (final p in projects) p.name].toSet(), {'tether', 'fk-ims-wvs'});
+      expect([for (final p in projects) p.name], unorderedEquals(['tether', 'fk-ims-wvs']));
       final loose = projects.firstWhere((p) => p.name == 'fk-ims-wvs');
       expect(loose.chats, isEmpty);
       expect([for (final s in loose.sessions) s.id], ['a']);
