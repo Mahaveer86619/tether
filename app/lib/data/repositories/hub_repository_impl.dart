@@ -230,6 +230,7 @@ class HubRepositoryImpl implements HubRepository {
         ));
         _scheduleStateSave();
         _loadArtifacts();
+        _loadProjects();
         for (final t in _timelines.values) {
           if (t.refs > 0) t.started ? _subscribe(t) : _start(t);
         }
@@ -238,6 +239,8 @@ class HubRepositoryImpl implements HubRepository {
         final a = artifactFromPb(f.artifactAdded);
         _emit(_snap.copyWith(artifacts: {..._snap.artifacts, a.id: a}));
       case pb.Frame_Body.chat:
+        // Projects have no frame of their own; a chat made elsewhere may be in one.
+        if (!_snap.chats.containsKey(f.chat.id) && !f.chat.deleted) _reloadProjectsSoon();
         _putChat(f.chat);
       case pb.Frame_Body.notifyEndpoint:
         _emit(_snap.copyWith(notifyUrl: f.notifyEndpoint.url));
@@ -398,14 +401,78 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<String>> continueOnHub(String sessionId, String text) => _command(() => _api.continueOnHub(sessionId, text));
 
   @override
-  Future<Result<Chat>> createChat(NewChatRequest r) => _chat(() => _api.createChat(pb.CreateChat(
+  Future<Result<Chat>> createChat(NewChatRequest r) async {
+    final made = await _chat(() => _api.createChat(
+        pb.CreateChat(
         prompt: r.prompt,
         target: r.target == null ? null : chatTargetToPb(r.target!),
         attachments: r.attachments,
         model: r.model,
         permissionMode: r.permissionMode,
         clientId: r.clientId.isEmpty ? null : r.clientId,
-      )));
+        ),
+        project: r.project));
+    if (r.project.isNotEmpty) {
+      if (made case Ok(:final value)) _fileChat(value.id, r.project);
+    }
+    return made;
+  }
+
+  @override
+  Future<Result<ProjectInfo>> createProject({String name = '', List<ProjectFolder> folders = const []}) => _command(() async {
+        final p = projectInfoFromJson(await _api.createProject({
+          if (name.isNotEmpty) 'name': name,
+          'folders': [for (final f in folders) {'node': f.node, 'cwd': f.cwd}],
+        }));
+        await _loadProjects();
+        return p;
+      });
+
+  @override
+  Future<Result<ProjectInfo>> addProjectFolder(String projectId, ProjectFolder folder) => _command(() async {
+        final p = projectInfoFromJson(await _api.addProjectFolder(projectId, folder.node, folder.cwd));
+        await _loadProjects();
+        return p;
+      });
+
+  @override
+  Future<Result<void>> setChatProject(String chatId, String projectId) => _command(() async {
+        await _api.setChatProject(chatId, projectId);
+        _fileChat(chatId, projectId);
+      });
+
+  void _fileChat(String chatId, String projectId) => _emit(_snap.copyWith(
+      chatProjectIds: projectId.isEmpty ? ({..._snap.chatProjectIds}..remove(chatId)) : {..._snap.chatProjectIds, chatId: projectId}));
+
+  Timer? _projectsReload;
+
+  void _reloadProjectsSoon() {
+    _projectsReload?.cancel();
+    _projectsReload = Timer(const Duration(milliseconds: 400), _loadProjects);
+  }
+
+  /// Loads the projects after (re)connecting and after a change to them. A
+  /// hub before projects answers 404, and the sidebar groups by folder.
+  Future<void> _loadProjects() async {
+    try {
+      final list = [
+        for (final p in (await _api.projects())['projects'] as List<dynamic>? ?? const [])
+          if (p is Map<String, dynamic>) p,
+      ];
+      _emit(_snap.copyWith(
+        projectsSupported: true,
+        projectInfos: {for (final p in list) p['id'] as String? ?? '': projectInfoFromJson(p)},
+        chatProjectIds: {
+          for (final p in list)
+            for (final c in (p['chats'] as List<dynamic>? ?? const []).whereType<String>()) c: p['id'] as String? ?? '',
+        },
+      ));
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) _emit(_snap.copyWith(projectsSupported: false, projectInfos: const {}, chatProjectIds: const {}));
+    } on Exception {
+      // The sidebar keeps what it had; the next connect tries again.
+    }
+  }
 
   @override
   Future<Result<Chat>> chatForSession(String sessionId) => _chat(() => _api.createChat(pb.CreateChat(session: sessionId)));
@@ -628,6 +695,7 @@ class HubRepositoryImpl implements HubRepository {
   @override
   Future<void> dispose() async {
     _saveState?.cancel();
+    _projectsReload?.cancel();
     for (final t in _backgroundDrop.values) {
       t.cancel();
     }

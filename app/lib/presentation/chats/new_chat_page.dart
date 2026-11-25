@@ -131,6 +131,7 @@ class _NewChatState extends State<_NewChat> {
               spacing: 8,
               runSpacing: 6,
               children: [
+                if (hub.projectsSupported && hub.projectInfos.isNotEmpty) _ProjectPicker(hub: hub, selected: s.project, enabled: connected),
                 ActionChip(
                   key: const Key('target-chip'),
                   avatar: Icon(_targetIcon(s), size: 16, color: c.accent),
@@ -225,4 +226,44 @@ class _NewChatState extends State<_NewChat> {
         ChatTarget(scratch: true) => ('No project · scratch folder', ''),
         final t => ('${t.node} · ${t.cwd.isEmpty ? 'home folder' : baseName(t.cwd)}', ''),
       };
+}
+
+/// Which project a new chat goes in: the hub's projects, a project's devices
+/// when it has folders on several, and No project for a one-off.
+class _ProjectPicker extends StatelessWidget {
+  const _ProjectPicker({required this.hub, required this.selected, required this.enabled});
+
+  final HubSnapshot hub;
+  final String selected;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final projects = hub.projectInfos.values.toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final current = hub.projectInfos[selected];
+    return PopupMenuButton<(ProjectInfo?, ProjectFolder?)>(
+      key: const Key('project-picker'),
+      enabled: enabled,
+      tooltip: 'Project',
+      onSelected: (v) => context.read<NewChatCubit>().setProject(v.$1, folder: v.$2),
+      itemBuilder: (_) => [
+        const PopupMenuItem(key: Key('pick-no-project'), value: (null, null), child: Text('No project')),
+        for (final p in projects)
+          if (p.folders.length < 2)
+            PopupMenuItem(key: Key('pick-project-${p.id}'), value: (p, null), child: Text(p.name))
+          else
+            for (final f in p.folders)
+              PopupMenuItem(
+                key: Key('pick-project-${p.id}-${f.node}'),
+                value: (p, f),
+                child: Text('${p.name} · ${f.node}${hub.nodes[f.node]?.online ?? false ? '' : ' (offline)'}'),
+              ),
+      ],
+      child: Chip(
+        avatar: Icon(current == null ? Icons.chat_bubble_outline_rounded : Icons.folder_special_outlined, size: 16, color: c.accent),
+        label: Text(current?.name ?? 'No project', overflow: TextOverflow.ellipsis, style: Type.meta(context, color: c.text)),
+      ),
+    );
+  }
 }

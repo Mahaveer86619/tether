@@ -330,15 +330,53 @@ class FakeHubRepository implements HubRepository {
     emitHub(_snap.copyWith(
       chats: {..._snap.chats, id: chat},
       sessions: {..._snap.sessions, session: Session(id: session, node: 'minipc', title: chat.title, state: SessionState.running, host: SessionHost.headless, updated: DateTime.now())},
+      chatProjectIds: request.project.isEmpty ? null : {..._snap.chatProjectIds, id: request.project},
     ));
     return Ok(chat);
+  }
+
+  @override
+  Future<Result<ProjectInfo>> createProject({String name = '', List<ProjectFolder> folders = const []}) async {
+    final p = ProjectInfo(id: 'p-${_snap.projectInfos.length + 1}', name: name.isNotEmpty ? name : folders.first.cwd.split('/').last, folders: folders, created: DateTime.now());
+    final keys = {for (final f in folders) f.key};
+    emitHub(_snap.copyWith(
+      projectsSupported: true,
+      projectInfos: {..._snap.projectInfos, p.id: p},
+      chatProjectIds: {
+        ..._snap.chatProjectIds,
+        for (final c in _snap.chats.values)
+          if (!_snap.chatProjectIds.containsKey(c.id) && keys.contains(folderKey(c.target.node, c.target.cwd))) c.id: p.id,
+      },
+    ));
+    return Ok(p);
+  }
+
+  @override
+  Future<Result<ProjectInfo>> addProjectFolder(String projectId, ProjectFolder folder) async {
+    final old = _snap.projectInfos[projectId]!;
+    final p = ProjectInfo(id: old.id, name: old.name, folders: [...old.folders, folder], created: old.created);
+    emitHub(_snap.copyWith(projectInfos: {..._snap.projectInfos, p.id: p}));
+    return Ok(p);
+  }
+
+  @override
+  Future<Result<void>> setChatProject(String chatId, String projectId) async {
+    emitHub(_snap.copyWith(chatProjectIds: projectId.isEmpty ? ({..._snap.chatProjectIds}..remove(chatId)) : {..._snap.chatProjectIds, chatId: projectId}));
+    return const Ok(null);
   }
 
   @override
   Future<Result<Chat>> chatForSession(String sessionId) async {
     final existing = _snap.chatOf(sessionId);
     if (existing != null) return Ok(existing);
-    final chat = Chat(id: 'chat-of-$sessionId', title: _snap.sessions[sessionId]?.title ?? '', activeSession: sessionId, links: [ChatLink(session: sessionId)]);
+    final s = _snap.sessions[sessionId];
+    final chat = Chat(
+      id: 'chat-of-$sessionId',
+      title: s?.title ?? '',
+      activeSession: sessionId,
+      links: [ChatLink(session: sessionId)],
+      target: ChatTarget(mode: TargetMode.manual, node: s?.node ?? '', cwd: s?.cwd ?? ''),
+    );
     emitHub(_snap.copyWith(chats: {..._snap.chats, chat.id: chat}));
     return Ok(chat);
   }

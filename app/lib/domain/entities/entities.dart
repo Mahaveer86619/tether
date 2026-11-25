@@ -293,7 +293,19 @@ class HubSnapshot extends Equatable {
     this.update,
     this.retryAt,
     this.attempts = 0,
+    this.projectInfos = const {},
+    this.chatProjectIds = const {},
+    this.projectsSupported = false,
   });
+
+  /// Projects made on the hub, by id; empty on a hub before projects.
+  final Map<String, ProjectInfo> projectInfos;
+
+  /// The project each filed chat is in; a chat not here is a one-off.
+  final Map<String, String> chatProjectIds;
+
+  /// The hub keeps projects; an older one answers 404 and the sidebar groups by folder.
+  final bool projectsSupported;
 
   /// While offline: when the next connection attempt is due.
   final DateTime? retryAt;
@@ -364,20 +376,20 @@ class HubSnapshot extends Equatable {
   /// first. One-off chats, which have no project, are in none of them. A
   /// session in a project folder that no chat holds, one started in a terminal,
   /// is listed under its folder too, and makes the folder a project by itself.
-  List<ChatProject> chatProjects({bool archived = false}) {
+  List<ChatProject> chatProjects({bool archived = false, bool Function(String node, String cwd)? skip, bool filedChats = true}) {
     final by = <String, List<Chat>>{};
     final loose = <String, List<Session>>{};
     final where = <String, ({String node, String cwd})>{};
     for (final c in chats.values) {
-      if (c.archived != archived) continue;
+      if (c.archived != archived || !filedChats && projectInfoOf(c.id) != null) continue;
       final p = projectOf(c);
-      if (p == null) continue;
+      if (p == null || (skip?.call(p.node, p.cwd) ?? false)) continue;
       final key = '${p.node}|${p.cwd}';
       where[key] = p;
       by.putIfAbsent(key, () => []).add(c);
     }
     for (final s in sessions.values) {
-      if (s.archived != archived || s.scratch || s.node.isEmpty || !isProjectFolder(s.cwd) || _appFolder(s.cwd) || chatOf(s.id) != null) continue;
+      if (!_looseSession(s, archived) || (skip?.call(s.node, s.cwd) ?? false)) continue;
       final key = '${s.node}|${s.cwd}';
       where[key] = (node: s.node, cwd: s.cwd);
       loose.putIfAbsent(key, () => []).add(s);
@@ -393,6 +405,71 @@ class HubSnapshot extends Equatable {
         ),
     ]..sort((a, b) => (b.updated(this) ?? DateTime(0)).compareTo(a.updated(this) ?? DateTime(0)));
     return out;
+  }
+
+  bool _looseSession(Session s, bool archived) =>
+      s.archived == archived && !s.scratch && s.node.isNotEmpty && isProjectFolder(s.cwd) && !_appFolder(s.cwd) && chatOf(s.id) == null;
+
+  /// The project a chat is filed in, if it still exists.
+  ProjectInfo? projectInfoOf(String chatId) => projectInfos[chatProjectIds[chatId]];
+
+  /// A project made on the hub that has this folder.
+  ProjectInfo? projectWithFolder(String node, String cwd) {
+    final key = folderKey(node, cwd);
+    return projectInfos.values.where((p) => p.folders.any((f) => f.key == key)).firstOrNull;
+  }
+
+  /// An approval or a question from the session is waiting on the user.
+  bool needsYou(Session s) => s.state == SessionState.awaitingApproval || approvals.values.any((a) => a.session == s.id);
+
+  /// What the sidebar lists: projects with their chats and the sessions each
+  /// chat spawned, folders with work in them that are not a project yet, and
+  /// one-off chats. A chat is in exactly one place; a spawned session is only
+  /// under its chat. See docs/architecture/app.md#sidebar.
+  SidebarTree sidebarTree() {
+    final chatsOf = {for (final p in projectInfos.values) p.id: <ProjectChat>[]};
+    final sessionsOf = {for (final p in projectInfos.values) p.id: <Session>[]};
+    final oneOffs = <Chat>[];
+    bool filed(String node, String cwd) => projectWithFolder(node, cwd) != null;
+    for (final c in chats.values) {
+      if (c.archived) continue;
+      final p = projectInfoOf(c.id);
+      if (p != null) {
+        chatsOf[p.id]!.add(_projectChat(c));
+        continue;
+      }
+      final f = projectOf(c);
+      if (f == null || filed(f.node, f.cwd)) oneOffs.add(c);
+    }
+    for (final s in sessions.values) {
+      if (!_looseSession(s, false)) continue;
+      final p = projectWithFolder(s.node, s.cwd);
+      if (p != null) sessionsOf[p.id]!.add(s);
+    }
+    DateTime when(Chat c) => chatUpdated(c) ?? DateTime(0);
+    DateTime? latest(Iterable<DateTime?> times) => times.whereType<DateTime>().fold<DateTime?>(null, (a, b) => a == null || b.isAfter(a) ? b : a);
+    final projects = [
+      for (final p in projectInfos.values)
+        ProjectGroup(
+          info: p,
+          chats: chatsOf[p.id]!..sort((a, b) => when(b.chat).compareTo(when(a.chat))),
+          sessions: sessionsOf[p.id]!..sort(compareSessions),
+          needsYou: chatsOf[p.id]!.any((c) => c.needsYou) || sessionsOf[p.id]!.any(needsYou),
+          running: chatsOf[p.id]!.any((c) => c.running) || sessionsOf[p.id]!.any((s) => s.isBusy),
+          updated: latest([p.created, for (final c in chatsOf[p.id]!) chatUpdated(c.chat), for (final s in sessionsOf[p.id]!) s.updated]),
+        ),
+    ]..sort((a, b) => (b.updated ?? DateTime(0)).compareTo(a.updated ?? DateTime(0)));
+    return SidebarTree(projects: projects, unfiled: chatProjects(skip: filed, filedChats: false), oneOffs: oneOffs..sort(compareChats));
+  }
+
+  ProjectChat _projectChat(Chat c) {
+    final spawned = [
+      for (final l in c.links)
+        if (l.role == 'started' && l.session != c.activeSession && sessions[l.session] != null) sessions[l.session]!,
+    ]..sort(compareSessions);
+    final active = sessions[c.activeSession];
+    final all = [if (active != null) active, ...spawned];
+    return ProjectChat(chat: c, spawned: spawned, needsYou: all.any(needsYou), running: all.any((s) => s.isBusy));
   }
 
   /// When a chat last moved: its own time or its active session's.
@@ -513,6 +590,9 @@ class HubSnapshot extends Equatable {
     Release? Function()? update,
     DateTime? Function()? retryAt,
     int? attempts,
+    Map<String, ProjectInfo>? projectInfos,
+    Map<String, String>? chatProjectIds,
+    bool? projectsSupported,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -532,10 +612,13 @@ class HubSnapshot extends Equatable {
         update: update != null ? update() : this.update,
         retryAt: retryAt != null ? retryAt() : this.retryAt,
         attempts: attempts ?? this.attempts,
+        projectInfos: projectInfos ?? this.projectInfos,
+        chatProjectIds: chatProjectIds ?? this.chatProjectIds,
+        projectsSupported: projectsSupported ?? this.projectsSupported,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts, projectInfos, chatProjectIds, projectsSupported];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -589,6 +672,85 @@ class ChatProject extends Equatable {
 
   @override
   List<Object?> get props => [node, cwd, chats, sessions];
+}
+
+/// A project made on the hub: a name and its folders, one per device it is
+/// worked on.
+class ProjectInfo extends Equatable {
+  const ProjectInfo({required this.id, required this.name, this.folders = const [], this.created});
+
+  final String id, name;
+  final List<ProjectFolder> folders;
+  final DateTime? created;
+
+  @override
+  List<Object?> get props => [id, name, folders, created];
+}
+
+class ProjectFolder extends Equatable {
+  const ProjectFolder({required this.node, required this.cwd});
+
+  final String node, cwd;
+
+  String get key => folderKey(node, cwd);
+
+  @override
+  List<Object?> get props => [node, cwd];
+}
+
+/// A folder on a node, the same however its path was written; matches the hub's normPath.
+String folderKey(String node, String cwd) {
+  var p = cwd.trim().replaceAll(r'\', '/');
+  while (p.length > 1 && p.endsWith('/')) {
+    p = p.substring(0, p.length - 1);
+  }
+  if (p.length > 1 && p[1] == ':') p = p.toLowerCase();
+  return '$node|$p';
+}
+
+/// A chat in a project, the sessions it started, and whether any of them is
+/// working or waiting on the user.
+class ProjectChat extends Equatable {
+  const ProjectChat({required this.chat, this.spawned = const [], this.needsYou = false, this.running = false});
+
+  final Chat chat;
+  final List<Session> spawned;
+  final bool needsYou, running;
+
+  @override
+  List<Object?> get props => [chat, spawned, needsYou, running];
+}
+
+/// A project as the sidebar shows it: its chats, newest first, and the
+/// sessions in its folders that no chat holds.
+class ProjectGroup extends Equatable {
+  const ProjectGroup({required this.info, this.chats = const [], this.sessions = const [], this.needsYou = false, this.running = false, this.updated});
+
+  final ProjectInfo info;
+  final List<ProjectChat> chats;
+  final List<Session> sessions;
+  final bool needsYou, running;
+  final DateTime? updated;
+
+  int get count => chats.length + sessions.length;
+
+  @override
+  List<Object?> get props => [info, chats, sessions, needsYou, running, updated];
+}
+
+class SidebarTree extends Equatable {
+  const SidebarTree({this.projects = const [], this.unfiled = const [], this.oneOffs = const []});
+
+  final List<ProjectGroup> projects;
+
+  /// Folders with chats or sessions that are in no project.
+  final List<ChatProject> unfiled;
+
+  /// Chats in no project and no unfiled folder, newest first.
+  final List<Chat> oneOffs;
+
+  @override
+  List<Object?> get props => [projects, unfiled, oneOffs];
 }
 
 bool _appFolder(String cwd) {
@@ -1218,7 +1380,7 @@ class ProjectFile extends Equatable {
 }
 
 class NewChatRequest extends Equatable {
-  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = ''});
+  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = '', this.project = ''});
 
   final String prompt;
 
@@ -1227,8 +1389,11 @@ class NewChatRequest extends Equatable {
   final List<String> attachments;
   final String model, permissionMode, clientId;
 
+  /// The project the chat goes in; empty for a one-off.
+  final String project;
+
   @override
-  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId];
+  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId, project];
 }
 
 /// A folder a chat could run in, as the hub ranks it.

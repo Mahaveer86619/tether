@@ -71,8 +71,12 @@ class ChatsCubit extends Cubit<ChatsState> {
 
   Future<void> unlink(String chatId, String sessionId) => _run(chatId, () => _chats.unlink(chatId, sessionId), done: 'Session unlinked');
 
-  /// Makes a chat of a session that has none; returns its id.
-  Future<String?> adopt(String sessionId) async => (await _run(sessionId, () => _chats.forSession(sessionId)))?.id;
+  /// Files a session's chat in the project for its folder, making either
+  /// when there is none; returns the project's name.
+  Future<String?> addToProject(String sessionId) async => (await _run(sessionId, () => _chats.addToProject(sessionId)))?.name;
+
+  /// Makes a project of a folder, with the chats in it.
+  Future<String?> fileFolder(String node, String cwd) async => (await _run('$node|$cwd', () => _chats.fileFolder(node, cwd)))?.name;
 
   /// The conversation as Markdown, or null if it couldn't be read.
   Future<String?> transcript(String chatId) async => (await _run(chatId, () => _chats.context(chatId)))?.markdown;
