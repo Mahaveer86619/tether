@@ -567,10 +567,11 @@ func (h *Hub) chatPromptWith(c *v1.Chat, node string, worker bool, request strin
 	if !h.agentAtLeast(node, systemPromptVersion) {
 		return ""
 	}
+	rules := h.rulesPrompt(node, c.Target.GetCwd()) + guidePrompt
 	if worker {
-		return workerPrompt(c.Id) + " " + filesPrompt
+		return workerPrompt(c.Id) + " " + filesPrompt + rules
 	}
-	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id, request)
+	p := "You are working in a Tether chat (id " + c.Id + "): the user talks to you from the Tether app.\n\n" + h.leadPrompt(c.Id, request) + rules
 	if c.Target.GetState() == targetDetecting {
 		p += "\n\n" + detectPrompt(c.Id)
 	}

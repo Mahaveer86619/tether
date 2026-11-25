@@ -92,6 +92,18 @@ var mcpTools = []mcpTool{
 		call: (*Hub).mcpUpdateSkill,
 	},
 	{
+		Name:        "tether_guide",
+		Description: "How Tether works: its parts, where it keeps its data (the tables and how to read them), what is built, and these tools. Topics: overview, data, features, tools. Read data before analysing what Tether saved.",
+		InputSchema: schema(nil, map[string]string{"topic": "string: overview, data, features or tools (default overview)"}),
+		call:        (*Hub).mcpGuide,
+	},
+	{
+		Name:        "list_rules",
+		Description: "The user's standing rules for how to work (for example no comments in code, keep docs current). They are already in your instructions; read them again with this when a long conversation may have lost them. Pass node and cwd for the folder you work in.",
+		InputSchema: schema(nil, map[string]string{"node": "string: the machine you work on", "cwd": "string: the folder you work in"}),
+		call:        (*Hub).mcpListRules,
+	},
+	{
 		Name:        "list_nodes",
 		Description: "The machines connected to Tether: name, OS, whether online, and which one is the hub's own machine (where hub sessions run).",
 		InputSchema: schema(nil, nil),
