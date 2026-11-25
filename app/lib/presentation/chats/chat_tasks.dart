@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../home/cards.dart' show StepBar;
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../theme/theme.dart';
@@ -110,10 +111,7 @@ class _TaskRow extends StatelessWidget {
                   ),
                   if (s.isBusy && steps > 0) ...[
                     const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: context.round(3),
-                      child: LinearProgressIndicator(value: s.todosDone / steps, minHeight: 4, color: c.accent, backgroundColor: c.border),
-                    ),
+                    StepBar(done: s.todosDone, total: steps),
                   ],
                 ],
               ),

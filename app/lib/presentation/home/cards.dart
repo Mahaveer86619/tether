@@ -244,17 +244,17 @@ class RunCard extends StatelessWidget {
   }
 }
 
-/// Progress as a row of segments, one per step (at most 12, each standing
-/// for several steps when there are more).
+/// Progress as a row of segments, one per step (at most [segments], each
+/// standing for several steps when there are more).
 class StepBar extends StatelessWidget {
-  const StepBar({super.key, required this.done, required this.total});
+  const StepBar({super.key, required this.done, required this.total, this.segments = 12});
 
-  final int done, total;
+  final int done, total, segments;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final n = total.clamp(1, 12);
+    final n = total.clamp(1, segments);
     final filled = (done * n / total).floor();
     return Row(
       children: [
