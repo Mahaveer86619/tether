@@ -467,8 +467,7 @@ class HubSnapshot extends Equatable {
       for (final l in c.links)
         if (l.role == 'started' && l.session != c.activeSession && sessions[l.session] != null) sessions[l.session]!,
     ]..sort(compareSessions);
-    final active = sessions[c.activeSession];
-    final all = [if (active != null) active, ...spawned];
+    final all = [?sessions[c.activeSession], ...spawned];
     return ProjectChat(chat: c, spawned: spawned, needsYou: all.any(needsYou), running: all.any((s) => s.isBusy));
   }
 

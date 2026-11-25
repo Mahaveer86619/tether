@@ -45,7 +45,9 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(const TetherApp());
     await settle(tester);
-    await tester.tap(find.byKey(const Key('recent-c1')));
+    await tester.tap(find.byKey(const Key('project-minipc|/srv/app')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('project-chat-c1')));
     await settle(tester);
     await tester.tap(find.byKey(const Key('remote-chat')));
     await settle(tester);

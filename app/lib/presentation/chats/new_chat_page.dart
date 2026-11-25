@@ -98,6 +98,7 @@ class _NewChatState extends State<_NewChat> {
         }
 
         final (label, hint) = _targetText(s);
+        final hub = context.select<HubCubit, HubSnapshot>((h) => h.state.hub);
         final box = Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

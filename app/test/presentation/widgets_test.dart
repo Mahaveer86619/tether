@@ -1155,7 +1155,7 @@ void main() {
         pick: TargetCandidate(node: 'laptop', cwd: '/src/tether', label: 'tether', online: true, score: 10, reason: 'matched "tether"'),
       );
       await pumpApp(tester, const Size(1400, 900));
-      expect(find.text('Chats you start show up here.'), findsOneWidget);
+      expect(find.text('Quick questions with no project show up here.'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('new-chat')));
       await settle(tester);
@@ -1171,7 +1171,7 @@ void main() {
       expect(find.byKey(const Key('composer')), findsOneWidget, reason: 'the new chat opens on its session');
       expect(find.byKey(const Key('chat-target')), findsOneWidget);
       expect(find.textContaining('matched "app"', findRichText: true), findsOneWidget);
-      expect(find.byKey(const Key('recent-chat-1')), findsOneWidget, reason: 'it shows in the sidebar recents');
+      expect(find.byKey(const Key('project-chat-chat-1')), findsOneWidget, reason: 'it shows in the sidebar, under its folder');
 
       await tester.tap(find.byKey(const Key('chat-title')));
       await settle(tester);
