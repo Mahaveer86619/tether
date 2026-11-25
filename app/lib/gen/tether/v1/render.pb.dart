@@ -526,6 +526,8 @@ class TaskReport extends $pb.GeneratedMessage {
     $core.Iterable<Block>? blocks,
     $core.bool? clipped,
     $core.String? detail,
+    $core.bool? waiting,
+    $fixnum.Int64? resumeMs,
   }) {
     final result = TaskReport._();
     if (failed != null) result.failed = failed;
@@ -536,6 +538,8 @@ class TaskReport extends $pb.GeneratedMessage {
     if (blocks != null) result.blocks.addAll(blocks);
     if (clipped != null) result.clipped = clipped;
     if (detail != null) result.detail = detail;
+    if (waiting != null) result.waiting = waiting;
+    if (resumeMs != null) result.resumeMs = resumeMs;
     return result;
   }
 
@@ -561,6 +565,8 @@ class TaskReport extends $pb.GeneratedMessage {
         subBuilder: Block.$_createMessage)
     ..aOB(7, _omitFieldNames ? '' : 'clipped')
     ..aOS(8, _omitFieldNames ? '' : 'detail')
+    ..aOB(9, _omitFieldNames ? '' : 'waiting')
+    ..aInt64(10, _omitFieldNames ? '' : 'resumeMs')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -654,6 +660,26 @@ class TaskReport extends $pb.GeneratedMessage {
   $core.bool hasDetail() => $_has(7);
   @$pb.TagNumber(8)
   void clearDetail() => $_clearField(8);
+
+  /// The task stopped at Claude's usage limit and carries on by itself when it resets.
+  @$pb.TagNumber(9)
+  $core.bool get waiting => $_getBF(8);
+  @$pb.TagNumber(9)
+  set waiting($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasWaiting() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearWaiting() => $_clearField(9);
+
+  /// When it carries on, in milliseconds since the epoch.
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get resumeMs => $_getI64(9);
+  @$pb.TagNumber(10)
+  set resumeMs($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasResumeMs() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearResumeMs() => $_clearField(10);
 }
 
 class Notice extends $pb.GeneratedMessage {

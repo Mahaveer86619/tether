@@ -56,7 +56,16 @@ A first, so the structure is right before people are added to it, and B only has
 
 **Users.** A user is `{id, name, role}`. The hub's owner is the first user and an admin. Others join by **invite**: the admin makes an invite code (as pairing codes work today), the person enters it in the app, and gets a user and a first device token. Every device and every token belongs to one user (the hub already stores devices; they gain `user`). The admin token stays for recovery and `tetherctl`. Later, Tailscale identity can map to a user so a person's own machines attach to their account (planned in [plan.md](plan.md)).
 
-**Workspaces.** A workspace is a set of users and the projects they share: `{id, name, members: [{user, role}]}`. A hub has one by default, so a single-user setup needs no setup. A user can be in more than one.
+**Workspaces: personal and shared.** Every project lives in a workspace, and the person chooses which when they make a project (and, in the app, which one they are looking at):
+
+| Workspace | Who | Holds |
+|---|---|---|
+| **Personal** | one user; made for each user when they join; private | their own projects, chats and files |
+| **Shared** | a set of users with roles (`{id, name, members: [{user, role}]}`) | projects the members work on together |
+
+A user can be in any number of shared workspaces. A single-user hub has only the personal one and needs no setup. The sidebar shows the current workspace at the top with a switcher; new chat and new project ask which workspace when the user belongs to more than one.
+
+**Workspaces are synced by default.** Both kinds keep their projects' files on the hub and in step on the user's devices ([shared-workspace.md](shared-workspace.md)), so a new device a user adds to their account **imports the workspace** (all of it, or the projects they pick) and then keeps it up to date on its own. This replaces *make this chat remote*: a project in a workspace is already where its files are, and a chat can run on any of the user's devices with its folder in place.
 
 **Roles, at the workspace and the project:**
 
@@ -89,6 +98,7 @@ A first, so the structure is right before people are added to it, and B only has
 
 ## Build order
 
+0. **Home is clean.** The new-chat screen has no cards (no *Needs you*, *Running now*, no project chips): the greeting and the box. Needs-you and running show as markers in the sidebar instead. **Built.**
 1. **A1.** Project object and `Chat.project`; *Add to projects* makes a project; the new-chat project picker. (Hub, contract, app.)
 2. **A2.** The sidebar and the phone drawer as above: projects with chats and spawned sessions nested, unfiled folders, quiet one-offs; roll-up of needs-you and running.
 3. **B1.** Users and invites; devices and chats get an owner; every list filtered by user; the `can` check; the audit log records the user.

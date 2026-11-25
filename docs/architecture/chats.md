@@ -46,6 +46,16 @@ What's said in a chat is kept in the hub's `chat_messages` table: user messages 
 
 Post-processing jobs (`chatJobs` in `server/internal/hub/chats.go`) run when a chat is made and whenever one of its sessions ends a turn. Each gets the chat and its messages and returns a note (`chat_notes`: one value per kind per chat). The **title** job is the first. Jobs run under the hub lock, so they must be quick. A slow one, like a summary by a model, should start a goroutine and come back through `putChat`.
 
+## Tasks and the usage limit
+
+A task session that ends a turn on Claude's usage limit has not finished. When a task's turn ends (`reportTask`), the hub reads the end of its reply and its error for a limit message (`parseLimitReset` in `server/internal/hub/limitwait.go`: "resets 3pm (Asia/Kolkata)", "resets Nov 30, 7:29pm", or "limit reached|<unix time>"; only a short reply counts, so one that merely talks about limits does not). If it is one, the hub:
+
+1. shows the task's card in the chat as **waiting** (`TaskReport.waiting`, `resume_ms`) instead of finished or failed;
+2. keeps the wait in the hub's key-value store (`limit_waits`), so it survives a restart of the hub;
+3. checks every 30 seconds, and two minutes after the reset sends the task's session "carry on where you left off" through the normal send path, and rewrites the card as *carried on*. If the send fails it tries again for an hour.
+
+When the task then ends another turn it is reported as usual (or waits again). Only task sessions are covered; the lead session is not resumed for you.
+
 ## Storage
 
 Four tables, added by migration 2: `chats` (the `Chat` message, without its links), `chat_sessions` (chat, session, role, when), `chat_messages` and `chat_notes`.

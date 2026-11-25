@@ -647,7 +647,11 @@ type TaskReport struct {
 	// What it said was longer than this and was cut.
 	Clipped bool `protobuf:"varint,7,opt,name=clipped,proto3" json:"clipped,omitempty"`
 	// Why it failed, when it did.
-	Detail        string `protobuf:"bytes,8,opt,name=detail,proto3" json:"detail,omitempty"`
+	Detail string `protobuf:"bytes,8,opt,name=detail,proto3" json:"detail,omitempty"`
+	// The task stopped at Claude's usage limit and carries on by itself when it resets.
+	Waiting bool `protobuf:"varint,9,opt,name=waiting,proto3" json:"waiting,omitempty"`
+	// When it carries on, in milliseconds since the epoch.
+	ResumeMs      int64 `protobuf:"varint,10,opt,name=resume_ms,json=resumeMs,proto3" json:"resume_ms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -736,6 +740,20 @@ func (x *TaskReport) GetDetail() string {
 		return x.Detail
 	}
 	return ""
+}
+
+func (x *TaskReport) GetWaiting() bool {
+	if x != nil {
+		return x.Waiting
+	}
+	return false
+}
+
+func (x *TaskReport) GetResumeMs() int64 {
+	if x != nil {
+		return x.ResumeMs
+	}
+	return 0
 }
 
 type Notice struct {
@@ -2566,7 +2584,7 @@ const file_tether_v1_render_proto_rawDesc = "" +
 	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"<\n" +
 	"\bThinking\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1c\n" +
-	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"\xdc\x01\n" +
+	"\tstreaming\x18\x02 \x01(\bR\tstreaming\"\x93\x02\n" +
 	"\n" +
 	"TaskReport\x12\x16\n" +
 	"\x06failed\x18\x01 \x01(\bR\x06failed\x12\x14\n" +
@@ -2576,7 +2594,10 @@ const file_tether_v1_render_proto_rawDesc = "" +
 	"\asession\x18\x05 \x01(\tR\asession\x12(\n" +
 	"\x06blocks\x18\x06 \x03(\v2\x10.tether.v1.BlockR\x06blocks\x12\x18\n" +
 	"\aclipped\x18\a \x01(\bR\aclipped\x12\x16\n" +
-	"\x06detail\x18\b \x01(\tR\x06detail\"\x9f\x01\n" +
+	"\x06detail\x18\b \x01(\tR\x06detail\x12\x18\n" +
+	"\awaiting\x18\t \x01(\bR\awaiting\x12\x1b\n" +
+	"\tresume_ms\x18\n" +
+	" \x01(\x03R\bresumeMs\"\x9f\x01\n" +
 	"\x06Notice\x12-\n" +
 	"\x05level\x18\x01 \x01(\x0e2\x17.tether.v1.Notice.LevelR\x05level\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"R\n" +

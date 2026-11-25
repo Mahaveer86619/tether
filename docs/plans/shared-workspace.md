@@ -2,6 +2,12 @@
 
 Status: plan. It extends [remote-projects.md](remote-projects.md), which keeps a project in step between two devices after each turn, to a workspace that is in step in real time across any number of devices, and adds jobs that run on any device and can be paused and resumed.
 
+## What changed in the plan
+
+- **Workspaces are synced by default.** A project in a workspace (personal or shared, see [teams.md](teams.md#b-users-and-workspaces)) is held on the hub and kept in step on every device of the people in it, with no per-chat switch.
+- **A new device imports.** A device a user adds to their account sees the user's workspaces and imports the projects they choose (or all); from then on it is kept up to date by the live sync below. Nothing is copied by hand.
+- **It replaces *make this chat remote*.** The remote-projects feature ([remote-projects.md](remote-projects.md): a git mirror made per chat, after each turn, with a writer lease) goes away once workspace sync works: its sheet in the app, its hub routes and the per-chat mirror are removed, and a chat simply runs on whichever device it is sent to, with its project already there. The vault for `.env` and the `.git` single-writer rule below carry over.
+
 ## The need
 
 - The hub is always on, so it can hold the one copy of a workspace.

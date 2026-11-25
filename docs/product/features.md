@@ -15,6 +15,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 | Chats: a title, a target (device and folder), sessions linked to it | Built | Home, chat screen | [chats.md](../architecture/chats.md) | |
 | Where a chat runs: auto, by hand, or Claude works it out | Built | New-chat box, target picker | [chats.md](../architecture/chats.md#targets) | |
 | A chat leads and hands work to task sessions on other devices | Partly | Chat screen (Tasks strip) | [chats.md](../architecture/chats.md), [overview.md](overview.md) | Not run live yet; a finished task's result is now posted into the chat by the hub (a plain note until the result card is designed) |
+| A task that hits the usage limit waits for the reset and carries on by itself | Built | Chat screen (task card) | [chats.md](../architecture/chats.md#tasks-and-the-usage-limit) | The lead session is not resumed |
 | Follow a remote session live inside the chat and message it | Planned | Chat screen | [chats.md](../architecture/chats.md) | Streaming a linked session's timeline into the chat |
 | Terminal mode: the assistant's own interface, live, beside chat mode; on the phone with a key row | Planned | Chat screen | [terminal-mode.md](../plans/terminal-mode.md), [v1-spec.md](v1-spec.md#e-terminal-mode) | Everything; today only a text "Screen & keys" sheet |
 | Outbox: a message is kept until the session shows it | Built | Composer | [app.md](../architecture/app.md) | |

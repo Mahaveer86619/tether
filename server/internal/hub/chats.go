@@ -452,6 +452,10 @@ func (h *Hub) reportTask(c *v1.Chat, task string) {
 		rep.Detail = clip(s.Error, 300)
 	}
 	rep.Blocks, rep.Clipped = h.lastReply(task)
+	if reset, hit := h.limitHit(task, s, time.Now()); hit {
+		rep.Blocks, rep.Clipped = nil, false
+		h.waitForLimit(c, task, rep, id, reset)
+	}
 	h.commit(c.ActiveSession, []*v1.TimelineItem{{
 		ItemId: id, TsMs: time.Now().UnixMilli(), Kind: &v1.TimelineItem_TaskReport{TaskReport: rep},
 	}})

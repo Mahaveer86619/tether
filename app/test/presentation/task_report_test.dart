@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -65,6 +66,15 @@ void main() {
     await show(tester, report(failed: true, blocks: [], detail: 'the agent went away'));
     expect(find.text('TASK FAILED'), findsOneWidget);
     expect(find.text('the agent went away'), findsOneWidget);
+  });
+
+  testWidgets('a task stopped at the usage limit is shown as waiting, not finished, and says when it carries on', (tester) async {
+    await show(tester, rpb.TaskReport(title: 'Clean up the repo', node: 'laptop', session: 't1', waiting: true, resumeMs: Int64(1), detail: 'Stopped at the usage limit. It carries on by itself after 3:02 pm.'));
+    expect(find.text('WAITING FOR THE LIMIT TO RESET'), findsOneWidget);
+    expect(find.text('TASK FINISHED'), findsNothing);
+    expect(find.textContaining('carries on by itself'), findsOneWidget);
+    await show(tester, rpb.TaskReport(title: 'Clean up the repo', session: 't1', detail: 'The limit reset and the task carried on.'));
+    expect(find.text('TASK CARRIED ON'), findsOneWidget);
   });
 
   testWidgets('Open goes to the task\'s own session', (tester) async {
