@@ -317,26 +317,7 @@ func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []
 
 // handoff is the chat so far as text, trimmed to fit a first message.
 func (h *Hub) handoff(c *v1.Chat) string {
-	msgs, err := h.store.ChatMessages(c.Id)
-	if err != nil {
-		h.log.Error("chat messages", "chat", c.Id, "err", err)
-		return ""
-	}
-	var parts []string
-	used := 0
-	for i := len(msgs) - 1; i >= 0 && used < handoffBudget; i-- {
-		who := "User"
-		if msgs[i].Role == "assistant" {
-			who = "Claude"
-		}
-		p := who + ": " + clip(msgs[i].Text, handoffEach)
-		parts = append(parts, p)
-		used += len(p)
-	}
-	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
-		parts[i], parts[j] = parts[j], parts[i]
-	}
-	return strings.Join(parts, "\n\n")
+	return carryText(h.conversation(c))
 }
 
 // linkToChat adds or removes a session by hand. Caller holds h.mu.
@@ -700,6 +681,7 @@ type chatJob struct {
 
 var chatJobs = []chatJob{
 	{kind: "title", run: titleJob},
+	{kind: noteRecap, run: recapJob},
 }
 
 func (h *Hub) runChatJobs(c *v1.Chat) {
@@ -871,6 +853,7 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/chats/{id}/artifacts", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.chatFiles(r.PathValue("id"), r)
 	}))
+	h.deskRoutes(mux)
 	mux.HandleFunc("GET /api/v1/targets", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.targetSuggestions(r.URL.Query().Get("prompt")), nil
 	}))

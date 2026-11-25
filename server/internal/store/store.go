@@ -669,6 +669,19 @@ func (s *Store) UsageBySession(sinceMs int64, limit int) ([]*v1.SessionUsage, er
 	return out, rows.Err()
 }
 
+// LastUsage is the newest usage entry of a session, or nil. Its input and
+// cache counts are what the session's context held at that turn.
+func (s *Store) LastUsage(session string) (*v1.UsageEntry, error) {
+	e := &v1.UsageEntry{Session: session}
+	err := s.db.QueryRow(`SELECT message_id, model, ts_ms, input, output, cache_write, cache_read FROM usage
+		WHERE session = ? ORDER BY ts_ms DESC, rowid DESC LIMIT 1`, session).
+		Scan(&e.MessageId, &e.Model, &e.TsMs, &e.Input, &e.Output, &e.CacheWrite, &e.CacheRead)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return e, err
+}
+
 const artifactCols = `id, sha256, name, mime, size, session, node, origin, path, tool_use_id, created_ms, note`
 
 func scanArtifact(row interface{ Scan(...any) error }) (*v1.Artifact, error) {
