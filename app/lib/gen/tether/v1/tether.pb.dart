@@ -47,6 +47,7 @@ enum Frame_Body {
   chat,
   updateAvailable,
   notifyEndpoint,
+  job,
   agentHello,
   sessionIndex,
   rawEvents,
@@ -59,6 +60,8 @@ enum Frame_Body {
   historySynced,
   agentCommand,
   syncResult,
+  jobReport,
+  jobLog,
   notSet
 }
 
@@ -93,6 +96,7 @@ class Frame extends $pb.GeneratedMessage {
     Chat? chat,
     UpdateManifest? updateAvailable,
     NotifyEndpoint? notifyEndpoint,
+    Job? job,
     AgentHello? agentHello,
     SessionIndex? sessionIndex,
     RawEvents? rawEvents,
@@ -105,6 +109,8 @@ class Frame extends $pb.GeneratedMessage {
     HistorySynced? historySynced,
     AgentCommand? agentCommand,
     SyncResult? syncResult,
+    JobReport? jobReport,
+    JobLog? jobLog,
   }) {
     final result = Frame._();
     if (v != null) result.v = v;
@@ -135,6 +141,7 @@ class Frame extends $pb.GeneratedMessage {
     if (chat != null) result.chat = chat;
     if (updateAvailable != null) result.updateAvailable = updateAvailable;
     if (notifyEndpoint != null) result.notifyEndpoint = notifyEndpoint;
+    if (job != null) result.job = job;
     if (agentHello != null) result.agentHello = agentHello;
     if (sessionIndex != null) result.sessionIndex = sessionIndex;
     if (rawEvents != null) result.rawEvents = rawEvents;
@@ -147,6 +154,8 @@ class Frame extends $pb.GeneratedMessage {
     if (historySynced != null) result.historySynced = historySynced;
     if (agentCommand != null) result.agentCommand = agentCommand;
     if (syncResult != null) result.syncResult = syncResult;
+    if (jobReport != null) result.jobReport = jobReport;
+    if (jobLog != null) result.jobLog = jobLog;
     return result;
   }
 
@@ -184,6 +193,7 @@ class Frame extends $pb.GeneratedMessage {
     41: Frame_Body.chat,
     42: Frame_Body.updateAvailable,
     43: Frame_Body.notifyEndpoint,
+    44: Frame_Body.job,
     50: Frame_Body.agentHello,
     51: Frame_Body.sessionIndex,
     52: Frame_Body.rawEvents,
@@ -196,6 +206,8 @@ class Frame extends $pb.GeneratedMessage {
     59: Frame_Body.historySynced,
     60: Frame_Body.agentCommand,
     61: Frame_Body.syncResult,
+    62: Frame_Body.jobReport,
+    63: Frame_Body.jobLog,
     0: Frame_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
@@ -227,6 +239,7 @@ class Frame extends $pb.GeneratedMessage {
       41,
       42,
       43,
+      44,
       50,
       51,
       52,
@@ -238,7 +251,9 @@ class Frame extends $pb.GeneratedMessage {
       58,
       59,
       60,
-      61
+      61,
+      62,
+      63
     ])
     ..aI(1, _omitFieldNames ? '' : 'v', fieldType: $pb.PbFieldType.OU3)
     ..aOS(2, _omitFieldNames ? '' : 'id')
@@ -293,6 +308,8 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: UpdateManifest.$_createMessage)
     ..aOM<NotifyEndpoint>(43, _omitFieldNames ? '' : 'notifyEndpoint',
         subBuilder: NotifyEndpoint.$_createMessage)
+    ..aOM<Job>(44, _omitFieldNames ? '' : 'job',
+        subBuilder: Job.$_createMessage)
     ..aOM<AgentHello>(50, _omitFieldNames ? '' : 'agentHello',
         subBuilder: AgentHello.$_createMessage)
     ..aOM<SessionIndex>(51, _omitFieldNames ? '' : 'sessionIndex',
@@ -317,6 +334,10 @@ class Frame extends $pb.GeneratedMessage {
         subBuilder: AgentCommand.$_createMessage)
     ..aOM<SyncResult>(61, _omitFieldNames ? '' : 'syncResult',
         subBuilder: SyncResult.$_createMessage)
+    ..aOM<JobReport>(62, _omitFieldNames ? '' : 'jobReport',
+        subBuilder: JobReport.$_createMessage)
+    ..aOM<JobLog>(63, _omitFieldNames ? '' : 'jobLog',
+        subBuilder: JobLog.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -363,6 +384,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(41)
   @$pb.TagNumber(42)
   @$pb.TagNumber(43)
+  @$pb.TagNumber(44)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -375,6 +397,8 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(59)
   @$pb.TagNumber(60)
   @$pb.TagNumber(61)
+  @$pb.TagNumber(62)
+  @$pb.TagNumber(63)
   Frame_Body whichBody() => _Frame_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
@@ -400,6 +424,7 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(41)
   @$pb.TagNumber(42)
   @$pb.TagNumber(43)
+  @$pb.TagNumber(44)
   @$pb.TagNumber(50)
   @$pb.TagNumber(51)
   @$pb.TagNumber(52)
@@ -412,6 +437,8 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(59)
   @$pb.TagNumber(60)
   @$pb.TagNumber(61)
+  @$pb.TagNumber(62)
+  @$pb.TagNumber(63)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -726,148 +753,184 @@ class Frame extends $pb.GeneratedMessage {
   @$pb.TagNumber(43)
   NotifyEndpoint ensureNotifyEndpoint() => $_ensure(27);
 
+  /// A job was started or changed state (sent to every client).
+  @$pb.TagNumber(44)
+  Job get job => $_getN(28);
+  @$pb.TagNumber(44)
+  set job(Job value) => $_setField(44, value);
+  @$pb.TagNumber(44)
+  $core.bool hasJob() => $_has(28);
+  @$pb.TagNumber(44)
+  void clearJob() => $_clearField(44);
+  @$pb.TagNumber(44)
+  Job ensureJob() => $_ensure(28);
+
   /// Agent -> hub
   @$pb.TagNumber(50)
-  AgentHello get agentHello => $_getN(28);
+  AgentHello get agentHello => $_getN(29);
   @$pb.TagNumber(50)
   set agentHello(AgentHello value) => $_setField(50, value);
   @$pb.TagNumber(50)
-  $core.bool hasAgentHello() => $_has(28);
+  $core.bool hasAgentHello() => $_has(29);
   @$pb.TagNumber(50)
   void clearAgentHello() => $_clearField(50);
   @$pb.TagNumber(50)
-  AgentHello ensureAgentHello() => $_ensure(28);
+  AgentHello ensureAgentHello() => $_ensure(29);
 
   @$pb.TagNumber(51)
-  SessionIndex get sessionIndex => $_getN(29);
+  SessionIndex get sessionIndex => $_getN(30);
   @$pb.TagNumber(51)
   set sessionIndex(SessionIndex value) => $_setField(51, value);
   @$pb.TagNumber(51)
-  $core.bool hasSessionIndex() => $_has(29);
+  $core.bool hasSessionIndex() => $_has(30);
   @$pb.TagNumber(51)
   void clearSessionIndex() => $_clearField(51);
   @$pb.TagNumber(51)
-  SessionIndex ensureSessionIndex() => $_ensure(29);
+  SessionIndex ensureSessionIndex() => $_ensure(30);
 
   @$pb.TagNumber(52)
-  RawEvents get rawEvents => $_getN(30);
+  RawEvents get rawEvents => $_getN(31);
   @$pb.TagNumber(52)
   set rawEvents(RawEvents value) => $_setField(52, value);
   @$pb.TagNumber(52)
-  $core.bool hasRawEvents() => $_has(30);
+  $core.bool hasRawEvents() => $_has(31);
   @$pb.TagNumber(52)
   void clearRawEvents() => $_clearField(52);
   @$pb.TagNumber(52)
-  RawEvents ensureRawEvents() => $_ensure(30);
+  RawEvents ensureRawEvents() => $_ensure(31);
 
   /// Token usage read from transcripts, per assistant message.
   @$pb.TagNumber(53)
-  UsageReport get usageReport => $_getN(31);
+  UsageReport get usageReport => $_getN(32);
   @$pb.TagNumber(53)
   set usageReport(UsageReport value) => $_setField(53, value);
   @$pb.TagNumber(53)
-  $core.bool hasUsageReport() => $_has(31);
+  $core.bool hasUsageReport() => $_has(32);
   @$pb.TagNumber(53)
   void clearUsageReport() => $_clearField(53);
   @$pb.TagNumber(53)
-  UsageReport ensureUsageReport() => $_ensure(31);
+  UsageReport ensureUsageReport() => $_ensure(32);
 
   /// The node's plan limits, from `claude -p /usage`.
   @$pb.TagNumber(54)
-  PlanUsage get planUsage => $_getN(32);
+  PlanUsage get planUsage => $_getN(33);
   @$pb.TagNumber(54)
   set planUsage(PlanUsage value) => $_setField(54, value);
   @$pb.TagNumber(54)
-  $core.bool hasPlanUsage() => $_has(32);
+  $core.bool hasPlanUsage() => $_has(33);
   @$pb.TagNumber(54)
   void clearPlanUsage() => $_clearField(54);
   @$pb.TagNumber(54)
-  PlanUsage ensurePlanUsage() => $_ensure(32);
+  PlanUsage ensurePlanUsage() => $_ensure(33);
 
   /// A session's terminal screen (agent -> hub, and hub -> subscribers).
   @$pb.TagNumber(55)
-  ScreenSnapshot get screenSnapshot => $_getN(33);
+  ScreenSnapshot get screenSnapshot => $_getN(34);
   @$pb.TagNumber(55)
   set screenSnapshot(ScreenSnapshot value) => $_setField(55, value);
   @$pb.TagNumber(55)
-  $core.bool hasScreenSnapshot() => $_has(33);
+  $core.bool hasScreenSnapshot() => $_has(34);
   @$pb.TagNumber(55)
   void clearScreenSnapshot() => $_clearField(55);
   @$pb.TagNumber(55)
-  ScreenSnapshot ensureScreenSnapshot() => $_ensure(33);
+  ScreenSnapshot ensureScreenSnapshot() => $_ensure(34);
 
   /// How a SetMode went.
   @$pb.TagNumber(56)
-  ModeResult get modeResult => $_getN(34);
+  ModeResult get modeResult => $_getN(35);
   @$pb.TagNumber(56)
   set modeResult(ModeResult value) => $_setField(56, value);
   @$pb.TagNumber(56)
-  $core.bool hasModeResult() => $_has(34);
+  $core.bool hasModeResult() => $_has(35);
   @$pb.TagNumber(56)
   void clearModeResult() => $_clearField(56);
   @$pb.TagNumber(56)
-  ModeResult ensureModeResult() => $_ensure(34);
+  ModeResult ensureModeResult() => $_ensure(35);
 
   /// A command the node couldn't carry out, e.g. an interrupt that didn't
   /// land; the hub shows it on the session.
   @$pb.TagNumber(57)
-  CommandResult get commandResult => $_getN(35);
+  CommandResult get commandResult => $_getN(36);
   @$pb.TagNumber(57)
   set commandResult(CommandResult value) => $_setField(57, value);
   @$pb.TagNumber(57)
-  $core.bool hasCommandResult() => $_has(35);
+  $core.bool hasCommandResult() => $_has(36);
   @$pb.TagNumber(57)
   void clearCommandResult() => $_clearField(57);
   @$pb.TagNumber(57)
-  CommandResult ensureCommandResult() => $_ensure(35);
+  CommandResult ensureCommandResult() => $_ensure(36);
 
   /// Transcript bytes for the hub's history (agent -> hub), and the end of
   /// a sync run.
   @$pb.TagNumber(58)
-  HistoryChunk get historyChunk => $_getN(36);
+  HistoryChunk get historyChunk => $_getN(37);
   @$pb.TagNumber(58)
   set historyChunk(HistoryChunk value) => $_setField(58, value);
   @$pb.TagNumber(58)
-  $core.bool hasHistoryChunk() => $_has(36);
+  $core.bool hasHistoryChunk() => $_has(37);
   @$pb.TagNumber(58)
   void clearHistoryChunk() => $_clearField(58);
   @$pb.TagNumber(58)
-  HistoryChunk ensureHistoryChunk() => $_ensure(36);
+  HistoryChunk ensureHistoryChunk() => $_ensure(37);
 
   @$pb.TagNumber(59)
-  HistorySynced get historySynced => $_getN(37);
+  HistorySynced get historySynced => $_getN(38);
   @$pb.TagNumber(59)
   set historySynced(HistorySynced value) => $_setField(59, value);
   @$pb.TagNumber(59)
-  $core.bool hasHistorySynced() => $_has(37);
+  $core.bool hasHistorySynced() => $_has(38);
   @$pb.TagNumber(59)
   void clearHistorySynced() => $_clearField(59);
   @$pb.TagNumber(59)
-  HistorySynced ensureHistorySynced() => $_ensure(37);
+  HistorySynced ensureHistorySynced() => $_ensure(38);
 
   /// Hub -> agent
   @$pb.TagNumber(60)
-  AgentCommand get agentCommand => $_getN(38);
+  AgentCommand get agentCommand => $_getN(39);
   @$pb.TagNumber(60)
   set agentCommand(AgentCommand value) => $_setField(60, value);
   @$pb.TagNumber(60)
-  $core.bool hasAgentCommand() => $_has(38);
+  $core.bool hasAgentCommand() => $_has(39);
   @$pb.TagNumber(60)
   void clearAgentCommand() => $_clearField(60);
   @$pb.TagNumber(60)
-  AgentCommand ensureAgentCommand() => $_ensure(38);
+  AgentCommand ensureAgentCommand() => $_ensure(39);
 
   /// How a SyncProject went (agent -> hub).
   @$pb.TagNumber(61)
-  SyncResult get syncResult => $_getN(39);
+  SyncResult get syncResult => $_getN(40);
   @$pb.TagNumber(61)
   set syncResult(SyncResult value) => $_setField(61, value);
   @$pb.TagNumber(61)
-  $core.bool hasSyncResult() => $_has(39);
+  $core.bool hasSyncResult() => $_has(40);
   @$pb.TagNumber(61)
   void clearSyncResult() => $_clearField(61);
   @$pb.TagNumber(61)
-  SyncResult ensureSyncResult() => $_ensure(39);
+  SyncResult ensureSyncResult() => $_ensure(40);
+
+  /// The node's jobs: all of them on connect (full), then each change.
+  @$pb.TagNumber(62)
+  JobReport get jobReport => $_getN(41);
+  @$pb.TagNumber(62)
+  set jobReport(JobReport value) => $_setField(62, value);
+  @$pb.TagNumber(62)
+  $core.bool hasJobReport() => $_has(41);
+  @$pb.TagNumber(62)
+  void clearJobReport() => $_clearField(62);
+  @$pb.TagNumber(62)
+  JobReport ensureJobReport() => $_ensure(41);
+
+  /// New lines of a job's output.
+  @$pb.TagNumber(63)
+  JobLog get jobLog => $_getN(42);
+  @$pb.TagNumber(63)
+  set jobLog(JobLog value) => $_setField(63, value);
+  @$pb.TagNumber(63)
+  $core.bool hasJobLog() => $_has(42);
+  @$pb.TagNumber(63)
+  void clearJobLog() => $_clearField(63);
+  @$pb.TagNumber(63)
+  JobLog ensureJobLog() => $_ensure(42);
 }
 
 class NodeStatus extends $pb.GeneratedMessage {
@@ -884,6 +947,9 @@ class NodeStatus extends $pb.GeneratedMessage {
     $fixnum.Int64? historySyncedMs,
     $core.Iterable<$core.String>? capabilities,
     $core.Iterable<DoctorCheck>? checks,
+    $core.Iterable<Gpu>? gpus,
+    $fixnum.Int64? memoryBytes,
+    $core.int? cpus,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -898,6 +964,9 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (historySyncedMs != null) result.historySyncedMs = historySyncedMs;
     if (capabilities != null) result.capabilities.addAll(capabilities);
     if (checks != null) result.checks.addAll(checks);
+    if (gpus != null) result.gpus.addAll(gpus);
+    if (memoryBytes != null) result.memoryBytes = memoryBytes;
+    if (cpus != null) result.cpus = cpus;
     return result;
   }
 
@@ -927,6 +996,10 @@ class NodeStatus extends $pb.GeneratedMessage {
     ..pPS(11, _omitFieldNames ? '' : 'capabilities')
     ..pPM<DoctorCheck>(12, _omitFieldNames ? '' : 'checks',
         subBuilder: DoctorCheck.$_createMessage)
+    ..pPM<Gpu>(13, _omitFieldNames ? '' : 'gpus',
+        subBuilder: Gpu.$_createMessage)
+    ..aInt64(14, _omitFieldNames ? '' : 'memoryBytes')
+    ..aI(15, _omitFieldNames ? '' : 'cpus')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1049,6 +1122,96 @@ class NodeStatus extends $pb.GeneratedMessage {
   /// What the agent checked about this machine, for the device's checklist.
   @$pb.TagNumber(12)
   $pb.PbList<DoctorCheck> get checks => $_getList(11);
+
+  /// The machine's hardware, for placing work: GPUs, memory and CPU count.
+  @$pb.TagNumber(13)
+  $pb.PbList<Gpu> get gpus => $_getList(12);
+
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get memoryBytes => $_getI64(13);
+  @$pb.TagNumber(14)
+  set memoryBytes($fixnum.Int64 value) => $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasMemoryBytes() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearMemoryBytes() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $core.int get cpus => $_getIZ(14);
+  @$pb.TagNumber(15)
+  set cpus($core.int value) => $_setSignedInt32(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasCpus() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearCpus() => $_clearField(15);
+}
+
+class Gpu extends $pb.GeneratedMessage {
+  factory Gpu({
+    $core.String? name,
+    $fixnum.Int64? memoryBytes,
+  }) {
+    final result = Gpu._();
+    if (name != null) result.name = name;
+    if (memoryBytes != null) result.memoryBytes = memoryBytes;
+    return result;
+  }
+
+  Gpu._();
+
+  factory Gpu.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Gpu()..mergeFromBuffer(data, registry);
+  factory Gpu.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Gpu()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Gpu',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: Gpu.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aInt64(2, _omitFieldNames ? '' : 'memoryBytes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Gpu clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Gpu copyWith(void Function(Gpu) updates) =>
+      super.copyWith((message) => updates(message as Gpu)) as Gpu;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Gpu() / Gpu.new instead')
+  static Gpu create() => Gpu._();
+  static $pb.GeneratedMessage $_createMessage() => Gpu._();
+  @$core.override
+  Gpu createEmptyInstance() => Gpu._();
+  @$core.pragma('dart2js:noInline')
+  static Gpu getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Gpu>(Gpu.$_createMessage);
+  static Gpu? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  /// 0 when the agent could not tell.
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get memoryBytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set memoryBytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMemoryBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMemoryBytes() => $_clearField(2);
 }
 
 /// One thing the agent checked: is Claude Code here, are its hooks in, and so on.
@@ -3699,6 +3862,106 @@ class RawEvents extends $pb.GeneratedMessage {
   void clearEndOffset() => $_clearField(4);
 }
 
+class AgentCommand_JobCommand extends $pb.GeneratedMessage {
+  factory AgentCommand_JobCommand({
+    $core.String? id,
+    $core.String? action,
+    JobSpec? spec,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? secretEnv,
+  }) {
+    final result = AgentCommand_JobCommand._();
+    if (id != null) result.id = id;
+    if (action != null) result.action = action;
+    if (spec != null) result.spec = spec;
+    if (secretEnv != null) result.secretEnv.addEntries(secretEnv);
+    return result;
+  }
+
+  AgentCommand_JobCommand._();
+
+  factory AgentCommand_JobCommand.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_JobCommand()..mergeFromBuffer(data, registry);
+  factory AgentCommand_JobCommand.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentCommand_JobCommand()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentCommand.JobCommand',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentCommand_JobCommand.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'action')
+    ..aOM<JobSpec>(3, _omitFieldNames ? '' : 'spec',
+        subBuilder: JobSpec.$_createMessage)
+    ..m<$core.String, $core.String>(4, _omitFieldNames ? '' : 'secretEnv',
+        entryClassName: 'AgentCommand.JobCommand.SecretEnvEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('tether.v1'))
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_JobCommand clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentCommand_JobCommand copyWith(
+          void Function(AgentCommand_JobCommand) updates) =>
+      super.copyWith((message) => updates(message as AgentCommand_JobCommand))
+          as AgentCommand_JobCommand;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AgentCommand_JobCommand() / AgentCommand_JobCommand.new instead')
+  static AgentCommand_JobCommand create() => AgentCommand_JobCommand._();
+  static $pb.GeneratedMessage $_createMessage() => AgentCommand_JobCommand._();
+  @$core.override
+  AgentCommand_JobCommand createEmptyInstance() => AgentCommand_JobCommand._();
+  @$core.pragma('dart2js:noInline')
+  static AgentCommand_JobCommand getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AgentCommand_JobCommand>(
+          AgentCommand_JobCommand.$_createMessage);
+  static AgentCommand_JobCommand? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  /// start, stop, pause, resume, restart.
+  @$pb.TagNumber(2)
+  $core.String get action => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set action($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAction() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAction() => $_clearField(2);
+
+  /// For start and restart.
+  @$pb.TagNumber(3)
+  JobSpec get spec => $_getN(2);
+  @$pb.TagNumber(3)
+  set spec(JobSpec value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSpec() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSpec() => $_clearField(3);
+  @$pb.TagNumber(3)
+  JobSpec ensureSpec() => $_ensure(2);
+
+  /// Values for the spec's env_from, read from the project's sealed files
+  /// by the hub. The agent keeps them in memory only, for restarts.
+  @$pb.TagNumber(4)
+  $pb.PbMap<$core.String, $core.String> get secretEnv => $_getMap(3);
+}
+
 /// Keeps a remote chat's project folder in step with the hub's repository
 /// for it (docs/plans/remote-projects.md). The agent reaches the repository
 /// with its own token at <hub>/git/<repo>.git.
@@ -5190,6 +5453,7 @@ enum AgentCommand_Op {
   syncHistory,
   historyAck,
   syncProject,
+  job,
   notSet
 }
 
@@ -5214,6 +5478,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     AgentCommand_SyncHistory? syncHistory,
     AgentCommand_HistoryAck? historyAck,
     AgentCommand_SyncProject? syncProject,
+    AgentCommand_JobCommand? job,
   }) {
     final result = AgentCommand._();
     if (start != null) result.start = start;
@@ -5235,6 +5500,7 @@ class AgentCommand extends $pb.GeneratedMessage {
     if (syncHistory != null) result.syncHistory = syncHistory;
     if (historyAck != null) result.historyAck = historyAck;
     if (syncProject != null) result.syncProject = syncProject;
+    if (job != null) result.job = job;
     return result;
   }
 
@@ -5267,13 +5533,15 @@ class AgentCommand extends $pb.GeneratedMessage {
     17: AgentCommand_Op.syncHistory,
     18: AgentCommand_Op.historyAck,
     19: AgentCommand_Op.syncProject,
+    20: AgentCommand_Op.job,
     0: AgentCommand_Op.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentCommand',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
       createEmptyInstance: AgentCommand.$_createMessage)
-    ..oo(0, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
+    ..oo(0,
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
     ..aOM<AgentCommand_StartRun>(1, _omitFieldNames ? '' : 'start',
         subBuilder: AgentCommand_StartRun.$_createMessage)
     ..aOM<AgentCommand_SendInput>(2, _omitFieldNames ? '' : 'send',
@@ -5313,6 +5581,8 @@ class AgentCommand extends $pb.GeneratedMessage {
         subBuilder: AgentCommand_HistoryAck.$_createMessage)
     ..aOM<AgentCommand_SyncProject>(19, _omitFieldNames ? '' : 'syncProject',
         subBuilder: AgentCommand_SyncProject.$_createMessage)
+    ..aOM<AgentCommand_JobCommand>(20, _omitFieldNames ? '' : 'job',
+        subBuilder: AgentCommand_JobCommand.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5356,6 +5626,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
   @$pb.TagNumber(19)
+  @$pb.TagNumber(20)
   AgentCommand_Op whichOp() => _AgentCommand_OpByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
   @$pb.TagNumber(2)
@@ -5376,6 +5647,7 @@ class AgentCommand extends $pb.GeneratedMessage {
   @$pb.TagNumber(17)
   @$pb.TagNumber(18)
   @$pb.TagNumber(19)
+  @$pb.TagNumber(20)
   void clearOp() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -5603,6 +5875,18 @@ class AgentCommand extends $pb.GeneratedMessage {
   void clearSyncProject() => $_clearField(19);
   @$pb.TagNumber(19)
   AgentCommand_SyncProject ensureSyncProject() => $_ensure(18);
+
+  /// Start, stop, pause, resume or restart a job; answered with a JobReport.
+  @$pb.TagNumber(20)
+  AgentCommand_JobCommand get job => $_getN(19);
+  @$pb.TagNumber(20)
+  set job(AgentCommand_JobCommand value) => $_setField(20, value);
+  @$pb.TagNumber(20)
+  $core.bool hasJob() => $_has(19);
+  @$pb.TagNumber(20)
+  void clearJob() => $_clearField(20);
+  @$pb.TagNumber(20)
+  AgentCommand_JobCommand ensureJob() => $_ensure(19);
 }
 
 /// A folder on a node the hub keeps copies of. GET /api/v1/codebases.
@@ -12065,6 +12349,713 @@ class Heartbeat extends $pb.GeneratedMessage {
   static Heartbeat getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<Heartbeat>(Heartbeat.$_createMessage);
   static Heartbeat? _defaultInstance;
+}
+
+/// A key from a project's sealed setup file (PUT /api/v1/projects/{repo}/files),
+/// put into a job's environment when it starts.
+class EnvRef extends $pb.GeneratedMessage {
+  factory EnvRef({
+    $core.String? repo,
+    $core.String? file,
+    $core.Iterable<$core.String>? keys,
+  }) {
+    final result = EnvRef._();
+    if (repo != null) result.repo = repo;
+    if (file != null) result.file = file;
+    if (keys != null) result.keys.addAll(keys);
+    return result;
+  }
+
+  EnvRef._();
+
+  factory EnvRef.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EnvRef()..mergeFromBuffer(data, registry);
+  factory EnvRef.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      EnvRef()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EnvRef',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: EnvRef.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'repo')
+    ..aOS(2, _omitFieldNames ? '' : 'file')
+    ..pPS(3, _omitFieldNames ? '' : 'keys')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnvRef clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EnvRef copyWith(void Function(EnvRef) updates) =>
+      super.copyWith((message) => updates(message as EnvRef)) as EnvRef;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use EnvRef() / EnvRef.new instead')
+  static EnvRef create() => EnvRef._();
+  static $pb.GeneratedMessage $_createMessage() => EnvRef._();
+  @$core.override
+  EnvRef createEmptyInstance() => EnvRef._();
+  @$core.pragma('dart2js:noInline')
+  static EnvRef getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EnvRef>(EnvRef.$_createMessage);
+  static EnvRef? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get repo => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repo($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepo() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepo() => $_clearField(1);
+
+  /// The file's path in the project, e.g. ".env".
+  @$pb.TagNumber(2)
+  $core.String get file => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set file($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFile() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFile() => $_clearField(2);
+
+  /// The keys to take; empty takes every key in the file.
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get keys => $_getList(2);
+}
+
+class JobSpec extends $pb.GeneratedMessage {
+  factory JobSpec({
+    $core.String? name,
+    $core.String? node,
+    $core.String? cwd,
+    $core.String? command,
+    $core.Iterable<$core.MapEntry<$core.String, $core.String>>? env,
+    $core.Iterable<EnvRef>? envFrom,
+    $core.int? port,
+    $core.String? restart,
+    $core.int? restartLimit,
+    $core.String? checkpoint,
+    $core.bool? needsGpu,
+  }) {
+    final result = JobSpec._();
+    if (name != null) result.name = name;
+    if (node != null) result.node = node;
+    if (cwd != null) result.cwd = cwd;
+    if (command != null) result.command = command;
+    if (env != null) result.env.addEntries(env);
+    if (envFrom != null) result.envFrom.addAll(envFrom);
+    if (port != null) result.port = port;
+    if (restart != null) result.restart = restart;
+    if (restartLimit != null) result.restartLimit = restartLimit;
+    if (checkpoint != null) result.checkpoint = checkpoint;
+    if (needsGpu != null) result.needsGpu = needsGpu;
+    return result;
+  }
+
+  JobSpec._();
+
+  factory JobSpec.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobSpec()..mergeFromBuffer(data, registry);
+  factory JobSpec.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobSpec()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'JobSpec',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: JobSpec.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOS(2, _omitFieldNames ? '' : 'node')
+    ..aOS(3, _omitFieldNames ? '' : 'cwd')
+    ..aOS(4, _omitFieldNames ? '' : 'command')
+    ..m<$core.String, $core.String>(5, _omitFieldNames ? '' : 'env',
+        entryClassName: 'JobSpec.EnvEntry',
+        keyFieldType: $pb.PbFieldType.OS,
+        valueFieldType: $pb.PbFieldType.OS,
+        packageName: const $pb.PackageName('tether.v1'))
+    ..pPM<EnvRef>(6, _omitFieldNames ? '' : 'envFrom',
+        subBuilder: EnvRef.$_createMessage)
+    ..aI(7, _omitFieldNames ? '' : 'port')
+    ..aOS(8, _omitFieldNames ? '' : 'restart')
+    ..aI(9, _omitFieldNames ? '' : 'restartLimit')
+    ..aOS(10, _omitFieldNames ? '' : 'checkpoint')
+    ..aOB(11, _omitFieldNames ? '' : 'needsGpu')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobSpec clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobSpec copyWith(void Function(JobSpec) updates) =>
+      super.copyWith((message) => updates(message as JobSpec)) as JobSpec;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use JobSpec() / JobSpec.new instead')
+  static JobSpec create() => JobSpec._();
+  static $pb.GeneratedMessage $_createMessage() => JobSpec._();
+  @$core.override
+  JobSpec createEmptyInstance() => JobSpec._();
+  @$core.pragma('dart2js:noInline')
+  static JobSpec getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<JobSpec>(JobSpec.$_createMessage);
+  static JobSpec? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get node => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set node($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get cwd => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set cwd($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCwd() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCwd() => $_clearField(3);
+
+  /// Run by the platform's shell (sh -c, cmd /c).
+  @$pb.TagNumber(4)
+  $core.String get command => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set command($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCommand() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCommand() => $_clearField(4);
+
+  /// Plain values, kept with the job; secrets go in env_from.
+  @$pb.TagNumber(5)
+  $pb.PbMap<$core.String, $core.String> get env => $_getMap(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<EnvRef> get envFrom => $_getList(5);
+
+  /// A server's port: the app links to it over the tailnet.
+  @$pb.TagNumber(7)
+  $core.int get port => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set port($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasPort() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearPort() => $_clearField(7);
+
+  /// never (default), on-failure or always.
+  @$pb.TagNumber(8)
+  $core.String get restart => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set restart($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasRestart() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearRestart() => $_clearField(8);
+
+  /// Restarts at most this many times; 0 means 5.
+  @$pb.TagNumber(9)
+  $core.int get restartLimit => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set restartLimit($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRestartLimit() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRestartLimit() => $_clearField(9);
+
+  /// Run in cwd before a stop, to let the job save its state.
+  @$pb.TagNumber(10)
+  $core.String get checkpoint => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set checkpoint($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCheckpoint() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCheckpoint() => $_clearField(10);
+
+  /// Needs a machine with a GPU.
+  @$pb.TagNumber(11)
+  $core.bool get needsGpu => $_getBF(10);
+  @$pb.TagNumber(11)
+  set needsGpu($core.bool value) => $_setBool(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasNeedsGpu() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearNeedsGpu() => $_clearField(11);
+}
+
+class Job extends $pb.GeneratedMessage {
+  factory Job({
+    $core.String? id,
+    JobSpec? spec,
+    JobState? state,
+    $fixnum.Int64? createdMs,
+    $fixnum.Int64? startedMs,
+    $fixnum.Int64? endedMs,
+    $core.int? exitCode,
+    $core.int? pid,
+    $core.int? restarts,
+    $core.String? error,
+    $fixnum.Int64? updatedMs,
+    $core.String? address,
+    $core.String? by,
+  }) {
+    final result = Job._();
+    if (id != null) result.id = id;
+    if (spec != null) result.spec = spec;
+    if (state != null) result.state = state;
+    if (createdMs != null) result.createdMs = createdMs;
+    if (startedMs != null) result.startedMs = startedMs;
+    if (endedMs != null) result.endedMs = endedMs;
+    if (exitCode != null) result.exitCode = exitCode;
+    if (pid != null) result.pid = pid;
+    if (restarts != null) result.restarts = restarts;
+    if (error != null) result.error = error;
+    if (updatedMs != null) result.updatedMs = updatedMs;
+    if (address != null) result.address = address;
+    if (by != null) result.by = by;
+    return result;
+  }
+
+  Job._();
+
+  factory Job.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Job()..mergeFromBuffer(data, registry);
+  factory Job.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Job()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Job',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: Job.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOM<JobSpec>(2, _omitFieldNames ? '' : 'spec',
+        subBuilder: JobSpec.$_createMessage)
+    ..aE<JobState>(3, _omitFieldNames ? '' : 'state',
+        enumValues: JobState.values)
+    ..aInt64(4, _omitFieldNames ? '' : 'createdMs')
+    ..aInt64(5, _omitFieldNames ? '' : 'startedMs')
+    ..aInt64(6, _omitFieldNames ? '' : 'endedMs')
+    ..aI(7, _omitFieldNames ? '' : 'exitCode')
+    ..aI(8, _omitFieldNames ? '' : 'pid')
+    ..aI(9, _omitFieldNames ? '' : 'restarts')
+    ..aOS(10, _omitFieldNames ? '' : 'error')
+    ..aInt64(11, _omitFieldNames ? '' : 'updatedMs')
+    ..aOS(12, _omitFieldNames ? '' : 'address')
+    ..aOS(13, _omitFieldNames ? '' : 'by')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Job clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Job copyWith(void Function(Job) updates) =>
+      super.copyWith((message) => updates(message as Job)) as Job;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Job() / Job.new instead')
+  static Job create() => Job._();
+  static $pb.GeneratedMessage $_createMessage() => Job._();
+  @$core.override
+  Job createEmptyInstance() => Job._();
+  @$core.pragma('dart2js:noInline')
+  static Job getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Job>(Job.$_createMessage);
+  static Job? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  JobSpec get spec => $_getN(1);
+  @$pb.TagNumber(2)
+  set spec(JobSpec value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSpec() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSpec() => $_clearField(2);
+  @$pb.TagNumber(2)
+  JobSpec ensureSpec() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  JobState get state => $_getN(2);
+  @$pb.TagNumber(3)
+  set state(JobState value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasState() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearState() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get createdMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set createdMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCreatedMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCreatedMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get startedMs => $_getI64(4);
+  @$pb.TagNumber(5)
+  set startedMs($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasStartedMs() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearStartedMs() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get endedMs => $_getI64(5);
+  @$pb.TagNumber(6)
+  set endedMs($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasEndedMs() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearEndedMs() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get exitCode => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set exitCode($core.int value) => $_setSignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasExitCode() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearExitCode() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.int get pid => $_getIZ(7);
+  @$pb.TagNumber(8)
+  set pid($core.int value) => $_setSignedInt32(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasPid() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearPid() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get restarts => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set restarts($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRestarts() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRestarts() => $_clearField(9);
+
+  /// Why it failed or was lost.
+  @$pb.TagNumber(10)
+  $core.String get error => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set error($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasError() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearError() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $fixnum.Int64 get updatedMs => $_getI64(10);
+  @$pb.TagNumber(11)
+  set updatedMs($fixnum.Int64 value) => $_setInt64(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUpdatedMs() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUpdatedMs() => $_clearField(11);
+
+  /// http://<machine>:<port> on the tailnet, set by the hub for a job with a port.
+  @$pb.TagNumber(12)
+  $core.String get address => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set address($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasAddress() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearAddress() => $_clearField(12);
+
+  /// Who started it: an app's name, or the MCP.
+  @$pb.TagNumber(13)
+  $core.String get by => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set by($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasBy() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearBy() => $_clearField(13);
+}
+
+class JobList extends $pb.GeneratedMessage {
+  factory JobList({
+    $core.Iterable<Job>? jobs,
+  }) {
+    final result = JobList._();
+    if (jobs != null) result.jobs.addAll(jobs);
+    return result;
+  }
+
+  JobList._();
+
+  factory JobList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobList()..mergeFromBuffer(data, registry);
+  factory JobList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'JobList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: JobList.$_createMessage)
+    ..pPM<Job>(1, _omitFieldNames ? '' : 'jobs',
+        subBuilder: Job.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobList copyWith(void Function(JobList) updates) =>
+      super.copyWith((message) => updates(message as JobList)) as JobList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use JobList() / JobList.new instead')
+  static JobList create() => JobList._();
+  static $pb.GeneratedMessage $_createMessage() => JobList._();
+  @$core.override
+  JobList createEmptyInstance() => JobList._();
+  @$core.pragma('dart2js:noInline')
+  static JobList getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<JobList>(JobList.$_createMessage);
+  static JobList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Job> get jobs => $_getList(0);
+}
+
+class JobReport extends $pb.GeneratedMessage {
+  factory JobReport({
+    $core.Iterable<Job>? jobs,
+    $core.bool? full,
+  }) {
+    final result = JobReport._();
+    if (jobs != null) result.jobs.addAll(jobs);
+    if (full != null) result.full = full;
+    return result;
+  }
+
+  JobReport._();
+
+  factory JobReport.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobReport()..mergeFromBuffer(data, registry);
+  factory JobReport.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobReport()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'JobReport',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: JobReport.$_createMessage)
+    ..pPM<Job>(1, _omitFieldNames ? '' : 'jobs',
+        subBuilder: Job.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'full')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobReport clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobReport copyWith(void Function(JobReport) updates) =>
+      super.copyWith((message) => updates(message as JobReport)) as JobReport;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use JobReport() / JobReport.new instead')
+  static JobReport create() => JobReport._();
+  static $pb.GeneratedMessage $_createMessage() => JobReport._();
+  @$core.override
+  JobReport createEmptyInstance() => JobReport._();
+  @$core.pragma('dart2js:noInline')
+  static JobReport getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<JobReport>(JobReport.$_createMessage);
+  static JobReport? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Job> get jobs => $_getList(0);
+
+  /// Every job the agent has; the hub marks the node's others lost.
+  @$pb.TagNumber(2)
+  $core.bool get full => $_getBF(1);
+  @$pb.TagNumber(2)
+  set full($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasFull() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearFull() => $_clearField(2);
+}
+
+class JobLog extends $pb.GeneratedMessage {
+  factory JobLog({
+    $core.String? job,
+    $core.Iterable<$core.String>? lines,
+    $core.bool? reset,
+  }) {
+    final result = JobLog._();
+    if (job != null) result.job = job;
+    if (lines != null) result.lines.addAll(lines);
+    if (reset != null) result.reset = reset;
+    return result;
+  }
+
+  JobLog._();
+
+  factory JobLog.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobLog()..mergeFromBuffer(data, registry);
+  factory JobLog.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobLog()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'JobLog',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: JobLog.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'job')
+    ..pPS(2, _omitFieldNames ? '' : 'lines')
+    ..aOB(3, _omitFieldNames ? '' : 'reset')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobLog clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobLog copyWith(void Function(JobLog) updates) =>
+      super.copyWith((message) => updates(message as JobLog)) as JobLog;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use JobLog() / JobLog.new instead')
+  static JobLog create() => JobLog._();
+  static $pb.GeneratedMessage $_createMessage() => JobLog._();
+  @$core.override
+  JobLog createEmptyInstance() => JobLog._();
+  @$core.pragma('dart2js:noInline')
+  static JobLog getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<JobLog>(JobLog.$_createMessage);
+  static JobLog? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get job => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set job($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get lines => $_getList(1);
+
+  /// The lines are the log's tail so far, not new ones: replace, not append.
+  @$pb.TagNumber(3)
+  $core.bool get reset => $_getBF(2);
+  @$pb.TagNumber(3)
+  set reset($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReset() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReset() => $_clearField(3);
+}
+
+/// GET /api/v1/jobs/{id}/logs?tail=N
+class JobLogTail extends $pb.GeneratedMessage {
+  factory JobLogTail({
+    $core.String? job,
+    $core.Iterable<$core.String>? lines,
+  }) {
+    final result = JobLogTail._();
+    if (job != null) result.job = job;
+    if (lines != null) result.lines.addAll(lines);
+    return result;
+  }
+
+  JobLogTail._();
+
+  factory JobLogTail.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobLogTail()..mergeFromBuffer(data, registry);
+  factory JobLogTail.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      JobLogTail()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'JobLogTail',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: JobLogTail.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'job')
+    ..pPS(2, _omitFieldNames ? '' : 'lines')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobLogTail clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  JobLogTail copyWith(void Function(JobLogTail) updates) =>
+      super.copyWith((message) => updates(message as JobLogTail)) as JobLogTail;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use JobLogTail() / JobLogTail.new instead')
+  static JobLogTail create() => JobLogTail._();
+  static $pb.GeneratedMessage $_createMessage() => JobLogTail._();
+  @$core.override
+  JobLogTail createEmptyInstance() => JobLogTail._();
+  @$core.pragma('dart2js:noInline')
+  static JobLogTail getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<JobLogTail>(JobLogTail.$_createMessage);
+  static JobLogTail? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get job => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set job($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasJob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearJob() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get lines => $_getList(1);
 }
 
 const $core.bool _omitFieldNames =
