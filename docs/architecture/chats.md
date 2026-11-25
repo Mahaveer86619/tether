@@ -56,6 +56,30 @@ A task session that ends a turn on Claude's usage limit has not finished. When a
 
 When the task then ends another turn it is reported as usual (or waits again). Only task sessions are covered; the lead session is not resumed for you.
 
+## Projects
+
+A **project** is `{id, name, folders: [{node, cwd}], createdMs}`: a name and the folders it is worked in, one per device (the same repo on the laptop and on the desktop). A chat is **in a project** or a **one-off**. The assignment is kept beside the chat, not in the `Chat` message, so the wire contract did not change; the app merges the two ([app.md](app.md#sidebar)).
+
+A chat joins a project when:
+
+- it is made in one: `POST /chats?project=<id>` (an unknown project is refused before the chat is made);
+- it is put in one: `PUT /chats/{id}/project` with `{"project": "<id>"}`, or `""` to make it a one-off;
+- its folder is added to a project (`POST /projects`, `PUT /projects/{id}` or `POST /projects/{id}/folders`): every chat working in that folder (its active session's folder, else its target) that is in no project yet goes in. That is how *Add to projects* turns an unfiled folder into a project with its chats.
+
+A chat stays in its project when it moves to another folder. Deleting a chat forgets its project; deleting a project makes its chats one-offs and leaves them otherwise alone. A project chat's spawned sessions are its `started` links, so they need nothing of their own.
+
+| Route | Does |
+|---|---|
+| `GET /projects` | Every project, oldest first, each with `chats`: the ids of its chats |
+| `POST /projects` | Makes one from `name` and/or `folders` (the name defaults to the first folder's); files the chats in its folders |
+| `PUT /projects/{id}` | Renames it, and replaces its folders when `folders` is given |
+| `POST /projects/{id}/folders` | Adds a folder (`{node, cwd}`); the same folder written another way is not added twice |
+| `DELETE /projects/{id}` | Removes it; its chats become one-offs |
+| `PUT /chats/{id}/project` | Files a chat, or makes it a one-off |
+| `GET /chat-projects` | `{"chats": {chat id: project id}}` |
+
+All are plain JSON. Projects and the chat map are two values in the hub's key-value table (`projects`, `chat_projects`), read and written under the hub lock. There is no push frame for them: apps reload after a change of their own and when a chat they have not seen arrives.
+
 ## Storage
 
 Four tables, added by migration 2: `chats` (the `Chat` message, without its links), `chat_sessions` (chat, session, role, when), `chat_messages` and `chat_notes`.
@@ -64,3 +88,4 @@ Four tables, added by migration 2: `chats` (the `Chat` message, without its link
 
 - **Older apps** don't know the `chat` frame or `Welcome.chats`. They skip both and keep working with sessions.
 - **A newer app on an older hub** gets no chats in `Welcome`, and `POST /chats` returns 404. The app then shows sessions in the history and starts plain sessions (see [app.md](app.md)).
+- **Projects** are plain JSON beside the contract. An older app ignores them and lists chats as before; a newer app on a hub before projects gets 404 from `GET /projects` and groups chats by folder.

@@ -335,6 +335,11 @@ class FakeHubRepository implements HubRepository {
     return Ok(chat);
   }
 
+  bool _inFolders(Chat c, Set<String> keys) {
+    final f = _snap.projectOf(c);
+    return f != null && keys.contains(folderKey(f.node, f.cwd));
+  }
+
   @override
   Future<Result<ProjectInfo>> createProject({String name = '', List<ProjectFolder> folders = const []}) async {
     final p = ProjectInfo(id: 'p-${_snap.projectInfos.length + 1}', name: name.isNotEmpty ? name : folders.first.cwd.split('/').last, folders: folders, created: DateTime.now());
@@ -345,7 +350,7 @@ class FakeHubRepository implements HubRepository {
       chatProjectIds: {
         ..._snap.chatProjectIds,
         for (final c in _snap.chats.values)
-          if (!_snap.chatProjectIds.containsKey(c.id) && keys.contains(folderKey(c.target.node, c.target.cwd))) c.id: p.id,
+          if (!_snap.chatProjectIds.containsKey(c.id) && _inFolders(c, keys)) c.id: p.id,
       },
     ));
     return Ok(p);

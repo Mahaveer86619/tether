@@ -402,11 +402,17 @@ class _SpawnedRow extends StatelessWidget {
           children: [
             StateDot(state: s.state, size: 6),
             const SizedBox(width: 6),
-            Text(s.node, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: c.text.withValues(alpha: 0.88))),
-            const SizedBox(width: 6),
-            Text(status, style: TextStyle(fontSize: 12, color: needsYou ? c.warning : (s.isBusy ? c.accent : c.muted))),
-            const SizedBox(width: 6),
-            Expanded(child: Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: c.faint))),
+            Expanded(
+              child: Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: s.node, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: c.text.withValues(alpha: 0.88))),
+                  TextSpan(text: '  $status', style: TextStyle(fontSize: 12, color: needsYou ? c.warning : (s.isBusy ? c.accent : c.muted))),
+                  TextSpan(text: '  $detail', style: TextStyle(fontSize: 12, color: c.faint)),
+                ]),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
       ),

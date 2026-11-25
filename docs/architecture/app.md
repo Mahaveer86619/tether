@@ -50,7 +50,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - A new chat becomes its chat in place, so Back skips the empty composer.
 - **Layouts** (`home/shell.dart`), by window width:
   - **Home is where a chat starts** (`chats/new_chat_page.dart`): a greeting, the folders you work in as chips, what needs you or is running, and the message box at the bottom, as in a chat app. A switch in the header (`home/home_toggle.dart`), **New | Chats**, goes between it and the list of every chat.
-  - **The sidebar** (`home/sidebar.dart`) holds a New chat button, icons for Devices, History, Files, Routines and Usage, **Projects** (the folders chats continue in, each opening to its chats) and **Chats** (every chat, recent first), then the connection line and Settings. A chat is in a project when it works in a folder that is not a home folder or a scratch folder (`HubSnapshot.projectOf`); a one-off question is only in Chats.
+  - **The sidebar** (`home/sidebar.dart`) holds a New chat button, icons for Devices, History, Files, Routines and Usage, then three sections (see [Sidebar](#sidebar)), then the connection line and Settings.
   - **Under 600 px (phones):** no bottom bar; the sidebar is a drawer opened from the header's menu button, and closes when you choose something. Chats, sessions, new chats and devices open as pages on top, through a `Navigator` built from the nav state, so the system back button and the state can't disagree. Places other than Home and Chats open with a back arrow.
   - **600 px and wider:** the sidebar sits beside the main pane, open from 1000 px and folded away below that; its button folds it, and a strip with a menu button, New chat and Settings stays.
 - **Chats** (`chats/`; see [chats.md](chats.md)):
@@ -88,7 +88,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 - **Drafts:** unsent text in a session's composer, and in the new-chat box, is kept on the device per session, saved half a second after typing stops, and cleared once sent. It survives restarts.
 - **Message source:** your messages show where they came from (the phone, a desktop app, `tetherctl`, or typed in the terminal), as recorded by the hub.
 - **Tailnet:** Settings → Devices also lists every machine on the hub's tailnet, with tags for the hub, its Tether agent and its apps. Machines without Tether are marked too.
-- **Projects:** the sidebar groups chats by the folder they work in, per device; a project is open when it holds the chat on screen.
+- **Projects:** see [Sidebar](#sidebar). The new-chat box has a project picker beside the target chip: the hub's projects (a project with folders on several devices is listed once per device), and *No project* for a one-off. The last project used is preselected; picking one sets the target to its folder, on an online device when it has several. *Add to projects* on a session card files the session's chat (made if it has none) in the project for its folder, making the project when there is none.
 - **Workspaces:**
   - Projects are the folders sessions ran in, remembered per device.
   - Workspace roots are folders where new projects are made. They're stored on the hub, managed in Settings → Workspaces, and suggested from the parents of recent projects.
@@ -119,6 +119,18 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 - **Fork:** first shows what a fork is (a new session with a copy of this conversation; the original is untouched), then puts the composer in fork mode.
 - **Composer:** Enter sends on desktop, Shift+Enter adds a new line, Esc interrupts. For sessions open in your own terminal, the composer is replaced by a notice with **Fork**, except on Windows, where messages are typed into the terminal.
 - **Animation:** only items that arrive after the history has loaded animate in. While Claude works between messages, a "Claude is working" indicator shows.
+
+## Sidebar
+
+The sidebar (and the phone's drawer, the same widget) is built from `HubSnapshot.sidebarTree()`, which puts every chat in exactly one place:
+
+1. **Projects**, the projects made on the hub ([chats.md](chats.md#projects)), the one with the newest activity first. A project opens to its chats, newest first, and to sessions in its folders that no chat holds (started in a terminal). A chat opens to the sessions it **spawned** (its links with role `started`), each with its device, its state and what it is on or how it ended. A chat's spawned sessions open by themselves while one works or waits on you, or when the chat is on screen; the count beside the chat folds them. Spawned sessions are never listed anywhere else.
+2. **Unfiled folders**: folders with chats or sessions in them that are in no project, grouped as the app grouped chats before projects (`chatProjects`): a folder that is not a home or scratch folder, per device. Each has an *Add to projects* button that makes it a project, and the hub files its chats into it. The section is open when there are no projects yet, and shut otherwise.
+3. **One-offs**: chats in no project and no unfiled folder, in smaller, fainter rows, the newest five, with *All chats* leading to the full list.
+
+A project, and a chat in one, carry **markers** rolled up from their sessions: the warning colour when an approval or a question waits on you, the accent while one is working, so a shut project still shows that something wants you.
+
+Projects come from `GET /projects` (plain JSON, with each project's chat ids), loaded after each connect, after the app changes one, and when a chat it has not seen arrives (it may have been made in a project elsewhere). A hub before projects answers 404: `projectsSupported` stays false, the Projects section is empty, and chats in folders list as unfiled folders, as before.
 
 ## Tailscale in the background
 
