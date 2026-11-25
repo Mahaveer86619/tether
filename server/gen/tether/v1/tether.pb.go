@@ -9044,8 +9044,8 @@ type JobLog struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Job   string                 `protobuf:"bytes,1,opt,name=job,proto3" json:"job,omitempty"`
 	Lines []string               `protobuf:"bytes,2,rep,name=lines,proto3" json:"lines,omitempty"`
-	// The lines are the log's tail so far, not new ones: replace, not append.
-	Reset_        bool `protobuf:"varint,3,opt,name=reset,proto3" json:"reset,omitempty"`
+	// The lines are the log's tail so far, not new ones: they replace what the hub has.
+	Replace       bool `protobuf:"varint,3,opt,name=replace,proto3" json:"replace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9094,9 +9094,9 @@ func (x *JobLog) GetLines() []string {
 	return nil
 }
 
-func (x *JobLog) GetReset_() bool {
+func (x *JobLog) GetReplace() bool {
 	if x != nil {
-		return x.Reset_
+		return x.Replace
 	}
 	return false
 }
@@ -11129,11 +11129,11 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x04jobs\x18\x01 \x03(\v2\x0e.tether.v1.JobR\x04jobs\"C\n" +
 	"\tJobReport\x12\"\n" +
 	"\x04jobs\x18\x01 \x03(\v2\x0e.tether.v1.JobR\x04jobs\x12\x12\n" +
-	"\x04full\x18\x02 \x01(\bR\x04full\"F\n" +
+	"\x04full\x18\x02 \x01(\bR\x04full\"J\n" +
 	"\x06JobLog\x12\x10\n" +
 	"\x03job\x18\x01 \x01(\tR\x03job\x12\x14\n" +
-	"\x05lines\x18\x02 \x03(\tR\x05lines\x12\x14\n" +
-	"\x05reset\x18\x03 \x01(\bR\x05reset\"4\n" +
+	"\x05lines\x18\x02 \x03(\tR\x05lines\x12\x18\n" +
+	"\areplace\x18\x03 \x01(\bR\areplace\"4\n" +
 	"\n" +
 	"JobLogTail\x12\x10\n" +
 	"\x03job\x18\x01 \x01(\tR\x03job\x12\x14\n" +

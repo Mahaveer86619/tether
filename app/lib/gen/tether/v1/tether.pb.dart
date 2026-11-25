@@ -12926,12 +12926,12 @@ class JobLog extends $pb.GeneratedMessage {
   factory JobLog({
     $core.String? job,
     $core.Iterable<$core.String>? lines,
-    $core.bool? reset,
+    $core.bool? replace,
   }) {
     final result = JobLog._();
     if (job != null) result.job = job;
     if (lines != null) result.lines.addAll(lines);
-    if (reset != null) result.reset = reset;
+    if (replace != null) result.replace = replace;
     return result;
   }
 
@@ -12950,7 +12950,7 @@ class JobLog extends $pb.GeneratedMessage {
       createEmptyInstance: JobLog.$_createMessage)
     ..aOS(1, _omitFieldNames ? '' : 'job')
     ..pPS(2, _omitFieldNames ? '' : 'lines')
-    ..aOB(3, _omitFieldNames ? '' : 'reset')
+    ..aOB(3, _omitFieldNames ? '' : 'replace')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -12985,15 +12985,15 @@ class JobLog extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   $pb.PbList<$core.String> get lines => $_getList(1);
 
-  /// The lines are the log's tail so far, not new ones: replace, not append.
+  /// The lines are the log's tail so far, not new ones: they replace what the hub has.
   @$pb.TagNumber(3)
-  $core.bool get reset => $_getBF(2);
+  $core.bool get replace => $_getBF(2);
   @$pb.TagNumber(3)
-  set reset($core.bool value) => $_setBool(2, value);
+  set replace($core.bool value) => $_setBool(2, value);
   @$pb.TagNumber(3)
-  $core.bool hasReset() => $_has(2);
+  $core.bool hasReplace() => $_has(2);
   @$pb.TagNumber(3)
-  void clearReset() => $_clearField(3);
+  void clearReplace() => $_clearField(3);
 }
 
 /// GET /api/v1/jobs/{id}/logs?tail=N

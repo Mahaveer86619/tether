@@ -3421,14 +3421,14 @@ const JobLog$json = {
   '2': [
     {'1': 'job', '3': 1, '4': 1, '5': 9, '10': 'job'},
     {'1': 'lines', '3': 2, '4': 3, '5': 9, '10': 'lines'},
-    {'1': 'reset', '3': 3, '4': 1, '5': 8, '10': 'reset'},
+    {'1': 'replace', '3': 3, '4': 1, '5': 8, '10': 'replace'},
   ],
 };
 
 /// Descriptor for `JobLog`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List jobLogDescriptor = $convert.base64Decode(
-    'CgZKb2JMb2cSEAoDam9iGAEgASgJUgNqb2ISFAoFbGluZXMYAiADKAlSBWxpbmVzEhQKBXJlc2'
-    'V0GAMgASgIUgVyZXNldA==');
+    'CgZKb2JMb2cSEAoDam9iGAEgASgJUgNqb2ISFAoFbGluZXMYAiADKAlSBWxpbmVzEhgKB3JlcG'
+    'xhY2UYAyABKAhSB3JlcGxhY2U=');
 
 @$core.Deprecated('Use jobLogTailDescriptor instead')
 const JobLogTail$json = {

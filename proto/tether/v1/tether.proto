@@ -1373,8 +1373,8 @@ message JobReport {
 message JobLog {
   string job = 1;
   repeated string lines = 2;
-  // The lines are the log's tail so far, not new ones: replace, not append.
-  bool reset = 3;
+  // The lines are the log's tail so far, not new ones: they replace what the hub has.
+  bool replace = 3;
 }
 
 // GET /api/v1/jobs/{id}/logs?tail=N
