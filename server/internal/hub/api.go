@@ -144,6 +144,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	h.auditRoutes(mux)
 	h.notifyRoutes(mux)
 	h.skillLibraryRoutes(mux)
+	h.rulesRoutes(mux)
 	h.screenRoutes(mux)
 	h.modeRoutes(mux)
 	mux.HandleFunc("GET /api/v1/clients", h.api(func(r *http.Request) (proto.Message, *opError) { return h.clientList(), nil }))
