@@ -13,6 +13,8 @@ A chat has one **active** session, where messages go, and any number of **linked
 | `fork` | A session split off from one in the chat: a fork, or a continue on the hub. Splitting off the active session makes the new one active. |
 | `started` | Claude started it with the hub's MCP `start_session` and passed `chat` |
 | `linked` | Added by hand (`POST /chats/{id}/links`) |
+| `rewound` | The chat went back to an earlier prompt (see [Rewind](#rewind)); the session it left stays, with this role |
+| `handoff` | The chat carried on in a fresh session from a summary (see [Context and the handoff](#context-and-the-handoff)) |
 
 A session is in at most one chat. Linking it to another moves it.
 
@@ -40,11 +42,35 @@ The app shows the target under the chat's title, with why it was picked, and let
 
 `POST /chats/{id}/target` with `move` (or `set_chat_target` from Claude) starts a new session at the target and makes it active. Its first message is the conversation so far, oldest first, then the user's text, or "carry on" if there is none. The conversation is trimmed to its newest 40,000 characters, 4,000 per message. The hub turns it into an attached file when it's long, like any long message. The new session's lineage is `move`, with the previous one as parent.
 
+## Rewind
+
+`POST /chats/{id}/rewind` with `{"itemId", "session"?, "mode"}` goes back to before one of the user's messages (a `user` row of `chat_messages`). The hub starts a session at the chat's target whose first message is the conversation before that message, trimmed as for a move, and asks it to reply "Ready." and wait. It becomes the active session, linked as `moved`; the session it replaces is interrupted if it is working and its link becomes `rewound`. The answer is plain JSON: the new session, the message's text (the app puts it back in the composer), its number among the chat's prompts and how far back it is.
+
+The cut is kept as a chat note, `rewind:<new session>`, with the old session, the message and its number. From then on the chat's **conversation** (what moves, rewinds, handoffs and the recap read) leaves out what was said from the cut until the new session started, and anything the old session says after it. It also leaves out the first message of every carried session (they start with fixed words and quote what is already stored).
+
+`mode: "fork"` (copying the Claude Code transcript up to that turn and resuming it) is not built: it needs the agent to cut a transcript at a turn, which StartRun can't ask for today. The hub carries as text instead and says so in `note`.
+
+In the app, a user message has a menu (long press on a phone, a button on hover on a desktop) with *Rewind to before this*; the context meter's menu opens a picker with the recap, the quick choices (edit the last prompt, 2 back, 3 back) and the last 30 prompts. Both ask first, saying what will happen. The linked sessions list shows the old session as "Rewound from prompt N".
+
+## The recap
+
+The `recap` job runs with the others when a turn ends. Without a model, it notes the last prompt, the first three lines of the last reply (markdown and code left out) and the active session's to-dos not done, as JSON in the `recap` note. The app shows it as a card above the composer when a chat is opened after 12 hours or more without a turn, and at the top of the rewind picker.
+
+## Context and the handoff
+
+`GET /chats/{id}/desk` returns what the chat page shows around its composer: the recap, a **context estimate**, the rules that cover the chat's device and folder, the rewinds and the last 30 prompts. The estimate is what a resume of the active session would carry: its last turn's input, cache and output tokens when usage was reported, else the conversation's characters / 4. The app draws it as a small meter in the chat's header.
+
+Past a threshold (150,000 tokens by default; `PUT /api/v1/desk {"handoffTokens"}` changes it for the hub) the app shows a banner: *Continue in a fresh session with a summary*. `POST /chats/{id}/handoff` builds the summary by rules, not by a model, and says so at its top: the goal (the first prompt), decisions and instructions (the user's lines that start like a rule, Claude's that say it decided or chose), open items (unfinished to-dos and lines of the last reply about next steps), the files edited or written, and the last three turns verbatim. A session at the chat's target starts with it, linked as `handoff`, with lineage `handoff`.
+
+## Remind
+
+Per chat, off by default: `PUT /chats/{id}/desk {"remind": true}` (the `remind` note). The app then shows chips under the composer, the recap and each rule that applies; tapping one shows it in full. Nothing is sent to a model. *Sharpen*, a short hub session that rewrites a draft for the user to compare, is not built (see [prompt-desk.md](../plans/prompt-desk.md#rewind-and-the-recap)).
+
 ## Context store and post-processing
 
 What's said in a chat is kept in the hub's `chat_messages` table: user messages and Claude's replies, as plain text, per session and item, without tool calls or sub-agent chatter. It's filled as items arrive (`commit`), and when a session joins a chat, from its history. It outlives the sessions, so a chat's context survives scratch retention. `GET /chats/{id}/context` returns it with the chat's notes.
 
-Post-processing jobs (`chatJobs` in `server/internal/hub/chats.go`) run when a chat is made and whenever one of its sessions ends a turn. Each gets the chat and its messages and returns a note (`chat_notes`: one value per kind per chat). The **title** job is the first. Jobs run under the hub lock, so they must be quick. A slow one, like a summary by a model, should start a goroutine and come back through `putChat`.
+Post-processing jobs (`chatJobs` in `server/internal/hub/chats.go`) run when a chat is made and whenever one of its sessions ends a turn. Each gets the chat and its messages and returns a note (`chat_notes`: one value per kind per chat). The **title** job is the first; the **recap** job follows it. Jobs run under the hub lock, so they must be quick. A slow one, like a summary by a model, should start a goroutine and come back through `putChat`.
 
 ## Tasks and the usage limit
 

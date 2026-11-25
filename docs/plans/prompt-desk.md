@@ -120,12 +120,12 @@ A read-only analysis of the hub's saved data (13 chats, 1,833 messages, about 31
 0. **The guide**: `tether_guide` over the hub's MCP (parts, data tables, state, tools) and a line in every chat session's prompt pointing at it, so a session knows how Tether works before it analyses or changes it. **Built.**
 1. **Rules**: store, `list_rules`, prompt injection **built on the hub**; the Rules page in the app is next. (Smallest, most used.)
 2. **Insights, measure**: the stats endpoint and a read-only page. The data decides what follows.
-3. **Rewind and the recap**: the `rewound` link, rewind by text then by transcript fork, the recap note and card.
+3. **Rewind and the recap**: the `rewound` link, rewind by text then by transcript fork, the recap note and card. **Built**, except the transcript fork (rewinds carry as text; see [chats.md](../architecture/chats.md#rewind)).
 4. **Skills: search, `/` picker, run by name.**
 5. **Insights, interpret**: Analyze, saved reports, one-tap actions, suggested rules.
 6. **Script skills**: scripts in the codebase, needs and effects, drafting from a chat.
-7. **The prompt step**: remind and sharpen.
-8. **Context**: the handoff at a size threshold, the meter, summary carry, decisions into the second brain. (The handoff is worth doing before 7: it is the biggest saving in the data.)
+7. **The prompt step**: remind and sharpen. **Remind built**; Sharpen is next (`POST /chats/{id}/sharpen`, a short hub session, original and rewrite side by side).
+8. **Context**: the handoff at a size threshold, the meter, summary carry, decisions into the second brain. **The meter and the handoff are built** (summary by rules); summary carry for moves and decisions into the second brain are next. (The handoff is worth doing before 7: it is the biggest saving in the data.)
 
 ## Tests
 
