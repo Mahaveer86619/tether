@@ -39,6 +39,25 @@ void main() {
       expect(projects.first.node, 'laptop');
     });
 
+    test('a session from a terminal makes its folder a project, and one a chat holds is not listed twice', () {
+      final withLoose = HubSnapshot(
+        status: ConnectionStatus.connected,
+        sessions: {
+          's1': session('s1', cwd: '/home/me/tether'),
+          'a': session('a', cwd: '/work/fk-ims-wvs', node: 'laptop'),
+          'b': session('b', cwd: '/home/me'),
+          'c': session('c', cwd: '/home/me/tether/.tether/x'),
+        },
+        chats: {'c1': chat('c1', 'Fix login', 's1')},
+      );
+      final projects = withLoose.chatProjects();
+      expect([for (final p in projects) p.name].toSet(), {'tether', 'fk-ims-wvs'});
+      final loose = projects.firstWhere((p) => p.name == 'fk-ims-wvs');
+      expect(loose.chats, isEmpty);
+      expect([for (final s in loose.sessions) s.id], ['a']);
+      expect(projects.firstWhere((p) => p.name == 'tether').sessions, isEmpty);
+    });
+
     test('one-off chats, in a home folder, no folder or a scratch folder, are in no project', () {
       for (final id in ['c3', 'c5', 'c6']) {
         expect(hub.projectOf(hub.chats[id]!), isNull, reason: id);
