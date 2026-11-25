@@ -593,6 +593,21 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<UsageSummary>> usage() => _command(() async => usageFromPb(await _api.usage()));
 
   @override
+  Future<Result<ChatDesk>> chatDesk(String chatId) => _command(() async => chatDeskFromJson(await _api.chatDesk(chatId)));
+
+  @override
+  Future<Result<ChatDesk>> setChatRemind(String chatId, {required bool on}) =>
+      _command(() async => chatDeskFromJson(await _api.setChatDesk(chatId, {'remind': on})));
+
+  @override
+  Future<Result<CarryResult>> rewindChat(String chatId, String itemId, {String session = ''}) => _command(
+      () async => carryResultFromJson(await _api.rewindChat(chatId, {'itemId': itemId, if (session.isNotEmpty) 'session': session, 'mode': 'text'})));
+
+  @override
+  Future<Result<CarryResult>> handoffChat(String chatId, {String text = ''}) =>
+      _command(() async => carryResultFromJson(await _api.handoffChat(chatId, {if (text.isNotEmpty) 'text': text})));
+
+  @override
   Future<Result<ChatRemote>> chatRemote(String chatId) => _command(() async => chatRemoteFromJson(await _api.chatRemote(chatId)));
 
   @override

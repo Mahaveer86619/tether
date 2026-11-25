@@ -25,6 +25,7 @@ import 'domain/repositories/repositories.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
 import 'presentation/artifacts/pages_view.dart';
+import 'presentation/chats/chat_desk_cubit.dart';
 import 'presentation/chats/chats_cubit.dart';
 import 'presentation/chats/new_chat_cubit.dart';
 import 'presentation/chats/target_picker.dart';
@@ -126,6 +127,7 @@ void configureDependencies({bool withData = true}) {
     // View models
     ..registerFactory(() => NavCubit(watchHub: sl()))
     ..registerFactory(() => ChatsCubit(chats: sl()))
+    ..registerFactoryParam<ChatDeskCubit, String, void>((chatId, _) => ChatDeskCubit(chatId: chatId, chats: sl()))
     ..registerFactory(() => UpdateCubit(updates: sl(), watchHub: sl(), desktop: sl()))
     ..registerFactoryParam<NewChatCubit, String, void>((node, _) => NewChatCubit(chats: sl(), drafts: sl(), watchHub: sl(), node: node))
     ..registerFactoryParam<TargetPickerCubit, String, String>((prompt, node) => TargetPickerCubit(chats: sl(), prompt: prompt, node: node))

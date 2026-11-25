@@ -146,6 +146,14 @@ class Chats {
   /// Makes a project of a folder; the chats in it go with it.
   Future<Result<ProjectInfo>> fileFolder(String node, String cwd) => _hub.createProject(folders: [ProjectFolder(node: node, cwd: cwd)]);
 
+  Future<Result<ChatDesk>> desk(String chatId) => _hub.chatDesk(chatId);
+
+  Future<Result<ChatDesk>> setRemind(String chatId, {required bool on}) => _hub.setChatRemind(chatId, on: on);
+
+  Future<Result<CarryResult>> rewind(String chatId, ChatPrompt to) => _hub.rewindChat(chatId, to.itemId, session: to.session);
+
+  Future<Result<CarryResult>> handoff(String chatId) => _hub.handoffChat(chatId);
+
   Future<Result<Chat>> rename(String chatId, String title) => _hub.renameChat(chatId, title.trim());
 
   Future<Result<Chat>> archive(String chatId, {bool archived = true}) => _hub.setChatArchived(chatId, archived: archived);

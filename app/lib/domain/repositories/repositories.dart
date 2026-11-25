@@ -119,6 +119,18 @@ abstract interface class HubRepository {
   /// Whether a chat keeps its project folder in step on another device.
   Future<Result<ChatRemote>> chatRemote(String chatId);
   Future<Result<void>> setChatRemote(String chatId, {required bool on, String node = '', bool allowSecrets = false});
+  /// The recap, context estimate, rules and rewind points of a chat.
+  Future<Result<ChatDesk>> chatDesk(String chatId);
+
+  /// Turns the recap and rules under the composer on or off for a chat.
+  Future<Result<ChatDesk>> setChatRemind(String chatId, {required bool on});
+
+  /// Starts a session with the conversation before the prompt [itemId] and
+  /// makes it the chat's active one; returns the prompt to edit.
+  Future<Result<CarryResult>> rewindChat(String chatId, String itemId, {String session = ''});
+
+  /// Continues the chat in a fresh session given a summary of it.
+  Future<Result<CarryResult>> handoffChat(String chatId, {String text = ''});
   Future<Result<List<ProjectFile>>> projectFiles(String repo);
   Future<Result<void>> putProjectFile(String repo, String path, String content);
   Future<Result<void>> deleteProjectFile(String repo, String path);

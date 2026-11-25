@@ -1425,14 +1425,14 @@ class TargetSuggestions extends Equatable {
 
 /// One message of a chat's stored context.
 class ChatMessage extends Equatable {
-  const ChatMessage({required this.role, required this.text, this.session = '', this.at});
+  const ChatMessage({required this.role, required this.text, this.session = '', this.itemId = '', this.at});
 
   /// "user" or "assistant".
-  final String role, text, session;
+  final String role, text, session, itemId;
   final DateTime? at;
 
   @override
-  List<Object?> get props => [role, text, session, at];
+  List<Object?> get props => [role, text, session, itemId, at];
 }
 
 /// Everything said in a chat across its sessions, plus what the hub's
@@ -1452,6 +1452,107 @@ class ChatContext extends Equatable {
 
   @override
   List<Object?> get props => [chat, messages, notes];
+}
+
+/// Where a chat stood at the end of its last turn: what was asked, the
+/// first lines of the reply, and the to-dos not done. Made by the hub
+/// without a model.
+class ChatRecap extends Equatable {
+  const ChatRecap({this.asked = '', this.done = '', this.open = const [], this.prompt = 0, this.at});
+
+  final String asked, done;
+  final List<String> open;
+
+  /// How many prompts the chat had then.
+  final int prompt;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [asked, done, open, prompt, at];
+}
+
+/// One of the user's prompts in a chat, the [n]th, that a rewind can go back to.
+class ChatPrompt extends Equatable {
+  const ChatPrompt({required this.itemId, required this.n, required this.text, this.session = '', this.at});
+
+  final String itemId, text, session;
+  final int n;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [itemId, n, text, session, at];
+}
+
+/// A rewind: session [to] took over from [from] at prompt [prompt].
+class ChatRewind extends Equatable {
+  const ChatRewind({required this.from, required this.to, required this.prompt, this.at});
+
+  final String from, to;
+  final int prompt;
+  final DateTime? at;
+
+  @override
+  List<Object?> get props => [from, to, prompt, at];
+}
+
+/// A standing rule that covers a chat.
+class DeskRule extends Equatable {
+  const DeskRule({required this.id, required this.name, required this.text, this.scope = 'all'});
+
+  final String id, name, text, scope;
+
+  @override
+  List<Object?> get props => [id, name, text, scope];
+}
+
+/// What the chat page shows around its composer: the recap, how big the
+/// context has grown, the rules that apply and what a rewind can go back to.
+class ChatDesk extends Equatable {
+  const ChatDesk({
+    this.recap,
+    this.tokens = 0,
+    this.fromUsage = false,
+    this.handoffAt = 150000,
+    this.remind = false,
+    this.rules = const [],
+    this.rewinds = const [],
+    this.prompts = const [],
+  });
+
+  final ChatRecap? recap;
+
+  /// Tokens a resume of the active session would carry: from its last
+  /// turn's usage when [fromUsage], else estimated from the saved text.
+  final int tokens;
+  final bool fromUsage;
+
+  /// Past this, the app offers a handoff to a fresh session.
+  final int handoffAt;
+
+  /// Show the recap and the rules under the composer.
+  final bool remind;
+  final List<DeskRule> rules;
+  final List<ChatRewind> rewinds;
+
+  /// Oldest first, the newest 30.
+  final List<ChatPrompt> prompts;
+
+  bool get heavy => handoffAt > 0 && tokens >= handoffAt;
+
+  @override
+  List<Object?> get props => [recap, tokens, fromUsage, handoffAt, remind, rules, rewinds, prompts];
+}
+
+/// What a rewind or a handoff did: the session that carries on, and the
+/// prompt to edit (a rewind) or the summary it was given (a handoff).
+class CarryResult extends Equatable {
+  const CarryResult({required this.session, this.text = '', this.prompt = 0, this.note = ''});
+
+  final String session, text, note;
+  final int prompt;
+
+  @override
+  List<Object?> get props => [session, text, prompt, note];
 }
 
 /// A file of a release, for one platform.
