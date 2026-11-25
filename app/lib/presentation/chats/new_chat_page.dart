@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
 import '../artifacts/attachments.dart';
-import '../home/monitor_page.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../routines/pinned_skills_cubit.dart';
@@ -99,9 +98,6 @@ class _NewChatState extends State<_NewChat> {
         }
 
         final (label, hint) = _targetText(s);
-        final hub = context.select<HubCubit, HubSnapshot>((h) => h.state.hub);
-        final allProjects = hub.chatsSupported ? hub.chatProjects() : const <ChatProject>[];
-        final projects = allProjects.take(4).toList();
         final box = Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -168,7 +164,6 @@ class _NewChatState extends State<_NewChat> {
             ),
           ],
         );
-        final nav = context.read<NavCubit>();
         return Column(
           children: [
             if (widget.leading != null) Align(alignment: Alignment.centerLeft, child: widget.leading!),
@@ -191,28 +186,6 @@ class _NewChatState extends State<_NewChat> {
                         Text(_greeting(DateTime.now()), key: const Key('greeting'), style: TextStyle(fontSize: narrow ? 28 : 34, fontWeight: FontWeight.w600, height: 1.15)),
                         const SizedBox(height: 4),
                         Text('What should Claude work on?', style: TextStyle(fontSize: narrow ? 20 : 24, color: c.muted, height: 1.2)),
-                        if (projects.isNotEmpty) ...[
-                          const SizedBox(height: 22),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (final p in projects)
-                                FilterChip(
-                                  key: Key('project-chip-${p.key}'),
-                                  avatar: Icon(Icons.folder_outlined, size: 16, color: c.accent),
-                                  label: Text(p.labelAmong(allProjects), style: Type.meta(context, color: c.text)),
-                                  tooltip: '${p.node} · ${p.cwd}',
-                                  selected: s.target?.node == p.node && s.target?.cwd == p.cwd,
-                                  showCheckmark: false,
-                                  onSelected: connected
-                                      ? (on) => context.read<NewChatCubit>().setTarget(on ? ChatTarget(mode: TargetMode.manual, node: p.node, cwd: p.cwd) : null)
-                                      : null,
-                                ),
-                            ],
-                          ),
-                        ],
-                        LiveSections(overview: false, onSession: nav.openSession, onDevices: () => nav.select(Destination.devices)),
                       ],
                         ),
                       ),

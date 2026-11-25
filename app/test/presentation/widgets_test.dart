@@ -164,18 +164,18 @@ void main() {
       await settle(tester);
     }
 
-    testWidgets('desktop: overview, approve from the dashboard, open a session and send', (tester) async {
+    testWidgets('desktop: Home is clean, approve in the session, and send', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
 
       expect(find.text('Tether'), findsOneWidget);
-      expect(find.text('NEEDS YOU'), findsOneWidget);
+      expect(find.text('NEEDS YOU'), findsNothing);
+
+      await openSession(tester, 's1');
+      await settle(tester);
       expect(find.text('rm -rf build'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Allow'));
       await tester.pump();
       expect(repo.decided.single, ('ap', true));
-
-      await openSession(tester, 's1');
-      await settle(tester);
       repo.emitTimeline('s1', [rpb.TimelineItem(itemId: 'u', ord: Int64(1), user: rpb.UserText(text: 'earlier prompt'))]);
       await settle(tester);
       expect(find.text('earlier prompt'), findsOneWidget);
@@ -882,8 +882,6 @@ void main() {
         'a1': Artifact(id: 'a1', name: 'notes.md', mime: 'text/markdown', size: 2048, session: 's1', created: DateTime.now()),
       }));
       await pumpApp(tester, const Size(1400, 1000));
-      expect(find.descendant(of: find.byType(CardShell), matching: find.text('Session e1')), findsOneWidget, reason: 'a fresh failure needs you');
-
       await tester.tap(find.byKey(const Key('nav-devices')));
       await settle(tester);
       expect(find.text('1 · HUB'), findsOneWidget);
@@ -1085,7 +1083,7 @@ void main() {
         'other': Artifact(id: 'other', name: 'other.csv', mime: 'text/csv', size: 10, session: 'zz', created: DateTime.now()),
       }));
       await pumpApp(tester, const Size(1400, 1000));
-      await tester.tap(find.text('Session s1').first);
+      await openSession(tester, 's1');
       await settle(tester);
       await tester.tap(find.byTooltip('More').last);
       await settle(tester);
@@ -1112,7 +1110,7 @@ void main() {
     testWidgets('phone: home with the start box, the menu drawer, a pushed session page, and Back through the nav state', (tester) async {
       await pumpApp(tester, const Size(400, 860));
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget, reason: 'Home starts with the box for a new chat');
-      expect(find.text('RUNNING NOW'), findsOneWidget);
+      expect(find.text('RUNNING NOW'), findsNothing);
       expect(find.byType(NavigationBar), findsNothing, reason: 'the places are in the menu, not a bottom bar');
       expect(find.byKey(const Key('nav-chats')), findsOneWidget, reason: 'the New and Chats switch is in the header');
 
@@ -1369,7 +1367,7 @@ void main() {
         attempts: 3,
         lastError: () => 'no answer from the hub for 10s',
       ));
-      await tester.pump();
+      await settle(tester);
       expect(find.textContaining('retrying in'), findsOneWidget);
       await tester.tap(find.byKey(const Key('connection-retry')));
       await tester.pump();
@@ -1379,7 +1377,7 @@ void main() {
 
     testWidgets('tablet widths get the icon rail', (tester) async {
       await pumpApp(tester, const Size(800, 900));
-      expect(find.text('RUNNING NOW'), findsOneWidget);
+      expect(find.text('RUNNING NOW'), findsNothing);
       expect(find.byKey(const Key('nav-home')), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
       expect(find.text('RECENTS'), findsNothing, reason: 'recents need the full sidebar');
