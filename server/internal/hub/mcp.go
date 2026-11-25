@@ -73,11 +73,12 @@ var mcpTools = []mcpTool{
 	{
 		Name: "propose_skill",
 		Description: "Save a new skill for the user to approve in the Tether app. skill_md is a whole SKILL.md: front matter with name and description, then the steps. " +
-			"It is checked, and refused if it holds anything that looks like a secret.",
+			"It is checked, and refused if it holds anything that looks like a secret. A skill that runs scripts lists them in the front matter (scripts, needs_env, effect, runs_on) and sends their contents in scripts.",
 		InputSchema: schema([]string{"skill_md", "mutating"}, map[string]string{
 			"skill_md": "string: the whole SKILL.md",
 			"mutating": "boolean: true if any step changes something",
 			"source":   "string: the request it was learned from",
+			"scripts":  "object: for a skill with scripts, each script's path relative to the project mapped to its contents; Tether keeps a hash, the script stays in the project",
 		}),
 		call: (*Hub).mcpProposeSkill,
 	},
@@ -88,8 +89,18 @@ var mcpTools = []mcpTool{
 			"name":     "string: the skill's name",
 			"skill_md": "string: the whole corrected SKILL.md, with the same name",
 			"note":     "string: what was wrong, in a sentence",
+			"scripts":  "object: scripts you changed, path mapped to contents; a changed script waits for the user's review",
 		}),
 		call: (*Hub).mcpUpdateSkill,
+	},
+	{
+		Name:        "check_skill_scripts",
+		Description: "Before running a skill's scripts, send the sha256 of each (sha256sum, or Get-FileHash on Windows). Says whether they still match what the user approved; a changed script flags the skill for review.",
+		InputSchema: schema([]string{"name", "hashes"}, map[string]string{
+			"name":   "string: the skill's name",
+			"hashes": "object: each script's path, as the skill lists it, mapped to its sha256 in hex",
+		}),
+		call: (*Hub).mcpCheckSkillScripts,
 	},
 	{
 		Name:        "tether_guide",

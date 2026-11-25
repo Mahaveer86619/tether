@@ -134,7 +134,7 @@ func TestDismissedSkillsAreHiddenAndNotProposedAgain(t *testing.T) {
 func TestDraftBriefCarriesTheEvidenceAndTheRules(t *testing.T) {
 	now := 100 * day
 	cands := Cluster(corpus(now), DefaultOptions(now))
-	brief := DraftBrief(cands[0])
+	brief := DraftBrief(cands[0], DraftOnHub)
 	for _, want := range []string{
 		"asked 5 times in 5 sessions", "mostly on minipc", "check the v2 sync progress", "wvs-v2-run-<date>.log",
 		"(read-only, 100% of runs) tmux ls", "propose_skill", "update_skill", "Never put a password", "Do not run the steps",
@@ -144,7 +144,7 @@ func TestDraftBriefCarriesTheEvidenceAndTheRules(t *testing.T) {
 		}
 	}
 	// A routine with changing steps says so, in capitals.
-	changing := DraftBrief(Candidate{Example: "copy a file", Runs: make([]Task, 3), Sessions: 2, Steps: []CommonStep{{Key: "Bash:scp", Detail: "scp a b", Mutating: true, Share: 1}}})
+	changing := DraftBrief(Candidate{Example: "copy a file", Runs: make([]Task, 3), Sessions: 2, Steps: []CommonStep{{Key: "Bash:scp", Detail: "scp a b", Mutating: true, Share: 1}}}, DraftOnHub)
 	if !strings.Contains(changing, "CHANGES THINGS") {
 		t.Errorf("changing steps must stand out:\n%s", changing)
 	}

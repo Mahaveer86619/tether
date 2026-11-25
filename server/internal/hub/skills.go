@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 	"github.com/Mahaveer86619/tether/server/internal/skills"
 )
 
@@ -131,10 +130,15 @@ type skillSummary struct {
 	Source      string `json:"source"`
 	Version     int    `json:"version"`
 	UpdatedMs   int64  `json:"updatedMs"`
+	Effect      string `json:"effect,omitempty"`
+	Scripts     int    `json:"scripts,omitempty"`
+	// Review is set when a script changed since the skill was approved.
+	Review bool `json:"review,omitempty"`
 }
 
 func summarize(s skills.Skill) skillSummary {
-	return skillSummary{Name: s.Name, Description: s.Description, Status: s.Status, Mutating: s.Mutating, Source: s.Source, Version: s.Latest().N, UpdatedMs: s.UpdatedM}
+	return skillSummary{Name: s.Name, Description: s.Description, Status: s.Status, Mutating: s.Mutating, Source: s.Source, Version: s.Latest().N, UpdatedMs: s.UpdatedM,
+		Effect: s.Effect, Scripts: len(s.Scripts), Review: s.NeedsReview()}
 }
 
 func skillError(w http.ResponseWriter, err error) {
@@ -197,21 +201,27 @@ func (h *Hub) skillLibraryRoutes(mux *http.ServeMux) {
 		}
 		return h.lib().Rollback(n, body.Version, "the owner", now)
 	}))
-	// POST /api/v1/skills/draft {"example": "..."} starts a session that writes
-	// a skill for the routine with that example request, from what the hub kept;
-	// with "idea" it writes one from that description instead.
+	// POST /api/v1/skills/draft starts a session that writes a skill from what
+	// the hub kept: {"example": "..."} for a routine the history shows (with
+	// "idea", from that description instead), or {"session": "...", "item":
+	// "..."} for the task around one item of a chat.
 	mux.HandleFunc("POST /api/v1/skills/draft", h.authed(func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Example, Idea string }
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Example) == "" {
-			writeError(w, invalid("send {\"example\": the routine's example request}"))
+		var body struct{ Example, Idea, Session, Item string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Example) == "" && (body.Session == "" || body.Item == "") {
+			writeError(w, invalid("send {\"example\": the routine's example request} or {\"session\", \"item\"}"))
 			return
 		}
-		draft := h.draftSkill
-		// An idea (from an Insights recommendation) is drafted from its text, not from a routine.
-		if strings.TrimSpace(body.Idea) != "" {
-			draft = func(example string) (string, *opError) { return h.draftSkillIdea(example, body.Idea) }
+		var id string
+		var err *opError
+		switch {
+		case strings.TrimSpace(body.Idea) != "":
+			// An idea (from an Insights recommendation) is drafted from its text, not from a routine.
+			id, err = h.draftSkillIdea(body.Example, body.Idea)
+		case body.Example != "":
+			id, err = h.draftSkill(body.Example)
+		default:
+			id, err = h.draftFromItem(body.Session, body.Item)
 		}
-		id, err := draft(body.Example)
 		if err != nil {
 			writeError(w, err)
 			return
@@ -230,13 +240,9 @@ func (h *Hub) draftSkill(example string) (string, *opError) {
 	o := skills.DefaultOptions(time.Now().UnixMilli())
 	o.WindowMs, o.MinRuns = 0, 2
 	for _, c := range skills.Cluster(tasks, o) {
-		if c.Example != example {
-			continue
+		if c.Example == example {
+			return h.startDraft(c)
 		}
-		h.mu.Lock()
-		defer h.mu.Unlock()
-		cs := &v1.CreateSession{Prompt: skills.DraftBrief(c), Scratch: true, Name: "Skill: " + clip(example, 50)}
-		return h.startSession(cs, "Routines", startExtra{})
 	}
 	return "", &opError{"not_found", "that routine is no longer in the history", http.StatusNotFound}
 }
@@ -286,7 +292,11 @@ func (h *Hub) mcpListSkills(map[string]any) (string, error) {
 	}
 	out := []map[string]any{}
 	for _, s := range active {
-		out = append(out, map[string]any{"name": s.Name, "description": s.Description, "changes_things": s.Mutating, "version": s.Latest().N})
+		m := map[string]any{"name": s.Name, "description": s.Description, "changes_things": s.Mutating, "version": s.Latest().N}
+		if len(s.Scripts) > 0 {
+			m["runs_scripts"] = true
+		}
+		out = append(out, m)
 	}
 	return jsonText(out)
 }
@@ -296,12 +306,12 @@ func (h *Hub) mcpReadSkill(args map[string]any) (string, error) {
 	if err != nil || s.Status != "active" {
 		return "", fmt.Errorf("no approved skill called %q; list_skills shows them", str(args, "name"))
 	}
-	return s.Latest().MD, nil
+	return s.Latest().MD + scriptNote(s), nil
 }
 
 func (h *Hub) mcpProposeSkill(args map[string]any) (string, error) {
 	mutating, _ := args["mutating"].(bool)
-	s, err := h.lib().Propose(str(args, "skill_md"), mutating, str(args, "source"), mcpSource, time.Now().UnixMilli())
+	s, err := h.lib().ProposeWith(str(args, "skill_md"), scriptsArg(args), mutating, str(args, "source"), mcpSource, time.Now().UnixMilli())
 	if err != nil {
 		return "", err
 	}
@@ -313,9 +323,13 @@ func (h *Hub) mcpUpdateSkill(args map[string]any) (string, error) {
 	if err != nil || s.Status != "active" {
 		return "", fmt.Errorf("no approved skill called %q", str(args, "name"))
 	}
-	s, err = h.lib().Update(s.Name, str(args, "skill_md"), str(args, "note"), mcpSource, time.Now().UnixMilli())
+	s, err = h.lib().UpdateWith(s.Name, str(args, "skill_md"), scriptsArg(args), str(args, "note"), mcpSource, time.Now().UnixMilli())
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s is now version %d. The previous text is kept.", s.Name, s.Latest().N), nil
+	msg := fmt.Sprintf("%s is now version %d. The previous text is kept.", s.Name, s.Latest().N)
+	if s.NeedsReview() {
+		msg += " A script changed, so the user reviews it in the Tether app before it runs again."
+	}
+	return msg, nil
 }

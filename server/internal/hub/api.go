@@ -144,6 +144,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	h.auditRoutes(mux)
 	h.notifyRoutes(mux)
 	h.skillLibraryRoutes(mux)
+	h.skillUseRoutes(mux)
 	h.rulesRoutes(mux)
 	h.projectRoutes(mux)
 	h.insightRoutes(mux)

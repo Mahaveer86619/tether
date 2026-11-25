@@ -165,7 +165,7 @@ func (h *Hub) makeRemote(chat, mirrorNode string, allowSecrets bool, from string
 		}
 		prev := c.Target
 		c.Target = target
-		if _, err := h.moveChat(c, target, "", nil, from, ""); err != nil {
+		if _, err := h.moveChat(c, target, "", nil, from, "", ""); err != nil {
 			c.Target = prev
 			done.State, done.Error = remoteFailed, "moving the chat: "+err.Message
 			h.saveRemote(done)

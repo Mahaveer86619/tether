@@ -2,15 +2,44 @@ package skills
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
+// Where a drafting session runs: on the hub with nothing but the brief, or in
+// the project the routine ran in, where it can write a script.
+const (
+	DraftOnHub = iota
+	DraftInProject
+)
+
+// scriptLike are commands that reach a database or a service, or run a
+// project script, usually with credentials from the environment: a routine
+// made of them is best kept as a script the skill runs.
+var scriptLike = regexp.MustCompile(`(?i)(^|[\s;|&(])(psql|mysql|mariadb|mongosh|mongo|redis-cli|sqlite3|clickhouse-client|cqlsh|bq|snowsql|aws|gcloud|az|kubectl|python3?|node|deno|bun|go run|ts-node)(\s|$)|\$\{?[A-Z][A-Z0-9_]*(URL|DSN|HOST|USER|PASS\w*|TOKEN|KEY)\b`)
+
+// IsScript reports whether a routine is a custom command against a database
+// or a service, so its skill should carry a script.
+func IsScript(c Candidate) bool {
+	for _, s := range c.Steps {
+		if strings.HasPrefix(s.Key, "Bash:") && scriptLike.MatchString(s.Detail) {
+			return true
+		}
+	}
+	return false
+}
+
 // DraftBrief is what a session is told to write a skill from a routine. The
 // session sees only what the hub kept of the runs: the requests and the steps,
-// with ids, dates and addresses already masked.
-func DraftBrief(c Candidate) string {
+// with ids, dates and addresses already masked. where is DraftOnHub or
+// DraftInProject.
+func DraftBrief(c Candidate, where int) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Write a Tether skill from a routine the user keeps asking for. It was asked %d times in %d sessions", len(c.Runs), c.Sessions)
+	if len(c.Runs) <= 1 {
+		b.WriteString("Write a Tether skill from a task the user did once and saved from a chat, so it can be repeated")
+	} else {
+		fmt.Fprintf(&b, "Write a Tether skill from a routine the user keeps asking for. It was asked %d times in %d sessions", len(c.Runs), c.Sessions)
+	}
 	if len(c.Nodes) > 0 {
 		fmt.Fprintf(&b, ", mostly on %s", c.Nodes[0])
 	}
@@ -45,6 +74,24 @@ The file:
 - Keep it short: under 80 lines.
 
 Set mutating to true if any step changes something. Set source to the example request: `)
-	fmt.Fprintf(&b, "%q.\n\nYou are on Tether's hub machine, not where the routine runs. Do not run the steps; only write the skill.\n", oneLine(c.Example))
+	fmt.Fprintf(&b, "%q.\n", oneLine(c.Example))
+	script := IsScript(c)
+	if script && where == DraftInProject {
+		b.WriteString(`
+This routine is a custom command against a database or a service, so make it a script skill:
+- Write the command as a script in this project, at .tether/skills/<name>/ (or under scripts/ if the project keeps its scripts there). It reads every credential and address from environment variables (os.environ, $DB_URL and the like) and never contains a password, token, key or connection string with a password in it. Do not write any .env file.
+- Add to the front matter: needs_env: [the variable names, never their values], effect: read or write (write if it changes anything), runs_on: the device it must run on, or any, and scripts: [the script paths, relative to the project].
+- The steps say how to run the script and that the variables come from the project's .env (Tether keeps it sealed for allowed devices) or the device's environment.
+- Pass the scripts to propose_skill as scripts: {path: the script's full contents}, so Tether keeps a hash of each and notices when one changes.
+- Do not run the script or the routine's commands; only write the script and the skill.
+`)
+	} else if script {
+		b.WriteString("\nThis routine is a custom command against a database or a service. Write the command into the steps, reading every credential and address from environment variables, and list them under needs_env: [names only] in the front matter, with effect: read or write.\n")
+	}
+	if where == DraftInProject {
+		b.WriteString("\nYou are in the project where the routine runs. Do not run the steps; only write the skill.\n")
+	} else {
+		b.WriteString("\nYou are on Tether's hub machine, not where the routine runs. Do not run the steps; only write the skill.\n")
+	}
 	return b.String()
 }

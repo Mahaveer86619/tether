@@ -475,6 +475,12 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 }
 
 func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
+	return h.sendMessageWith(m, from, "")
+}
+
+// sendMessageWith is sendMessage with a skill to follow this turn, from
+// skillTurn, or "".
+func (h *Hub) sendMessageWith(m *v1.SendMessage, from, use string) (string, *opError) {
 	info, agent, err := h.target(m.Session)
 	if err != nil {
 		return "", err
@@ -523,8 +529,9 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		attachments = append(attachments, long)
 	}
 	h.noteSentAs(info.Id, text, from, m.ClientId, attachments...)
-	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: text, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode),
-		SystemPrompt: h.chatSystemPrompt(info.Id)}}}))
+	system, sent := withSkill(h.chatSystemPrompt(info.Id), text, use)
+	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Send{Send: &v1.AgentCommand_SendInput{Session: info.Id, Text: sent, Attachments: attachments, PermissionMode: modeArg(info.PermissionMode),
+		SystemPrompt: system}}}))
 	return info.Id, nil
 }
 

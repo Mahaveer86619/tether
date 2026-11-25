@@ -176,3 +176,53 @@ func ext(path string) string {
 	}
 	return ""
 }
+
+// TaskAt is the task an item belongs to: the user's request at or before it
+// and the steps up to the next request. It is how a stretch of a chat is
+// saved as a skill.
+func TaskAt(m Meta, items []*v1.TimelineItem, itemID string) (Task, bool) {
+	items = slices.SortedStableFunc(slices.Values(items), func(a, b *v1.TimelineItem) int { return cmp.Compare(a.GetOrd(), b.GetOrd()) })
+	at := slices.IndexFunc(items, func(it *v1.TimelineItem) bool { return it.GetItemId() == itemID && it.GetKind() != nil })
+	if at < 0 {
+		return Task{}, false
+	}
+	isAsk := func(it *v1.TimelineItem) bool {
+		u := it.GetUser()
+		return u != nil && !u.Queued && it.GetParentToolUseId() == ""
+	}
+	start := at
+	for start >= 0 && !isAsk(items[start]) {
+		start--
+	}
+	if start < 0 {
+		return Task{}, false
+	}
+	end := at + 1
+	for end < len(items) && !isAsk(items[end]) {
+		end++
+	}
+	ts := Tasks(m, items[start:end])
+	if len(ts) == 0 {
+		return Task{}, false
+	}
+	return ts[0], true
+}
+
+// FromTask is a one-run routine, for a skill the user asks for by hand.
+func FromTask(t Task) Candidate {
+	c := Candidate{Example: t.Request, Runs: []Task{t}, Sessions: 1, FirstMs: t.StartMs, LastMs: t.StartMs, Clean: 1}
+	if t.Node != "" {
+		c.Nodes = []string{t.Node}
+	}
+	if t.Cwd != "" {
+		c.Cwds = []string{t.Cwd}
+	}
+	for _, s := range t.Steps {
+		c.Steps = append(c.Steps, CommonStep{Key: s.Key, Detail: s.Detail, Mutating: s.Mutating, Share: 1})
+		c.Mutating = c.Mutating || s.Mutating
+		if s.Failed {
+			c.Clean = 0
+		}
+	}
+	return c
+}

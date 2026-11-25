@@ -113,8 +113,9 @@ func (h *Hub) unlink(c *v1.Chat, session string) {
 }
 
 // createChat starts a chat with its first session, or makes a chat of an
-// existing session. Caller holds h.mu.
-func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
+// existing session. With skill, the first session is told to follow that
+// skill to do the prompt. Caller holds h.mu.
+func (h *Hub) createChat(cc *v1.CreateChat, from, skill string) (*v1.Chat, *opError) {
 	now := time.Now().UnixMilli()
 	c := &v1.Chat{Id: uuid.NewString(), CreatedMs: now, UpdatedMs: now}
 	if cc.Session != "" {
@@ -136,6 +137,10 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 	if strings.TrimSpace(cc.Prompt) == "" {
 		return nil, invalid("prompt is empty")
 	}
+	use, err := h.skillTurn(skill, cc.Prompt)
+	if err != nil {
+		return nil, err
+	}
 	target, err := h.resolveTarget(cc.Prompt, cc.Target)
 	if err != nil {
 		return nil, err
@@ -154,6 +159,7 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 		// An agent too old for a system prompt gets the instructions inline.
 		cs.Prompt = detectPrompt(c.Id) + "\n\n---\n\n" + cs.Prompt
 	}
+	system, cs.Prompt = withSkill(system, cs.Prompt, use)
 	id, err := h.startSession(cs, from, startExtra{systemPrompt: system, clientID: cc.ClientId})
 	if err != nil {
 		delete(h.chats, c.Id)
@@ -224,8 +230,9 @@ var errChatNotFound = &opError{"not_found", "unknown chat", http.StatusNotFound}
 
 // chatSend sends a message to the chat's active session. When that session
 // is gone (its folder was cleaned up, say), the chat carries on in a new
-// one at its target. Caller holds h.mu.
-func (h *Hub) chatSend(id string, m *v1.SendMessage, from string) (string, *opError) {
+// one at its target. With skill, the session is told to follow that skill
+// for this turn. Caller holds h.mu.
+func (h *Hub) chatSend(id string, m *v1.SendMessage, from, skill string) (string, *opError) {
 	c := h.chats[id]
 	if c == nil {
 		return "", errChatNotFound
@@ -233,13 +240,16 @@ func (h *Hub) chatSend(id string, m *v1.SendMessage, from string) (string, *opEr
 	if strings.TrimSpace(m.Text) == "" {
 		return "", invalid("message is empty")
 	}
+	use, err := h.skillTurn(skill, m.Text)
+	if err != nil {
+		return "", err
+	}
 	var session string
-	var err *opError
 	if h.sessions[c.ActiveSession] == nil {
-		session, err = h.moveChat(c, c.Target, m.Text, m.Attachments, from, m.ClientId)
+		session, err = h.moveChat(c, c.Target, m.Text, m.Attachments, from, m.ClientId, use)
 	} else {
 		m.Session = c.ActiveSession
-		session, err = h.sendMessage(m, from)
+		session, err = h.sendMessageWith(m, from, use)
 	}
 	if err != nil {
 		return "", err
@@ -268,7 +278,7 @@ func (h *Hub) setChatTarget(id string, st *v1.SetChatTarget, from string) (*v1.C
 	prev := c.Target
 	c.Target = t
 	if st.Move {
-		if _, err := h.moveChat(c, t, st.Text, nil, from, ""); err != nil {
+		if _, err := h.moveChat(c, t, st.Text, nil, from, "", ""); err != nil {
 			c.Target = prev
 			return nil, err
 		}
@@ -279,8 +289,9 @@ func (h *Hub) setChatTarget(id string, st *v1.SetChatTarget, from string) (*v1.C
 }
 
 // moveChat starts a session at target that carries on the conversation,
-// and makes it the active one. Caller holds h.mu and saves c.
-func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []string, from, clientID string) (string, *opError) {
+// and makes it the active one. use is a skill to follow, from skillTurn, or
+// "". Caller holds h.mu and saves c.
+func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []string, from, clientID, use string) (string, *opError) {
 	if t == nil {
 		return "", invalid("the chat has no target")
 	}
@@ -297,7 +308,9 @@ func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []
 	if s := h.sessions[c.ActiveSession]; s != nil {
 		cs.Model = s.Model
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, text), clientID: clientID})
+	system := h.chatPromptWith(c, cs.Node, false, text)
+	system, cs.Prompt = withSkill(system, cs.Prompt, use)
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: system, clientID: clientID})
 	if err != nil {
 		return "", err
 	}
@@ -803,7 +816,8 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/chats", h.api(func(r *http.Request) (proto.Message, *opError) {
 		cc := &v1.CreateChat{}
-		if err := decode(r, cc); err != nil {
+		skill, err := decodeWithSkill(r, cc)
+		if err != nil {
 			return nil, err
 		}
 		// The project rides in the query, not CreateChat, to keep the contract as it is.
@@ -811,7 +825,7 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 		if project != "" && findProject(h.projectList(), project) < 0 {
 			return nil, errProjectNotFound
 		}
-		c, err := h.createChat(cc, clientName(r))
+		c, err := h.createChat(cc, clientName(r), skill)
 		if err == nil && project != "" {
 			err = h.setChatProject(c.Id, project)
 		}
@@ -829,10 +843,11 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/chats/{id}/messages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		m := &v1.SendMessage{}
-		if err := decode(r, m); err != nil {
+		skill, err := decodeWithSkill(r, m)
+		if err != nil {
 			return nil, err
 		}
-		return ackOf(h.chatSend(r.PathValue("id"), m, clientName(r)))
+		return ackOf(h.chatSend(r.PathValue("id"), m, clientName(r), skill))
 	}))
 	mux.HandleFunc("POST /api/v1/chats/{id}/target", h.api(func(r *http.Request) (proto.Message, *opError) {
 		st := &v1.SetChatTarget{}
