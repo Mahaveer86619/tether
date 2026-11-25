@@ -213,6 +213,7 @@ func (h *Hub) deleteChat(id string) *opError {
 		}
 	}
 	delete(h.chats, id)
+	h.forgetChatProject(id)
 	gone := proto.Clone(c).(*v1.Chat)
 	gone.Deleted = true
 	h.broadcast(&v1.Frame{Body: &v1.Frame_Chat{Chat: gone}})
@@ -822,7 +823,16 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 		if err := decode(r, cc); err != nil {
 			return nil, err
 		}
-		return h.createChat(cc, clientName(r))
+		// The project rides in the query, not CreateChat, to keep the contract as it is.
+		project := r.URL.Query().Get("project")
+		if project != "" && findProject(h.projectList(), project) < 0 {
+			return nil, errProjectNotFound
+		}
+		c, err := h.createChat(cc, clientName(r))
+		if err == nil && project != "" {
+			err = h.setChatProject(c.Id, project)
+		}
+		return c, err
 	}))
 	mux.HandleFunc("PATCH /api/v1/chats/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		u := &v1.UpdateChat{}
