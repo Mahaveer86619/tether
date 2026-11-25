@@ -102,8 +102,8 @@ A first, so the structure is right before people are added to it, and B only has
 - **B:** two users on one hub (fake agents): neither sees the other's chats, sessions, approvals, files or notifications in any REST, MCP or socket output; a shared chat shows to the member it was shared with and no one else; a device that is not lent is never sent another user's start command; a lent one is, and the session shows whose device it was; a viewer cannot send; revoking a member or a lend takes effect on the open connection; the migration gives the first user everything.
 - A fuzz-style test over every route: with no rights, each returns forbidden and no data.
 
-## Decisions to make
+## Decisions made
 
-- **Whether a project chat is private to its user, or visible to the project.** Planned: private, shareable. The other choice makes a project a shared room.
-- **Lending a device** under its owner's Claude account is allowed with a clear warning (planned), or only each user's own devices (stricter, and a shared GPU box then needs a user of its own).
-- **One hub, one workspace by default**, with several as an option, or always several.
+- **A project chat is private to its user, and can be shared** (read or collaborate).
+- **Each user's sessions run on devices under their own Claude login.** No lending of one person's account to another. A shared pool of accounts and devices is a later feature, to be designed on its own: it needs a way to pool credentials and meter use, which this plan does not cover.
+- **One workspace by default**, with several as an option later.
