@@ -124,6 +124,7 @@ var mcpTools = []mcpTool{
 		Description: "Start a Claude Code session with a first prompt. Without node it runs on the hub's machine in a scratch folder. Returns the session id; use wait_for_session to get the result.",
 		InputSchema: schema([]string{"prompt"}, map[string]string{
 			"prompt": "string: what the new session should do",
+			"title":  "string: a short title for the task, 3 to 6 words, shown in the chat's task list instead of the prompt",
 			"node":   "string: the machine to run on; omit for a hub session",
 			"cwd":    "string: folder on that machine (default: its home folder)",
 			"model":  "string: e.g. sonnet, opus, haiku",
@@ -338,6 +339,7 @@ func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	cs := &v1.CreateSession{Prompt: str(args, "prompt"), Node: str(args, "node"), Cwd: str(args, "cwd"), Model: str(args, "model")}
+	cs.Name = taskTitle(str(args, "title"), cs.Prompt)
 	cs.Scratch = cs.Node == ""
 	chat := h.chats[str(args, "chat")]
 	if str(args, "chat") != "" && chat == nil {
