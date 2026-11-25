@@ -198,14 +198,20 @@ func (h *Hub) skillLibraryRoutes(mux *http.ServeMux) {
 		return h.lib().Rollback(n, body.Version, "the owner", now)
 	}))
 	// POST /api/v1/skills/draft {"example": "..."} starts a session that writes
-	// a skill for the routine with that example request, from what the hub kept.
+	// a skill for the routine with that example request, from what the hub kept;
+	// with "idea" it writes one from that description instead.
 	mux.HandleFunc("POST /api/v1/skills/draft", h.authed(func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Example string }
+		var body struct{ Example, Idea string }
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || strings.TrimSpace(body.Example) == "" {
 			writeError(w, invalid("send {\"example\": the routine's example request}"))
 			return
 		}
-		id, err := h.draftSkill(body.Example)
+		draft := h.draftSkill
+		// An idea (from an Insights recommendation) is drafted from its text, not from a routine.
+		if strings.TrimSpace(body.Idea) != "" {
+			draft = func(example string) (string, *opError) { return h.draftSkillIdea(example, body.Idea) }
+		}
+		id, err := draft(body.Example)
 		if err != nil {
 			writeError(w, err)
 			return
