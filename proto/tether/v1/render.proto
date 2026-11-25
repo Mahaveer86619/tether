@@ -73,6 +73,10 @@ message TaskReport {
   bool clipped = 7;
   // Why it failed, when it did.
   string detail = 8;
+  // The task stopped at Claude's usage limit and carries on by itself when it resets.
+  bool waiting = 9;
+  // When it carries on, in milliseconds since the epoch.
+  int64 resume_ms = 10;
 }
 
 message Notice {

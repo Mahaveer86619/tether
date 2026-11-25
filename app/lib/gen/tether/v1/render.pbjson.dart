@@ -184,6 +184,8 @@ const TaskReport$json = {
     },
     {'1': 'clipped', '3': 7, '4': 1, '5': 8, '10': 'clipped'},
     {'1': 'detail', '3': 8, '4': 1, '5': 9, '10': 'detail'},
+    {'1': 'waiting', '3': 9, '4': 1, '5': 8, '10': 'waiting'},
+    {'1': 'resume_ms', '3': 10, '4': 1, '5': 3, '10': 'resumeMs'},
   ],
 };
 
@@ -192,7 +194,8 @@ final $typed_data.Uint8List taskReportDescriptor = $convert.base64Decode(
     'CgpUYXNrUmVwb3J0EhYKBmZhaWxlZBgBIAEoCFIGZmFpbGVkEhQKBXRpdGxlGAIgASgJUgV0aX'
     'RsZRISCgRub2RlGAMgASgJUgRub2RlEhYKBmZvbGRlchgEIAEoCVIGZm9sZGVyEhgKB3Nlc3Np'
     'b24YBSABKAlSB3Nlc3Npb24SKAoGYmxvY2tzGAYgAygLMhAudGV0aGVyLnYxLkJsb2NrUgZibG'
-    '9ja3MSGAoHY2xpcHBlZBgHIAEoCFIHY2xpcHBlZBIWCgZkZXRhaWwYCCABKAlSBmRldGFpbA==');
+    '9ja3MSGAoHY2xpcHBlZBgHIAEoCFIHY2xpcHBlZBIWCgZkZXRhaWwYCCABKAlSBmRldGFpbBIY'
+    'Cgd3YWl0aW5nGAkgASgIUgd3YWl0aW5nEhsKCXJlc3VtZV9tcxgKIAEoA1IIcmVzdW1lTXM=');
 
 @$core.Deprecated('Use noticeDescriptor instead')
 const Notice$json = {

@@ -33,7 +33,9 @@ class _TaskReportCardState extends State<TaskReportCard> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final r = widget.report;
-    final tone = r.failed ? c.danger : c.accent;
+    final continued = !r.failed && !r.waiting && r.blocks.isEmpty && r.detail.isNotEmpty;
+    final tone = r.failed ? c.danger : (r.waiting ? c.warning : c.accent);
+    final label = r.failed ? 'TASK FAILED' : (r.waiting ? 'WAITING FOR THE LIMIT TO RESET' : (continued ? 'TASK CARRIED ON' : 'TASK FINISHED'));
     final long = TaskReportCard.isLong(r);
     final where = [if (r.node.isNotEmpty) r.node, if (r.folder.isNotEmpty) r.folder];
     return Container(
@@ -57,9 +59,9 @@ class _TaskReportCardState extends State<TaskReportCard> {
                   children: [
                     Row(
                       children: [
-                        Icon(r.failed ? Icons.error_outline_rounded : Icons.task_alt_rounded, size: 16, color: tone),
+                        Icon(r.failed ? Icons.error_outline_rounded : (r.waiting ? Icons.schedule_rounded : Icons.task_alt_rounded), size: 16, color: tone),
                         const SizedBox(width: Gap.sm),
-                        Text(r.failed ? 'TASK FAILED' : 'TASK FINISHED', style: Type.label(context, color: tone)),
+                        Text(label, style: Type.label(context, color: tone)),
                         const Spacer(),
                         if (r.session.isNotEmpty)
                           TextButton(
@@ -78,7 +80,7 @@ class _TaskReportCardState extends State<TaskReportCard> {
                     ],
                     if (r.detail.isNotEmpty) ...[
                       const SizedBox(height: Gap.sm),
-                      Text(r.detail, style: TextStyle(fontSize: 13, color: c.danger)),
+                      Text(r.detail, style: TextStyle(fontSize: 13, color: r.failed ? c.danger : c.muted)),
                     ],
                     if (r.blocks.isNotEmpty) ...[
                       const SizedBox(height: Gap.md),

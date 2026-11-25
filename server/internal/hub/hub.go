@@ -238,6 +238,7 @@ func (h *Hub) Handler() http.Handler {
 func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
 	go h.modeLoop(ctx)
+	go h.limitWaitLoop(ctx)
 	go h.backupLoop(ctx)
 	go h.updateLoop(ctx)
 	go h.historyLoop(ctx)
