@@ -10,6 +10,7 @@ import '../artifacts/attachments.dart';
 import '../artifacts/file_card.dart';
 import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
+import '../home/cards.dart' show StepBar;
 import '../hub/hub_cubit.dart';
 import '../theme/theme.dart';
 import '../ui/tokens.dart';
@@ -1025,13 +1026,8 @@ class _ProgressState extends State<_Progress> {
                     child: Text(s.currentTodo?.label ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 13, color: c.muted)),
                   ),
-                  SizedBox(
-                    width: 60,
-                    child: ClipRRect(
-                      borderRadius: context.round(4),
-                      child: LinearProgressIndicator(value: s.todosDone / s.todos.length, minHeight: 4, backgroundColor: c.raised, color: c.accent),
-                    ),
-                  ),
+                  SizedBox(width: 84, child: StepBar(done: s.todosDone, total: s.todos.length, segments: 8)),
+                  const SizedBox(width: 8),
                   Icon(_open ? Icons.expand_more_rounded : Icons.expand_less_rounded, size: 18, color: c.faint),
                 ],
               ),
