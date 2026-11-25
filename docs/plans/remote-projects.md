@@ -1,5 +1,7 @@
 # Remote projects: the hub runs the work, devices follow
 
+**To be replaced.** Workspaces that are synced by default ([shared-workspace.md](shared-workspace.md), [teams.md](teams.md)) take over this feature: no per-chat remote switch, and a new device imports the workspace. This page describes what exists until that is built; then it is removed.
+
 Built in 0.17.7 (the hub, the agents and a sheet in the chat). It extends [chats](../architecture/chats.md) and the codebase snapshots and `.env` vault in [plan.md](plan.md#codebases-on-the-hub).
 
 ## What the owner wants
