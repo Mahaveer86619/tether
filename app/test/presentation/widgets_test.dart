@@ -14,7 +14,6 @@ import 'package:tether/gen/tether/v1/render.pbenum.dart' as rpbe;
 import 'package:tether/presentation/chats/chats_page.dart';
 import 'package:tether/injection.dart';
 import 'package:tether/presentation/app.dart';
-import 'package:tether/presentation/home/cards.dart';
 import 'package:tether/presentation/theme/syntax.dart';
 import 'package:tether/presentation/theme/theme.dart';
 import 'package:tether/presentation/widgets/timeline_item_view.dart';
