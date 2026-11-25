@@ -110,11 +110,13 @@ void main() {
       await settle(tester);
     }
 
-    testWidgets('Home is where a chat is started, with the folders you work in to pick from', (tester) async {
+    testWidgets('Home is only where a chat is started: no cards and no folder chips', (tester) async {
       await open(tester, const Size(1400, 900));
       expect(find.byKey(const Key('greeting')), findsOneWidget);
       expect(find.byKey(const Key('new-chat-input')), findsOneWidget);
-      expect(find.byKey(const Key('project-chip-minipc|/home/me/tether')), findsOneWidget);
+      expect(find.byKey(const Key('project-chip-minipc|/home/me/tether')), findsNothing);
+      expect(find.text('NEEDS YOU'), findsNothing);
+      expect(find.text('RUNNING NOW'), findsNothing);
       expect(find.byType(ChatsPage), findsNothing, reason: 'the list of chats is its own screen');
     });
 
