@@ -7,7 +7,7 @@ Status: plan. It builds on the usage data the hub already keeps, the usage-limit
 1. **Track tokens and limits properly**: what each user, session and model spends, and where each user stands in the plan's **5-hour window**, the **day** and the **week**.
 2. **Schedule work into the empty time**: learn when each person uses Tether, find the quiet frames, and run deferred jobs there, sized so they fit the budget that is left.
 3. **Suggest it**: when a request looks long, offer to run it in the owner's free time instead of now.
-4. **A pool**: a quiet frame of one person's allowance can be offered to, and booked by, another user, if both agree, with a warning when the giver is likely to be using Tether then.
+4. **Shared devices**: a user shares a device (a GPU desktop) with another user for jobs in its free time, with a warning when the owner is likely to be using it then.
 
 ## 1. Tracking
 
@@ -49,20 +49,22 @@ When the limit is hit anyway, the job waits for the reset and carries on by itse
 
 **Suggesting.** When a request is sent, the hub estimates it (prompt size, the project's past tasks, words like "refactor all", "migrate", "run the full suite", a number of repos). If the estimate is above a threshold (default 25% of a window), or the window is short, the app asks before sending: *This looks long, about 35% of your window. Run it tonight, 1 to 5 am, when you are usually away? [Schedule] [Run now]*. The answer and whether the estimate was right are kept to tune the next one.
 
-## 4. The pool
+## 4. Shared devices (the pool)
 
-**Idea.** A quiet frame of someone's allowance is a thing that can be given or lent. User B asks for it, or A offers it; both confirm; the job then runs in that frame.
+**What is shared is a device's time, not anyone's Claude account.** A user can share a device with other users **for jobs**: servers, training runs, long scripts. The first case: a user with a GPU desktop on the tailnet shares it with the hub's owner, who trains models on it in its free time. A job is an ordinary process on that device (see [shared-workspace.md](shared-workspace.md#jobs)); it needs no Claude login, so nothing of the device owner's Claude plan is used and nothing about the plan's terms is touched. **Claude sessions never run on a device under someone else's account**: a person's sessions run on their own devices ([teams.md](teams.md#decisions-made)).
+
+**Sharing.** The device owner shares a device with a user, with limits they set: jobs only; which hours (a window, or *only when I am away*); the most GPU memory, CPU and disk a job may use; which folders it may write to. The owner can pause or stop any job on their device at any moment, and sees every job with who started it.
+
+**"Free time" for a device** is measured, not guessed from a calendar: the device's own state (the owner's recent input, whether a game or another heavy process is using the GPU, GPU and CPU load) together with the owner's learned pattern (section 2). A shared device offers a free frame when the owner is predicted away *and* the device is idle now. The *Schedule* page shows the week grid for each shared device, with the odds.
 
 **Flow.**
 
-1. A marks a frame as **offered** (a time range and a size, as percent of a window), or B **requests** one from A.
-2. The other side sees the offer: the frame, the size, and a warning computed from A's pattern: *Alex is usually active in this frame (62%). Their own work may be slowed or stopped.* The percentage is the model's, with the weeks it is based on.
-3. Both accept. A can withdraw before it starts, and can **recall** it at any moment (the job stops at a safe point).
-4. The job runs on the frame's account, and the cost is booked to the frame: spent percent is shown to both.
+1. A user queues a job for a shared device, with an estimate of how long and how much GPU memory (or none, and the job is measured on its first minutes).
+2. The scheduler starts it in a free frame, and **pauses** it (SIGSTOP, or suspend on Windows) when the owner comes back or the device is no longer idle, and resumes it in the next frame. A job that can checkpoint is asked to, and is stopped and started again from its checkpoint; one that cannot is paused in place, which holds its GPU memory (the app says so, and the owner can choose *stop instead*).
+3. The owner is warned before a booking that overlaps their likely use: *You are usually at this machine in this frame (62%, from 5 weeks). A job will be paused when you return.* The booking needs the owner's agreement unless they have approved that user's jobs in advance.
+4. Both sides see the job's state, log and use of the device.
 
-**Who runs the work.** A job booked into A's frame runs **under A's account on A's devices** (see [teams.md](teams.md#decisions-made)), never on B's, and B's prompt and folder reach A's device only if A allowed it for that project. A sees everything run in their name.
-
-**A risk to settle before building.** Claude's plans are issued to a person. Running someone else's work on a person's logged-in Claude account is account sharing, which the plan's terms may not allow, and may be detected as abuse. Check Anthropic's current consumer and commercial terms before building this part. The safe forms are: a pool among **one person's own accounts** (a work and a personal one), among accounts of **an organization that permits it**, or on **API keys** with their own budget. The design above works for any of them; which one is offered must follow what the terms allow.
+**What was dropped.** Offering a slot of one person's Claude allowance to another would run one person's work on another person's logged-in account. Plans are issued to a person and the terms may not allow sharing, so this is not built. What stays from that idea is the part about a person's own limits: tracking, patterns and scheduling their own deferred work (sections 1 to 3).
 
 ## Build order
 
@@ -70,8 +72,8 @@ When the limit is hit anyway, the job waits for the reset and carries on by itse
 2. **Patterns**: the 168-slot probability, the free-frame finder, the Schedule page with the week grid, hand-marked free hours. (Needs a few weeks of data, collected from step 1 on.)
 3. **Deferred jobs and the budget**: queue a task for later, estimates, the four conditions, pause when the owner returns, resume in the next frame.
 4. **Suggest**: the estimate on send, the ask, the feedback loop.
-5. **Multi-user** ([teams.md](teams.md) step B): users and accounts per user.
-6. **The pool**: offers, requests, the warning, recall; only after the terms are checked.
+5. **Multi-user** ([teams.md](teams.md) step B): users; devices that belong to a user; a device shared with another user for jobs.
+6. **Shared devices**: the sharing limits, free frames from the device's own state, pause and resume around the owner, checkpoints, the booking and the warning.
 
 ## Tests
 
@@ -81,11 +83,10 @@ Time is injected, never the wall clock; no real account is read.
 - **Patterns**: a synthetic six weeks (a person active 9 to 6 on weekdays) gives high `P` in those slots and low at night; with two weeks it says there is not enough data.
 - **Budget**: with known percents left, a known pattern and a known estimate, the scheduler runs a job in exactly the expected frame and refuses the others, for each of the four conditions in turn.
 - **Away**: activity during a run pauses it at the step boundary and resumes it in the next frame.
-- **Pool**: an offer's warning percentage equals the giver's `P` for the frame; a recall stops the job; a job in A's frame never starts on B's device.
+- **Shared devices**: a job on a device shared for jobs only never starts a Claude session; a job outside the shared hours or over its memory limit is refused; the owner's return pauses the job at the next check and a resume follows in the next free frame; the warning percentage equals the owner's `P` for the frame; an owner's stop ends the job and its children.
 - **Estimate**: past tasks of known size give an estimate within the stated margin; the threshold decides when the app asks.
 
 ## Decisions to make
 
-- **The terms for the pool** (above): which form is allowed to be offered.
 - **Defaults**: the "free" threshold (15%), the away time (20 minutes), the reserve floor (10% of the week), the ask threshold (25% of a window).
 - **Whether the scheduler may start a job without asking** once the owner has approved the kind of job, or always asks per job.

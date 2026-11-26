@@ -83,12 +83,12 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 - **Skills and rules** have a scope of *me*, *the project* or *the workspace*; the workspace scope needs admin.
 - **The audit log** records the user with every action.
 
-**Devices and whose Claude account runs the work.** This is the part that needs care. A session runs on a device under that device's operating-system user and **that user's Claude login**. So:
+**Devices and whose Claude account runs the work.** A session runs on a device under that device's operating-system user and **that user's Claude login**. So:
 
-- A device belongs to the user who paired it. Their sessions run there under their account.
-- A device can be **lent** to a workspace or to named users. A lent device runs other people's sessions **under its owner's Claude account and machine**, so lending is an explicit, revocable choice with a warning that says exactly that, and every session shows whose device it ran on.
-- A device that is not lent never receives another user's prompt, folder or file.
-- A shared GPU desktop is the lend case. Its owner decides who may spawn on it.
+- A device belongs to the user who paired it, and a user's Claude sessions run on their own devices, under their own account. Nobody's Claude login is lent to anyone.
+- A user can **share a device for jobs** with another user: a server, a training run, a long script ([shared-workspace.md](shared-workspace.md#jobs)). A job is a plain process on the device, so it needs no Claude account; the sharing says which hours, how much GPU memory, CPU and disk, and which folders the job may use ([token-pool.md](token-pool.md#4-shared-devices-the-pool)). A device shared this way never starts a Claude session for the other user.
+- A device that is not shared never receives another user's prompt, folder, file or job.
+- The first case: a user with a GPU desktop on the tailnet shares it with the hub's owner, who trains models on it in the desktop's free time. The owner of the desktop can pause or stop any job on it at any moment and sees who started it.
 
 **Enforcement.** One check, `can(user, action, object)`, used by every REST route, MCP call and WebSocket message, and **every list is filtered before it is sent**: `Welcome`, the chat list, sessions, approvals, notifications and the push stream carry only what the user may see. A user's agent connection reports only its own device. This is the largest part of B: today the hub trusts any client token with everything.
 
@@ -117,3 +117,4 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 - **A project chat is private to its user, and can be shared** (read or collaborate).
 - **Each user's sessions run on devices under their own Claude login.** No lending of one person's account to another. A shared pool of accounts and devices is a later feature, to be designed on its own: it needs a way to pool credentials and meter use, which this plan does not cover.
 - **One workspace by default**, with several as an option later.
+- **Devices are shared for jobs, not for Claude sessions**: another user can run servers and training jobs on a device that is shared with them, within limits the device's owner sets. This is what is wanted from the GPU desktop.
