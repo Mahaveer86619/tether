@@ -67,6 +67,8 @@ One map of everything Tether does or will do: what state each is in, which scree
 | Notifications: needs you, finished, ready, something wrong | Planned | Settings | [notifications.md](../plans/notifications.md) | Only update and download notifications exist |
 | Security for 1.0: scoped credentials for the assistant's calls, an audit log, rate limits | Planned | | [agent-tools.md](../architecture/agent-tools.md#4-security) | |
 | Tailscale looked after in the background | Built; confirmed on the phone (auto-connect works) and the laptop | Banner under the header | [app.md](../architecture/app.md#tailscale-in-the-background) | Desktop start and sign-in paths are tested against a fake command line only |
+| Jobs: servers, scripts and training runs an agent supervises; stop, pause, resume, restart policies, a log tail, a link for servers, secrets from the project's sealed files; from the app or a chat (MCP) | Partly | Jobs (from the sidebar and Devices) | [jobs.md](../architecture/jobs.md), [shared-workspace.md](../plans/shared-workspace.md#jobs) | Moving a job between devices; jobs in a chat's Tasks strip; who may use whose device ([teams.md](../plans/teams.md)) |
+| Device hardware: GPUs, memory, CPUs in the agent's report, on Devices and in the lead's prompt; work that needs a GPU goes to a machine with one | Built | Devices | [jobs.md](../architecture/jobs.md#device-hardware) | |
 | Usage and plan limits per machine | Built | Usage | [plan.md](../plans/plan.md#usage-tracking) | |
 | Users, roles, sharing | Planned | | [plan.md](../plans/plan.md#users-roles-and-visibility) | |
 | Remove data or Tether, per scope and per device | Planned | Settings | [uninstall.md](../plans/uninstall.md) | |

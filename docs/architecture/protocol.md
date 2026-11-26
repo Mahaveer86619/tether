@@ -186,3 +186,21 @@ This makes ingestion idempotent: the hub can feed a session from either source, 
 | `approvalDecision` | hub → agent | the app's answer |
 
 The hub stores each session's transcript offset, so re-subscribing resumes mirroring where it stopped.
+
+## Jobs
+
+Processes an agent supervises for the hub; see [jobs.md](jobs.md).
+
+| Method and path | Body | Response |
+|---|---|---|
+| `GET /api/v1/jobs?node=` | | `JobList`, newest first |
+| `POST /api/v1/jobs` | `JobSpec {node, cwd, command, name, env, envFrom: [{repo, file, keys}], port, restart, restartLimit, checkpoint, needsGpu}` | `Job` (state `starting`). Without `node`, `needsGpu` picks a machine with a GPU. `503 node_offline`, `409 unsupported` for an agent too old for jobs, `403 forbidden` for a project the node may not receive. |
+| `POST /api/v1/jobs/{id}/stop`, `/pause`, `/resume`, `/restart` | | `Job` as it was; the new state follows as a `job` frame. `409` for stop, pause or resume of a job that is not running. |
+| `DELETE /api/v1/jobs/{id}` | | `Ack`. Forgets an ended job here and on its device. |
+| `GET /api/v1/jobs/{id}/logs?tail=N` | | `JobLogTail {lines}`: the last N lines the hub has (200 by default, 2000 at most) |
+
+Frames: `job` (hub → app, whenever a job changes; a job without `spec` was forgotten), `jobReport {jobs, full}` and `jobLog {job, lines, replace}` (agent → hub), and `agentCommand.job {id, action, spec, secretEnv}` (hub → agent; actions `start`, `stop`, `pause`, `resume`, `restart`, `forget`).
+
+MCP tools: `start_job`, `job_status`, `job_logs`, `stop_job`, `pause_job`, `resume_job`.
+
+`nodeStatus` also carries the machine's hardware: `gpus [{name, memoryBytes}]`, `memoryBytes`, `cpus`.

@@ -1,6 +1,6 @@
 # A shared workspace and long-running jobs
 
-Status: plan. It extends [remote-projects.md](remote-projects.md), which keeps a project in step between two devices after each turn, to a workspace that is in step in real time across any number of devices, and adds jobs that run on any device and can be paused and resumed.
+Status: plan. **Built:** jobs on a single device (start, stop, pause, resume, status, log streaming, restart policies, `lost` after a restart), the server address, jobs from chat over MCP, and device hardware in the agent's report and the lead's prompt; see [jobs.md](../architecture/jobs.md). Not built: workspace sync, moving a job between devices. It extends [remote-projects.md](remote-projects.md), which keeps a project in step between two devices after each turn, to a workspace that is in step in real time across any number of devices, and adds jobs that run on any device and can be paused and resumed.
 
 ## What changed in the plan
 
@@ -84,11 +84,11 @@ A job outlives the agent's restarts: the agent records its jobs and re-adopts or
 
 ## Build order
 
-1. **Jobs, single device**: start, stop, status, log streaming, process groups, Windows and Linux, the Jobs page. Pause and resume. Tests with a fake long-running process.
-2. **Device capabilities**: GPU and memory in the agent's report; shown in Devices and in the lead's prompt.
+1. **Jobs, single device** (built): start, stop, status, log streaming, process groups, Windows and Linux, the Jobs page. Pause and resume. Tests with a fake long-running process.
+2. **Device capabilities** (built): GPU and memory in the agent's report; shown in Devices and in the lead's prompt.
 3. **Workspace sync, read path**: the manifest and content-addressed store on the hub, a device joining and pulling.
 4. **Workspace sync, live**: watchers, deltas, ordering, conflict files, ignore rules.
-5. **Jobs across devices**: move with checkpoint or restart, the server address, restart policies, jobs from chat over MCP.
+5. **Jobs across devices**: move with checkpoint or restart. (The server address, restart policies and jobs from chat over MCP are built.)
 6. **Big folders on demand, the git single-writer rule.**
 
 ## Tests
