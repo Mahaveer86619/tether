@@ -23,7 +23,7 @@ func TestStartSessionFromAChatPassesTheTitleToTheAgent(t *testing.T) {
 	agent, ctx := dialAgent(t, h, srv.URL)
 	c := postChat(t, srv, "/api/v1/chats", `{"prompt":"lead","target":{"node":"laptop","cwd":"/src/tether"}}`)
 	nextCommand(t, agent, ctx, isStart)
-	out, err := h.mcpStartSession(map[string]any{"prompt": "a very long first message that must not become the title of the task", "title": "Check v2 sync", "node": "laptop", "cwd": "/src/tether", "chat": c.Id})
+	out, err := h.mcpStartSession(rootID, map[string]any{"prompt": "a very long first message that must not become the title of the task", "title": "Check v2 sync", "node": "laptop", "cwd": "/src/tether", "chat": c.Id})
 	if err != nil {
 		t.Fatal(err)
 	}

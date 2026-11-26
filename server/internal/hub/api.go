@@ -47,8 +47,7 @@ var (
 // clients that prefer request/response; live updates stay on /ws.
 func (h *Hub) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/state", h.api(func(r *http.Request) (proto.Message, *opError) {
-		id, _ := r.Context().Value(identityKey{}).(identity)
-		return h.welcome(id.deviceID(), remoteIP(r)), nil
+		return h.welcome(userOf(r), remoteIP(r)), nil
 	}))
 	mux.HandleFunc("GET /api/v1/sessions/{id}/timeline", h.api(h.apiTimeline))
 	mux.HandleFunc("POST /api/v1/sessions", h.api(func(r *http.Request) (proto.Message, *opError) {
@@ -56,7 +55,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		if err := decode(r, cs); err != nil {
 			return nil, err
 		}
-		return ackOf(h.createSession(cs, clientName(r)))
+		return ackOf(h.createSession(userOf(r), cs, clientName(r)))
 	}))
 	mux.HandleFunc("POST /api/v1/sessions/{id}/messages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		m := &v1.SendMessage{}
@@ -111,7 +110,7 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	h.updateRoutes(mux)
 	h.historyRoutes(mux)
 	mux.HandleFunc("POST /api/v1/pairing-codes", h.api(func(r *http.Request) (proto.Message, *opError) {
-		code, err := h.newPairingCode()
+		code, err := h.newPairingCode(userOf(r).userID())
 		if err != nil {
 			return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 		}
@@ -136,7 +135,14 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 		}
-		return &v1.ArtifactList{Artifacts: hideBackups(r, list)}, nil
+		id := userOf(r)
+		mine := list[:0]
+		for _, a := range list {
+			if h.canArtifact(id, actView, a) {
+				mine = append(mine, a)
+			}
+		}
+		return &v1.ArtifactList{Artifacts: hideBackups(r, mine)}, nil
 	}))
 	mux.HandleFunc("GET /api/v1/artifacts/{id}/content", h.artifactContent)
 	h.uploadRoutes(mux)
@@ -193,10 +199,13 @@ func (h *Hub) routes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, h.tailnet(r.Context()))
 	}))
 	mux.HandleFunc("GET /api/v1/devices", h.api(func(r *http.Request) (proto.Message, *opError) {
-		return h.deviceList(), nil
+		return h.deviceList(userOf(r)), nil
 	}))
 	mux.HandleFunc("DELETE /api/v1/devices/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		_, err := h.revoke(r.PathValue("id"))
+		if err == nil {
+			h.audit(whoOf(userOf(r)), "device", "revoked", r.PathValue("id"), true)
+		}
 		return ackOf("", err)
 	}))
 	mux.HandleFunc("POST /api/v1/approvals/{id}", h.api(func(r *http.Request) (proto.Message, *opError) {
@@ -257,7 +266,8 @@ func (h *Hub) api(fn func(*http.Request) (proto.Message, *opError)) http.Handler
 type identityKey struct{}
 
 // authed lets through requests with the admin token or a client's token,
-// with the caller's identity in the request context.
+// with the caller's identity in the request context. What the caller may
+// do there is the guard's to say.
 func (h *Hub) authed(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := h.auth(r, false)

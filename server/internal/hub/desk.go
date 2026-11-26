@@ -176,7 +176,7 @@ func (h *Hub) carryOn(c *v1.Chat, prompt, request, role, kind, from string) (str
 	if prev != nil {
 		cs.Model = prev.Model
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, request)})
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, request), as: h.asUser(h.chatOwner(c))})
 	if err != nil {
 		return "", err
 	}

@@ -30,12 +30,13 @@ var genericWords = map[string]bool{
 	"com": true, "org": true, "www": true, "data": true, "docs": true, "lib": true, "tmp": true, "temp": true, "scratch": true,
 }
 
-// targetCandidates lists the folders the user works in, best match for
-// prompt first, then most recently used. Caller holds h.mu.
-func (h *Hub) targetCandidates(prompt string) []*v1.TargetCandidate {
+// targetCandidates lists the folders the user works in, on machines they
+// may run Claude on, best match for prompt first, then most recently used.
+// Caller holds h.mu.
+func (h *Hub) targetCandidates(id identity, prompt string) []*v1.TargetCandidate {
 	byKey := map[string]*v1.TargetCandidate{}
 	add := func(node, cwd string, used int64, session bool) {
-		if cwd == "" || notAProject(cwd) {
+		if cwd == "" || notAProject(cwd) || !h.can(id, actRunClaude, objNode, node) {
 			return
 		}
 		key := node + "\x00" + normPath(cwd)
@@ -50,7 +51,7 @@ func (h *Hub) targetCandidates(prompt string) []*v1.TargetCandidate {
 		}
 	}
 	for _, s := range h.sessions {
-		if !s.Scratch && s.Codebase == "" {
+		if !s.Scratch && s.Codebase == "" && h.can(id, actView, objSession, s.Id) {
 			add(s.Node, s.Cwd, s.UpdatedMs, true)
 		}
 	}
@@ -170,8 +171,8 @@ func labelOf(cwd string) string {
 	return baseOf(cwd)
 }
 
-func (h *Hub) targetSuggestions(prompt string) *v1.TargetSuggestions {
-	list := h.targetCandidates(prompt)
+func (h *Hub) targetSuggestions(id identity, prompt string) *v1.TargetSuggestions {
+	list := h.targetCandidates(id, prompt)
 	out := &v1.TargetSuggestions{Pick: autoPick(list)}
 	out.Candidates = list[:min(len(list), maxTargets)]
 	return out
@@ -179,7 +180,7 @@ func (h *Hub) targetSuggestions(prompt string) *v1.TargetSuggestions {
 
 // resolveTarget turns what the user asked for into where the chat starts.
 // Caller holds h.mu.
-func (h *Hub) resolveTarget(prompt string, t *v1.ChatTarget) (*v1.ChatTarget, *opError) {
+func (h *Hub) resolveTarget(id identity, prompt string, t *v1.ChatTarget) (*v1.ChatTarget, *opError) {
 	mode := t.GetMode()
 	if mode == "" {
 		mode = targetAuto
@@ -194,7 +195,7 @@ func (h *Hub) resolveTarget(prompt string, t *v1.ChatTarget) (*v1.ChatTarget, *o
 		}
 		return &v1.ChatTarget{Mode: targetManual, Node: t.GetNode(), Cwd: t.GetCwd(), Scratch: t.GetScratch(), State: targetResolved, Reason: "picked by you"}, nil
 	case targetAuto:
-		if pick := autoPick(h.targetCandidates(prompt)); pick != nil {
+		if pick := autoPick(h.targetCandidates(id, prompt)); pick != nil {
 			return &v1.ChatTarget{Mode: targetAuto, Node: pick.Node, Cwd: pick.Cwd, State: targetResolved, Reason: pick.Reason}, nil
 		}
 		fallthrough

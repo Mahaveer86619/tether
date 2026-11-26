@@ -36,7 +36,7 @@ func TestATaskThatHitTheLimitWaitsAndCarriesOnWhenItResets(t *testing.T) {
 	agent, ctx := dialAgent(t, h, srv.URL)
 	c := postChat(t, srv, "/api/v1/chats", `{"prompt":"lead","target":{"node":"laptop","cwd":"/src/tether"}}`)
 	nextCommand(t, agent, ctx, isStart)
-	if _, err := h.mcpStartSession(map[string]any{"prompt": "do the sync check", "title": "Sync check", "node": "laptop", "cwd": "/src/tether", "chat": c.Id}); err != nil {
+	if _, err := h.mcpStartSession(rootID, map[string]any{"prompt": "do the sync check", "title": "Sync check", "node": "laptop", "cwd": "/src/tether", "chat": c.Id}); err != nil {
 		t.Fatal(err)
 	}
 	task := nextCommand(t, agent, ctx, isStart).GetStart().Session

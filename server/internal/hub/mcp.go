@@ -42,7 +42,7 @@ type mcpTool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"`
-	call        func(h *Hub, args map[string]any) (string, error)
+	call        func(h *Hub, caller identity, args map[string]any) (string, error)
 }
 
 func schema(required []string, props map[string]string) map[string]any {
@@ -56,6 +56,9 @@ func schema(required []string, props map[string]string) map[string]any {
 	}
 	return map[string]any{"type": "object", "properties": p, "required": required}
 }
+
+// Tools that change what every user gets.
+var mcpAdminOnly = map[string]bool{"update_skill": true, "save_insight": true}
 
 var mcpTools = []mcpTool{
 	{
@@ -253,10 +256,19 @@ func (h *Hub) serveMCP(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal(req.Params, &p)
 		for _, t := range mcpTools {
 			if t.Name == p.Name {
-				text, err := t.call(h, p.Arguments)
+				if mcpAdminOnly[t.Name] {
+					h.mu.Lock()
+					ok := h.can(caller, actAdmin, objHub, "")
+					h.mu.Unlock()
+					if !ok {
+						writeRPC(w, req.ID, map[string]any{"content": []map[string]any{{"type": "text", "text": "only the hub's admin can use " + t.Name}}, "isError": true}, nil)
+						return
+					}
+				}
+				text, err := t.call(h, caller, p.Arguments)
 				isErr := err != nil
 				h.mu.Lock()
-				h.audit(actorOf(caller), "mcp", t.Name, auditDetail(p.Arguments), !isErr)
+				h.audit(whoOf(caller), "mcp", t.Name, auditDetail(p.Arguments), !isErr)
 				h.mu.Unlock()
 				if isErr {
 					text = err.Error()
@@ -310,13 +322,17 @@ func stateName(s v1.SessionState) string {
 	return strings.ToLower(strings.TrimPrefix(s.String(), "SESSION_STATE_"))
 }
 
-func (h *Hub) mcpListNodes(map[string]any) (string, error) {
+func (h *Hub) mcpListNodes(caller identity, _ map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	hub := h.hubNode()
 	var out []map[string]any
 	for _, n := range h.nodes {
-		m := map[string]any{"name": n.Node, "os": n.Os, "online": n.Online, "hub": n.Node == hub, "running_sessions": n.RunningSessions}
+		if !h.can(caller, actView, objNode, n.Node) {
+			continue
+		}
+		m := map[string]any{"name": n.Node, "os": n.Os, "online": n.Online, "hub": n.Node == hub, "running_sessions": n.RunningSessions,
+			"claude": h.can(caller, actRunClaude, objNode, n.Node)}
 		if hw := hardwareText(n); hw != "" {
 			m["hardware"] = hw
 		}
@@ -326,13 +342,13 @@ func (h *Hub) mcpListNodes(map[string]any) (string, error) {
 	return jsonText(out)
 }
 
-func (h *Hub) mcpListSessions(args map[string]any) (string, error) {
+func (h *Hub) mcpListSessions(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	node, liveOnly, limit := str(args, "node"), args["live_only"] == true, num(args, "limit", 20)
 	var list []*v1.SessionInfo
 	for _, s := range h.sessions {
-		if (node == "" || s.Node == node) && (!liveOnly || live(s.State)) {
+		if (node == "" || s.Node == node) && (!liveOnly || live(s.State)) && h.can(caller, actView, objSession, s.Id) {
 			list = append(list, s)
 		}
 	}
@@ -347,7 +363,7 @@ func (h *Hub) mcpListSessions(args map[string]any) (string, error) {
 	return jsonText(out)
 }
 
-func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
+func (h *Hub) mcpStartSession(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	cs := &v1.CreateSession{Prompt: str(args, "prompt"), Node: str(args, "node"), Cwd: str(args, "cwd"), Model: str(args, "model")}
@@ -363,10 +379,10 @@ func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
 	}
 	cs.Scratch = cs.Node == ""
 	chat := h.chats[str(args, "chat")]
-	if str(args, "chat") != "" && chat == nil {
+	if str(args, "chat") != "" && (chat == nil || !h.can(caller, actUse, objChat, chat.Id)) {
 		return "", fmt.Errorf("unknown chat %s", str(args, "chat"))
 	}
-	extra := startExtra{}
+	extra := startExtra{as: caller}
 	if chat != nil {
 		extra.systemPrompt = h.chatPromptFor(chat, cs.Node, true)
 		if cs.Scratch {
@@ -384,7 +400,7 @@ func (h *Hub) mcpStartSession(args map[string]any) (string, error) {
 	return "Started session " + id + " on " + h.sessions[id].Node + ".", nil
 }
 
-func (h *Hub) mcpSetChatTarget(args map[string]any) (string, error) {
+func (h *Hub) mcpSetChatTarget(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	move, ok := args["move"].(bool)
@@ -396,6 +412,12 @@ func (h *Hub) mcpSetChatTarget(args map[string]any) (string, error) {
 		Reason: firstNonEmpty(str(args, "reason"), "picked by Claude")}
 	if scratch {
 		t.Node, t.Cwd = h.hubNode(), ""
+	}
+	if !h.can(caller, actManage, objChat, str(args, "chat")) {
+		return "", fmt.Errorf("unknown chat %s", str(args, "chat"))
+	}
+	if !h.can(caller, actRunClaude, objNode, t.Node) {
+		return "", fmt.Errorf("%s is not shared with you; list_nodes shows the machines you can use", t.Node)
 	}
 	if !scratch && h.agents[t.Node] == nil {
 		return "", fmt.Errorf("%s is not online; list_nodes shows the machines that are", t.Node)
@@ -410,18 +432,24 @@ func (h *Hub) mcpSetChatTarget(args map[string]any) (string, error) {
 	return "Recorded. Carry on here.", nil
 }
 
-func (h *Hub) mcpSendMessage(args map[string]any) (string, error) {
+func (h *Hub) mcpSendMessage(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if !h.can(caller, actUse, objSession, str(args, "session")) {
+		return "", fmt.Errorf("unknown session %s", str(args, "session"))
+	}
 	if _, err := h.sendMessage(&v1.SendMessage{Session: str(args, "session"), Text: str(args, "text")}, mcpSource); err != nil {
 		return "", opErr(err)
 	}
 	return "Sent.", nil
 }
 
-func (h *Hub) mcpReadSession(args map[string]any) (string, error) {
+func (h *Hub) mcpReadSession(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if !h.can(caller, actView, objSession, str(args, "session")) {
+		return "", fmt.Errorf("unknown session %s", str(args, "session"))
+	}
 	return h.sessionText(str(args, "session"), num(args, "last", mcpItemsShown))
 }
 
@@ -525,7 +553,7 @@ func spansText(spans []*v1.Span) string {
 	return b.String()
 }
 
-func (h *Hub) mcpWait(args map[string]any) (string, error) {
+func (h *Hub) mcpWait(caller identity, args map[string]any) (string, error) {
 	id := str(args, "session")
 	deadline := time.Now().Add(time.Duration(min(num(args, "timeout_seconds", 300), mcpWaitMax)) * time.Second)
 	// Give a just-started session a moment to report that it is working.
@@ -533,7 +561,7 @@ func (h *Hub) mcpWait(args map[string]any) (string, error) {
 	for {
 		h.mu.Lock()
 		s := h.sessions[id]
-		if s == nil {
+		if s == nil || !h.can(caller, actView, objSession, id) {
 			h.mu.Unlock()
 			return "", fmt.Errorf("unknown session %s", id)
 		}
@@ -550,7 +578,7 @@ func (h *Hub) mcpWait(args map[string]any) (string, error) {
 	}
 }
 
-func (h *Hub) mcpListArtifacts(args map[string]any) (string, error) {
+func (h *Hub) mcpListArtifacts(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	list, err := h.store.Artifacts(str(args, "session"), num(args, "limit", 50))
@@ -559,6 +587,9 @@ func (h *Hub) mcpListArtifacts(args map[string]any) (string, error) {
 	}
 	var out []map[string]any
 	for _, a := range list {
+		if !h.canArtifact(caller, actView, a) {
+			continue
+		}
 		out = append(out, map[string]any{
 			"id": a.Id, "name": a.Name, "mime": a.Mime, "size": a.Size, "session": a.Session, "node": a.Node, "origin": a.Origin,
 			"sha256": a.Sha256, "note": a.Note, "created": time.UnixMilli(a.CreatedMs).Format(time.RFC3339),
@@ -567,11 +598,11 @@ func (h *Hub) mcpListArtifacts(args map[string]any) (string, error) {
 	return jsonText(out)
 }
 
-func (h *Hub) mcpReadArtifact(args map[string]any) (string, error) {
+func (h *Hub) mcpReadArtifact(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	a, err := h.store.Artifact(str(args, "id"))
-	if err != nil || a == nil {
+	if err != nil || a == nil || !h.canArtifact(caller, actView, a) {
 		return "", fmt.Errorf("unknown artifact %s", str(args, "id"))
 	}
 	text := strings.HasPrefix(a.Mime, "text/") || strings.Contains(a.Mime, "json") || strings.HasSuffix(a.Name, ".md")
@@ -604,18 +635,21 @@ func (h *Hub) mcpReadArtifact(args map[string]any) (string, error) {
 	return string(b[:n]), nil
 }
 
-func (h *Hub) mcpSaveArtifact(args map[string]any) (string, error) {
+func (h *Hub) mcpSaveArtifact(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	name, content := str(args, "name"), str(args, "content")
 	if name == "" {
 		return "", fmt.Errorf("name is required")
 	}
+	if s := str(args, "session"); s != "" && !h.can(caller, actUse, objSession, s) {
+		return "", fmt.Errorf("unknown session %s", s)
+	}
 	sha, n, err := h.putBlob(strings.NewReader(content), "")
 	if err != nil {
 		return "", opErr(err)
 	}
-	a := &v1.Artifact{Sha256: sha, Name: name, Mime: mimeOf("", name), Size: n, Session: str(args, "session"), Origin: "upload"}
+	a := &v1.Artifact{Sha256: sha, Name: name, Mime: mimeOf("", name), Size: n, Session: str(args, "session"), Origin: "upload", Owner: caller.userID()}
 	if err := h.addArtifact(a); err != nil {
 		return "", opErr(err)
 	}

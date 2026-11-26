@@ -66,6 +66,7 @@ type Config struct {
 
 type client struct {
 	conn     *wire.Conn
+	id       identity
 	name     string
 	device   string
 	ip       string
@@ -103,7 +104,11 @@ type Hub struct {
 	devices      map[string]*v1.Device // by token hash
 	agentDevices map[string]string     // node -> device id of its connection
 	agentIPs     map[string]string     // node -> address it connects from
-	codes        map[string]time.Time  // pairing code -> expiry
+	codes        map[string]pairCode   // pairing code -> who made it, until when
+	invites      map[string]invite
+	users        map[string]*v1.User
+	ownerID      string                                // the first user, the hub's owner
+	grants       map[string]map[string]*v1.DeviceGrant // node -> user -> what they may run there
 	fails        map[string][]time.Time
 	notifyCh     chan struct{} // closed when a notification is added, see notify.go
 	notifyURL    string        // where the notification tunnel can be reached, see tunnel.go
@@ -168,7 +173,9 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		sent:         map[string][]sentMsg{},
 		plans:        map[string]*v1.PlanUsage{},
 		keptSources:  map[string]map[string]string{},
-		codes:        map[string]time.Time{},
+		codes:        map[string]pairCode{},
+		invites:      map[string]invite{},
+		users:        map[string]*v1.User{},
 		fails:        map[string][]time.Time{},
 		chats:        map[string]*v1.Chat{},
 		chatOf:       map[string]string{},
@@ -215,6 +222,9 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 	if err := h.loadJobs(); err != nil {
 		return nil, err
 	}
+	if err := h.loadUsers(); err != nil {
+		return nil, err
+	}
 	h.loadLocalUpdate()
 	return h, nil
 }
@@ -235,6 +245,7 @@ func (h *Hub) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", h.serveWS)
 	h.routes(mux)
+	h.userRoutes(mux)
 	h.repoRoutes(mux)
 	h.remoteRoutes(mux)
 	h.projectFileRoutes(mux)
@@ -242,7 +253,7 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/hello", h.hello)
 	h.scopedRoutes(mux, false)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
-	return mux
+	return h.guard(mux)
 }
 
 // Run flushes coalesced streaming updates until ctx ends.
@@ -294,7 +305,7 @@ func (h *Hub) serveWS(w http.ResponseWriter, r *http.Request) {
 			h.reject(conn, r)
 			return
 		}
-		h.serveClient(conn, b.ClientHello, id.deviceID(), ip)
+		h.serveClient(conn, b.ClientHello, id, ip)
 	case *v1.Frame_AgentHello:
 		node := b.AgentHello.Status.GetNode()
 		id, ok := h.identifyFrom(b.AgentHello.Token, ip)
@@ -319,11 +330,11 @@ func (h *Hub) reject(conn *wire.Conn, r *http.Request) {
 
 // ---- clients ----
 
-func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip string) {
-	c := &client{conn: conn, name: hello.ClientName, device: device, ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now(), active: true}
+func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, id identity, ip string) {
+	c := &client{conn: conn, id: id, name: hello.ClientName, device: id.deviceID(), ip: ip, platform: hello.Platform, version: hello.AppVersion, since: time.Now(), active: true}
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
-	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(device, ip)}})
+	conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(id, ip)}})
 	h.mu.Unlock()
 	h.log.Info("client connected", "name", c.name, "platform", hello.Platform)
 
@@ -341,26 +352,30 @@ func (h *Hub) serveClient(conn *wire.Conn, hello *v1.ClientHello, device, ip str
 	h.log.Info("client disconnected", "name", c.name, "err", err)
 }
 
-// welcome is the full state for a client connecting with a paired device id
-// (or "") from ip.
-func (h *Hub) welcome(device, ip string) *v1.Welcome {
-	w := &v1.Welcome{HubVersion: h.cfg.Version, DeviceId: device, ClientIp: ip, NotifyUrl: h.notifyURL}
-	for _, n := range h.nodes {
-		w.Nodes = append(w.Nodes, proto.Clone(n).(*v1.NodeStatus))
-	}
-	sort.Slice(w.Nodes, func(i, j int) bool { return w.Nodes[i].Node < w.Nodes[j].Node })
+// welcome is the state a client may see, connecting as id from ip.
+func (h *Hub) welcome(id identity, ip string) *v1.Welcome {
+	w := &v1.Welcome{HubVersion: h.cfg.Version, DeviceId: id.deviceID(), ClientIp: ip, NotifyUrl: h.notifyURL}
+	w.Nodes = h.visibleNodes(id)
 	for _, s := range h.sessions {
-		w.Sessions = append(w.Sessions, proto.Clone(s).(*v1.SessionInfo))
+		if h.can(id, actView, objSession, s.Id) {
+			w.Sessions = append(w.Sessions, proto.Clone(s).(*v1.SessionInfo))
+		}
 	}
 	sort.Slice(w.Sessions, func(i, j int) bool { return w.Sessions[i].UpdatedMs > w.Sessions[j].UpdatedMs })
 	for _, a := range h.approvals {
-		w.PendingApprovals = append(w.PendingApprovals, proto.Clone(a).(*v1.ApprovalRequest))
+		if h.can(id, actUse, objApproval, a.ApprovalId) {
+			w.PendingApprovals = append(w.PendingApprovals, proto.Clone(a).(*v1.ApprovalRequest))
+		}
 	}
 	if h.prefs != nil {
 		w.Preferences = proto.Clone(h.prefs).(*v1.Preferences)
 	}
 	w.HubNode = h.hubNode()
-	w.Chats = h.chatList()
+	w.Chats = h.chatList(id)
+	if id.user != nil {
+		w.Me = proto.Clone(id.user).(*v1.User)
+	}
+	w.Users = h.userList()
 	w.Update = h.servedManifest()
 	return w
 }
@@ -386,15 +401,23 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 			h.maybeStopMirror(b.Unsubscribe.Session)
 		}
 	case *v1.Frame_CreateSession:
-		session, err = h.createSession(b.CreateSession, c.name)
+		session, err = h.createSession(c.id, b.CreateSession, c.name)
 	case *v1.Frame_SendMessage:
-		session, err = h.sendMessage(b.SendMessage, c.name)
+		if err = h.check(c.id, actUse, objSession, b.SendMessage.Session); err == nil {
+			session, err = h.sendMessage(b.SendMessage, c.name)
+		}
 	case *v1.Frame_InterruptSession:
-		session, err = h.interrupt(b.InterruptSession.Session)
+		if err = h.check(c.id, actStop, objSession, b.InterruptSession.Session); err == nil {
+			session, err = h.interrupt(b.InterruptSession.Session)
+		}
 	case *v1.Frame_StopSession:
-		session, err = h.stop(b.StopSession.Session)
+		if err = h.check(c.id, actStop, objSession, b.StopSession.Session); err == nil {
+			session, err = h.stop(b.StopSession.Session)
+		}
 	case *v1.Frame_ApprovalDecision:
-		session, err = h.decide(c.name, b.ApprovalDecision)
+		if err = h.check(c.id, actUse, objApproval, b.ApprovalDecision.ApprovalId); err == nil {
+			session, err = h.decide(c.name, b.ApprovalDecision)
+		}
 	default:
 		err = errUnsupported
 	}
@@ -406,7 +429,7 @@ func (h *Hub) onClient(c *client, f *v1.Frame) {
 }
 
 func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
-	if h.sessions[s.Session] == nil {
+	if h.sessions[s.Session] == nil || !h.can(c.id, actView, objSession, s.Session) {
 		c.conn.Send(errFrame(id, errNotFound.Code, errNotFound.Message))
 		return
 	}
@@ -435,13 +458,16 @@ func (h *Hub) subscribe(c *client, id string, s *v1.Subscribe) {
 // The operations below are shared by the WebSocket and REST APIs. They
 // expect h.mu to be held and return the affected session id.
 
-func (h *Hub) createSession(cs *v1.CreateSession, from string) (string, *opError) {
-	return h.startSession(cs, from, startExtra{})
+func (h *Hub) createSession(id identity, cs *v1.CreateSession, from string) (string, *opError) {
+	return h.startSession(cs, from, startExtra{as: id})
 }
 
 // startExtra is what chats add to a new session.
 type startExtra struct {
 	systemPrompt, clientID string
+	// Who it is started as: they need the right to run Claude on the node,
+	// and own the session. Unset is the hub's owner.
+	as identity
 }
 
 func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) (string, *opError) {
@@ -450,6 +476,13 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 		if cs.Node == "" {
 			return "", &opError{"node_offline", "no agent is running on the hub's machine", http.StatusServiceUnavailable}
 		}
+	}
+	as := extra.as
+	if as.user == nil && !as.root() {
+		as = h.asUser(h.ownerID)
+	}
+	if !h.can(as, actRunClaude, objNode, cs.Node) {
+		return "", errForbidden
 	}
 	agent := h.agents[cs.Node]
 	if agent == nil {
@@ -462,9 +495,9 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 	info := &v1.SessionInfo{
 		Id: uuid.NewString(), Node: cs.Node, Cwd: cs.Cwd, Title: firstNonEmpty(cs.Name, clip(cs.Prompt, 80)),
 		State: v1.SessionState_SESSION_STATE_RUNNING, CreatedMs: now, UpdatedMs: now, LastPrompt: cs.Prompt, Model: cs.Model,
-		Scratch: cs.Scratch,
+		Scratch: cs.Scratch, Owner: firstNonEmpty(as.userID(), h.ownerID),
 	}
-	attachments, aerr := h.attachments(cs.Attachments)
+	attachments, aerr := h.attachments(cs.Attachments, as, "")
 	if aerr != nil {
 		return "", aerr
 	}
@@ -504,7 +537,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		fork := &v1.SessionInfo{
 			Id: uuid.NewString(), Node: info.Node, Cwd: info.Cwd, Title: "Fork: " + info.Title, GitBranch: info.GitBranch,
 			State: v1.SessionState_SESSION_STATE_RUNNING, CreatedMs: now, UpdatedMs: now, LastPrompt: m.Text, Model: info.Model,
-			Parent: info.Id, ForkPoint: point, Lineage: "fork",
+			Parent: info.Id, ForkPoint: point, Lineage: "fork", Owner: info.Owner,
 			// Every fork is kept on the hub: its transcript and its codebase.
 			Global: true,
 		}
@@ -521,7 +554,7 @@ func (h *Hub) sendMessage(m *v1.SendMessage, from string) (string, *opError) {
 		info.Host == v1.SessionHost_SESSION_HOST_TERMINAL && info.State != v1.SessionState_SESSION_STATE_IDLE && !info.TerminalInput {
 		return "", errTerminalActive
 	}
-	attachments, aerr := h.attachments(m.Attachments)
+	attachments, aerr := h.attachments(m.Attachments, h.asUser(h.sessionOwner(info)), info.Id)
 	if aerr != nil {
 		return "", aerr
 	}
@@ -705,7 +738,7 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		idx := b.SessionIndex
 		known := map[string]bool{}
 		for _, s := range idx.Sessions {
-			s.Node = node
+			s.Node, s.Owner = node, ""
 			known[s.Id] = true
 			h.mergeSession(s)
 		}
@@ -787,6 +820,7 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		in.Scratch, in.Global = cur.Scratch, cur.Global
 		in.PermissionMode, in.ModeRevertMs, in.ModeRevertTo = cur.PermissionMode, cur.ModeRevertMs, cur.ModeRevertTo
 		in.BackedUpMs, in.BackedUpBytes = cur.BackedUpMs, cur.BackedUpBytes
+		in.Owner = cur.Owner
 		// A global session's copy is refreshed whenever a turn ends.
 		if in.Global && busy(cur.State) && !busy(in.State) {
 			defer h.uploadTranscript(in)
@@ -1023,6 +1057,8 @@ func (h *Hub) removeSession(node, id string) {
 	if s == nil || s.Node != node || live(s.State) {
 		return
 	}
+	// Sent first: who may see it is worked out from the session.
+	h.broadcast(&v1.Frame{Body: &v1.Frame_SessionRemoved{SessionRemoved: &v1.SessionRemoved{Session: id}}})
 	delete(h.sessions, id)
 	delete(h.builders, id)
 	delete(h.pending, id)
@@ -1030,13 +1066,20 @@ func (h *Hub) removeSession(node, id string) {
 	if err := h.store.DeleteSession(id); err != nil {
 		h.log.Error("delete session", "session", id, "err", err)
 	}
-	h.broadcast(&v1.Frame{Body: &v1.Frame_SessionRemoved{SessionRemoved: &v1.SessionRemoved{Session: id}}})
 }
 
 // ---- shared state ----
 
 func (h *Hub) putSession(info *v1.SessionInfo) {
 	_, known := h.sessions[info.Id]
+	if info.Owner == "" {
+		// Found on a node: its chat's, or the machine owner's.
+		if c := h.chats[h.chatOf[info.Id]]; c != nil {
+			info.Owner = h.chatOwner(c)
+		} else {
+			info.Owner = h.nodeOwner(info.Node)
+		}
+	}
 	h.sessions[info.Id] = info
 	if !known {
 		defer h.noteNewSession(info)
@@ -1048,6 +1091,8 @@ func (h *Hub) putSession(info *v1.SessionInfo) {
 }
 
 func (h *Hub) putNode(st *v1.NodeStatus) {
+	// The hub's to say, per client; see nodeFor.
+	st.Owner, st.Grants = "", nil
 	// Kept while offline, so an app can still tell its own machine's node.
 	if ip := h.agentIPs[st.Node]; ip != "" {
 		st.Ip = ip
@@ -1068,9 +1113,12 @@ func (h *Hub) putNode(st *v1.NodeStatus) {
 	}
 }
 
+// broadcast sends a frame to every client that may see it.
 func (h *Hub) broadcast(f *v1.Frame) {
 	for c := range h.clients {
-		c.conn.Send(f)
+		if out := h.frameFor(c, f); out != nil {
+			c.conn.Send(out)
+		}
 	}
 }
 

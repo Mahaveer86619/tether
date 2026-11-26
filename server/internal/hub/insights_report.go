@@ -228,7 +228,7 @@ func (h *Hub) insightReportRoutes(mux *http.ServeMux) {
 		}
 		id, _ := r.Context().Value(identityKey{}).(identity)
 		h.mu.Lock()
-		h.audit(actorOf(id), "insights", "analyze", fmt.Sprintf("report=%s chats=%d messages=%d", rep.ID, rep.Sample.Chats, rep.Sample.Messages), true)
+		h.audit(whoOf(id), "insights", "analyze", fmt.Sprintf("report=%s chats=%d messages=%d", rep.ID, rep.Sample.Chats, rep.Sample.Messages), true)
 		h.mu.Unlock()
 		writePlainJSON(w, rep)
 	}))
@@ -271,7 +271,7 @@ func recommendationsOf(v any) ([]recommendation, error) {
 	return list, nil
 }
 
-func (h *Hub) mcpSaveInsight(args map[string]any) (string, error) {
+func (h *Hub) mcpSaveInsight(caller identity, args map[string]any) (string, error) {
 	recs, err := recommendationsOf(args["recommendations"])
 	if err != nil {
 		return "", err

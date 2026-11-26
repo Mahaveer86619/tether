@@ -55,10 +55,13 @@ func (h *Hub) loadChats() error {
 	return nil
 }
 
-func (h *Hub) chatList() []*v1.Chat {
+// chatList is the chats id may see, newest first.
+func (h *Hub) chatList(id identity) []*v1.Chat {
 	out := make([]*v1.Chat, 0, len(h.chats))
 	for _, c := range h.chats {
-		out = append(out, proto.Clone(c).(*v1.Chat))
+		if h.can(id, actView, objChat, c.Id) {
+			out = append(out, h.chatFor(id, c))
+		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedMs > out[j].UpdatedMs })
 	return out
@@ -112,15 +115,18 @@ func (h *Hub) unlink(c *v1.Chat, session string) {
 	}
 }
 
-// createChat starts a chat with its first session, or makes a chat of an
-// existing session. Caller holds h.mu.
-func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
+// createChat starts a chat of who's with its first session, or makes a chat
+// of an existing session. Caller holds h.mu.
+func (h *Hub) createChat(who identity, cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 	now := time.Now().UnixMilli()
-	c := &v1.Chat{Id: uuid.NewString(), CreatedMs: now, UpdatedMs: now}
+	c := &v1.Chat{Id: uuid.NewString(), CreatedMs: now, UpdatedMs: now, Owner: firstNonEmpty(who.userID(), h.ownerID)}
 	if cc.Session != "" {
 		s := h.sessions[cc.Session]
 		if s == nil {
 			return nil, errNotFound
+		}
+		if !h.can(who, actUse, objSession, s.Id) {
+			return nil, errForbidden
 		}
 		if existing := h.chats[h.chatOf[cc.Session]]; existing != nil {
 			return proto.Clone(existing).(*v1.Chat), nil
@@ -136,7 +142,7 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 	if strings.TrimSpace(cc.Prompt) == "" {
 		return nil, invalid("prompt is empty")
 	}
-	target, err := h.resolveTarget(cc.Prompt, cc.Target)
+	target, err := h.resolveTarget(h.asUser(c.Owner), cc.Prompt, cc.Target)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +160,7 @@ func (h *Hub) createChat(cc *v1.CreateChat, from string) (*v1.Chat, *opError) {
 		// An agent too old for a system prompt gets the instructions inline.
 		cs.Prompt = detectPrompt(c.Id) + "\n\n---\n\n" + cs.Prompt
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: system, clientID: cc.ClientId})
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: system, clientID: cc.ClientId, as: h.asUser(c.Owner)})
 	if err != nil {
 		delete(h.chats, c.Id)
 		return nil, err
@@ -297,7 +303,7 @@ func (h *Hub) moveChat(c *v1.Chat, t *v1.ChatTarget, text string, attachments []
 	if s := h.sessions[c.ActiveSession]; s != nil {
 		cs.Model = s.Model
 	}
-	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, text), clientID: clientID})
+	id, err := h.startSession(cs, from, startExtra{systemPrompt: h.chatPromptWith(c, cs.Node, false, text), clientID: clientID, as: h.asUser(h.chatOwner(c))})
 	if err != nil {
 		return "", err
 	}
@@ -334,6 +340,10 @@ func (h *Hub) linkToChat(id string, ls *v1.LinkSession) (*v1.Chat, *opError) {
 	} else {
 		if h.sessions[ls.Session] == nil {
 			return nil, errNotFound
+		}
+		// A session joins a chat only when both are its owner's.
+		if h.sessionOwner(h.sessions[ls.Session]) != h.chatOwner(c) {
+			return nil, errForbidden
 		}
 		h.link(c, ls.Session, firstNonEmpty(ls.Role, linkLinked))
 	}
@@ -808,7 +818,7 @@ func autoTitle(text string) string {
 
 func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/chats", h.api(func(r *http.Request) (proto.Message, *opError) {
-		return &v1.ChatList{Chats: h.chatList()}, nil
+		return &v1.ChatList{Chats: h.chatList(userOf(r))}, nil
 	}))
 	mux.HandleFunc("POST /api/v1/chats", h.api(func(r *http.Request) (proto.Message, *opError) {
 		cc := &v1.CreateChat{}
@@ -820,7 +830,7 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 		if project != "" && findProject(h.projectList(), project) < 0 {
 			return nil, errProjectNotFound
 		}
-		c, err := h.createChat(cc, clientName(r))
+		c, err := h.createChat(userOf(r), cc, clientName(r))
 		if err == nil && project != "" {
 			err = h.setChatProject(c.Id, project)
 		}
@@ -865,6 +875,6 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	}))
 	h.deskRoutes(mux)
 	mux.HandleFunc("GET /api/v1/targets", h.api(func(r *http.Request) (proto.Message, *opError) {
-		return h.targetSuggestions(r.URL.Query().Get("prompt")), nil
+		return h.targetSuggestions(userOf(r), r.URL.Query().Get("prompt")), nil
 	}))
 }

@@ -39,8 +39,19 @@ func (h *Hub) notifyWakeLocked() {
 
 // notify records a notification and wakes the pollers. Caller holds h.mu.
 func (h *Hub) notify(kind, title, body, chat, session string) {
+	// For whoever the work is for: the session's owner, who asked for it.
+	user := h.ownerID
+	if s := h.sessions[session]; s != nil {
+		user = h.sessionOwner(s)
+	} else if c := h.chats[chat]; c != nil {
+		user = h.chatOwner(c)
+	}
+	h.notifyUser(user, kind, title, body, chat, session)
+}
+
+func (h *Hub) notifyUser(user, kind, title, body, chat, session string) {
 	body = clip(strings.Join(strings.Fields(body), " "), notifyBodyMax)
-	id, err := h.store.AddNotification(store.Notification{AtMs: time.Now().UnixMilli(), Kind: kind, Title: clip(title, 100), Body: body, Chat: chat, Session: session}, notifyKeep)
+	id, err := h.store.AddNotification(store.Notification{AtMs: time.Now().UnixMilli(), Kind: kind, Title: clip(title, 100), Body: body, Chat: chat, Session: session, User: firstNonEmpty(user, h.ownerID)}, notifyKeep)
 	if err != nil {
 		h.log.Error("store notification", "err", err)
 		return
@@ -146,6 +157,28 @@ func (h *Hub) dropNotifyTokens(who string) {
 	h.saveNotifyTokens(tokens)
 }
 
+// notifyUserOf is whose notifications a token fetches: its device's user,
+// or the owner's for an install on the admin token or the tailnet. Caller
+// holds h.mu.
+func (h *Hub) notifyUserOf(token string) string {
+	who := h.notifyTokens()[hashToken(token)]
+	for _, d := range h.devices {
+		if d.Id == who {
+			return firstNonEmpty(d.User, h.ownerID)
+		}
+	}
+	return h.ownerID
+}
+
+// forUser is the user whose notifications id reads; "" for the admin
+// token, which reads everyone's.
+func forUser(id identity) string {
+	if id.root() {
+		return ""
+	}
+	return firstNonEmpty(id.userID(), "-")
+}
+
 func (h *Hub) notifyTokenOK(token string) bool {
 	if token == "" {
 		return false
@@ -169,7 +202,7 @@ func (h *Hub) notifyRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/notifications", h.authed(func(w http.ResponseWriter, r *http.Request) {
 		after, _ := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
 		h.mu.Lock()
-		list, err := h.store.NotificationsAfter(after, 100)
+		list, err := h.store.NotificationsAfter(forUser(userOf(r)), after, 100)
 		h.mu.Unlock()
 		if err != nil {
 			writeError(w, internalError(err))
@@ -179,7 +212,7 @@ func (h *Hub) notifyRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/notifications/test", h.authed(func(w http.ResponseWriter, r *http.Request) {
 		h.mu.Lock()
-		h.notify("test", "Tether can reach you", "This is a test notification.", "", "")
+		h.notifyUser(userOf(r).userID(), "test", "Tether can reach you", "This is a test notification.", "", "")
 		h.mu.Unlock()
 		writePlainJSON(w, map[string]bool{"sent": true})
 	}))
@@ -264,7 +297,7 @@ func (h *Hub) poll(w http.ResponseWriter, r *http.Request, public bool) {
 	defer deadline.Stop()
 	for {
 		h.mu.Lock()
-		list, err := h.store.NotificationsAfter(since, 50)
+		list, err := h.store.NotificationsAfter(h.notifyUserOf(token), since, 50)
 		wake := h.notifyCh
 		h.mu.Unlock()
 		if err != nil {

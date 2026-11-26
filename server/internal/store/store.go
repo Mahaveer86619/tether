@@ -215,6 +215,22 @@ var migrations = []string{
 		session   TEXT NOT NULL,
 		at_ms     INTEGER NOT NULL
 	)`,
+	// Users and who may use whose device. See docs/plans/teams.md#b-users-and-workspaces.
+	`CREATE TABLE users (
+		id         TEXT PRIMARY KEY,
+		name       TEXT NOT NULL,
+		role       TEXT NOT NULL,
+		created_ms INTEGER NOT NULL
+	);
+	CREATE TABLE device_grants (
+		node       TEXT NOT NULL,
+		user       TEXT NOT NULL,
+		access     TEXT NOT NULL,
+		granted_ms INTEGER NOT NULL,
+		PRIMARY KEY (node, user)
+	);
+	ALTER TABLE notifications ADD COLUMN user TEXT NOT NULL DEFAULT '';
+	ALTER TABLE artifacts ADD COLUMN owner TEXT NOT NULL DEFAULT ''`,
 }
 
 type Store struct {
@@ -702,16 +718,16 @@ func (s *Store) LastUsage(session string) (*v1.UsageEntry, error) {
 	return e, err
 }
 
-const artifactCols = `id, sha256, name, mime, size, session, node, origin, path, tool_use_id, created_ms, note`
+const artifactCols = `id, sha256, name, mime, size, session, node, origin, path, tool_use_id, created_ms, note, owner`
 
 func scanArtifact(row interface{ Scan(...any) error }) (*v1.Artifact, error) {
 	a := &v1.Artifact{}
-	return a, row.Scan(&a.Id, &a.Sha256, &a.Name, &a.Mime, &a.Size, &a.Session, &a.Node, &a.Origin, &a.Path, &a.ToolUseId, &a.CreatedMs, &a.Note)
+	return a, row.Scan(&a.Id, &a.Sha256, &a.Name, &a.Mime, &a.Size, &a.Session, &a.Node, &a.Origin, &a.Path, &a.ToolUseId, &a.CreatedMs, &a.Note, &a.Owner)
 }
 
 func (s *Store) PutArtifact(a *v1.Artifact) error {
-	_, err := s.db.Exec(`INSERT INTO artifacts (`+artifactCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		a.Id, a.Sha256, a.Name, a.Mime, a.Size, a.Session, a.Node, a.Origin, a.Path, a.ToolUseId, a.CreatedMs, a.Note)
+	_, err := s.db.Exec(`INSERT INTO artifacts (`+artifactCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		a.Id, a.Sha256, a.Name, a.Mime, a.Size, a.Session, a.Node, a.Origin, a.Path, a.ToolUseId, a.CreatedMs, a.Note, a.Owner)
 	return err
 }
 

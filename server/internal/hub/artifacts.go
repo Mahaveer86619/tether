@@ -92,6 +92,7 @@ func artifactFromHeaders(r *http.Request, id identity) (*v1.Artifact, *opError) 
 		node = id.device.Name
 	}
 	return &v1.Artifact{
+		Owner:  id.userID(),
 		Sha256: want, Name: name, Mime: mimeOf(r.Header.Get("Content-Type"), name),
 		Session: header("X-Session"), Node: node, Origin: firstNonEmpty(header("X-Origin"), "upload"),
 		Path: header("X-Path"), ToolUseId: header("X-Tool-Use-Id"), Note: header("X-Note"),
@@ -341,11 +342,18 @@ func (h *Hub) sign(id string, exp int64) string {
 }
 
 // attachments looks up artifacts sent with a message. Caller holds h.mu.
-func (h *Hub) attachments(ids []string) ([]*v1.Artifact, *opError) {
+// attachments loads the files sent with a message. Each must be one the
+// session's owner may see, or a loose upload of someone who may send into
+// session ("" for a session not started yet, sent as as).
+func (h *Hub) attachments(ids []string, as identity, session string) ([]*v1.Artifact, *opError) {
 	var out []*v1.Artifact
 	for _, id := range ids {
 		a, err := h.store.Artifact(id)
 		if err != nil || a == nil {
+			return nil, &opError{"not_found", "unknown attachment " + id, http.StatusNotFound}
+		}
+		loose := a.Session == "" && session != "" && h.can(h.asUser(a.Owner), actUse, objSession, session)
+		if !h.canArtifact(as, actView, a) && !loose {
 			return nil, &opError{"not_found", "unknown attachment " + id, http.StatusNotFound}
 		}
 		out = append(out, a)

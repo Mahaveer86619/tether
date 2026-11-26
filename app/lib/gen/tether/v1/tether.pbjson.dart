@@ -542,6 +542,15 @@ const NodeStatus$json = {
     },
     {'1': 'memory_bytes', '3': 14, '4': 1, '5': 3, '10': 'memoryBytes'},
     {'1': 'cpus', '3': 15, '4': 1, '5': 5, '10': 'cpus'},
+    {'1': 'owner', '3': 20, '4': 1, '5': 9, '10': 'owner'},
+    {
+      '1': 'grants',
+      '3': 21,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.DeviceGrant',
+      '10': 'grants'
+    },
   ],
 };
 
@@ -555,7 +564,9 @@ final $typed_data.Uint8List nodeStatusDescriptor = $convert.base64Decode(
     '9yeV9zeW5jZWRfbXMYCiABKANSD2hpc3RvcnlTeW5jZWRNcxIiCgxjYXBhYmlsaXRpZXMYCyAD'
     'KAlSDGNhcGFiaWxpdGllcxIuCgZjaGVja3MYDCADKAsyFi50ZXRoZXIudjEuRG9jdG9yQ2hlY2'
     'tSBmNoZWNrcxIiCgRncHVzGA0gAygLMg4udGV0aGVyLnYxLkdwdVIEZ3B1cxIhCgxtZW1vcnlf'
-    'Ynl0ZXMYDiABKANSC21lbW9yeUJ5dGVzEhIKBGNwdXMYDyABKAVSBGNwdXM=');
+    'Ynl0ZXMYDiABKANSC21lbW9yeUJ5dGVzEhIKBGNwdXMYDyABKAVSBGNwdXMSFAoFb3duZXIYFC'
+    'ABKAlSBW93bmVyEi4KBmdyYW50cxgVIAMoCzIWLnRldGhlci52MS5EZXZpY2VHcmFudFIGZ3Jh'
+    'bnRz');
 
 @$core.Deprecated('Use gpuDescriptor instead')
 const Gpu$json = {
@@ -645,6 +656,7 @@ const SessionInfo$json = {
     {'1': 'mode_revert_to', '3': 29, '4': 1, '5': 9, '10': 'modeRevertTo'},
     {'1': 'backed_up_ms', '3': 30, '4': 1, '5': 3, '10': 'backedUpMs'},
     {'1': 'backed_up_bytes', '3': 31, '4': 1, '5': 3, '10': 'backedUpBytes'},
+    {'1': 'owner', '3': 32, '4': 1, '5': 9, '10': 'owner'},
   ],
 };
 
@@ -667,7 +679,8 @@ final $typed_data.Uint8List sessionInfoDescriptor = $convert.base64Decode(
     'dBgaIAEoCVIIc25hcHNob3QSJwoPcGVybWlzc2lvbl9tb2RlGBsgASgJUg5wZXJtaXNzaW9uTW'
     '9kZRIkCg5tb2RlX3JldmVydF9tcxgcIAEoA1IMbW9kZVJldmVydE1zEiQKDm1vZGVfcmV2ZXJ0'
     'X3RvGB0gASgJUgxtb2RlUmV2ZXJ0VG8SIAoMYmFja2VkX3VwX21zGB4gASgDUgpiYWNrZWRVcE'
-    '1zEiYKD2JhY2tlZF91cF9ieXRlcxgfIAEoA1INYmFja2VkVXBCeXRlcw==');
+    '1zEiYKD2JhY2tlZF91cF9ieXRlcxgfIAEoA1INYmFja2VkVXBCeXRlcxIUCgVvd25lchggIAEo'
+    'CVIFb3duZXI=');
 
 @$core.Deprecated('Use sessionRemovedDescriptor instead')
 const SessionRemoved$json = {
@@ -1095,6 +1108,15 @@ const Welcome$json = {
       '10': 'update'
     },
     {'1': 'notify_url', '3': 11, '4': 1, '5': 9, '10': 'notifyUrl'},
+    {'1': 'me', '3': 12, '4': 1, '5': 11, '6': '.tether.v1.User', '10': 'me'},
+    {
+      '1': 'users',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.User',
+      '10': 'users'
+    },
   ],
 };
 
@@ -1108,7 +1130,72 @@ final $typed_data.Uint8List welcomeDescriptor = $convert.base64Decode(
     '9ub2RlGAYgASgJUgdodWJOb2RlEhsKCWRldmljZV9pZBgHIAEoCVIIZGV2aWNlSWQSGwoJY2xp'
     'ZW50X2lwGAggASgJUghjbGllbnRJcBIlCgVjaGF0cxgJIAMoCzIPLnRldGhlci52MS5DaGF0Ug'
     'VjaGF0cxIxCgZ1cGRhdGUYCiABKAsyGS50ZXRoZXIudjEuVXBkYXRlTWFuaWZlc3RSBnVwZGF0'
-    'ZRIdCgpub3RpZnlfdXJsGAsgASgJUglub3RpZnlVcmw=');
+    'ZRIdCgpub3RpZnlfdXJsGAsgASgJUglub3RpZnlVcmwSHwoCbWUYDCABKAsyDy50ZXRoZXIudj'
+    'EuVXNlclICbWUSJQoFdXNlcnMYDSADKAsyDy50ZXRoZXIudjEuVXNlclIFdXNlcnM=');
+
+@$core.Deprecated('Use userDescriptor instead')
+const User$json = {
+  '1': 'User',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'role', '3': 3, '4': 1, '5': 9, '10': 'role'},
+    {'1': 'created_ms', '3': 4, '4': 1, '5': 3, '10': 'createdMs'},
+  ],
+};
+
+/// Descriptor for `User`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List userDescriptor = $convert.base64Decode(
+    'CgRVc2VyEg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEhIKBHJvbGUYAyABKA'
+    'lSBHJvbGUSHQoKY3JlYXRlZF9tcxgEIAEoA1IJY3JlYXRlZE1z');
+
+@$core.Deprecated('Use userListDescriptor instead')
+const UserList$json = {
+  '1': 'UserList',
+  '2': [
+    {
+      '1': 'users',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.User',
+      '10': 'users'
+    },
+  ],
+};
+
+/// Descriptor for `UserList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List userListDescriptor = $convert.base64Decode(
+    'CghVc2VyTGlzdBIlCgV1c2VycxgBIAMoCzIPLnRldGhlci52MS5Vc2VyUgV1c2Vycw==');
+
+@$core.Deprecated('Use deviceGrantDescriptor instead')
+const DeviceGrant$json = {
+  '1': 'DeviceGrant',
+  '2': [
+    {'1': 'user', '3': 1, '4': 1, '5': 9, '10': 'user'},
+    {'1': 'access', '3': 2, '4': 1, '5': 9, '10': 'access'},
+    {'1': 'granted_ms', '3': 3, '4': 1, '5': 3, '10': 'grantedMs'},
+  ],
+};
+
+/// Descriptor for `DeviceGrant`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceGrantDescriptor = $convert.base64Decode(
+    'CgtEZXZpY2VHcmFudBISCgR1c2VyGAEgASgJUgR1c2VyEhYKBmFjY2VzcxgCIAEoCVIGYWNjZX'
+    'NzEh0KCmdyYW50ZWRfbXMYAyABKANSCWdyYW50ZWRNcw==');
+
+@$core.Deprecated('Use chatShareDescriptor instead')
+const ChatShare$json = {
+  '1': 'ChatShare',
+  '2': [
+    {'1': 'user', '3': 1, '4': 1, '5': 9, '10': 'user'},
+    {'1': 'access', '3': 2, '4': 1, '5': 9, '10': 'access'},
+  ],
+};
+
+/// Descriptor for `ChatShare`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List chatShareDescriptor = $convert.base64Decode(
+    'CglDaGF0U2hhcmUSEgoEdXNlchgBIAEoCVIEdXNlchIWCgZhY2Nlc3MYAiABKAlSBmFjY2Vzcw'
+    '==');
 
 @$core.Deprecated('Use notifyEndpointDescriptor instead')
 const NotifyEndpoint$json = {
@@ -2027,6 +2114,7 @@ const Device$json = {
     {'1': 'platform', '3': 4, '4': 1, '5': 9, '10': 'platform'},
     {'1': 'created_ms', '3': 5, '4': 1, '5': 3, '10': 'createdMs'},
     {'1': 'last_seen_ms', '3': 6, '4': 1, '5': 3, '10': 'lastSeenMs'},
+    {'1': 'user', '3': 7, '4': 1, '5': 9, '10': 'user'},
   ],
 };
 
@@ -2034,7 +2122,8 @@ const Device$json = {
 final $typed_data.Uint8List deviceDescriptor = $convert.base64Decode(
     'CgZEZXZpY2USDgoCaWQYASABKAlSAmlkEhIKBGtpbmQYAiABKAlSBGtpbmQSEgoEbmFtZRgDIA'
     'EoCVIEbmFtZRIaCghwbGF0Zm9ybRgEIAEoCVIIcGxhdGZvcm0SHQoKY3JlYXRlZF9tcxgFIAEo'
-    'A1IJY3JlYXRlZE1zEiAKDGxhc3Rfc2Vlbl9tcxgGIAEoA1IKbGFzdFNlZW5Ncw==');
+    'A1IJY3JlYXRlZE1zEiAKDGxhc3Rfc2Vlbl9tcxgGIAEoA1IKbGFzdFNlZW5NcxISCgR1c2VyGA'
+    'cgASgJUgR1c2Vy');
 
 @$core.Deprecated('Use deviceListDescriptor instead')
 const DeviceList$json = {
@@ -2079,13 +2168,15 @@ const PairRequest$json = {
     {'1': 'kind', '3': 2, '4': 1, '5': 9, '10': 'kind'},
     {'1': 'name', '3': 3, '4': 1, '5': 9, '10': 'name'},
     {'1': 'platform', '3': 4, '4': 1, '5': 9, '10': 'platform'},
+    {'1': 'user_name', '3': 5, '4': 1, '5': 9, '10': 'userName'},
   ],
 };
 
 /// Descriptor for `PairRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List pairRequestDescriptor = $convert.base64Decode(
     'CgtQYWlyUmVxdWVzdBISCgRjb2RlGAEgASgJUgRjb2RlEhIKBGtpbmQYAiABKAlSBGtpbmQSEg'
-    'oEbmFtZRgDIAEoCVIEbmFtZRIaCghwbGF0Zm9ybRgEIAEoCVIIcGxhdGZvcm0=');
+    'oEbmFtZRgDIAEoCVIEbmFtZRIaCghwbGF0Zm9ybRgEIAEoCVIIcGxhdGZvcm0SGwoJdXNlcl9u'
+    'YW1lGAUgASgJUgh1c2VyTmFtZQ==');
 
 @$core.Deprecated('Use pairResultDescriptor instead')
 const PairResult$json = {
@@ -2100,13 +2191,22 @@ const PairResult$json = {
       '10': 'device'
     },
     {'1': 'token', '3': 2, '4': 1, '5': 9, '10': 'token'},
+    {
+      '1': 'user',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.User',
+      '10': 'user'
+    },
   ],
 };
 
 /// Descriptor for `PairResult`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List pairResultDescriptor = $convert.base64Decode(
     'CgpQYWlyUmVzdWx0EikKBmRldmljZRgBIAEoCzIRLnRldGhlci52MS5EZXZpY2VSBmRldmljZR'
-    'IUCgV0b2tlbhgCIAEoCVIFdG9rZW4=');
+    'IUCgV0b2tlbhgCIAEoCVIFdG9rZW4SIwoEdXNlchgDIAEoCzIPLnRldGhlci52MS5Vc2VyUgR1'
+    'c2Vy');
 
 @$core.Deprecated('Use preferencesDescriptor instead')
 const Preferences$json = {
@@ -2470,6 +2570,7 @@ const Artifact$json = {
     {'1': 'tool_use_id', '3': 10, '4': 1, '5': 9, '10': 'toolUseId'},
     {'1': 'created_ms', '3': 11, '4': 1, '5': 3, '10': 'createdMs'},
     {'1': 'note', '3': 12, '4': 1, '5': 9, '10': 'note'},
+    {'1': 'owner', '3': 13, '4': 1, '5': 9, '10': 'owner'},
   ],
 };
 
@@ -2480,7 +2581,7 @@ final $typed_data.Uint8List artifactDescriptor = $convert.base64Decode(
     'GAoHc2Vzc2lvbhgGIAEoCVIHc2Vzc2lvbhISCgRub2RlGAcgASgJUgRub2RlEhYKBm9yaWdpbh'
     'gIIAEoCVIGb3JpZ2luEhIKBHBhdGgYCSABKAlSBHBhdGgSHgoLdG9vbF91c2VfaWQYCiABKAlS'
     'CXRvb2xVc2VJZBIdCgpjcmVhdGVkX21zGAsgASgDUgljcmVhdGVkTXMSEgoEbm90ZRgMIAEoCV'
-    'IEbm90ZQ==');
+    'IEbm90ZRIUCgVvd25lchgNIAEoCVIFb3duZXI=');
 
 @$core.Deprecated('Use sendKeysDescriptor instead')
 const SendKeys$json = {
@@ -2707,6 +2808,15 @@ const Chat$json = {
       '10': 'sessions'
     },
     {'1': 'deleted', '3': 10, '4': 1, '5': 8, '10': 'deleted'},
+    {'1': 'owner', '3': 11, '4': 1, '5': 9, '10': 'owner'},
+    {
+      '1': 'shares',
+      '3': 12,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ChatShare',
+      '10': 'shares'
+    },
   ],
 };
 
@@ -2717,7 +2827,9 @@ final $typed_data.Uint8List chatDescriptor = $convert.base64Decode(
     'Eh0KCnVwZGF0ZWRfbXMYBSABKANSCXVwZGF0ZWRNcxIaCghhcmNoaXZlZBgGIAEoCFIIYXJjaG'
     'l2ZWQSLQoGdGFyZ2V0GAcgASgLMhUudGV0aGVyLnYxLkNoYXRUYXJnZXRSBnRhcmdldBIlCg5h'
     'Y3RpdmVfc2Vzc2lvbhgIIAEoCVINYWN0aXZlU2Vzc2lvbhIvCghzZXNzaW9ucxgJIAMoCzITLn'
-    'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnMSGAoHZGVsZXRlZBgKIAEoCFIHZGVsZXRlZA==');
+    'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnMSGAoHZGVsZXRlZBgKIAEoCFIHZGVsZXRlZBIU'
+    'CgVvd25lchgLIAEoCVIFb3duZXISLAoGc2hhcmVzGAwgAygLMhQudGV0aGVyLnYxLkNoYXRTaG'
+    'FyZVIGc2hhcmVz');
 
 @$core.Deprecated('Use chatTargetDescriptor instead')
 const ChatTarget$json = {
@@ -3376,6 +3488,7 @@ const Job$json = {
     {'1': 'updated_ms', '3': 11, '4': 1, '5': 3, '10': 'updatedMs'},
     {'1': 'address', '3': 12, '4': 1, '5': 9, '10': 'address'},
     {'1': 'by', '3': 13, '4': 1, '5': 9, '10': 'by'},
+    {'1': 'owner', '3': 14, '4': 1, '5': 9, '10': 'owner'},
   ],
 };
 
@@ -3387,7 +3500,7 @@ final $typed_data.Uint8List jobDescriptor = $convert.base64Decode(
     'IZCghlbmRlZF9tcxgGIAEoA1IHZW5kZWRNcxIbCglleGl0X2NvZGUYByABKAVSCGV4aXRDb2Rl'
     'EhAKA3BpZBgIIAEoBVIDcGlkEhoKCHJlc3RhcnRzGAkgASgFUghyZXN0YXJ0cxIUCgVlcnJvch'
     'gKIAEoCVIFZXJyb3ISHQoKdXBkYXRlZF9tcxgLIAEoA1IJdXBkYXRlZE1zEhgKB2FkZHJlc3MY'
-    'DCABKAlSB2FkZHJlc3MSDgoCYnkYDSABKAlSAmJ5');
+    'DCABKAlSB2FkZHJlc3MSDgoCYnkYDSABKAlSAmJ5EhQKBW93bmVyGA4gASgJUgVvd25lcg==');
 
 @$core.Deprecated('Use jobListDescriptor instead')
 const JobList$json = {
