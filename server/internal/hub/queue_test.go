@@ -87,3 +87,28 @@ func TestAStaleQueuedPlaceholderGoesWhenItsMessageArrives(t *testing.T) {
 		t.Fatal("the real message is missing")
 	}
 }
+
+func TestQueuedPlaceholdersAreClearedWhenATurnEndsEvenIfTheHubForgotThem(t *testing.T) {
+	h, _ := newTestHubWith(t)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.commit("s1", []*v1.TimelineItem{
+		{ItemId: "queued-1", Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: "also update the docs", Queued: true}}},
+		{ItemId: "queued-2", Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: "and the changelog", Queued: true}}},
+		{ItemId: "u-0", Kind: &v1.TimelineItem_User{User: &v1.UserText{Text: "the first prompt"}}},
+	})
+	// A compacted session's transcript was rebuilt, and the hub restarted.
+	h.queuedItems = map[string]map[string]string{}
+
+	h.dropQueued("s1")
+
+	stored, _, _ := h.store.ItemsAfter("s1", 0)
+	for _, it := range stored {
+		if u := it.GetUser(); (it.ItemId == "queued-1" || it.ItemId == "queued-2") && it.Kind != nil && u.Queued {
+			t.Fatalf("%s should be gone after Stop", it.ItemId)
+		}
+		if it.ItemId == "u-0" && it.Kind == nil {
+			t.Fatal("a real message must stay")
+		}
+	}
+}

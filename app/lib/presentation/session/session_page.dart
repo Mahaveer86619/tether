@@ -731,7 +731,7 @@ class _OutboxBubble extends StatelessWidget {
     final c = context.colors;
     final e = entry;
     final bloc = context.read<SessionBloc>();
-    final unconfirmed = e.unconfirmed(DateTime.now());
+    final unconfirmed = e.unconfirmed(DateTime.now(), sessionBusy: bloc.state.session?.isBusy ?? true);
     final failed = e.state == OutboxState.failed;
     final (IconData icon, String status) = switch (e.state) {
       OutboxState.sending => (Icons.upload_rounded, e.files.isEmpty ? 'Sending…' : 'Uploading ${e.files.length == 1 ? e.files.single.name : '${e.files.length} files'}…'),

@@ -128,18 +128,7 @@ func (h *Hub) linkAttachments(item string, ids []string) {
 // forgets them when the hub restarts or a mirror resumes mid-transcript,
 // and the queued and real text can differ slightly. Caller holds h.mu.
 func (h *Hub) dropStaleQueued(session string, items []*v1.TimelineItem) []*v1.TimelineItem {
-	queued := h.queuedItems[session]
-	if queued == nil {
-		queued = map[string]string{}
-		if stored, _, err := h.store.ItemsAfter(session, 0); err == nil {
-			for _, it := range stored {
-				if u := it.GetUser(); u != nil && u.Queued {
-					queued[it.ItemId] = u.Text
-				}
-			}
-		}
-		h.queuedItems[session] = queued
-	}
+	queued := h.queuedOf(session)
 	inBatch := map[string]bool{}
 	for _, it := range items {
 		inBatch[it.ItemId] = true
@@ -164,6 +153,42 @@ func (h *Hub) dropStaleQueued(session string, items []*v1.TimelineItem) []*v1.Ti
 		}
 	}
 	return items
+}
+
+// queuedOf is the session's queued placeholders, by item id, read from the
+// store the first time. Caller holds h.mu.
+func (h *Hub) queuedOf(session string) map[string]string {
+	queued := h.queuedItems[session]
+	if queued == nil {
+		queued = map[string]string{}
+		if stored, _, err := h.store.ItemsAfter(session, 0); err == nil {
+			for _, it := range stored {
+				if u := it.GetUser(); u != nil && u.Queued {
+					queued[it.ItemId] = u.Text
+				}
+			}
+		}
+		h.queuedItems[session] = queued
+	}
+	return queued
+}
+
+// dropQueued removes every queued placeholder of a session whose turn has
+// ended. Stop pulls queued messages back out of Claude Code, and a transcript
+// rebuilt after the session was compacted no longer knows what was queued, so
+// nothing else would clear them; a queued message that does run arrives as a
+// real one. Caller holds h.mu.
+func (h *Hub) dropQueued(session string) {
+	queued := h.queuedOf(session)
+	if len(queued) == 0 {
+		return
+	}
+	var gone []*v1.TimelineItem
+	for id := range queued {
+		gone = append(gone, &v1.TimelineItem{ItemId: id})
+	}
+	h.queuedItems[session] = map[string]string{}
+	h.commit(session, gone)
 }
 
 // keepSources remembers a session's stamps before its timeline is rebuilt
