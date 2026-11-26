@@ -1227,7 +1227,8 @@ class OutboxEntry extends Equatable {
   final DateTime? sentAt;
 
   /// Sent a while ago and still not in the timeline.
-  bool unconfirmed(DateTime now) => state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > const Duration(minutes: 10);
+  bool unconfirmed(DateTime now, {bool sessionBusy = true}) =>
+      state == OutboxState.sent && sentAt != null && now.difference(sentAt!) > (sessionBusy ? const Duration(minutes: 10) : const Duration(seconds: 45));
 
   OutboxEntry copyWith({OutboxState? state, DateTime? sentAt, String? error, List<String>? attachments, List<LocalFile>? files}) => OutboxEntry(
         id: id,

@@ -776,6 +776,7 @@ func (h *Hub) mergeSession(in *v1.SessionInfo) {
 		}
 		if busy(cur.State) && !busy(in.State) {
 			defer h.noteTurnEnded(in.Id)
+			defer h.dropQueued(in.Id)
 		}
 		if in.State != cur.State {
 			defer h.noteStateEvent(in)

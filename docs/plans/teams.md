@@ -83,12 +83,16 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 - **Skills and rules** have a scope of *me*, *the project* or *the workspace*; the workspace scope needs admin.
 - **The audit log** records the user with every action.
 
-**Devices and whose Claude account runs the work.** This is the part that needs care. A session runs on a device under that device's operating-system user and **that user's Claude login**. So:
+**Devices, teammates and whose Claude runs the work.** A session runs on a device under that device's operating-system user and **that user's Claude Code login**. So a teammate's device is a place where the *teammate's* Claude does the work. The rules:
 
-- A device belongs to the user who paired it. Their sessions run there under their account.
-- A device can be **lent** to a workspace or to named users. A lent device runs other people's sessions **under its owner's Claude account and machine**, so lending is an explicit, revocable choice with a warning that says exactly that, and every session shows whose device it ran on.
-- A device that is not lent never receives another user's prompt, folder or file.
-- A shared GPU desktop is the lend case. Its owner decides who may spawn on it.
+- A device belongs to the user who paired it. **By default only its owner uses it.**
+- The owner can grant a teammate **full device access** (per device, revocable at any moment, and recorded). With it the teammate can start sessions and jobs on that device from their own chats, as they would on their own device: one main chat can hand tasks to the devices of several people in the team, as the lead already hands tasks to several of one person's devices.
+- **Those tasks run under the device owner's Claude Code and plan**, so they spend the owner's allowance. The grant says so when it is made, and the owner's usage page shows what was spent by whom.
+- The session appears in the requester's chat, with the device and its owner named. **Approvals go to the person who asked** (the delegator); the device owner sees everything run on their device, can stop any of it, and can set the grant to *ask me first*.
+- A grant can be narrowed to **jobs only** (servers, training runs, long scripts: plain processes that need no Claude login) with limits on hours, GPU memory, CPU, disk and folders ([token-pool.md](token-pool.md#4-shared-devices-the-pool)).
+- A device that has not been shared never receives another user's prompt, folder, file or job.
+- Any chat can add devices, its own or teammates', as nodes of its **workspace**, which keeps them in step by sync ([shared-workspace.md](shared-workspace.md)): a chat started on one device can hand work to the others, each with the project in place.
+- The first case: a teammate with a GPU desktop on the tailnet, with their own Claude Code on it. They grant full access; the owner of the hub starts training runs and tasks on it, and the desktop's owner can follow and stop them.
 
 **Enforcement.** One check, `can(user, action, object)`, used by every REST route, MCP call and WebSocket message, and **every list is filtered before it is sent**: `Welcome`, the chat list, sessions, approvals, notifications and the push stream carry only what the user may see. A user's agent connection reports only its own device. This is the largest part of B: today the hub trusts any client token with everything.
 
@@ -117,3 +121,4 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 - **A project chat is private to its user, and can be shared** (read or collaborate).
 - **Each user's sessions run on devices under their own Claude login.** No lending of one person's account to another. A shared pool of accounts and devices is a later feature, to be designed on its own: it needs a way to pool credentials and meter use, which this plan does not cover.
 - **One workspace by default**, with several as an option later.
+- **Teammates can be given full access to a device for delegating tasks** (their Claude Code does the work and spends their allowance), or jobs-only access. Each is the device owner's choice, per device, and revocable.
