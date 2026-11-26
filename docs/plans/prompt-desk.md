@@ -120,12 +120,9 @@ A read-only analysis of the hub's saved data (13 chats, 1,833 messages, about 31
 ## Build order
 
 0. **The guide**: `tether_guide` over the hub's MCP (parts, data tables, state, tools) and a line in every chat session's prompt pointing at it, so a session knows how Tether works before it analyses or changes it. **Built.**
-1. **Rules**: store, `list_rules`, prompt injection **built on the hub**; the Rules page in the app is next. (Smallest, most used.)
-2. **Insights, measure**: the stats endpoint and a read-only page. The data decides what follows.
-3. **Rewind and the recap**: the `rewound` link, rewind by text then by transcript fork, the recap note and card. **Built**, except the transcript fork (rewinds carry as text; see [chats.md](../architecture/chats.md#rewind)).
 1. **Rules**: store, `list_rules`, prompt injection, and the Rules page in the app with suggested starters. **Built.**
 2. **Insights, measure**: the stats endpoint and the Insights page; approval decisions are now audited (`audit` kind `approval`) and cost is estimated from a price table. **Built.**
-3. **Rewind and the recap**: the `rewound` link, rewind by text then by transcript fork, the recap note and card.
+3. **Rewind and the recap**: the `rewound` link, rewind by text then by transcript fork, the recap note and card. **Built**, except the transcript fork (rewinds carry as text; see [chats.md](../architecture/chats.md#rewind)).
 4. **Skills: search, `/` picker, run by name.**
 5. **Insights, interpret**: Analyze, saved reports (`save_insight`, `GET /api/v1/insights`), one-tap actions (*Add rule* off by default, *Draft skill*, copy a context change), suggested rules. **Built** (moved ahead of 3 and 4).
 6. **Script skills**: scripts in the codebase, needs and effects, drafting from a chat.
