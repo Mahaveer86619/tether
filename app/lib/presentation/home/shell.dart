@@ -19,6 +19,8 @@ import '../health/connection_banners.dart';
 import '../update/update_banner.dart';
 import '../update/update_cubit.dart';
 import '../routines/routines_page.dart';
+import '../rules/rules_page.dart';
+import '../insights/insights_page.dart';
 import '../usage/usage_page.dart';
 import '../widgets/common.dart';
 import 'activity_page.dart';
@@ -74,6 +76,8 @@ String _title(Destination d) => switch (d) {
       Destination.activity => 'History',
       Destination.files => 'Files',
       Destination.routines => 'Routines',
+      Destination.rules => 'Rules',
+      Destination.insights => 'Insights',
       Destination.usage => 'Usage',
       Destination.settings => 'Settings',
     };
@@ -92,6 +96,8 @@ Widget _destinationPage(BuildContext context, Destination d) {
     Destination.activity => ActivityPage(onSession: nav.openSession),
     Destination.files => FilesPage(onSession: nav.openSession),
     Destination.routines => const RoutinesPage(),
+    Destination.rules => const RulesPage(),
+    Destination.insights => InsightsPage(onSession: nav.openSession),
     Destination.usage => UsagePage(onSession: nav.openSession),
     Destination.settings => SettingsPage(onSaved: () => nav.select(Destination.home)),
   };

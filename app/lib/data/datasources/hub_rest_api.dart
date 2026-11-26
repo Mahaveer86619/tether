@@ -306,6 +306,19 @@ class HubRestApi {
           body: jsonEncode({'project': project}),
         ),
       );
+  /// A plain JSON request (not a protobuf message) for the hub's JSON routes.
+  Future<Map<String, dynamic>> plainJson(String method, String path, {Map<String, String>? query, Object? body}) => _jsonMap(() {
+        final uri = _endpoint.api(path, query);
+        final headers = {..._headers, if (body != null) 'Content-Type': 'application/json'};
+        final encoded = body == null ? null : jsonEncode(body);
+        return switch (method) {
+          'GET' => _client.get(uri, headers: headers),
+          'POST' => _client.post(uri, headers: headers, body: encoded ?? '{}'),
+          'PUT' => _client.put(uri, headers: headers, body: encoded),
+          'DELETE' => _client.delete(uri, headers: headers),
+          _ => throw ArgumentError.value(method, 'method'),
+        };
+      });
 
   Future<Map<String, dynamic>> _jsonMap(Future<http.Response> Function() request) async {
     final json = await _sendJson(request);

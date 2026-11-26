@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/entities.dart';
 import '../../core/version.dart';
 import '../hub/hub_cubit.dart';
+import '../nav/nav_cubit.dart';
 import '../notifications/notifications_section.dart';
 import '../ui/motion.dart';
 import '../ui/refresh.dart';
@@ -87,6 +88,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     const DevicesSection(),
                     const SizedBox(height: 16),
                     const NotificationsSection(),
+                    const SizedBox(height: 32),
+                    const _PromptDeskSection(),
                     const SizedBox(height: 32),
                     const WorkspacesSection(),
                     const SizedBox(height: 32),
@@ -180,6 +183,44 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(hub.error!, style: TextStyle(color: c.danger, fontSize: 12)),
           ),
+      ],
+    );
+  }
+}
+
+/// Ways to the Rules and Insights pages, which also sit in the sidebar's tools.
+class _PromptDeskSection extends StatelessWidget {
+  const _PromptDeskSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final nav = context.read<NavCubit>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('How Claude works for you', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        Text('Standing rules every session is given, and what your own use of Tether suggests changing.', style: TextStyle(color: c.muted, fontSize: 13)),
+        const SizedBox(height: 8),
+        ListTile(
+          key: const Key('settings-rules'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.rule_rounded),
+          title: const Text('Rules'),
+          subtitle: const Text('Instructions applied everywhere, on a device or in a project'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => nav.select(Destination.rules),
+        ),
+        ListTile(
+          key: const Key('settings-insights'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.query_stats_rounded),
+          title: const Text('Insights'),
+          subtitle: const Text('Usage measured, and an analysis by Claude on request'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => nav.select(Destination.insights),
+        ),
       ],
     );
   }

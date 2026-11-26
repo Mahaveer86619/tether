@@ -120,6 +120,7 @@ type Hub struct {
 	keptSources map[string]map[string]string // session -> item -> source, across a rebuild
 
 	skills    skillCache
+	insights  insightCache
 	libOnce   sync.Once
 	library   *skills.Library
 	uploadMu  sync.Mutex
@@ -615,6 +616,7 @@ func (h *Hub) decide(by string, d *v1.ApprovalDecision) (string, *opError) {
 	}
 	agent.Send(&v1.Frame{Body: &v1.Frame_ApprovalDecision{ApprovalDecision: d}})
 	delete(h.approvals, d.ApprovalId)
+	h.auditApproval(by, a, d.Decision)
 	h.broadcast(&v1.Frame{Body: &v1.Frame_ApprovalResolved{ApprovalResolved: &v1.ApprovalResolved{
 		ApprovalId: a.ApprovalId, Session: a.Session, Decision: d.Decision, By: by,
 	}}})

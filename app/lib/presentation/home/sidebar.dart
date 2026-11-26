@@ -15,6 +15,8 @@ const _tools = <({Destination d, IconData icon, String label})>[
   (d: Destination.activity, icon: Icons.history_rounded, label: 'History'),
   (d: Destination.files, icon: Icons.folder_open_outlined, label: 'Files'),
   (d: Destination.routines, icon: Icons.auto_awesome_outlined, label: 'Routines'),
+  (d: Destination.rules, icon: Icons.rule_rounded, label: 'Rules'),
+  (d: Destination.insights, icon: Icons.query_stats_rounded, label: 'Insights'),
   (d: Destination.usage, icon: Icons.insights_outlined, label: 'Usage'),
 ];
 
@@ -99,12 +101,16 @@ class _SidebarBodyState extends State<SidebarBody> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   for (final t in _tools)
-                    IconButton(
-                      key: Key('nav-${t.d.name}'),
-                      tooltip: t.label,
-                      icon: Icon(t.icon, size: 20),
-                      color: s.top == null && s.destination == t.d || t.d == Destination.devices && s.top is NodeEntry ? c.accent : c.muted,
-                      onPressed: () => _go(() => nav.select(t.d)),
+                    Expanded(
+                      child: IconButton(
+                        key: Key('nav-${t.d.name}'),
+                        tooltip: t.label,
+                        icon: Icon(t.icon, size: 20),
+                        constraints: const BoxConstraints(minHeight: 40),
+                        padding: EdgeInsets.zero,
+                        color: s.top == null && s.destination == t.d || t.d == Destination.devices && s.top is NodeEntry ? c.accent : c.muted,
+                        onPressed: () => _go(() => nav.select(t.d)),
+                      ),
                     ),
                 ],
               ),

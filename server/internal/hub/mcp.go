@@ -104,6 +104,13 @@ var mcpTools = []mcpTool{
 		call:        (*Hub).mcpListRules,
 	},
 	{
+		Name: "save_insight",
+		Description: "Save an Insights report (an analysis of how the user works with Tether) for the user to read in the app: a summary and recommendations of rules, skills and context changes. " +
+			"Use it only when your instructions ask for an Insights analysis; nothing is applied until the user taps it.",
+		InputSchema: saveInsightSchema,
+		call:        (*Hub).mcpSaveInsight,
+	},
+	{
 		Name:        "list_nodes",
 		Description: "The machines connected to Tether: name, OS, whether online, and which one is the hub's own machine (where hub sessions run).",
 		InputSchema: schema(nil, nil),

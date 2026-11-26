@@ -17,11 +17,14 @@ import 'data/datasources/settings_local.dart';
 import 'data/datasources/tailscale_android.dart';
 import 'data/datasources/tailscale_desktop.dart';
 import 'data/repositories/hub_repository_impl.dart';
+import 'data/repositories/prompt_desk_repository_impl.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
 import 'data/repositories/update_repository_impl.dart';
 import 'data/datasources/update_platform.dart';
+import 'domain/repositories/prompt_desk_repository.dart';
 import 'domain/repositories/repositories.dart';
+import 'domain/usecases/prompt_desk_usecases.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
 import 'presentation/artifacts/pages_view.dart';
@@ -39,6 +42,8 @@ import 'presentation/settings/devices_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
+import 'presentation/rules/rules_cubit.dart';
+import 'presentation/insights/insights_cubit.dart';
 import 'presentation/onboarding/onboarding_cubit.dart';
 import 'presentation/health/connection_doctor.dart';
 import 'presentation/tailscale/tailscale_cubit.dart';
@@ -69,6 +74,7 @@ void configureDependencies({bool withData = true}) {
         dispose: (r) => r.dispose(),
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
+      ..registerLazySingleton<PromptDeskRepository>(() => PromptDeskRepositoryImpl(sl()))
       ..registerLazySingleton<FileDownloads>(BackgroundFileDownloads.new)
       ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
       ..registerLazySingleton<TailscaleRepository>(_tailscale)
@@ -107,6 +113,8 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
     ..registerLazySingleton(() => Notifications(sl(), sl(), sl()))
     ..registerLazySingleton(() => Skills(sl()))
+    ..registerLazySingleton(() => Rules(sl()))
+    ..registerLazySingleton(() => Insights(sl()))
     ..registerLazySingleton(() => ConnectionHealth(sl(), sl(), sl(), _hasNetwork))
     ..registerLazySingleton(() => RemoteProjects(sl()))
     ..registerLazySingleton(() => LoadWorkspaces(sl()))
@@ -135,6 +143,8 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
+    ..registerFactory(() => RulesCubit(rules: sl(), watchHub: sl()))
+    ..registerFactory(() => InsightsCubit(insights: sl()))
     ..registerFactory(() => TailscaleCubit(ensure: sl(), watchHub: sl(), retryHub: sl()))
     ..registerFactory(() => ConnectionDoctor(health: sl()))
     ..registerFactory(() => OnboardingCubit(find: sl(), tailscale: sl(), viaTailnet: sl()))

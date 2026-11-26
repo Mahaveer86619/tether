@@ -195,6 +195,26 @@ var migrations = []string{
 		node TEXT NOT NULL,
 		PRIMARY KEY (repo, node)
 	)`,
+	// The plan's limits over time, as each node's /usage read them, and the
+	// times a session stopped at one. See docs/plans/token-pool.md#1-tracking.
+	`CREATE TABLE limit_samples (
+		id        INTEGER PRIMARY KEY AUTOINCREMENT,
+		account   TEXT NOT NULL,
+		span      TEXT NOT NULL,
+		label     TEXT NOT NULL,
+		percent   INTEGER NOT NULL,
+		resets    TEXT NOT NULL,
+		at_ms     INTEGER NOT NULL
+	);
+	CREATE INDEX limit_samples_by_time ON limit_samples (account, at_ms);
+	CREATE TABLE limit_events (
+		id        INTEGER PRIMARY KEY AUTOINCREMENT,
+		account   TEXT NOT NULL,
+		span      TEXT NOT NULL,
+		reset_ms  INTEGER NOT NULL,
+		session   TEXT NOT NULL,
+		at_ms     INTEGER NOT NULL
+	)`,
 }
 
 type Store struct {
