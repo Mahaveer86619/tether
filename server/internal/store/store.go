@@ -228,7 +228,7 @@ func Open(path string) (*Store, error) {
 	}
 	// One writer keeps SQLite simple; the hub serialises access anyway.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if _, err := db.Exec(schema + jobsSchema); err != nil {
 		db.Close()
 		return nil, err
 	}
