@@ -163,6 +163,40 @@ class FakeHubRepository implements HubRepository {
   final skillDecisions = <(String, SkillDecision, int)>[];
   final skillDrafts = <String>[];
 
+  ChatDesk desk = const ChatDesk();
+  final deskCalls = <String>[];
+
+  @override
+  Future<Result<ChatDesk>> chatDesk(String chatId) async => Ok(desk);
+
+  @override
+  Future<Result<ChatDesk>> setChatRemind(String chatId, {required bool on}) async {
+    deskCalls.add('remind:$chatId:$on');
+    desk = ChatDesk(recap: desk.recap, tokens: desk.tokens, handoffAt: desk.handoffAt, remind: on, rules: desk.rules, prompts: desk.prompts);
+    return Ok(desk);
+  }
+
+  @override
+  Future<Result<CarryResult>> rewindChat(String chatId, String itemId, {String session = ''}) async {
+    deskCalls.add('rewind:$chatId:$itemId');
+    final p = desk.prompts.firstWhere((p) => p.itemId == itemId, orElse: () => ChatPrompt(itemId: itemId, n: 0, text: ''));
+    final next = 'rewound-$itemId';
+    final c = _snap.chats[chatId];
+    if (c != null) {
+      emitHub(_snap.copyWith(
+        sessions: {..._snap.sessions, next: Session(id: next, node: 'minipc', title: 'Session $next', state: SessionState.ready, host: SessionHost.tmux, cwd: '/srv/app')},
+        chats: {..._snap.chats, chatId: Chat(id: c.id, title: c.title, target: c.target, updated: c.updated, activeSession: next, links: [...c.links, ChatLink(session: next, role: 'moved')])},
+      ));
+    }
+    return Ok(CarryResult(session: next, text: p.text, prompt: p.n));
+  }
+
+  @override
+  Future<Result<CarryResult>> handoffChat(String chatId, {String text = ''}) async {
+    deskCalls.add('handoff:$chatId');
+    return const Ok(CarryResult(session: 'handoff-session', text: 'summary'));
+  }
+
   ChatRemote remote = const ChatRemote();
   final projectFileList = <String, List<ProjectFile>>{};
   final remoteCalls = <String>[];

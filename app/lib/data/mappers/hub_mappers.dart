@@ -243,7 +243,7 @@ TargetSuggestions targetSuggestionsFromPb(pb.TargetSuggestions s) => TargetSugge
 
 ChatContext chatContextFromPb(pb.ChatContext c) => ChatContext(
       chat: chatFromPb(c.chat),
-      messages: [for (final m in c.messages) ChatMessage(role: m.role, text: m.text, session: m.session, at: _time(m.tsMs))],
+      messages: [for (final m in c.messages) ChatMessage(role: m.role, text: m.text, session: m.session, itemId: m.itemId, at: _time(m.tsMs))],
       notes: {for (final n in c.notes) n.kind: n.value},
     );
 
@@ -371,6 +371,56 @@ ChatRemote chatRemoteFromJson(Map<String, dynamic> m) {
     synced: ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
   );
 }
+
+DateTime? _msTime(Object? v) {
+  final ms = (v as num?)?.toInt() ?? 0;
+  return ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null;
+}
+
+ChatDesk chatDeskFromJson(Map<String, dynamic> m) {
+  final r = m['recap'] as Map<String, dynamic>?;
+  final cx = m['context'] as Map<String, dynamic>? ?? const {};
+  return ChatDesk(
+    recap: r == null
+        ? null
+        : ChatRecap(
+            asked: r['asked'] as String? ?? '',
+            done: r['done'] as String? ?? '',
+            open: [for (final o in r['open'] as List<dynamic>? ?? const []) '$o'],
+            prompt: (r['prompt'] as num?)?.toInt() ?? 0,
+            at: _msTime(r['atMs']),
+          ),
+    tokens: (cx['tokens'] as num?)?.toInt() ?? 0,
+    fromUsage: cx['fromUsage'] == true,
+    handoffAt: (cx['handoffAt'] as num?)?.toInt() ?? 150000,
+    remind: m['remind'] == true,
+    rules: [
+      for (final x in m['rules'] as List<dynamic>? ?? const [])
+        DeskRule(id: x['id'] as String? ?? '', name: x['name'] as String? ?? '', text: x['text'] as String? ?? '', scope: x['scope'] as String? ?? 'all'),
+    ],
+    rewinds: [
+      for (final x in m['rewinds'] as List<dynamic>? ?? const [])
+        ChatRewind(from: x['old'] as String? ?? '', to: x['new'] as String? ?? '', prompt: (x['prompt'] as num?)?.toInt() ?? 0, at: _msTime(x['atMs'])),
+    ],
+    prompts: [
+      for (final x in m['prompts'] as List<dynamic>? ?? const [])
+        ChatPrompt(
+          itemId: x['itemId'] as String? ?? '',
+          session: x['session'] as String? ?? '',
+          n: (x['n'] as num?)?.toInt() ?? 0,
+          text: x['text'] as String? ?? '',
+          at: _msTime(x['atMs']),
+        ),
+    ],
+  );
+}
+
+CarryResult carryResultFromJson(Map<String, dynamic> m) => CarryResult(
+      session: m['session'] as String? ?? '',
+      text: m['text'] as String? ?? '',
+      prompt: (m['prompt'] as num?)?.toInt() ?? 0,
+      note: m['note'] as String? ?? '',
+    );
 
 List<ProjectFile> projectFilesFromJson(Map<String, dynamic> m) => [
       for (final f in m['files'] as List<dynamic>? ?? const [])

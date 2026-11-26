@@ -241,6 +241,34 @@ class HubRestApi {
         ),
       );
 
+  /// The recap, context estimate, rules and rewind points of a chat; plain JSON.
+  Future<Map<String, dynamic>> chatDesk(String chat) =>
+      _jsonMap(() => _client.get(_endpoint.api('/chats/${Uri.encodeComponent(chat)}/desk'), headers: _headers));
+
+  Future<Map<String, dynamic>> setChatDesk(String chat, Map<String, Object?> body) => _jsonMap(
+        () => _client.put(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/desk'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
+  Future<Map<String, dynamic>> rewindChat(String chat, Map<String, Object?> body) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/rewind'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
+  Future<Map<String, dynamic>> handoffChat(String chat, Map<String, Object?> body) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/handoff'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      );
+
   Future<Map<String, dynamic>> projectFiles(String repo) =>
       _jsonMap(() => _client.get(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files'), headers: _headers));
 

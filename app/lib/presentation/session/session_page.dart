@@ -32,7 +32,18 @@ import 'session_bloc.dart';
 
 /// Provides a [SessionBloc] for one session and shows it.
 class SessionScreen extends StatelessWidget {
-  const SessionScreen({super.key, required this.sessionId, required this.onOpenSession, this.leading, this.title, this.subtitle});
+  const SessionScreen({
+    super.key,
+    required this.sessionId,
+    required this.onOpenSession,
+    this.leading,
+    this.title,
+    this.subtitle,
+    this.aboveComposer,
+    this.prefill = '',
+    this.prefillId = 0,
+    this.userMessage,
+  });
 
   final String sessionId;
   final ValueChanged<String> onOpenSession;
@@ -42,12 +53,31 @@ class SessionScreen extends StatelessWidget {
   /// under the header (where it runs, linked sessions).
   final Widget? title, subtitle;
 
+  /// In a chat: the recap, handoff and Remind above the composer.
+  final Widget? aboveComposer;
+
+  /// Text to put in the composer, once per [prefillId] (a rewound prompt).
+  final String prefill;
+  final int prefillId;
+
+  /// Wraps each of the user's own messages, to give it actions.
+  final Widget Function(TimelineItem item, Widget child)? userMessage;
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       key: ValueKey(sessionId),
       create: (_) => sl<SessionBloc>(param1: sessionId)..add(const SessionOpened()),
-      child: _SessionBody(onOpenSession: onOpenSession, leading: leading, title: title, subtitle: subtitle),
+      child: _SessionBody(
+        onOpenSession: onOpenSession,
+        leading: leading,
+        title: title,
+        subtitle: subtitle,
+        aboveComposer: aboveComposer,
+        prefill: prefill,
+        prefillId: prefillId,
+        userMessage: userMessage,
+      ),
     );
   }
 }
@@ -57,10 +87,22 @@ class SessionScreen extends StatelessWidget {
 enum ViewMode { chat, files, terminal }
 
 class _SessionBody extends StatefulWidget {
-  const _SessionBody({required this.onOpenSession, this.leading, this.title, this.subtitle});
+  const _SessionBody({
+    required this.onOpenSession,
+    this.leading,
+    this.title,
+    this.subtitle,
+    this.aboveComposer,
+    this.prefill = '',
+    this.prefillId = 0,
+    this.userMessage,
+  });
 
   final ValueChanged<String> onOpenSession;
-  final Widget? leading, title, subtitle;
+  final Widget? leading, title, subtitle, aboveComposer;
+  final String prefill;
+  final int prefillId;
+  final Widget Function(TimelineItem item, Widget child)? userMessage;
 
   @override
   State<_SessionBody> createState() => _SessionBodyState();
@@ -78,14 +120,14 @@ class _SessionBodyState extends State<_SessionBody> {
     final items = s.items.where((i) => i.whichKind() != TimelineItem_Kind.notSet);
     final working = s.session?.isBusy ?? false;
     return switch (_mode) {
-      ViewMode.chat => _Timeline(state: s),
+      ViewMode.chat => _Timeline(state: s, userMessage: widget.userMessage),
       ViewMode.terminal => TerminalTranscript(items: items, working: working),
       // Beside the chat on a wide window; on a narrow one, in its place.
       ViewMode.files => width < 900
           ? ChangesPane(items: items, working: working)
           : Row(
               children: [
-                Expanded(flex: 5, child: _Timeline(state: s)),
+                Expanded(flex: 5, child: _Timeline(state: s, userMessage: widget.userMessage)),
                 VerticalDivider(width: 1, color: context.colors.border),
                 Expanded(flex: 4, child: ChangesPane(items: items, working: working)),
               ],
@@ -151,12 +193,13 @@ class _SessionBodyState extends State<_SessionBody> {
                         if (session.state == SessionState.awaitingApproval && s.approvals.isEmpty && session.hasScreen)
                           StuckBanner(sessionId: session.id),
                         if (session.todos.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: _Progress(session: session)),
+                        ?widget.aboveComposer,
                         if (!session.acceptsInput && !s.forking)
                           _TerminalNotice(session: session)
                         else ...[
                           if (session.host == SessionHost.terminal && session.terminalInput && !s.forking)
                             _TypingHint(session: session),
-                          Composer(state: s),
+                          Composer(state: s, prefill: widget.prefill, prefillId: widget.prefillId),
                         ],
                       ],
                     ),
@@ -518,9 +561,10 @@ Future<void> startFork(BuildContext context) async {
 }
 
 class _Timeline extends StatefulWidget {
-  const _Timeline({required this.state});
+  const _Timeline({required this.state, this.userMessage});
 
   final SessionViewState state;
+  final Widget Function(TimelineItem item, Widget child)? userMessage;
 
   @override
   State<_Timeline> createState() => _TimelineState();
@@ -559,6 +603,12 @@ List<_Entry> _entries(List<TimelineItem> items) {
 
 class _TimelineState extends State<_Timeline> {
   final _scroll = ScrollController();
+
+  Widget _own(TimelineItem item) {
+    final view = TimelineItemView(item: item);
+    final wrap = widget.userMessage;
+    return wrap != null && item.whichKind() == TimelineItem_Kind.user && !item.user.queued ? wrap(item, view) : view;
+  }
   bool _awayFromLatest = false;
   String _selected = '';
 
@@ -690,7 +740,7 @@ class _TimelineState extends State<_Timeline> {
                         padding: const EdgeInsets.only(top: 6),
                         child: ActivityGroup(items: e.items, active: working && i == 1),
                       )
-                    : TimelineItemView(item: e.items.first),
+                    : _own(e.items.first),
               );
             }
             return KeyedSubtree(
@@ -1075,9 +1125,11 @@ class _TerminalNotice extends StatelessWidget {
 
 /// The message box at the bottom of a session.
 class Composer extends StatefulWidget {
-  const Composer({super.key, required this.state});
+  const Composer({super.key, required this.state, this.prefill = '', this.prefillId = 0});
 
   final SessionViewState state;
+  final String prefill;
+  final int prefillId;
 
   @override
   State<Composer> createState() => _ComposerState();
@@ -1097,6 +1149,7 @@ class _ComposerState extends State<Composer> {
   void initState() {
     super.initState();
     _restore(widget.state.draft);
+    if (widget.prefill.isNotEmpty) _text.text = widget.prefill;
     _text.addListener(() {
       setState(() {});
       if (_text.text != _lastReported) {
@@ -1126,6 +1179,11 @@ class _ComposerState extends State<Composer> {
       });
     }
     if (old.state.quoteId != widget.state.quoteId) _insertQuote(widget.state.quote);
+    if (old.prefillId != widget.prefillId && widget.prefill.isNotEmpty) {
+      _text.text = widget.prefill;
+      _text.selection = TextSelection.collapsed(offset: _text.text.length);
+      _focus.requestFocus();
+    }
   }
 
   void _insertQuote(String quote) {

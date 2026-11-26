@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/entities.dart';
+import '../../injection.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../session/session_page.dart';
@@ -11,6 +12,8 @@ import '../widgets/common.dart';
 import '../widgets/format.dart';
 import '../widgets/prompt_box.dart';
 import '../widgets/timeline_item_view.dart';
+import 'chat_desk.dart';
+import 'chat_desk_cubit.dart';
 import 'chat_tasks.dart';
 import 'chats_cubit.dart';
 import 'chats_page.dart';
@@ -21,6 +24,45 @@ import 'target_picker.dart';
 /// with where it runs and the sessions linked to it.
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key, required this.chatId, this.leading});
+
+  final String chatId;
+  final Widget? leading;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) {
+        final cubit = sl<ChatDeskCubit>(param1: chatId);
+        cubit.opened(context.read<HubCubit>().state.hub.chats[chatId]?.updated);
+        return cubit..load();
+      },
+      child: MultiBlocListener(
+        listeners: [
+          // The recap, meter and prompts change with every turn and rewind.
+          BlocListener<HubCubit, HubState>(
+            listenWhen: (a, b) {
+              final x = a.hub.chats[chatId], y = b.hub.chats[chatId];
+              return y != null && (x?.updated != y.updated || x?.activeSession != y.activeSession);
+            },
+            listener: (context, _) => context.read<ChatDeskCubit>().load(),
+          ),
+          BlocListener<ChatDeskCubit, ChatDeskState>(
+            listenWhen: (a, b) => a.failureId != b.failureId && b.failure != null,
+            listener: (context, s) => showFailure(context, s.failure!),
+          ),
+          BlocListener<ChatDeskCubit, ChatDeskState>(
+            listenWhen: (a, b) => a.noticeId != b.noticeId && b.notice != null,
+            listener: (context, s) => showToast(context, s.notice!, icon: Icons.history_rounded),
+          ),
+        ],
+        child: _ChatBody(chatId: chatId, leading: leading),
+      ),
+    );
+  }
+}
+
+class _ChatBody extends StatelessWidget {
+  const _ChatBody({required this.chatId, this.leading});
 
   final String chatId;
   final Widget? leading;
@@ -47,12 +89,18 @@ class ChatPage extends StatelessWidget {
     final title = ChatTitle(chat: chat);
     final bar = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [ChatTargetBar(chat: chat), ChatTasks(chat: chat)]);
     if (!hasSession) return _NoSession(chat: chat, leading: leading, title: title, bar: bar);
+    final (prefill, prefillFor, prefillId) = context.select<ChatDeskCubit, (String, String, int)>((x) => (x.state.prefill, x.state.prefillFor, x.state.prefillId));
+    final mine = prefillFor == chat.activeSession;
     return SessionScreen(
       key: ValueKey(chat.activeSession),
       sessionId: chat.activeSession,
       leading: leading,
       title: title,
       subtitle: bar,
+      aboveComposer: const DeskAboveComposer(),
+      prefill: mine ? prefill : '',
+      prefillId: mine ? prefillId : 0,
+      userMessage: (item, child) => UserMessageActions(item: item, child: child),
       // A fork made here isn't linked yet: the hub makes it the active
       // session and this screen follows. Other sessions open on their own.
       onOpenSession: (id) {
@@ -196,6 +244,7 @@ class ChatTargetBar extends StatelessWidget {
             style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
             child: Text(t.detecting ? 'Choose myself' : 'Change'),
           ),
+          ContextMeter(chat: chat),
           if (chat.links.length > 1) _LinkedSessions(chat: chat),
           ChatMenu(chat: chat, icon: Icons.more_horiz_rounded),
         ],
@@ -210,6 +259,8 @@ const _roleLabels = {
   'fork': 'Forked',
   'started': 'Started by Claude',
   'linked': 'Linked',
+  'rewound': 'Rewound',
+  'handoff': 'Continued from a summary',
 };
 
 class _LinkedSessions extends StatelessWidget {
@@ -221,6 +272,7 @@ class _LinkedSessions extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final sessions = context.select<HubCubit, Map<String, Session>>((h) => h.state.hub.sessions);
+    final rewinds = context.select<ChatDeskCubit, List<ChatRewind>>((x) => x.state.desk?.rewinds ?? const []);
     final nav = context.read<NavCubit>();
     return PopupMenuButton<String>(
       key: const Key('linked-sessions'),
@@ -231,7 +283,12 @@ class _LinkedSessions extends StatelessWidget {
           PopupMenuItem(
             value: l.session,
             enabled: sessions.containsKey(l.session),
-            child: _LinkRow(link: l, session: sessions[l.session], active: l.session == chat.activeSession),
+            child: _LinkRow(
+              link: l,
+              session: sessions[l.session],
+              active: l.session == chat.activeSession,
+              rewoundAt: rewinds.where((r) => r.from == l.session).lastOrNull?.prompt ?? 0,
+            ),
           ),
       ],
       child: Padding(
@@ -243,11 +300,14 @@ class _LinkedSessions extends StatelessWidget {
 }
 
 class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.link, required this.session, required this.active});
+  const _LinkRow({required this.link, required this.session, required this.active, this.rewoundAt = 0});
 
   final ChatLink link;
   final Session? session;
   final bool active;
+
+  /// The prompt this session was rewound from, or 0.
+  final int rewoundAt;
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +325,7 @@ class _LinkRow extends StatelessWidget {
               children: [
                 Text(s?.displayTitle ?? 'A session no longer here', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
                 Text(
-                  [_roleLabels[link.role] ?? link.role, if (s != null) '${s.node} · ${s.cwd.isEmpty ? 'home folder' : baseName(s.cwd)}', if (active) 'active'].join(' · '),
+                  [if (rewoundAt > 0) 'Rewound from prompt $rewoundAt' else _roleLabels[link.role] ?? link.role, if (s != null) '${s.node} · ${s.cwd.isEmpty ? 'home folder' : baseName(s.cwd)}', if (active) 'active'].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 11.5, color: c.muted),

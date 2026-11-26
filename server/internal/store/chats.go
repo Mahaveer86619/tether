@@ -153,3 +153,9 @@ func (s *Store) ChatNotes(chat string) ([]*v1.ChatNote, error) {
 	}
 	return out, rows.Err()
 }
+
+// SetLinkRole changes how a session is said to have joined a chat.
+func (s *Store) SetLinkRole(chat, session, role string) error {
+	_, err := s.db.Exec(`UPDATE chat_sessions SET role = ? WHERE chat = ? AND session = ?`, role, chat, session)
+	return err
+}
