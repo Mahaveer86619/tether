@@ -1214,10 +1214,14 @@ class OutboxEntry extends Equatable {
     this.state = OutboxState.sending,
     this.sentAt,
     this.error = '',
+    this.skill = '',
   });
 
   /// Also the message's client id on the hub, which sends a repeat once.
   final String id, session, text, error;
+
+  /// A skill picked in the composer for this message.
+  final String skill;
   final List<String> attachments;
 
   /// Files still to upload; each moves to [attachments] once the hub has it.
@@ -1240,10 +1244,11 @@ class OutboxEntry extends Equatable {
         state: state ?? this.state,
         sentAt: sentAt ?? this.sentAt,
         error: error ?? this.error,
+        skill: skill,
       );
 
   @override
-  List<Object?> get props => [id, session, text, attachments, files, created, state, sentAt, error];
+  List<Object?> get props => [id, session, text, attachments, files, created, state, sentAt, error, skill];
 }
 
 /// An app connected to the hub right now.
@@ -1380,7 +1385,7 @@ class ProjectFile extends Equatable {
 }
 
 class NewChatRequest extends Equatable {
-  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = '', this.project = ''});
+  const NewChatRequest({required this.prompt, this.target, this.attachments = const [], this.model = '', this.permissionMode = '', this.clientId = '', this.project = '', this.skill = ''});
 
   final String prompt;
 
@@ -1392,8 +1397,11 @@ class NewChatRequest extends Equatable {
   /// The project the chat goes in; empty for a one-off.
   final String project;
 
+  /// A skill picked in the composer: the session is told to follow it.
+  final String skill;
+
   @override
-  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId, project];
+  List<Object?> get props => [prompt, target, attachments, model, permissionMode, clientId, project, skill];
 }
 
 /// A folder a chat could run in, as the hub ranks it.
@@ -1661,6 +1669,9 @@ class SkillInfo extends Equatable {
     this.source = '',
     this.version = 1,
     this.updated,
+    this.effect = '',
+    this.scripts = 0,
+    this.review = false,
   });
 
   final String name, description, status, source;
@@ -1670,11 +1681,43 @@ class SkillInfo extends Equatable {
   final int version;
   final DateTime? updated;
 
+  /// For a skill that runs scripts: `read` or `write`, and how many scripts.
+  final String effect;
+  final int scripts;
+
+  /// A script changed since the skill was approved.
+  final bool review;
+
   bool get proposed => status == 'proposed';
   bool get active => status == 'active';
 
   @override
-  List<Object?> get props => [name, description, status, mutating, source, version, updated];
+  List<Object?> get props => [name, description, status, mutating, source, version, updated, effect, scripts, review];
+}
+
+/// A script a skill runs, kept in the project; [changed] when a session
+/// reported a different hash from the approved one.
+class SkillScript extends Equatable {
+  const SkillScript({required this.path, this.sha256 = '', this.changed = false});
+
+  final String path, sha256;
+  final bool changed;
+
+  @override
+  List<Object?> get props => [path, sha256, changed];
+}
+
+/// A skill the search box found, with why.
+class SkillMatch extends Equatable {
+  const SkillMatch({required this.name, this.description = '', this.score = 0, this.reason = '', this.version = 1, this.effect = '', this.review = false});
+
+  final String name, description, reason, effect;
+  final double score;
+  final int version;
+  final bool review;
+
+  @override
+  List<Object?> get props => [name, description, score, reason, version, effect, review];
 }
 
 /// One text of a skill, and why it changed.
@@ -1692,17 +1735,24 @@ class SkillVersion extends Equatable {
 }
 
 class SkillDetail extends Equatable {
-  const SkillDetail({required this.info, this.versions = const []});
+  const SkillDetail({required this.info, this.versions = const [], this.needsEnv = const [], this.runsOn = '', this.scripts = const []});
 
   final SkillInfo info;
 
   /// Oldest first.
   final List<SkillVersion> versions;
 
+  /// Environment variable names its scripts read; never their values.
+  final List<String> needsEnv;
+
+  /// A device name, `any`, or empty when the skill doesn't say.
+  final String runsOn;
+  final List<SkillScript> scripts;
+
   SkillVersion? get latest => versions.lastOrNull;
 
   @override
-  List<Object?> get props => [info, versions];
+  List<Object?> get props => [info, versions, needsEnv, runsOn, scripts];
 }
 
 /// Where this device's Tailscale stands.

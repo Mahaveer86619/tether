@@ -327,7 +327,23 @@ SkillInfo skillInfoFromJson(Map<String, dynamic> m) => SkillInfo(
       source: m['source'] as String? ?? '',
       version: (m['version'] as num?)?.toInt() ?? 1,
       updated: _ms(m['updatedMs']),
+      effect: m['effect'] as String? ?? '',
+      scripts: (m['scripts'] as num?)?.toInt() ?? 0,
+      review: m['review'] as bool? ?? false,
     );
+
+List<SkillMatch> skillMatchesFromJson(Map<String, dynamic> m) => [
+      for (final r in m['results'] as List<dynamic>? ?? const [])
+        SkillMatch(
+          name: (r as Map<String, dynamic>)['name'] as String? ?? '',
+          description: r['description'] as String? ?? '',
+          score: (r['score'] as num?)?.toDouble() ?? 0,
+          reason: r['reason'] as String? ?? '',
+          version: (r['version'] as num?)?.toInt() ?? 1,
+          effect: r['effect'] as String? ?? '',
+          review: r['review'] as bool? ?? false,
+        ),
+    ];
 
 List<SkillInfo> skillsFromJson(Map<String, dynamic> m) => [
       for (final s in m['skills'] as List<dynamic>? ?? const []) skillInfoFromJson(s as Map<String, dynamic>),
@@ -344,6 +360,15 @@ SkillDetail skillDetailFromJson(Map<String, dynamic> m) {
         at: _ms(v['atMs']),
       ),
   ];
+  final changed = (m['changed'] as Map<String, dynamic>?) ?? const {};
+  final scripts = [
+    for (final s in m['scripts'] as List<dynamic>? ?? const [])
+      SkillScript(
+        path: (s as Map<String, dynamic>)['path'] as String? ?? '',
+        sha256: s['sha256'] as String? ?? '',
+        changed: changed.containsKey(s['path']),
+      ),
+  ];
   return SkillDetail(
     info: SkillInfo(
       name: m['name'] as String? ?? '',
@@ -353,8 +378,14 @@ SkillDetail skillDetailFromJson(Map<String, dynamic> m) {
       source: m['source'] as String? ?? '',
       version: versions.lastOrNull?.n ?? 1,
       updated: _ms(m['updatedMs']),
+      effect: m['effect'] as String? ?? '',
+      scripts: scripts.length,
+      review: changed.isNotEmpty,
     ),
     versions: versions,
+    needsEnv: [for (final e in m['needsEnv'] as List<dynamic>? ?? const []) e as String],
+    runsOn: m['runsOn'] as String? ?? '',
+    scripts: scripts,
   );
 }
 

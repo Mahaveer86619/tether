@@ -54,11 +54,13 @@ A rule is plain text, kept on the hub (`kv`, one value per rule, with versions).
 
 ## Skills, found and run
 
+**Status: built** (search, ask by skill, script skills, the Save as skill brief and endpoint); the app's *Save as skill* button on a tool call is still to do.
+
 Builds on [skills.md](skills.md): the library, the router (`skills.Rank`), `list_skills`, `read_skill`, `propose_skill`, `update_skill` and the lead's prompt listing the skills that fit the request exist.
 
-**Search.** `GET /api/v1/skills/search?q=` ranks the library (words, then the skill's description and source), with a one-line reason for each match, and a search box on the Skills page. The lead's prompt lists the best matches for the request, as now.
+**Search.** `GET /api/v1/skills/search?q=` ranks the approved skills (`skills.Search`: the router's word weights with a lower bar, and the last word may be unfinished) and returns name, description, score and a reason (the shared words, weightiest first). A search box on the Skills page shows the results live. The lead's prompt lists the best matches for the request, as now.
 
-**Ask by skill.** In the composer, `/` opens the skill list, filtered as you type. Picking one starts the chat with the skill named: *Use the skill "check prod import" to: …*. The hub passes the skill text (version pinned) in the system prompt so the session follows it exactly, not just offered it.
+**Ask by skill.** In the composer, `/` opens the skill list, filtered as you type; picking one shows it as a chip. The message goes as typed, with a plain `skill` field beside it on `POST /api/v1/chats`, `/chats/{id}/messages` and `/sessions/{id}/messages` (not in the proto). For that turn the hub adds to the system prompt: *Use the skill "<name>" (version N) exactly to do: <request>*, then the skill's text at that version and, for a script skill, how to run it. An agent too old for a system prompt gets it at the head of the message.
 
 **Scripts as skills.** A skill can carry **scripts**: a skill is a folder (`SKILL.md` plus `scripts/`). The case: a database check against production with a custom script, whose credentials sit in the project's environment, as in the owner's warehouse project. Rules for these:
 
@@ -66,6 +68,8 @@ Builds on [skills.md](skills.md): the library, the router (`skills.Rank`), `list
 - It declares what it needs: `needs_env: [DB_URL]`, `runs_on: <device or any>`, `effect: read | write`. Credentials are **never** in the skill or the script. They come from the project's `.env` (the sealed project files the hub already serves to allowed devices) or the device's own environment.
 - Running one goes through the session's normal permissions. `effect: write` always asks. A read-only script against production is shown, with its target, before it first runs on a device.
 - Making one: *Save as skill* on a tool call or a stretch of a chat. The hub starts a drafting session with the commands used, the script is written into the project, and the skill is proposed for approval, as in [skills.md](skills.md).
+
+**How it is built.** Front matter: `needs_env: [DB_URL]` (names only; a value is refused), `runs_on: <device|any>`, `effect: read|write` (required with scripts; `write` makes the skill mutating) and `scripts: [paths relative to the project]` (inline or as `- item` lines). `propose_skill` and `update_skill` take `scripts: {path: contents}`; each script is checked for secrets (including `DB_PASSWORD=...` style assignments, but not values read from the environment) and its sha256 kept. A text-only correction keeps the hashes. `read_skill` appends what Tether requires: the scripts' paths, to call `check_skill_scripts` with their hashes before the first run, where the variables come from, `effect: write` asks every time, and a read-only run against production is shown with its target first. `check_skill_scripts` (or an `update_skill` that changes a script of an approved skill) puts the new hash in `changed`: the skill shows *script changed: review* in the app, and approving it again accepts the scripts as they are. `POST /api/v1/skills/draft {"session", "item"}` drafts from the task around that item; a routine that runs a database or service client (`psql`, `mysql`, `kubectl`, `python`, ...) is drafted in its project, told to write the script under `.tether/skills/<name>/` or `scripts/`, read credentials from the environment and never write a `.env`.
 
 ## Insights
 

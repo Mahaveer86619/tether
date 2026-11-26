@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../routines/skill_search_cubit.dart';
 import '../theme/theme.dart';
 import '../ui/tokens.dart';
 import 'common.dart';
+import 'skill_picker.dart';
 
 const double _row = 40;
 
@@ -27,6 +30,9 @@ class PromptBox extends StatefulWidget {
     this.highlight = false,
     this.focusNode,
     this.prompt = false,
+    this.skills,
+    this.skill = '',
+    this.onSkill,
   });
 
   final TextEditingController controller;
@@ -49,6 +55,12 @@ class PromptBox extends StatefulWidget {
 
   /// A mono ">" before the text, as in a terminal.
   final bool prompt;
+
+  /// With [skills], typing `/` lists the approved skills; picking one sets
+  /// [skill] through [onSkill] and shows it as a chip ("" takes it off).
+  final SkillSearchCubit? skills;
+  final String skill;
+  final ValueChanged<String>? onSkill;
 
   @override
   State<PromptBox> createState() => _PromptBoxState();
@@ -84,6 +96,41 @@ class _PromptBoxState extends State<PromptBox> {
     final t = widget.controller.text;
     final long = '\n'.allMatches(t).length >= 2 || t.length > 180;
     if (long != _long) setState(() => _long = long);
+    _slash();
+  }
+
+  void _slash() {
+    final skills = widget.skills;
+    if (skills == null) return;
+    final at = slashAt(widget.controller.value);
+    if (at != null) {
+      skills.search(at.query);
+    } else if (skills.state.open) {
+      skills.dismiss();
+    }
+  }
+
+  void _pick(String name) {
+    final v = widget.controller.value;
+    if (slashAt(v) case final at?) {
+      final end = v.selection.isValid ? v.selection.baseOffset : v.text.length;
+      widget.controller.value = TextEditingValue(text: v.text.replaceRange(at.start, end, ''), selection: TextSelection.collapsed(offset: at.start));
+    }
+    widget.skills?.dismiss();
+    widget.onSkill?.call(name);
+  }
+
+  bool get _picking => widget.skills?.state.open ?? false;
+
+  void _enter() {
+    final results = widget.skills?.state.results ?? const [];
+    if (_picking && results.isNotEmpty) return _pick(results.first.name);
+    widget.onSubmit();
+  }
+
+  void _escape() {
+    if (_picking) return widget.skills!.dismiss();
+    widget.onEscape?.call();
   }
 
   Future<void> _openEditor() async {
@@ -114,8 +161,8 @@ class _PromptBoxState extends State<PromptBox> {
     final compact = !isDesktop;
     final field = CallbackShortcuts(
       bindings: {
-        if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): widget.onSubmit,
-        if (widget.onEscape != null) const SingleActivator(LogicalKeyboardKey.escape): widget.onEscape!,
+        if (isDesktop) const SingleActivator(LogicalKeyboardKey.enter): _enter,
+        if (widget.onEscape != null || widget.skills != null) const SingleActivator(LogicalKeyboardKey.escape): _escape,
       },
       child: TextField(
         key: widget.fieldKey,
@@ -153,6 +200,12 @@ class _PromptBoxState extends State<PromptBox> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (widget.skills case final skills?)
+            BlocBuilder<SkillSearchCubit, SkillSearchState>(
+              bloc: skills,
+              builder: (context, s) => s.open ? SkillPickerList(results: s.results, loading: s.loading, onPick: _pick) : const SizedBox.shrink(),
+            ),
+          if (widget.skill.isNotEmpty) SkillChip(name: widget.skill, onRemove: () => widget.onSkill?.call('')),
           ?widget.header,
           Row(
             // Buttons stay on the last line as the text grows.

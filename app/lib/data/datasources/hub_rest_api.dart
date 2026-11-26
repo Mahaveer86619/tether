@@ -36,12 +36,16 @@ class HubRestApi {
 
   Future<String> createSession(pb.CreateSession body) async => (await _post('/sessions', body, pb.Ack())).session;
 
-  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) async => (await _post(
+  Future<String> sendMessage(String session, String text, {bool fork = false, List<String> attachments = const [], String clientId = '', String skill = ''}) async => (await _post(
         '/sessions/${Uri.encodeComponent(session)}/messages',
         pb.SendMessage(text: text, fork: fork, attachments: attachments, clientId: clientId.isEmpty ? null : clientId),
         pb.Ack(),
+        extra: _skill(skill),
       ))
           .session;
+
+  // The skill to follow is a plain field beside the message, not in the proto.
+  static Map<String, Object?> _skill(String skill) => skill.isEmpty ? const {} : {'skill': skill};
 
   Future<void> setGlobal(String session, {required bool global}) =>
       _post('/sessions/${Uri.encodeComponent(session)}/global', pb.SetGlobal(global: global), pb.Ack());
@@ -54,7 +58,8 @@ class HubRestApi {
   /// A full URL for a path on the hub, or [url] itself if it's already one.
   Uri resolve(String url) => url.startsWith('/') ? _endpoint.httpBase.replace(path: Uri.parse(url).path) : Uri.parse(url);
 
-  Future<pb.Chat> createChat(pb.CreateChat body, {String project = ''}) => _post('/chats', body, pb.Chat(), query: project.isEmpty ? null : {'project': project});
+  Future<pb.Chat> createChat(pb.CreateChat body, {String project = '', String skill = ''}) =>
+      _post('/chats', body, pb.Chat(), query: project.isEmpty ? null : {'project': project}, extra: _skill(skill));
 
   Future<void> deleteChat(String chat) =>
       _send(() => _client.delete(_endpoint.api('/chats/${Uri.encodeComponent(chat)}'), headers: _headers), pb.Ack());
@@ -68,10 +73,11 @@ class HubRestApi {
         pb.Chat(),
       );
 
-  Future<String> sendToChat(String chat, String text, {List<String> attachments = const [], String clientId = ''}) async => (await _post(
+  Future<String> sendToChat(String chat, String text, {List<String> attachments = const [], String clientId = '', String skill = ''}) async => (await _post(
         '/chats/${Uri.encodeComponent(chat)}/messages',
         pb.SendMessage(text: text, attachments: attachments, clientId: clientId.isEmpty ? null : clientId),
         pb.Ack(),
+        extra: _skill(skill),
       ))
           .session;
 
@@ -221,13 +227,19 @@ class HubRestApi {
         ),
       );
 
-  /// Starts a session that drafts a skill for the routine; returns its id.
-  Future<String> draftSkill(String example) async {
+  /// Starts a session that drafts a skill, for the routine with [example] or
+  /// for the task around [item] of [session]; returns its id.
+  Future<String> draftSkill({String example = '', String session = '', String item = ''}) async {
+    final body = example.isNotEmpty ? {'example': example} : {'session': session, 'item': item};
     final json = await _jsonMap(
-      () => _client.post(_endpoint.api('/skills/draft'), headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode({'example': example})),
+      () => _client.post(_endpoint.api('/skills/draft'), headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)),
     );
     return json['session'] as String? ?? '';
   }
+
+  /// Approved skills ranked for a search box, each with why it matched.
+  Future<Map<String, dynamic>> searchSkills(String query) =>
+      _jsonMap(() => _client.get(_endpoint.api('/skills/search', {'q': query}), headers: _headers));
 
   /// A chat's remote setup; plain JSON.
   Future<Map<String, dynamic>> chatRemote(String chat) =>
@@ -391,11 +403,11 @@ class HubRestApi {
   Future<T> _get<T extends GeneratedMessage>(String path, T into, {Map<String, String>? query}) =>
       _send(() => _client.get(_endpoint.api(path, query), headers: _headers), into);
 
-  Future<T> _post<T extends GeneratedMessage>(String path, GeneratedMessage? body, T into, {Map<String, String>? query}) => _send(
+  Future<T> _post<T extends GeneratedMessage>(String path, GeneratedMessage? body, T into, {Map<String, String>? query, Map<String, Object?> extra = const {}}) => _send(
         () => _client.post(
           _endpoint.api(path, query),
           headers: {..._headers, 'Content-Type': 'application/json'},
-          body: body == null ? '{}' : jsonEncode(body.toProto3Json()),
+          body: body == null && extra.isEmpty ? '{}' : jsonEncode({...?(body?.toProto3Json() as Map<String, Object?>?), ...extra}),
         ),
         into,
       );

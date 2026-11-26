@@ -110,6 +110,7 @@ class Chats {
       permissionMode: r.permissionMode,
       clientId: r.clientId,
       project: _hub.current.projectsSupported ? r.project : '',
+      skill: r.skill,
     ));
     return made.map((c) => (c, c.activeSession));
   }
@@ -160,9 +161,9 @@ class Chats {
 
   Future<Result<void>> delete(String chatId) => _hub.deleteChat(chatId);
 
-  Future<Result<String>> send(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
+  Future<Result<String>> send(String chatId, String text, {List<String> attachments = const [], String clientId = '', String skill = ''}) async {
     if (text.trim().isEmpty && attachments.isEmpty) return const Err(ValidationFailure('Message is empty.'));
-    return _hub.sendToChat(chatId, SendMessage.wording(text), attachments: attachments, clientId: clientId);
+    return _hub.sendToChat(chatId, SendMessage.wording(text), attachments: attachments, clientId: clientId, skill: skill);
   }
 
   Future<Result<Chat>> retarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) async {
@@ -215,9 +216,9 @@ class SendMessage {
 
   /// Sends [text] to the session, or with [fork] to a new fork of it.
   /// Returns the id of the session that got the message.
-  Future<Result<String>> call(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
+  Future<Result<String>> call(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = '', String skill = ''}) async {
     if (check(sessionId, text, fork: fork, attachments: attachments) case final f?) return Err(f);
-    return _hub.sendMessage(sessionId, wording(text), fork: fork, attachments: attachments, clientId: clientId);
+    return _hub.sendMessage(sessionId, wording(text), fork: fork, attachments: attachments, clientId: clientId, skill: skill);
   }
 
   /// Why the message can't go, before anything is sent.
@@ -495,6 +496,20 @@ class Skills {
   Future<Result<SkillInfo>> dismiss(String name) => _hub.decideSkill(name, decision: SkillDecision.dismiss);
   Future<Result<SkillInfo>> rollback(String name, int version) => _hub.decideSkill(name, decision: SkillDecision.rollback, version: version);
   Future<Result<String>> draft(String example) => _hub.draftSkill(example);
+
+  /// Save as skill: a draft from the task around one item of a session.
+  Future<Result<String>> draftFrom(String sessionId, String item) => _hub.draftSkillFrom(sessionId, item);
+
+  /// Approved skills for a search box or the composer's `/` list. An empty
+  /// query lists them all, so `/` alone shows what there is.
+  Future<Result<List<SkillMatch>>> search(String query) async {
+    if (query.trim().isNotEmpty) return _hub.searchSkills(query);
+    final all = await _hub.skills();
+    return all.map((list) => [
+          for (final s in list)
+            if (s.active) SkillMatch(name: s.name, description: s.description, version: s.version, effect: s.effect, review: s.review),
+        ]);
+  }
 }
 
 /// Brings Tailscale up in the background and says how it is going.

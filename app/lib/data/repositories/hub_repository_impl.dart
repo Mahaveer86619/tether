@@ -391,8 +391,8 @@ class HubRepositoryImpl implements HubRepository {
       )));
 
   @override
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''}) =>
-      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments, clientId: clientId));
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = '', String skill = ''}) =>
+      _command(() => _api.sendMessage(sessionId, text, fork: fork, attachments: attachments, clientId: clientId, skill: skill));
 
   @override
   Future<Result<void>> setGlobal(String sessionId, {required bool global}) => _command(() => _api.setGlobal(sessionId, global: global));
@@ -411,7 +411,8 @@ class HubRepositoryImpl implements HubRepository {
         permissionMode: r.permissionMode,
         clientId: r.clientId.isEmpty ? null : r.clientId,
         ),
-        project: r.project));
+        project: r.project,
+        skill: r.skill));
     if (r.project.isNotEmpty) {
       if (made case Ok(:final value)) _fileChat(value.id, r.project);
     }
@@ -485,8 +486,8 @@ class HubRepositoryImpl implements HubRepository {
       _chat(() => _api.updateChat(chatId, pb.UpdateChat(archived: archived)));
 
   @override
-  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) =>
-      _command(() => _api.sendToChat(chatId, text, attachments: attachments, clientId: clientId));
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = '', String skill = ''}) =>
+      _command(() => _api.sendToChat(chatId, text, attachments: attachments, clientId: clientId, skill: skill));
 
   @override
   Future<Result<Chat>> setChatTarget(String chatId, ChatTarget target, {bool move = true, String text = ''}) =>
@@ -636,7 +637,13 @@ class HubRepositoryImpl implements HubRepository {
       });
 
   @override
-  Future<Result<String>> draftSkill(String example) => _command(() => _api.draftSkill(example));
+  Future<Result<String>> draftSkill(String example) => _command(() => _api.draftSkill(example: example));
+
+  @override
+  Future<Result<String>> draftSkillFrom(String sessionId, String item) => _command(() => _api.draftSkill(session: sessionId, item: item));
+
+  @override
+  Future<Result<List<SkillMatch>>> searchSkills(String query) => _command(() async => skillMatchesFromJson(await _api.searchSkills(query)));
 
   @override
   Future<Result<RoutineReport>> routines({int days = 30, int runs = 3}) =>

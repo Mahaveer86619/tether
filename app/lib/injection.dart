@@ -44,6 +44,7 @@ import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
 import 'presentation/rules/rules_cubit.dart';
 import 'presentation/insights/insights_cubit.dart';
+import 'presentation/routines/skill_search_cubit.dart';
 import 'presentation/onboarding/onboarding_cubit.dart';
 import 'presentation/health/connection_doctor.dart';
 import 'presentation/tailscale/tailscale_cubit.dart';
@@ -145,6 +146,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
     ..registerFactory(() => RulesCubit(rules: sl(), watchHub: sl()))
     ..registerFactory(() => InsightsCubit(insights: sl()))
+    ..registerFactory(() => SkillSearchCubit(sl()))
     ..registerFactory(() => TailscaleCubit(ensure: sl(), watchHub: sl(), retryHub: sl()))
     ..registerFactory(() => ConnectionDoctor(health: sl()))
     ..registerFactory(() => OnboardingCubit(find: sl(), tailscale: sl(), viaTailnet: sl()))

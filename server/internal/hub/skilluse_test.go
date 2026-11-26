@@ -112,6 +112,13 @@ func TestAskingBySkillPinsItsTextInTheSystemPrompt(t *testing.T) {
 		!strings.Contains(send.SystemPrompt, "tail -n 60") || !strings.Contains(send.SystemPrompt, c.Id) {
 		t.Fatalf("send: %q / %q", send.Text, send.SystemPrompt)
 	}
+	// The app's composer sends to the session; the skill rides along there too.
+	if status, body := call(t, srv, "POST", "/api/v1/sessions/"+c.ActiveSession+"/messages", "secret", `{"text":"once more","skill":"check-prod-import"}`); status != 200 {
+		t.Fatalf("session send: %d %s", status, body)
+	}
+	if send := nextCommand(t, agent, ctx, isSend).GetSend(); !strings.Contains(send.SystemPrompt, `Use the skill "check-prod-import" (version 1) exactly to do: once more`) || !strings.Contains(send.SystemPrompt, c.Id) {
+		t.Fatalf("session send: %q", send.SystemPrompt)
+	}
 	// The skill is for that turn only.
 	call(t, srv, "POST", "/api/v1/chats/"+c.Id+"/messages", "secret", `{"text":"thanks"}`)
 	if p := nextCommand(t, agent, ctx, isSend).GetSend().SystemPrompt; strings.Contains(p, "Use the skill") {

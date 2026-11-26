@@ -938,6 +938,59 @@ void main() {
       expect(repo.routineRequests.last, (0, 2), reason: 'all history, at least 2 runs');
     });
 
+    testWidgets('skills: the search box finds an approved skill and says why', (tester) async {
+      repo.skillList = [
+        const SkillInfo(name: 'check-prod-import', description: 'Use when asked whether the import reached prod', status: 'active', effect: 'read', scripts: 1, review: true),
+        const SkillInfo(name: 'v2-sync-progress', description: 'Use when asked how far the sync is', status: 'active'),
+      ];
+      await pumpApp(tester, const Size(1400, 1000));
+      await tester.tap(find.byKey(const Key('nav-routines')));
+      await settle(tester);
+      expect(find.text('script changed: review'), findsOneWidget, reason: 'a changed script is flagged on the card');
+
+      await tester.enterText(find.byKey(const Key('skill-search')), 'prod');
+      await settle(tester);
+      expect(repo.skillSearches.last, 'prod');
+      expect(find.byKey(const Key('skill-found-check-prod-import')), findsOneWidget);
+      expect(find.byKey(const Key('skill-found-v2-sync-progress')), findsNothing);
+      expect(find.textContaining('shares prod'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('skill-search')), 'nothing like it');
+      await settle(tester);
+      expect(find.text('No approved skill fits that'), findsOneWidget);
+    });
+
+    testWidgets('skills: / in the composer picks a skill that goes with the message', (tester) async {
+      repo.skillList = [
+        const SkillInfo(name: 'check-prod-import', description: 'Use when asked whether the import reached prod', status: 'active'),
+        const SkillInfo(name: 'v2-sync-progress', description: 'Use when asked how far the sync is', status: 'active'),
+      ];
+      repo.emitHub(repo.current.copyWith(hubVersion: '0.16.0', hubNode: 'minipc'));
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.byKey(const Key('new-chat')));
+      await settle(tester);
+
+      await tester.enterText(find.byKey(const Key('new-chat-input')), '/');
+      await settle(tester);
+      expect(find.byKey(const Key('skill-pick-check-prod-import')), findsOneWidget, reason: '/ alone lists every approved skill');
+      expect(find.byKey(const Key('skill-pick-v2-sync-progress')), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('new-chat-input')), '/sync');
+      await settle(tester);
+      expect(find.byKey(const Key('skill-pick-check-prod-import')), findsNothing, reason: 'filtered as you type');
+      await tester.tap(find.byKey(const Key('skill-pick-v2-sync-progress')));
+      await settle(tester);
+      expect(find.byKey(const Key('skill-picker')), findsNothing);
+      expect(find.text('Skill: v2-sync-progress'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('new-chat-input')), 'how far is it?');
+      await settle(tester);
+      await tester.tap(find.byKey(const Key('new-chat-send')));
+      await settle(tester);
+      expect(repo.chatsCreated.single.skill, 'v2-sync-progress');
+      expect(repo.chatsCreated.single.prompt, 'how far is it?', reason: 'the text is sent as typed; the hub adds the skill');
+    });
+
     testWidgets('skills: draft one from a routine, check it, approve it, and go back a version', (tester) async {
       const example = 'progress?';
       repo.routineReport = const RoutineReport(sessions: 74, tasks: 546, routines: [

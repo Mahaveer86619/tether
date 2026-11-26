@@ -23,8 +23,11 @@ class SessionOpened extends SessionEvent {
 }
 
 class MessageSubmitted extends SessionEvent {
-  const MessageSubmitted(this.text, {this.attachments = const [], this.files = const []});
+  const MessageSubmitted(this.text, {this.attachments = const [], this.files = const [], this.skill = ''});
   final String text;
+
+  /// A skill picked in the composer: the session follows it for this message.
+  final String skill;
 
   /// Artifact ids sent with the message.
   final List<String> attachments;
@@ -32,7 +35,7 @@ class MessageSubmitted extends SessionEvent {
   /// Files on this device that go up in the background and join the message.
   final List<LocalFile> files;
   @override
-  List<Object?> get props => [text, attachments, files];
+  List<Object?> get props => [text, attachments, files, skill];
 }
 
 /// Have the hub keep a copy of this session (or stop).
@@ -271,7 +274,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
       _updateEntry(emit, entry.id, (o) => o.copyWith(attachments: attachments, files: [for (final f in o.files) if (f.uploadId != file.uploadId) f]));
     }
     if (!state.outbox.any((o) => o.id == entry.id)) return;
-    final result = await _send(state.sessionId, entry.text, attachments: attachments, clientId: entry.id);
+    final result = await _send(state.sessionId, entry.text, attachments: attachments, clientId: entry.id, skill: entry.skill);
     switch (result) {
       case Ok():
         _updateEntry(emit, entry.id, (o) => o.copyWith(state: OutboxState.sent, sentAt: DateTime.now(), error: ''));
@@ -389,7 +392,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionViewState> {
       emit(state.copyWith(failure: f, failureId: state.failureId + 1));
       return;
     }
-    final entry = OutboxEntry(id: _newId(), session: state.sessionId, text: e.text.trim(), attachments: e.attachments, files: e.files, created: DateTime.now());
+    final entry = OutboxEntry(id: _newId(), session: state.sessionId, text: e.text.trim(), attachments: e.attachments, files: e.files, created: DateTime.now(), skill: e.skill);
     _draftSave?.cancel();
     _pendingDraft = null;
     unawaited(_drafts.save(state.sessionId, ''));

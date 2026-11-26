@@ -60,11 +60,19 @@ func (h *Hub) routes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST /api/v1/sessions/{id}/messages", h.api(func(r *http.Request) (proto.Message, *opError) {
 		m := &v1.SendMessage{}
-		if err := decode(r, m); err != nil {
+		skill, err := decodeWithSkill(r, m)
+		if err != nil {
 			return nil, err
 		}
 		m.Session = r.PathValue("id")
-		return ackOf(h.sendMessage(m, clientName(r)))
+		use, err := h.skillTurn(skill, m.Text)
+		if err != nil {
+			return nil, err
+		}
+		if use != "" && m.Fork {
+			return nil, invalid("a skill can't be used with a fork")
+		}
+		return ackOf(h.sendMessageWith(m, clientName(r), use))
 	}))
 	mux.HandleFunc("POST /api/v1/sessions/{id}/interrupt", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return ackOf(h.interrupt(r.PathValue("id")))

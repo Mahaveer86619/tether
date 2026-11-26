@@ -7,6 +7,7 @@ import '../artifacts/attachments.dart';
 import '../hub/hub_cubit.dart';
 import '../nav/nav_cubit.dart';
 import '../routines/pinned_skills_cubit.dart';
+import '../routines/skill_search_cubit.dart';
 import '../theme/theme.dart';
 import '../ui/refresh.dart';
 import '../ui/tokens.dart';
@@ -43,6 +44,8 @@ class _NewChat extends StatefulWidget {
 class _NewChatState extends State<_NewChat> {
   final _text = TextEditingController();
   final _files = <Artifact>[];
+  final _skills = sl<SkillSearchCubit>();
+  String _skill = '';
   int _uploading = 0;
 
   @override
@@ -61,6 +64,7 @@ class _NewChatState extends State<_NewChat> {
   @override
   void dispose() {
     _text.dispose();
+    _skills.close();
     super.dispose();
   }
 
@@ -94,7 +98,7 @@ class _NewChatState extends State<_NewChat> {
         final cubit = context.read<NewChatCubit>();
         final canSend = connected && !s.submitting && _uploading == 0 && (_text.text.trim().isNotEmpty || _files.isNotEmpty);
         void send() {
-          if (canSend) cubit.submit(_text.text, attachments: [for (final f in _files) f.id]);
+          if (canSend) cubit.submit(_text.text, attachments: [for (final f in _files) f.id], skill: _skill);
         }
 
         final (label, hint) = _targetText(s);
@@ -107,6 +111,9 @@ class _NewChatState extends State<_NewChat> {
               prompt: true,
               controller: _text,
               fieldKey: const Key('new-chat-input'),
+              skills: _skills,
+              skill: _skill,
+              onSkill: (name) => setState(() => _skill = name),
               hint: 'Ask anything, or describe a task',
               autofocus: !narrow,
               canSubmit: canSend,
@@ -155,10 +162,7 @@ class _NewChatState extends State<_NewChat> {
                             ActionChip(
                               key: Key('pinned-$name'),
                               label: Text('/$name', style: Type.meta(context, color: c.text)),
-                              onPressed: () {
-                                _text.text = 'Use the $name skill. ${_text.text}'.trimRight();
-                                _text.selection = TextSelection.collapsed(offset: _text.text.length);
-                              },
+                              onPressed: () => setState(() => _skill = name),
                             ),
                         ],
                       ),

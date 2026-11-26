@@ -106,8 +106,9 @@ class FakeHubRepository implements HubRepository {
 
   @override
   Future<Result<String>> sendMessage(String sessionId, String text,
-      {bool fork = false, List<String> attachments = const [], String clientId = ''}) async {
+      {bool fork = false, List<String> attachments = const [], String clientId = '', String skill = ''}) async {
     sent.add((sessionId, text, fork));
+    skillsSent.add(skill);
     clientIds.add(clientId);
     attachmentsSent.add(attachments);
     return onSend?.call(sessionId, fork) ?? Ok(fork ? 'fork-of-$sessionId' : sessionId);
@@ -164,6 +165,11 @@ class FakeHubRepository implements HubRepository {
   final skillDetails = <String, SkillDetail>{};
   final skillDecisions = <(String, SkillDecision, int)>[];
   final skillDrafts = <String>[];
+  final skillsSent = <String>[];
+  final skillSearches = <String>[];
+
+  /// What the search box finds: every skill whose name or description has the query.
+  List<SkillMatch> Function(String query)? onSearch;
 
   ChatDesk desk = const ChatDesk();
   final deskCalls = <String>[];
@@ -257,6 +263,24 @@ class FakeHubRepository implements HubRepository {
   Future<Result<String>> draftSkill(String example) async {
     skillDrafts.add(example);
     return const Ok('draft-session');
+  }
+
+  @override
+  Future<Result<String>> draftSkillFrom(String sessionId, String item) async {
+    skillDrafts.add('$sessionId/$item');
+    return const Ok('draft-session');
+  }
+
+  @override
+  Future<Result<List<SkillMatch>>> searchSkills(String query) async {
+    skillSearches.add(query);
+    if (onSearch case final f?) return Ok(f(query));
+    final q = query.trim().toLowerCase();
+    return Ok([
+      for (final s in skillList)
+        if (s.active && q.isNotEmpty && (s.name.contains(q) || s.description.toLowerCase().contains(q)))
+          SkillMatch(name: s.name, description: s.description, score: 0.5, reason: 'shares $q', version: s.version),
+    ]);
   }
 
   RoutineReport routineReport = const RoutineReport();
@@ -460,8 +484,9 @@ class FakeHubRepository implements HubRepository {
       );
 
   @override
-  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''}) async {
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = '', String skill = ''}) async {
     chatSends.add((chatId, text));
+    skillsSent.add(skill);
     return Ok(_snap.chats[chatId]?.activeSession ?? '');
   }
 

@@ -11,6 +11,7 @@ import '../ui/motion.dart';
 import '../ui/refresh.dart';
 import 'pinned_skills_cubit.dart';
 import 'routines_cubit.dart';
+import 'skill_search_cubit.dart';
 
 /// What you keep asking for, read from the hub's history, and the skills made
 /// from it. A routine can be drafted into a skill; a draft waits here for your
@@ -72,6 +73,7 @@ class _RoutinesBody extends StatelessWidget {
                     ),
                     if (s.skills.isNotEmpty) ...[
                       SectionLabel('Skills', trailing: Pill('${s.skills.length}', color: c.accent)),
+                      const _SkillSearch(),
                       for (final skill in s.skills) _SkillCard(skill: skill, busy: s.busy.contains(skill.name)),
                       const SizedBox(height: 8),
                     ],
@@ -187,6 +189,8 @@ class _SkillCard extends StatelessWidget {
                     Pill(k.proposed ? 'Waiting for your approval' : 'In use', color: k.proposed ? c.warning : c.success),
                     Pill(k.mutating ? 'changes things' : 'read-only', color: k.mutating ? c.warning : null),
                     if (k.version > 1) Pill('version ${k.version}'),
+                    if (k.scripts > 0) Pill(k.scripts == 1 ? '1 script' : '${k.scripts} scripts'),
+                    if (k.review) Pill('script changed: review', color: c.warning),
                     if (k.updated != null) Pill('${ago(k.updated)} ago'),
                   ],
                 ),
@@ -256,6 +260,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                       Pill(d.info.mutating ? 'changes things' : 'read-only', color: d.info.mutating ? c.warning : null),
                     ],
                   ),
+                  if (d.scripts.isNotEmpty || d.needsEnv.isNotEmpty || d.runsOn.isNotEmpty) _ScriptFacts(detail: d),
                   if (d.info.source.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -343,7 +348,7 @@ class _SkillDialogState extends State<_SkillDialog> {
                         },
                   child: Text(d.info.proposed ? 'Dismiss' : 'Remove'),
                 ),
-                if (d.info.proposed)
+                if (d.info.proposed || d.info.review)
                   FilledButton(
                     key: const Key('skill-approve'),
                     onPressed: busy
@@ -353,13 +358,149 @@ class _SkillDialogState extends State<_SkillDialog> {
                             await cubit.approve(widget.name);
                             nav.pop();
                           },
-                    child: const Text('Approve'),
+                    child: Text(d.info.proposed ? 'Approve' : 'Accept the changed scripts'),
                   ),
               ],
             );
           },
         ),
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+      ],
+    );
+  }
+}
+
+/// What a script skill needs and runs. Credentials are never shown: only
+/// the names of the variables they come from.
+class _ScriptFacts extends StatelessWidget {
+  const _ScriptFacts({required this.detail});
+
+  final SkillDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final d = detail;
+    final label = TextStyle(fontSize: 11.5, color: c.faint, fontWeight: FontWeight.w600);
+    return Container(
+      key: const Key('skill-scripts'),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(border: Border.all(color: d.info.review ? c.warning : c.border), borderRadius: context.round(8)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(spacing: 6, runSpacing: 4, children: [
+            if (d.info.effect.isNotEmpty) Pill('effect: ${d.info.effect}', color: d.info.effect == 'write' ? c.warning : null),
+            if (d.runsOn.isNotEmpty) Pill('runs on ${d.runsOn}'),
+            if (d.info.review) Pill('script changed: review', color: c.warning),
+          ]),
+          if (d.needsEnv.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('Needs from the environment', style: label),
+            Text(d.needsEnv.join(', '), style: monoStyle(context, size: 12, color: c.text)),
+          ],
+          if (d.scripts.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('Scripts in the project', style: label),
+            for (final sc in d.scripts)
+              Row(children: [
+                Expanded(child: Text(sc.path, style: monoStyle(context, size: 12, color: c.text))),
+                if (sc.changed) Text('changed', style: TextStyle(fontSize: 12, color: c.warning)),
+              ]),
+          ],
+          if (d.info.review)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('A session found a script different from the one you approved. Claude asks before running it until you accept the change.',
+                  style: TextStyle(fontSize: 12.5, color: c.text)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Finds an approved skill by what it is for, with why each one matched.
+class _SkillSearch extends StatefulWidget {
+  const _SkillSearch();
+
+  @override
+  State<_SkillSearch> createState() => _SkillSearchState();
+}
+
+class _SkillSearchState extends State<_SkillSearch> {
+  final _search = sl<SkillSearchCubit>();
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.close();
+    _text.dispose();
+    super.dispose();
+  }
+
+  void _changed(String q) {
+    setState(() {});
+    q.trim().isEmpty ? _search.dismiss() : _search.search(q);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: TextField(
+            key: const Key('skill-search'),
+            controller: _text,
+            onChanged: _changed,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Find a skill by what it does',
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+              suffixIcon: _text.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear',
+                      icon: const Icon(Icons.close_rounded, size: 16),
+                      onPressed: () {
+                        _text.clear();
+                        _changed('');
+                      },
+                    ),
+            ),
+          ),
+        ),
+        BlocBuilder<SkillSearchCubit, SkillSearchState>(
+          bloc: _search,
+          builder: (context, s) {
+            if (!s.open) return const SizedBox.shrink();
+            if (s.results.isEmpty) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(s.loading ? 'Looking…' : 'No approved skill fits that', style: TextStyle(fontSize: 12.5, color: c.faint)),
+              );
+            }
+            return Column(
+              key: const Key('skill-search-results'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final m in s.results)
+                  ListTile(
+                    key: Key('skill-found-${m.name}'),
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    title: Text(m.name, style: monoStyle(context, size: 13, color: c.text).copyWith(fontWeight: FontWeight.w600)),
+                    subtitle: Text(m.reason.isEmpty ? m.description : '${m.description}\n${m.reason}', maxLines: 3, overflow: TextOverflow.ellipsis),
+                    onTap: () => showSkill(context, m.name),
+                  ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }

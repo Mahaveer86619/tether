@@ -116,11 +116,11 @@ class NewChatCubit extends Cubit<NewChatState> {
 
   void setTarget(ChatTarget? target) => emit(state.copyWith(target: () => target));
 
-  Future<void> submit(String text, {List<String> attachments = const []}) async {
+  Future<void> submit(String text, {List<String> attachments = const [], String skill = ''}) async {
     if (state.submitting) return;
     emit(state.copyWith(submitting: true));
     final id = List.generate(16, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-    final r = await _chats.start(NewChatRequest(prompt: text, target: state.target, attachments: attachments, clientId: id, project: state.project));
+    final r = await _chats.start(NewChatRequest(prompt: text, target: state.target, attachments: attachments, clientId: id, skill: skill, project: state.project));
     r.fold(
       (f) => emit(state.copyWith(submitting: false, failure: f, failureId: state.failureId + 1)),
       (made) {

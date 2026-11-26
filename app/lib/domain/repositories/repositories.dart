@@ -32,7 +32,8 @@ abstract interface class HubRepository {
 
   /// Returns the session that received the message: the same one, or the
   /// new fork when [fork] is set.
-  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = ''});
+  /// With [skill], the session is told to follow that skill for this message.
+  Future<Result<String>> sendMessage(String sessionId, String text, {bool fork = false, List<String> attachments = const [], String clientId = '', String skill = ''});
 
   /// Has the hub keep a copy of the session's transcript, or stop.
   Future<Result<void>> setGlobal(String sessionId, {required bool global});
@@ -70,7 +71,7 @@ abstract interface class HubRepository {
   Future<Result<void>> sendTestNotification();
 
   /// Sends to the chat's active session; returns the session that got it.
-  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = ''});
+  Future<Result<String>> sendToChat(String chatId, String text, {List<String> attachments = const [], String clientId = '', String skill = ''});
 
   /// Records where the chat works; with [move], carries the conversation
   /// over to a new session there.
@@ -140,6 +141,12 @@ abstract interface class HubRepository {
 
   /// Starts a session that drafts a skill for the routine; returns its id.
   Future<Result<String>> draftSkill(String example);
+
+  /// Starts a session that drafts a skill from the task around [item] of a session.
+  Future<Result<String>> draftSkillFrom(String sessionId, String item);
+
+  /// Approved skills ranked for [query], best first.
+  Future<Result<List<SkillMatch>>> searchSkills(String query);
 
   /// Routines that keep coming back in the hub's history; [days] 0 means all of it.
   Future<Result<RoutineReport>> routines({int days = 30, int runs = 3});

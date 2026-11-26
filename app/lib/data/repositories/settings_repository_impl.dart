@@ -92,6 +92,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
         'state': e.state.name,
         if (e.sentAt != null) 'sentAt': e.sentAt!.millisecondsSinceEpoch,
         if (e.error.isNotEmpty) 'error': e.error,
+        if (e.skill.isNotEmpty) 'skill': e.skill,
       };
 
   static OutboxEntry _entryFrom(Map<String, dynamic> m, String session) => OutboxEntry(
@@ -107,6 +108,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
         state: OutboxState.values.asNameMap()[m['state']] ?? OutboxState.failed,
         sentAt: m['sentAt'] == null ? null : DateTime.fromMillisecondsSinceEpoch(m['sentAt'] as int),
         error: m['error'] as String? ?? '',
+        skill: m['skill'] as String? ?? '',
       );
 
   @override

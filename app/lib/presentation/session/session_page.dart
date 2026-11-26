@@ -12,6 +12,7 @@ import '../artifacts/files_page.dart';
 import '../artifacts/pages_view.dart';
 import '../home/cards.dart' show StepBar;
 import '../hub/hub_cubit.dart';
+import '../routines/skill_search_cubit.dart';
 import '../theme/theme.dart';
 import '../ui/tokens.dart';
 import '../widgets/common.dart';
@@ -1139,6 +1140,8 @@ class _ComposerState extends State<Composer> {
   final _text = TextEditingController();
   final _focus = FocusNode();
   final _files = <LocalFile>[];
+  final _skills = sl<SkillSearchCubit>();
+  String _skill = '';
 
   Future<void> _attach() async {
     final added = await pickLocalFiles(context);
@@ -1175,7 +1178,12 @@ class _ComposerState extends State<Composer> {
     if (old.state.sentId != widget.state.sentId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _text.clear();
-        if (mounted) setState(_files.clear);
+        if (mounted) {
+          setState(() {
+            _files.clear();
+            _skill = '';
+          });
+        }
       });
     }
     if (old.state.quoteId != widget.state.quoteId) _insertQuote(widget.state.quote);
@@ -1198,13 +1206,14 @@ class _ComposerState extends State<Composer> {
   void dispose() {
     _text.dispose();
     _focus.dispose();
+    _skills.close();
     super.dispose();
   }
 
   void _submit() {
     final s = widget.state;
     if (!s.canType || s.sending || (_text.text.trim().isEmpty && _files.isEmpty)) return;
-    context.read<SessionBloc>().add(MessageSubmitted(_text.text, files: [..._files]));
+    context.read<SessionBloc>().add(MessageSubmitted(_text.text, files: [..._files], skill: s.forking ? '' : _skill));
   }
 
   @override
@@ -1222,6 +1231,9 @@ class _ComposerState extends State<Composer> {
       controller: _text,
       focusNode: _focus,
       fieldKey: const Key('composer'),
+      skills: s.forking ? null : _skills,
+      skill: s.forking ? '' : _skill,
+      onSkill: (name) => setState(() => _skill = name),
       hint: hint,
       enabled: s.canType,
       canSubmit: s.canType && !s.sending,
