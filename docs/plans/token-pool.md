@@ -51,7 +51,7 @@ When the limit is hit anyway, the job waits for the reset and carries on by itse
 
 ## 4. Shared devices (the pool)
 
-**What is shared is a device's time, not anyone's Claude account.** A user can share a device with other users **for jobs**: servers, training runs, long scripts. The first case: a user with a GPU desktop on the tailnet shares it with the hub's owner, who trains models on it in its free time. A job is an ordinary process on that device (see [shared-workspace.md](shared-workspace.md#jobs)); it needs no Claude login, so nothing of the device owner's Claude plan is used and nothing about the plan's terms is touched. **Claude sessions never run on a device under someone else's account**: a person's sessions run on their own devices ([teams.md](teams.md#decisions-made)).
+**What is shared is a device's time, not anyone's Claude account.** A user can share a device with other users **for jobs**: servers, training runs, long scripts. The first case: a user with a GPU desktop on the tailnet shares it with the hub's owner, who trains models on it in its free time. A job is an ordinary process on that device (see [shared-workspace.md](shared-workspace.md#jobs)); it needs no Claude login, so nothing of the device owner's Claude plan is used and nothing about the plan's terms is touched. A Claude session on a shared device runs under **that device owner's own Claude Code**, and only when the owner has granted full access ([teams.md](teams.md#b-users-and-workspaces)); a jobs-only grant never starts one.
 
 **Sharing.** The device owner shares a device with a user, with limits they set: jobs only; which hours (a window, or *only when I am away*); the most GPU memory, CPU and disk a job may use; which folders it may write to. The owner can pause or stop any job on their device at any moment, and sees every job with who started it.
 
@@ -83,7 +83,7 @@ Time is injected, never the wall clock; no real account is read.
 - **Patterns**: a synthetic six weeks (a person active 9 to 6 on weekdays) gives high `P` in those slots and low at night; with two weeks it says there is not enough data.
 - **Budget**: with known percents left, a known pattern and a known estimate, the scheduler runs a job in exactly the expected frame and refuses the others, for each of the four conditions in turn.
 - **Away**: activity during a run pauses it at the step boundary and resumes it in the next frame.
-- **Shared devices**: a job on a device shared for jobs only never starts a Claude session; a job outside the shared hours or over its memory limit is refused; the owner's return pauses the job at the next check and a resume follows in the next free frame; the warning percentage equals the owner's `P` for the frame; an owner's stop ends the job and its children.
+- **Shared devices**: a job on a device shared for jobs only never starts a Claude session, and a session on a fully shared device is charged to the device owner's usage; a job outside the shared hours or over its memory limit is refused; the owner's return pauses the job at the next check and a resume follows in the next free frame; the warning percentage equals the owner's `P` for the frame; an owner's stop ends the job and its children.
 - **Estimate**: past tasks of known size give an estimate within the stated margin; the threshold decides when the app asks.
 
 ## Decisions to make
