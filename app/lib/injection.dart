@@ -27,7 +27,6 @@ import 'domain/repositories/prompt_desk_repository.dart';
 import 'domain/repositories/repositories.dart';
 import 'domain/usecases/prompt_desk_usecases.dart';
 import 'domain/repositories/jobs_repository.dart';
-import 'domain/repositories/repositories.dart';
 import 'domain/usecases/jobs.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
