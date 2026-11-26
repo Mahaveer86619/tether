@@ -5,6 +5,7 @@ import '../../core/version.dart';
 import '../../domain/entities/entities.dart';
 import '../../injection.dart';
 import '../hub/hub_cubit.dart';
+import '../nav/nav_cubit.dart';
 import '../settings/devices_cubit.dart';
 import '../settings/pairing_widgets.dart';
 import '../theme/theme.dart';
@@ -54,6 +55,15 @@ class DevicesPage extends StatelessWidget {
                 style: TextStyle(color: c.muted, fontSize: 13))
           else
             CardGrid(children: [for (final n in others) card(n)]),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('open-jobs'),
+              onPressed: () => context.read<NavCubit>().select(Destination.jobs),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+              label: const Text('Jobs on these devices'),
+            ),
+          ),
           const SectionLabel('3 · Apps'),
           BlocBuilder<DevicesCubit, DevicesState>(
             builder: (context, s) {
@@ -279,6 +289,7 @@ class DevicePage extends StatelessWidget {
                 if (status.hostname.isNotEmpty) status.hostname,
                 if (status.claudeVersion.isNotEmpty) 'Claude Code ${status.claudeVersion}',
                 if (status.agentVersion.isNotEmpty) 'agent ${status.agentVersion}',
+                if (hardwareSummary(status).isNotEmpty) hardwareSummary(status),
               ].join(' · '),
               style: TextStyle(color: c.muted, fontSize: 13),
             ),

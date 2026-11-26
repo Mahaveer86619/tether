@@ -18,6 +18,7 @@ import 'data/datasources/tailscale_android.dart';
 import 'data/datasources/tailscale_desktop.dart';
 import 'data/repositories/hub_repository_impl.dart';
 import 'data/repositories/prompt_desk_repository_impl.dart';
+import 'data/repositories/jobs_repository_impl.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/repositories/transfer_repository_impl.dart';
 import 'data/repositories/update_repository_impl.dart';
@@ -25,6 +26,9 @@ import 'data/datasources/update_platform.dart';
 import 'domain/repositories/prompt_desk_repository.dart';
 import 'domain/repositories/repositories.dart';
 import 'domain/usecases/prompt_desk_usecases.dart';
+import 'domain/repositories/jobs_repository.dart';
+import 'domain/repositories/repositories.dart';
+import 'domain/usecases/jobs.dart';
 import 'domain/usecases/usecases.dart';
 import 'presentation/artifacts/artifacts_cubit.dart';
 import 'presentation/artifacts/pages_view.dart';
@@ -47,6 +51,7 @@ import 'presentation/insights/insights_cubit.dart';
 import 'presentation/onboarding/onboarding_cubit.dart';
 import 'presentation/health/connection_doctor.dart';
 import 'presentation/tailscale/tailscale_cubit.dart';
+import 'presentation/jobs/jobs_cubit.dart';
 import 'presentation/usage/usage_cubit.dart';
 
 final sl = GetIt.instance;
@@ -75,6 +80,7 @@ void configureDependencies({bool withData = true}) {
       )
       ..registerLazySingleton<SettingsRepository>(() => SettingsRepositoryImpl(sl()))
       ..registerLazySingleton<PromptDeskRepository>(() => PromptDeskRepositoryImpl(sl()))
+      ..registerLazySingleton<JobsRepository>(() => JobsRepositoryImpl(api: sl(), socket: sl()), dispose: (r) => (r as JobsRepositoryImpl).dispose())
       ..registerLazySingleton<FileDownloads>(BackgroundFileDownloads.new)
       ..registerLazySingleton<UpdatePlatform>(NativeUpdatePlatform.new)
       ..registerLazySingleton<TailscaleRepository>(_tailscale)
@@ -108,6 +114,7 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => LoadTailnet(sl()))
     ..registerLazySingleton(() => ListClients(sl()))
     ..registerLazySingleton(() => LoadUsage(sl()))
+    ..registerLazySingleton(() => Jobs(sl()))
     ..registerLazySingleton(() => LoadRoutines(sl()))
     ..registerLazySingleton(() => EnsureTailscale(sl()))
     ..registerLazySingleton(() => FindHubs(sl(), sl(), sl()))
@@ -142,6 +149,7 @@ void configureDependencies({bool withData = true}) {
     ..registerFactory(() => HubCubit(watchHub: sl(), decideApproval: sl(), setArchived: sl(), retry: sl(), setMode: sl(), presence: sl()))
     ..registerFactory(() => SettingsCubit(load: sl(), save: sl(), pair: sl(), theme: sl(), share: sl(), viaTailnet: sl()))
     ..registerFactory(() => UsageCubit(load: sl()))
+    ..registerFactory(() => JobsCubit(jobs: sl()))
     ..registerFactory(() => RoutinesCubit(load: sl(), skills: sl()))
     ..registerFactory(() => RulesCubit(rules: sl(), watchHub: sl()))
     ..registerFactory(() => InsightsCubit(insights: sl()))

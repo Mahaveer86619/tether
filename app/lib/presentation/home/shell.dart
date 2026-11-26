@@ -21,6 +21,7 @@ import '../update/update_cubit.dart';
 import '../routines/routines_page.dart';
 import '../rules/rules_page.dart';
 import '../insights/insights_page.dart';
+import '../jobs/jobs_page.dart';
 import '../usage/usage_page.dart';
 import '../widgets/common.dart';
 import 'activity_page.dart';
@@ -73,6 +74,7 @@ String _title(Destination d) => switch (d) {
       Destination.home => 'New chat',
       Destination.chats => 'Chats',
       Destination.devices => 'Devices',
+      Destination.jobs => 'Jobs',
       Destination.activity => 'History',
       Destination.files => 'Files',
       Destination.routines => 'Routines',
@@ -93,6 +95,7 @@ Widget _destinationPage(BuildContext context, Destination d) {
     Destination.chats => const ChatsPage(),
     Destination.home => const NewChatPage(),
     Destination.devices => DevicesPage(onNode: nav.openNode),
+    Destination.jobs => const JobsPage(),
     Destination.activity => ActivityPage(onSession: nav.openSession),
     Destination.files => FilesPage(onSession: nav.openSession),
     Destination.routines => const RoutinesPage(),

@@ -13,6 +13,16 @@ String ago(DateTime? time) {
   return '${d.inDays ~/ 30}mo';
 }
 
+/// A machine's hardware in a line: "RTX 4090 24 GB · 64 GB RAM · 16 CPUs".
+String hardwareSummary(Node n) {
+  String gb(int bytes) => '${(bytes / (1 << 30)).round()} GB';
+  return [
+    for (final g in n.gpus) [g.name.replaceAll('NVIDIA ', '').replaceAll('GeForce ', ''), if (g.memoryBytes > 0) gb(g.memoryBytes)].join(' '),
+    if (n.memoryBytes > 0) '${gb(n.memoryBytes)} RAM',
+    if (n.cpus > 0) '${n.cpus} CPUs',
+  ].join(' · ');
+}
+
 /// A token count, short: 950, 12.4k, 3.1M.
 String tokens(int n) {
   if (n < 1000) return '$n';

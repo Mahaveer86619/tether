@@ -348,6 +348,10 @@ class DeviceCard extends StatelessWidget {
                   ].join(' · '),
                   style: TextStyle(fontSize: 12, color: c.muted),
                 ),
+                if (hardwareSummary(node).isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(hardwareSummary(node), key: Key('hardware-${node.name}'), style: TextStyle(fontSize: 12, color: c.muted)),
+                ],
                 if (node.capabilities.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Wrap(spacing: 4, runSpacing: 4, children: [for (final k in node.capabilities) Pill(k)]),
