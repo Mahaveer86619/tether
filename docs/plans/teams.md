@@ -1,6 +1,6 @@
 # Users, teams and projects
 
-Status: plan. It makes **projects** a real thing (today a project is only a folder that chats happen to work in), puts a **project chat with spawned sessions** at the centre of the app, and adds **users** so several people can share one hub and one workspace. It replaces the short "Users, roles and visibility" notes in [plan.md](plan.md#users-roles-and-visibility).
+Status: step A built (projects, project chats, the sidebar by project); step B planned. It makes **projects** a real thing (today a project is only a folder that chats happen to work in), puts a **project chat with spawned sessions** at the centre of the app, and adds **users** so several people can share one hub and one workspace. It replaces the short "Users, roles and visibility" notes in [plan.md](plan.md#users-roles-and-visibility).
 
 ## What is wanted
 
@@ -99,8 +99,8 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 ## Build order
 
 0. **Home is clean.** The new-chat screen has no cards (no *Needs you*, *Running now*, no project chips): the greeting and the box. Needs-you and running show as markers in the sidebar instead. **Built.**
-1. **A1.** Project object and `Chat.project`; *Add to projects* makes a project; the new-chat project picker. (Hub, contract, app.)
-2. **A2.** The sidebar and the phone drawer as above: projects with chats and spawned sessions nested, unfiled folders, quiet one-offs; roll-up of needs-you and running.
+1. **A1.** Project object and a chat's project; *Add to projects* makes a project; the new-chat project picker. (Hub, app.) **Built**: the project is kept beside the chat in plain JSON routes rather than in the contract, so `Project` and `Chat.project` are not in the .proto ([chats.md](../architecture/chats.md#projects)).
+2. **A2.** The sidebar and the phone drawer as above: projects with chats and spawned sessions nested, unfiled folders, quiet one-offs; roll-up of needs-you and running. **Built** ([app.md](../architecture/app.md#sidebar)).
 3. **B1.** Users and invites; devices and chats get an owner; every list filtered by user; the `can` check; the audit log records the user.
 4. **B2.** Workspaces and project membership; sharing a project chat; roles.
 5. **B3.** Lending a device; scopes for rules and skills; a per-user view of usage and cost.

@@ -46,6 +46,14 @@ abstract interface class HubRepository {
   /// Makes a chat of a session that has none, or returns the one it's in.
   Future<Result<Chat>> chatForSession(String sessionId);
 
+  /// Makes a project of [folders]; the hub files the chats already working
+  /// in them into it. See docs/architecture/chats.md#projects.
+  Future<Result<ProjectInfo>> createProject({String name = '', List<ProjectFolder> folders = const []});
+  Future<Result<ProjectInfo>> addProjectFolder(String projectId, ProjectFolder folder);
+
+  /// Puts a chat in a project, or makes it a one-off with an empty [projectId].
+  Future<Result<void>> setChatProject(String chatId, String projectId);
+
   /// Renames a chat; an empty [title] lets the hub name it again.
   Future<Result<Chat>> renameChat(String chatId, String title);
 

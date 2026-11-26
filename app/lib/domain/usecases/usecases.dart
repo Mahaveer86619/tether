@@ -109,11 +109,42 @@ class Chats {
       model: r.model,
       permissionMode: r.permissionMode,
       clientId: r.clientId,
+      project: _hub.current.projectsSupported ? r.project : '',
     ));
     return made.map((c) => (c, c.activeSession));
   }
 
   Future<Result<Chat>> forSession(String sessionId) => _hub.chatForSession(sessionId);
+
+  /// Puts a session's chat in the project for its folder, making the chat
+  /// and the project when there are none; returns the project.
+  Future<Result<ProjectInfo>> addToProject(String sessionId) async {
+    final s = _hub.current.sessions[sessionId];
+    if (s == null) return const Err(NotFoundFailure('session'));
+    final made = await _hub.chatForSession(sessionId);
+    final Chat chat;
+    switch (made) {
+      case Err(:final failure):
+        return Err(failure);
+      case Ok(:final value):
+        chat = value;
+    }
+    // An older hub has no projects: the chat lists under its folder.
+    if (!_hub.current.projectsSupported) return Ok(ProjectInfo(id: '', name: ChatProject(node: s.node, cwd: s.cwd, chats: const []).name));
+    final existing = _hub.current.projectWithFolder(s.node, s.cwd);
+    if (existing == null) {
+      final p = await _hub.createProject(folders: [ProjectFolder(node: s.node, cwd: s.cwd)]);
+      if (p case Ok(:final value) when _hub.current.chatProjectIds[chat.id] != value.id) {
+        final filed = await _hub.setChatProject(chat.id, value.id);
+        if (filed case Err(:final failure)) return Err(failure);
+      }
+      return p;
+    }
+    return (await _hub.setChatProject(chat.id, existing.id)).map((_) => existing);
+  }
+
+  /// Makes a project of a folder; the chats in it go with it.
+  Future<Result<ProjectInfo>> fileFolder(String node, String cwd) => _hub.createProject(folders: [ProjectFolder(node: node, cwd: cwd)]);
 
   Future<Result<Chat>> rename(String chatId, String title) => _hub.renameChat(chatId, title.trim());
 

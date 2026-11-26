@@ -153,8 +153,9 @@ class SessionCard extends StatelessWidget {
   }
 }
 
-/// What can be done with a session from a list: for one that is in a project
-/// folder and in no chat, adding it to the projects as a chat.
+/// What can be done with a session from a list: for one in a project folder
+/// whose chat (if it has one) is in no project, filing it in the project for
+/// that folder, which is made if there is none.
 class SessionMenu extends StatelessWidget {
   const SessionMenu({super.key, required this.session});
 
@@ -164,7 +165,11 @@ class SessionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final canAdd = context.select<HubCubit, bool>((h) {
       final hub = h.state.hub;
-      return hub.chatsSupported && !session.scratch && session.node.isNotEmpty && isProjectFolder(session.cwd) && hub.chatOf(session.id) == null;
+      if (!hub.chatsSupported || session.scratch || session.node.isEmpty || !isProjectFolder(session.cwd)) return false;
+      final chat = hub.chatOf(session.id);
+      if (chat == null) return true;
+      final spawned = chat.links.any((l) => l.session == session.id && l.role == 'started');
+      return hub.projectsSupported && !spawned && hub.projectInfoOf(chat.id) == null;
     });
     if (!canAdd) return const SizedBox.shrink();
     return PopupMenuButton<String>(
@@ -174,8 +179,8 @@ class SessionMenu extends StatelessWidget {
       iconSize: 18,
       icon: const Icon(Icons.more_horiz_rounded, size: 18),
       onSelected: (_) async {
-        final id = await context.read<ChatsCubit>().adopt(session.id);
-        if (id != null && context.mounted) showToast(context, 'Added to ${baseName(session.cwd)}', icon: Icons.folder_outlined);
+        final name = await context.read<ChatsCubit>().addToProject(session.id);
+        if (name != null && context.mounted) showToast(context, 'Added to $name', icon: Icons.folder_outlined);
       },
       itemBuilder: (_) => const [
         PopupMenuItem(value: 'add', child: Row(children: [Icon(Icons.create_new_folder_outlined, size: 18), SizedBox(width: 12), Flexible(child: Text('Add to projects'))])),

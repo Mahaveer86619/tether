@@ -380,3 +380,16 @@ List<ProjectFile> projectFilesFromJson(Map<String, dynamic> m) => [
           updated: ((f['updated_ms'] as num?)?.toInt() ?? 0) > 0 ? DateTime.fromMillisecondsSinceEpoch((f['updated_ms'] as num).toInt()) : null,
         ),
     ];
+
+ProjectInfo projectInfoFromJson(Map<String, dynamic> m) {
+  final ms = (m['createdMs'] as num?)?.toInt() ?? 0;
+  return ProjectInfo(
+    id: m['id'] as String? ?? '',
+    name: m['name'] as String? ?? '',
+    folders: [
+      for (final f in (m['folders'] as List<dynamic>? ?? const []).whereType<Map<String, dynamic>>())
+        ProjectFolder(node: f['node'] as String? ?? '', cwd: f['cwd'] as String? ?? ''),
+    ],
+    created: ms > 0 ? DateTime.fromMillisecondsSinceEpoch(ms) : null,
+  );
+}

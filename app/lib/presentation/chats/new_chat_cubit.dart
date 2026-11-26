@@ -9,7 +9,10 @@ import '../../domain/entities/entities.dart';
 import '../../domain/usecases/usecases.dart';
 
 class NewChatState extends Equatable {
-  const NewChatState({this.target, this.preview, this.submitting = false, this.failure, this.failureId = 0, this.chatId, this.sessionId});
+  const NewChatState({this.target, this.preview, this.submitting = false, this.failure, this.failureId = 0, this.chatId, this.sessionId, this.project = ''});
+
+  /// The project the chat goes in; empty for a one-off.
+  final String project;
 
   /// Where to start; null leaves it to the hub (auto).
   final ChatTarget? target;
@@ -33,6 +36,7 @@ class NewChatState extends Equatable {
     int? failureId,
     String? chatId,
     String? sessionId,
+    String? project,
   }) =>
       NewChatState(
         target: target != null ? target() : this.target,
@@ -42,27 +46,51 @@ class NewChatState extends Equatable {
         failureId: failureId ?? this.failureId,
         chatId: chatId ?? this.chatId,
         sessionId: sessionId ?? this.sessionId,
+        project: project ?? this.project,
       );
 
   @override
-  List<Object?> get props => [target, preview, submitting, failure, failureId, chatId, sessionId];
+  List<Object?> get props => [target, preview, submitting, failure, failureId, chatId, sessionId, project];
 }
 
 /// View model for the new-chat screen: the draft, where it will run, and
 /// starting it.
 class NewChatCubit extends Cubit<NewChatState> {
-  NewChatCubit({required this._chats, required this._drafts, required WatchHub watchHub, String node = ''}) : super(const NewChatState()) {
+  NewChatCubit({required this._chats, required this._drafts, required WatchHub watchHub, String node = ''}) : _hub = watchHub, super(const NewChatState()) {
     if (node.isNotEmpty) {
       final folders = watchHub.current.recentFolders(node);
       emit(NewChatState(target: ChatTarget(mode: TargetMode.manual, node: node, cwd: folders.firstOrNull ?? '')));
+    } else {
+      _preselectProject();
     }
   }
 
   final Chats _chats;
   final Drafts _drafts;
+  final WatchHub _hub;
   Timer? _draftSave, _previewDebounce;
   static const _draftKey = 'new-chat';
+  static const _projectKey = 'new-chat-project';
   static final _rand = Random.secure();
+
+  Future<void> _preselectProject() async {
+    final last = await _drafts.load(_projectKey);
+    final p = _hub.current.projectInfos[last];
+    if (isClosed || p == null || state.target != null || state.project.isNotEmpty) return;
+    setProject(p);
+  }
+
+  /// Puts the chat in [project] and runs it in [folder], or in the project's
+  /// folder on an online device; null makes it a one-off and leaves the target.
+  void setProject(ProjectInfo? project, {ProjectFolder? folder}) {
+    if (project == null) {
+      emit(state.copyWith(project: ''));
+      return;
+    }
+    final nodes = _hub.current.nodes;
+    final f = folder ?? project.folders.where((f) => nodes[f.node]?.online ?? false).firstOrNull ?? project.folders.firstOrNull;
+    emit(state.copyWith(project: project.id, target: f == null ? null : () => ChatTarget(mode: TargetMode.manual, node: f.node, cwd: f.cwd)));
+  }
 
   Future<String> loadDraft() => _drafts.load(_draftKey);
 
@@ -92,13 +120,14 @@ class NewChatCubit extends Cubit<NewChatState> {
     if (state.submitting) return;
     emit(state.copyWith(submitting: true));
     final id = List.generate(16, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
-    final r = await _chats.start(NewChatRequest(prompt: text, target: state.target, attachments: attachments, clientId: id));
+    final r = await _chats.start(NewChatRequest(prompt: text, target: state.target, attachments: attachments, clientId: id, project: state.project));
     r.fold(
       (f) => emit(state.copyWith(submitting: false, failure: f, failureId: state.failureId + 1)),
       (made) {
         _draftSave?.cancel();
         _drafts.save(_draftKey, '');
-        emit(NewChatState(target: state.target, chatId: made.$1?.id, sessionId: made.$2, failureId: state.failureId));
+        _drafts.save(_projectKey, state.project);
+        emit(NewChatState(target: state.target, project: state.project, chatId: made.$1?.id, sessionId: made.$2, failureId: state.failureId));
       },
     );
   }

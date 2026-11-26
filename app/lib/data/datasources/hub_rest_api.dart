@@ -54,7 +54,7 @@ class HubRestApi {
   /// A full URL for a path on the hub, or [url] itself if it's already one.
   Uri resolve(String url) => url.startsWith('/') ? _endpoint.httpBase.replace(path: Uri.parse(url).path) : Uri.parse(url);
 
-  Future<pb.Chat> createChat(pb.CreateChat body) => _post('/chats', body, pb.Chat());
+  Future<pb.Chat> createChat(pb.CreateChat body, {String project = ''}) => _post('/chats', body, pb.Chat(), query: project.isEmpty ? null : {'project': project});
 
   Future<void> deleteChat(String chat) =>
       _send(() => _client.delete(_endpoint.api('/chats/${Uri.encodeComponent(chat)}'), headers: _headers), pb.Ack());
@@ -256,6 +256,29 @@ class HubRestApi {
         () => _client.delete(_endpoint.api('/projects/${Uri.encodeComponent(repo)}/files', {'path': path}), headers: _headers),
       );
 
+  /// Projects with the ids of their chats; plain JSON, see docs/architecture/chats.md#projects.
+  Future<Map<String, dynamic>> projects() => _jsonMap(() => _client.get(_endpoint.api('/projects'), headers: _headers));
+
+  Future<Map<String, dynamic>> createProject(Map<String, Object?> body) => _jsonMap(
+        () => _client.post(_endpoint.api('/projects'), headers: {..._headers, 'Content-Type': 'application/json'}, body: jsonEncode(body)),
+      );
+
+  Future<Map<String, dynamic>> addProjectFolder(String project, String node, String cwd) => _jsonMap(
+        () => _client.post(
+          _endpoint.api('/projects/${Uri.encodeComponent(project)}/folders'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode({'node': node, 'cwd': cwd}),
+        ),
+      );
+
+  Future<void> setChatProject(String chat, String project) => _jsonMap(
+        () => _client.put(
+          _endpoint.api('/chats/${Uri.encodeComponent(chat)}/project'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode({'project': project}),
+        ),
+      );
+
   Future<Map<String, dynamic>> _jsonMap(Future<http.Response> Function() request) async {
     final json = await _sendJson(request);
     if (json is! Map<String, dynamic>) throw const ProtocolException('unexpected response shape');
@@ -327,9 +350,9 @@ class HubRestApi {
   Future<T> _get<T extends GeneratedMessage>(String path, T into, {Map<String, String>? query}) =>
       _send(() => _client.get(_endpoint.api(path, query), headers: _headers), into);
 
-  Future<T> _post<T extends GeneratedMessage>(String path, GeneratedMessage? body, T into) => _send(
+  Future<T> _post<T extends GeneratedMessage>(String path, GeneratedMessage? body, T into, {Map<String, String>? query}) => _send(
         () => _client.post(
-          _endpoint.api(path),
+          _endpoint.api(path, query),
           headers: {..._headers, 'Content-Type': 'application/json'},
           body: body == null ? '{}' : jsonEncode(body.toProto3Json()),
         ),

@@ -382,7 +382,7 @@ class _RenameDialogState extends State<_RenameDialog> {
 /// A chat or session as a single line in the sidebar: the open one
 /// highlighted, its menu on hover.
 class SidebarRow extends StatefulWidget {
-  const SidebarRow({super.key, required this.title, required this.selected, required this.onTap, this.live = false, this.state, this.menu, this.indent = 0});
+  const SidebarRow({super.key, required this.title, required this.selected, required this.onTap, this.live = false, this.state, this.menu, this.indent = 0, this.quiet = false, this.trailing});
 
   final String title;
   final bool live, selected;
@@ -390,6 +390,12 @@ class SidebarRow extends StatefulWidget {
   final Widget? menu;
   final VoidCallback onTap;
   final double indent;
+
+  /// Smaller and fainter, for one-off chats.
+  final bool quiet;
+
+  /// Shown at the end, before the menu: markers or a count.
+  final Widget? trailing;
 
   @override
   State<SidebarRow> createState() => _SidebarRowState();
@@ -411,7 +417,7 @@ class _SidebarRowState extends State<SidebarRow> {
           borderRadius: context.round(8),
           onTap: widget.onTap,
           child: SizedBox(
-            height: 38,
+            height: widget.quiet ? 32 : 38,
             child: Row(
               children: [
                 SizedBox(width: 10 + widget.indent),
@@ -421,9 +427,12 @@ class _SidebarRowState extends State<SidebarRow> {
                     widget.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 14, color: widget.selected ? c.text : c.text.withValues(alpha: 0.88), fontWeight: widget.selected ? FontWeight.w600 : null),
+                    style: widget.quiet
+                        ? TextStyle(fontSize: 12.5, color: widget.selected ? c.text : c.muted, fontWeight: widget.selected ? FontWeight.w600 : null)
+                        : TextStyle(fontSize: 14, color: widget.selected ? c.text : c.text.withValues(alpha: 0.88), fontWeight: widget.selected ? FontWeight.w600 : null),
                   ),
                 ),
+                ?widget.trailing,
                 if (widget.menu != null && (_hover || widget.selected)) SizedBox(width: 32, child: widget.menu) else const SizedBox(width: 8),
               ],
             ),
@@ -436,12 +445,13 @@ class _SidebarRowState extends State<SidebarRow> {
 
 /// A chat as a sidebar row.
 class ChatRow extends StatelessWidget {
-  const ChatRow({super.key, required this.chat, required this.selected, required this.onTap, this.indent = 0, this.keyPrefix = 'recent'});
+  const ChatRow({super.key, required this.chat, required this.selected, required this.onTap, this.indent = 0, this.keyPrefix = 'recent', this.quiet = false, this.trailing});
 
   final Chat chat;
-  final bool selected;
+  final bool selected, quiet;
   final VoidCallback onTap;
   final double indent;
+  final Widget? trailing;
 
   /// Tells a chat's rows apart where it is listed twice.
   final String keyPrefix;
@@ -456,6 +466,8 @@ class ChatRow extends StatelessWidget {
       state: session?.state,
       selected: selected,
       indent: indent,
+      quiet: quiet,
+      trailing: trailing,
       menu: ChatMenu(chat: chat),
       onTap: onTap,
     );
