@@ -12,6 +12,7 @@ import '../widgets/common.dart';
 /// The places that aren't a chat, as icons under the New chat button.
 const _tools = <({Destination d, IconData icon, String label})>[
   (d: Destination.devices, icon: Icons.devices_outlined, label: 'Devices'),
+  (d: Destination.jobs, icon: Icons.play_circle_outline_rounded, label: 'Jobs'),
   (d: Destination.activity, icon: Icons.history_rounded, label: 'History'),
   (d: Destination.files, icon: Icons.folder_open_outlined, label: 'Files'),
   (d: Destination.routines, icon: Icons.auto_awesome_outlined, label: 'Routines'),

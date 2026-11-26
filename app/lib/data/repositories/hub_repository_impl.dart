@@ -289,6 +289,9 @@ class HubRepositoryImpl implements HubRepository {
         lastSeen: n.lastSeen,
         capabilities: n.capabilities,
         checks: n.checks,
+        gpus: n.gpus,
+        memoryBytes: n.memoryBytes,
+        cpus: n.cpus,
       );
 
   /// Keeps sessions that are working subscribed even when no screen shows

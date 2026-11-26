@@ -18,9 +18,10 @@ One SQLite file on the hub (flag `-db`, default `tether.db` in the hub's working
 | `artifacts` | files kept on the hub: name, mime, size, sha256, session, node, origin, created_ms | plain; the bytes are in the hub's data folder |
 | `codebases`, `snapshots`, `codebase_env` | codebases the agents snapshot, and their sealed .env files | `info` blobs; env files are AES-GCM sealed, never read them |
 | `project_files`, `project_nodes`, `chat_remote` | remote projects: the sealed vault files, which devices may receive them, and the sync state per chat | plain except `sealed` |
+| `jobs` | jobs agents run for the hub: id, node, name, cwd, command, state (starting, running, paused, exited, failed, stopped, lost), started_ms, ended_ms, exit_code, port, info (blob: Job) | plain columns; secrets are never stored, only references to the project's sealed files |
 | `devices` | paired apps and agents: id, token hash, info (blob) | never expose token hashes |
-| `nodes` | last status each agent reported (blob: NodeStatus: os, capabilities, versions) | |
 | `kv` | small values by key: the skills library, `rules`, `insights` (saved analyses), workspace roots, update state | JSON for skills, rules and insights |
+| `nodes` | last status each agent reported (blob: NodeStatus: os, capabilities, GPUs, memory, CPUs, versions) | |
 | `history_files`, `history_events`, `history_resets` | the history index of sessions (what was said, when) | plain; used for search and for finding repeated routines |
 
 ## Reading it well

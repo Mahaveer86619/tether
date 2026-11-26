@@ -21,6 +21,9 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       ip: n.ip,
       capabilities: n.capabilities,
       checks: [for (final c in n.checks) DoctorCheck(id: c.id, label: c.label, ok: c.ok, detail: c.detail, required: c.required)],
+      gpus: [for (final g in n.gpus) Gpu(name: g.name, memoryBytes: g.memoryBytes.toInt())],
+      memoryBytes: n.memoryBytes.toInt(),
+      cpus: n.cpus,
     );
 
 SessionState _state(pbe.SessionState s) => switch (s) {

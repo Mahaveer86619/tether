@@ -6,6 +6,9 @@ import 'package:flutter/material.dart' show ThemeMode;
 
 import '../../core/version.dart';
 import '../../gen/tether/v1/render.pb.dart' as render;
+import 'jobs.dart';
+
+export 'jobs.dart';
 
 // The timeline's render types (items, Markdown blocks, tool cards) are the
 // wire contract's own vocabulary and are used as domain value objects as-is;
@@ -28,7 +31,14 @@ class Node extends Equatable {
     this.ip = '',
     this.capabilities = const [],
     this.checks = const [],
+    this.gpus = const [],
+    this.memoryBytes = 0,
+    this.cpus = 0,
   });
+
+  /// The machine's hardware, for placing work; 0 when not reported.
+  final List<Gpu> gpus;
+  final int memoryBytes, cpus;
 
   final String name;
   final bool online;
@@ -51,7 +61,7 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks, gpus, memoryBytes, cpus];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }

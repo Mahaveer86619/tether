@@ -44,13 +44,13 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
 
 ## Views
 
-- **Navigation** (`nav/nav_cubit.dart`): one `NavCubit` holds where the app is: the destination (Home, Devices, Activity, Files, Routines, Usage, Settings), the screens open on top of it (a chat, a new chat, a session, a device), and a history for Back (up to 50 steps). Every layout renders from it, and every screen moves through it; no screen keeps navigation state of its own.
+- **Navigation** (`nav/nav_cubit.dart`): one `NavCubit` holds where the app is: the destination (Home, Devices, Jobs, Activity, Files, Routines, Usage, Settings), the screens open on top of it (a chat, a new chat, a session, a device), and a history for Back (up to 50 steps). Every layout renders from it, and every screen moves through it; no screen keeps navigation state of its own.
   - Back (the phone's back button, a back arrow, Esc outside a chat or session, the mouse's back button) restores the previous state. With no history it closes the top screen, then returns to Chats; on Chats with nothing open, the phone's back leaves the app.
   - Opening a session that is a chat's active session opens the chat, so you stay in the conversation. Other sessions open on their own.
   - A new chat becomes its chat in place, so Back skips the empty composer.
 - **Layouts** (`home/shell.dart`), by window width:
   - **Home is where a chat starts** (`chats/new_chat_page.dart`): a greeting, the folders you work in as chips, what needs you or is running, and the message box at the bottom, as in a chat app. A switch in the header (`home/home_toggle.dart`), **New | Chats**, goes between it and the list of every chat.
-  - **The sidebar** (`home/sidebar.dart`) holds a New chat button, icons for Devices, History, Files, Routines and Usage, then three sections (see [Sidebar](#sidebar)), then the connection line and Settings.
+  - **The sidebar** (`home/sidebar.dart`) holds a New chat button, icons for Devices, Jobs, History, Files, Routines and Usage, then three sections (see [Sidebar](#sidebar)), then the connection line and Settings.
   - **Under 600 px (phones):** no bottom bar; the sidebar is a drawer opened from the header's menu button, and closes when you choose something. Chats, sessions, new chats and devices open as pages on top, through a `Navigator` built from the nav state, so the system back button and the state can't disagree. Places other than Home and Chats open with a back arrow.
   - **600 px and wider:** the sidebar sits beside the main pane, open from 1000 px and folded away below that; its button folds it, and a strip with a menu button, New chat and Settings stays.
 - **Chats** (`chats/`; see [chats.md](chats.md)):
@@ -95,6 +95,7 @@ Dependencies are wired with `get_it` in `lib/injection.dart`. Data sources, repo
   - The new-session form switches between **Existing project** and **New project** (a root, a name, and the path it will create).
   - A suggested root that gets used is remembered.
   - **Settings → Codebases** lists each folder directly in a root as a codebase, by device: when the hub last copied it, its size and branch, why the last copy failed if it did, its `.env` files as key names (expand a codebase), and **Snapshot now**. See [plan.md](../plans/plan.md#codebases-on-the-hub).
+- **Jobs** (`jobs/`, from the sidebar and the Devices page): the jobs the devices run for the hub ([jobs.md](jobs.md)), live ones first, each with a state chip. `JobsRepository` reads them over REST and follows the hub's `job` frames from the socket; `JobsCubit` keeps the list and re-reads the selected job's log tail every 2 seconds. A job's detail has Stop, Pause or Resume, Restart (Start again once it ended) and Remove, the server's address as a link, and a note that a paused job keeps its memory and GPU memory and that its connections may time out. **New job** asks for the device, folder and command, and optionally a name, a port, a restart policy, a sealed setup file for secrets, and whether it needs the GPU. Devices show their hardware (GPUs, memory, CPUs) on their card and page.
 - **Usage:** the sidebar's **Usage** page (an icon in the phone's header) has three parts.
   - **Claude plan:** first, the limits Claude Code's `/usage` reports, with a bar, percentage and reset time each. Machines on the same account share one card; reset times within 5 minutes count as the same account. If the limits can't be read, the card shows the raw text.
   - **Machines:** counted tokens per machine for the last 5 hours, today and 7 days. Counted means input + output + cache writes.

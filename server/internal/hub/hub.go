@@ -135,6 +135,10 @@ type Hub struct {
 	chats  map[string]*v1.Chat
 	chatOf map[string]string // session -> the chat it's in
 
+	jobs     map[string]*v1.Job
+	jobLogs  map[string][]string // job -> the newest lines of its output
+	jobNodes map[string]bool     // nodes whose agent runs jobs, see jobs.go
+
 	update       *v1.UpdateManifest     // the newest release known
 	agentUpdates map[string]agentUpdate // node -> the update last asked of it
 }
@@ -169,6 +173,9 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		chats:        map[string]*v1.Chat{},
 		chatOf:       map[string]string{},
 		agentUpdates: map[string]agentUpdate{},
+		jobs:         map[string]*v1.Job{},
+		jobLogs:      map[string][]string{},
+		jobNodes:     map[string]bool{},
 	}
 	devices, err := st.Devices()
 	if err != nil {
@@ -203,6 +210,9 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		h.sessions[s.Id] = s
 	}
 	if err := h.loadChats(); err != nil {
+		return nil, err
+	}
+	if err := h.loadJobs(); err != nil {
 		return nil, err
 	}
 	h.loadLocalUpdate()
@@ -664,6 +674,7 @@ func (h *Hub) serveAgent(conn *wire.Conn, st *v1.NodeStatus, device, ip string) 
 }
 
 func (h *Hub) dropNode(node string) {
+	delete(h.jobNodes, node)
 	for s := range h.mirroring {
 		if info := h.sessions[s]; info != nil && info.Node == node {
 			delete(h.mirroring, s)
@@ -738,6 +749,10 @@ func (h *Hub) onAgent(node string, f *v1.Frame) {
 		h.noteModeResult(node, b.ModeResult)
 	case *v1.Frame_SyncResult:
 		h.noteSyncResult(b.SyncResult)
+	case *v1.Frame_JobReport:
+		h.noteJobReport(node, b.JobReport)
+	case *v1.Frame_JobLog:
+		h.noteJobLog(node, b.JobLog)
 	case *v1.Frame_CommandResult:
 		h.noteCommandResult(node, b.CommandResult)
 	case *v1.Frame_HistoryChunk:

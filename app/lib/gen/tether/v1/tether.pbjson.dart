@@ -69,6 +69,28 @@ final $typed_data.Uint8List decisionDescriptor = $convert.base64Decode(
     'CghEZWNpc2lvbhIYChRERUNJU0lPTl9VTlNQRUNJRklFRBAAEhIKDkRFQ0lTSU9OX0FMTE9XEA'
     'ESEQoNREVDSVNJT05fREVOWRAC');
 
+@$core.Deprecated('Use jobStateDescriptor instead')
+const JobState$json = {
+  '1': 'JobState',
+  '2': [
+    {'1': 'JOB_STATE_UNSPECIFIED', '2': 0},
+    {'1': 'JOB_STATE_STARTING', '2': 1},
+    {'1': 'JOB_STATE_RUNNING', '2': 2},
+    {'1': 'JOB_STATE_PAUSED', '2': 3},
+    {'1': 'JOB_STATE_EXITED', '2': 4},
+    {'1': 'JOB_STATE_FAILED', '2': 5},
+    {'1': 'JOB_STATE_STOPPED', '2': 6},
+    {'1': 'JOB_STATE_LOST', '2': 7},
+  ],
+};
+
+/// Descriptor for `JobState`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List jobStateDescriptor = $convert.base64Decode(
+    'CghKb2JTdGF0ZRIZChVKT0JfU1RBVEVfVU5TUEVDSUZJRUQQABIWChJKT0JfU1RBVEVfU1RBUl'
+    'RJTkcQARIVChFKT0JfU1RBVEVfUlVOTklORxACEhQKEEpPQl9TVEFURV9QQVVTRUQQAxIUChBK'
+    'T0JfU1RBVEVfRVhJVEVEEAQSFAoQSk9CX1NUQVRFX0ZBSUxFRBAFEhUKEUpPQl9TVEFURV9TVE'
+    '9QUEVEEAYSEgoOSk9CX1NUQVRFX0xPU1QQBw==');
+
 @$core.Deprecated('Use frameDescriptor instead')
 const Frame$json = {
   '1': 'Frame',
@@ -294,6 +316,15 @@ const Frame$json = {
       '10': 'notifyEndpoint'
     },
     {
+      '1': 'job',
+      '3': 44,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.Job',
+      '9': 0,
+      '10': 'job'
+    },
+    {
       '1': 'agent_hello',
       '3': 50,
       '4': 1,
@@ -393,6 +424,24 @@ const Frame$json = {
       '10': 'syncResult'
     },
     {
+      '1': 'job_report',
+      '3': 62,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.JobReport',
+      '9': 0,
+      '10': 'jobReport'
+    },
+    {
+      '1': 'job_log',
+      '3': 63,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.JobLog',
+      '9': 0,
+      '10': 'jobLog'
+    },
+    {
       '1': 'agent_command',
       '3': 60,
       '4': 1,
@@ -436,21 +485,23 @@ final $typed_data.Uint8List frameDescriptor = $convert.base64Decode(
     'Ey50ZXRoZXIudjEuQXJ0aWZhY3RIAFINYXJ0aWZhY3RBZGRlZBIlCgRjaGF0GCkgASgLMg8udG'
     'V0aGVyLnYxLkNoYXRIAFIEY2hhdBJGChB1cGRhdGVfYXZhaWxhYmxlGCogASgLMhkudGV0aGVy'
     'LnYxLlVwZGF0ZU1hbmlmZXN0SABSD3VwZGF0ZUF2YWlsYWJsZRJECg9ub3RpZnlfZW5kcG9pbn'
-    'QYKyABKAsyGS50ZXRoZXIudjEuTm90aWZ5RW5kcG9pbnRIAFIObm90aWZ5RW5kcG9pbnQSOAoL'
-    'YWdlbnRfaGVsbG8YMiABKAsyFS50ZXRoZXIudjEuQWdlbnRIZWxsb0gAUgphZ2VudEhlbGxvEj'
-    '4KDXNlc3Npb25faW5kZXgYMyABKAsyFy50ZXRoZXIudjEuU2Vzc2lvbkluZGV4SABSDHNlc3Np'
-    'b25JbmRleBI1CgpyYXdfZXZlbnRzGDQgASgLMhQudGV0aGVyLnYxLlJhd0V2ZW50c0gAUglyYX'
-    'dFdmVudHMSOwoMdXNhZ2VfcmVwb3J0GDUgASgLMhYudGV0aGVyLnYxLlVzYWdlUmVwb3J0SABS'
-    'C3VzYWdlUmVwb3J0EjUKCnBsYW5fdXNhZ2UYNiABKAsyFC50ZXRoZXIudjEuUGxhblVzYWdlSA'
-    'BSCXBsYW5Vc2FnZRJECg9zY3JlZW5fc25hcHNob3QYNyABKAsyGS50ZXRoZXIudjEuU2NyZWVu'
-    'U25hcHNob3RIAFIOc2NyZWVuU25hcHNob3QSOAoLbW9kZV9yZXN1bHQYOCABKAsyFS50ZXRoZX'
-    'IudjEuTW9kZVJlc3VsdEgAUgptb2RlUmVzdWx0EkEKDmNvbW1hbmRfcmVzdWx0GDkgASgLMhgu'
-    'dGV0aGVyLnYxLkNvbW1hbmRSZXN1bHRIAFINY29tbWFuZFJlc3VsdBI+Cg1oaXN0b3J5X2NodW'
-    '5rGDogASgLMhcudGV0aGVyLnYxLkhpc3RvcnlDaHVua0gAUgxoaXN0b3J5Q2h1bmsSQQoOaGlz'
-    'dG9yeV9zeW5jZWQYOyABKAsyGC50ZXRoZXIudjEuSGlzdG9yeVN5bmNlZEgAUg1oaXN0b3J5U3'
-    'luY2VkEjgKC3N5bmNfcmVzdWx0GD0gASgLMhUudGV0aGVyLnYxLlN5bmNSZXN1bHRIAFIKc3lu'
-    'Y1Jlc3VsdBI+Cg1hZ2VudF9jb21tYW5kGDwgASgLMhcudGV0aGVyLnYxLkFnZW50Q29tbWFuZE'
-    'gAUgxhZ2VudENvbW1hbmRCBgoEYm9keQ==');
+    'QYKyABKAsyGS50ZXRoZXIudjEuTm90aWZ5RW5kcG9pbnRIAFIObm90aWZ5RW5kcG9pbnQSIgoD'
+    'am9iGCwgASgLMg4udGV0aGVyLnYxLkpvYkgAUgNqb2ISOAoLYWdlbnRfaGVsbG8YMiABKAsyFS'
+    '50ZXRoZXIudjEuQWdlbnRIZWxsb0gAUgphZ2VudEhlbGxvEj4KDXNlc3Npb25faW5kZXgYMyAB'
+    'KAsyFy50ZXRoZXIudjEuU2Vzc2lvbkluZGV4SABSDHNlc3Npb25JbmRleBI1CgpyYXdfZXZlbn'
+    'RzGDQgASgLMhQudGV0aGVyLnYxLlJhd0V2ZW50c0gAUglyYXdFdmVudHMSOwoMdXNhZ2VfcmVw'
+    'b3J0GDUgASgLMhYudGV0aGVyLnYxLlVzYWdlUmVwb3J0SABSC3VzYWdlUmVwb3J0EjUKCnBsYW'
+    '5fdXNhZ2UYNiABKAsyFC50ZXRoZXIudjEuUGxhblVzYWdlSABSCXBsYW5Vc2FnZRJECg9zY3Jl'
+    'ZW5fc25hcHNob3QYNyABKAsyGS50ZXRoZXIudjEuU2NyZWVuU25hcHNob3RIAFIOc2NyZWVuU2'
+    '5hcHNob3QSOAoLbW9kZV9yZXN1bHQYOCABKAsyFS50ZXRoZXIudjEuTW9kZVJlc3VsdEgAUgpt'
+    'b2RlUmVzdWx0EkEKDmNvbW1hbmRfcmVzdWx0GDkgASgLMhgudGV0aGVyLnYxLkNvbW1hbmRSZX'
+    'N1bHRIAFINY29tbWFuZFJlc3VsdBI+Cg1oaXN0b3J5X2NodW5rGDogASgLMhcudGV0aGVyLnYx'
+    'Lkhpc3RvcnlDaHVua0gAUgxoaXN0b3J5Q2h1bmsSQQoOaGlzdG9yeV9zeW5jZWQYOyABKAsyGC'
+    '50ZXRoZXIudjEuSGlzdG9yeVN5bmNlZEgAUg1oaXN0b3J5U3luY2VkEjgKC3N5bmNfcmVzdWx0'
+    'GD0gASgLMhUudGV0aGVyLnYxLlN5bmNSZXN1bHRIAFIKc3luY1Jlc3VsdBI1Cgpqb2JfcmVwb3'
+    'J0GD4gASgLMhQudGV0aGVyLnYxLkpvYlJlcG9ydEgAUglqb2JSZXBvcnQSLAoHam9iX2xvZxg/'
+    'IAEoCzIRLnRldGhlci52MS5Kb2JMb2dIAFIGam9iTG9nEj4KDWFnZW50X2NvbW1hbmQYPCABKA'
+    'syFy50ZXRoZXIudjEuQWdlbnRDb21tYW5kSABSDGFnZW50Q29tbWFuZEIGCgRib2R5');
 
 @$core.Deprecated('Use nodeStatusDescriptor instead')
 const NodeStatus$json = {
@@ -481,6 +532,16 @@ const NodeStatus$json = {
       '6': '.tether.v1.DoctorCheck',
       '10': 'checks'
     },
+    {
+      '1': 'gpus',
+      '3': 13,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.Gpu',
+      '10': 'gpus'
+    },
+    {'1': 'memory_bytes', '3': 14, '4': 1, '5': 3, '10': 'memoryBytes'},
+    {'1': 'cpus', '3': 15, '4': 1, '5': 5, '10': 'cpus'},
   ],
 };
 
@@ -493,7 +554,22 @@ final $typed_data.Uint8List nodeStatusDescriptor = $convert.base64Decode(
     'c2Vzc2lvbnMYCCABKAVSD3J1bm5pbmdTZXNzaW9ucxIOCgJpcBgJIAEoCVICaXASKgoRaGlzdG'
     '9yeV9zeW5jZWRfbXMYCiABKANSD2hpc3RvcnlTeW5jZWRNcxIiCgxjYXBhYmlsaXRpZXMYCyAD'
     'KAlSDGNhcGFiaWxpdGllcxIuCgZjaGVja3MYDCADKAsyFi50ZXRoZXIudjEuRG9jdG9yQ2hlY2'
-    'tSBmNoZWNrcw==');
+    'tSBmNoZWNrcxIiCgRncHVzGA0gAygLMg4udGV0aGVyLnYxLkdwdVIEZ3B1cxIhCgxtZW1vcnlf'
+    'Ynl0ZXMYDiABKANSC21lbW9yeUJ5dGVzEhIKBGNwdXMYDyABKAVSBGNwdXM=');
+
+@$core.Deprecated('Use gpuDescriptor instead')
+const Gpu$json = {
+  '1': 'Gpu',
+  '2': [
+    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'memory_bytes', '3': 2, '4': 1, '5': 3, '10': 'memoryBytes'},
+  ],
+};
+
+/// Descriptor for `Gpu`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List gpuDescriptor = $convert.base64Decode(
+    'CgNHcHUSEgoEbmFtZRgBIAEoCVIEbmFtZRIhCgxtZW1vcnlfYnl0ZXMYAiABKANSC21lbW9yeU'
+    'J5dGVz');
 
 @$core.Deprecated('Use doctorCheckDescriptor instead')
 const DoctorCheck$json = {
@@ -1326,8 +1402,18 @@ const AgentCommand$json = {
       '9': 0,
       '10': 'syncProject'
     },
+    {
+      '1': 'job',
+      '3': 20,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.AgentCommand.JobCommand',
+      '9': 0,
+      '10': 'job'
+    },
   ],
   '3': [
+    AgentCommand_JobCommand$json,
     AgentCommand_SyncProject$json,
     AgentCommand_StartRun$json,
     AgentCommand_SendInput$json,
@@ -1350,6 +1436,42 @@ const AgentCommand$json = {
   '8': [
     {'1': 'op'},
   ],
+};
+
+@$core.Deprecated('Use agentCommandDescriptor instead')
+const AgentCommand_JobCommand$json = {
+  '1': 'JobCommand',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'action', '3': 2, '4': 1, '5': 9, '10': 'action'},
+    {
+      '1': 'spec',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.JobSpec',
+      '10': 'spec'
+    },
+    {
+      '1': 'secret_env',
+      '3': 4,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.AgentCommand.JobCommand.SecretEnvEntry',
+      '10': 'secretEnv'
+    },
+  ],
+  '3': [AgentCommand_JobCommand_SecretEnvEntry$json],
+};
+
+@$core.Deprecated('Use agentCommandDescriptor instead')
+const AgentCommand_JobCommand_SecretEnvEntry$json = {
+  '1': 'SecretEnvEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
 };
 
 @$core.Deprecated('Use agentCommandDescriptor instead')
@@ -1618,41 +1740,46 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'MudGV0aGVyLnYxLkFnZW50Q29tbWFuZC5TeW5jSGlzdG9yeUgAUgtzeW5jSGlzdG9yeRJFCgto'
     'aXN0b3J5X2FjaxgSIAEoCzIiLnRldGhlci52MS5BZ2VudENvbW1hbmQuSGlzdG9yeUFja0gAUg'
     'poaXN0b3J5QWNrEkgKDHN5bmNfcHJvamVjdBgTIAEoCzIjLnRldGhlci52MS5BZ2VudENvbW1h'
-    'bmQuU3luY1Byb2plY3RIAFILc3luY1Byb2plY3QapwEKC1N5bmNQcm9qZWN0Eg4KAmlkGAEgAS'
-    'gJUgJpZBISCgRjaGF0GAIgASgJUgRjaGF0EhwKCWRpcmVjdGlvbhgDIAEoCVIJZGlyZWN0aW9u'
-    'EhAKA2N3ZBgEIAEoCVIDY3dkEhIKBHJlcG8YBSABKAlSBHJlcG8SFgoGYnJhbmNoGAYgASgJUg'
-    'ZicmFuY2gSGAoHZXhjbHVkZRgHIAMoCVIHZXhjbHVkZRrnAwoIU3RhcnRSdW4SGAoHc2Vzc2lv'
-    'bhgBIAEoCVIHc2Vzc2lvbhIQCgNjd2QYAiABKAlSA2N3ZBIWCgZwcm9tcHQYAyABKAlSBnByb2'
-    '1wdBIUCgVtb2RlbBgEIAEoCVIFbW9kZWwSJwoPcGVybWlzc2lvbl9tb2RlGAUgASgJUg5wZXJt'
-    'aXNzaW9uTW9kZRISCgRuYW1lGAYgASgJUgRuYW1lEhYKBnJlc3VtZRgHIAEoCVIGcmVzdW1lEh'
-    'IKBGZvcmsYCCABKAhSBGZvcmsSHQoKY3JlYXRlX2N3ZBgJIAEoCFIJY3JlYXRlQ3dkEjUKC2F0'
-    'dGFjaG1lbnRzGAogAygLMhMudGV0aGVyLnYxLkFydGlmYWN0UgthdHRhY2htZW50cxIYCgdzY3'
-    'JhdGNoGAsgASgIUgdzY3JhdGNoEi0KEnJlc3RvcmVfdHJhbnNjcmlwdBgMIAEoCVIRcmVzdG9y'
-    'ZVRyYW5zY3JpcHQSKQoQcmVzdG9yZV9jb2RlYmFzZRgNIAEoCVIPcmVzdG9yZUNvZGViYXNlEi'
-    'kKEHJlc3RvcmVfc25hcHNob3QYDiABKAlSD3Jlc3RvcmVTbmFwc2hvdBIjCg1zeXN0ZW1fcHJv'
-    'bXB0GA8gASgJUgxzeXN0ZW1Qcm9tcHQavgEKCVNlbmRJbnB1dBIYCgdzZXNzaW9uGAEgASgJUg'
-    'dzZXNzaW9uEhIKBHRleHQYAiABKAlSBHRleHQSNQoLYXR0YWNobWVudHMYAyADKAsyEy50ZXRo'
-    'ZXIudjEuQXJ0aWZhY3RSC2F0dGFjaG1lbnRzEicKD3Blcm1pc3Npb25fbW9kZRgEIAEoCVIOcG'
-    'VybWlzc2lvbk1vZGUSIwoNc3lzdGVtX3Byb21wdBgFIAEoCVIMc3lzdGVtUHJvbXB0GkcKC1N5'
-    'bmNIaXN0b3J5EjgKCXBvc2l0aW9ucxgBIAMoCzIaLnRldGhlci52MS5IaXN0b3J5UG9zaXRpb2'
-    '5SCXBvc2l0aW9ucxpSCgpIaXN0b3J5QWNrEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEgoE'
-    'ZmlsZRgCIAEoCVIEZmlsZRIWCgZvZmZzZXQYAyABKANSBm9mZnNldBpUCgpTZWxmVXBkYXRlEh'
-    'gKB3ZlcnNpb24YASABKAlSB3ZlcnNpb24SLAoFYXNzZXQYAiABKAsyFi50ZXRoZXIudjEuVXBk'
-    'YXRlQXNzZXRSBWFzc2V0GjcKB1NldE1vZGUSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCg'
-    'Rtb2RlGAIgASgJUgRtb2RlGiUKCUludGVycnVwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u'
-    'GkMKBk1pcnJvchIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEh8KC2Zyb21fb2Zmc2V0GAIgAS'
-    'gDUgpmcm9tT2Zmc2V0GiYKClN0b3BNaXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhog'
-    'CgRTdG9wEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aIgoGRm9yZ2V0EhgKB3Nlc3Npb24YAS'
-    'ABKAlSB3Nlc3Npb24aLAoQVXBsb2FkVHJhbnNjcmlwdBIYCgdzZXNzaW9uGAEgASgJUgdzZXNz'
-    'aW9uGl0KEFNuYXBzaG90Q29kZWJhc2USLwoIY29kZWJhc2UYASABKAsyEy50ZXRoZXIudjEuQ2'
-    '9kZWJhc2VSCGNvZGViYXNlEhgKB3Nlc3Npb24YAiABKAlSB3Nlc3Npb24aJQoNU2NhbkNvZGVi'
-    'YXNlcxIUCgVyb290cxgBIAMoCVIFcm9vdHMaKQoNQ2FwdHVyZVNjcmVlbhIYCgdzZXNzaW9uGA'
-    'EgASgJUgdzZXNzaW9uGpcBCg5CYWNrdXBTZXNzaW9ucxJKCgZzdG9yZWQYASADKAsyMi50ZXRo'
-    'ZXIudjEuQWdlbnRDb21tYW5kLkJhY2t1cFNlc3Npb25zLlN0b3JlZEVudHJ5UgZzdG9yZWQaOQ'
-    'oLU3RvcmVkRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKANSBXZhbHVlOgI4'
-    'ARpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIQCgNjd2QYAi'
-    'ABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhlci52MS5BcnRpZmFjdFIIYXJ0aWZh'
-    'Y3RCBAoCb3A=');
+    'bmQuU3luY1Byb2plY3RIAFILc3luY1Byb2plY3QSNgoDam9iGBQgASgLMiIudGV0aGVyLnYxLk'
+    'FnZW50Q29tbWFuZC5Kb2JDb21tYW5kSABSA2pvYhrsAQoKSm9iQ29tbWFuZBIOCgJpZBgBIAEo'
+    'CVICaWQSFgoGYWN0aW9uGAIgASgJUgZhY3Rpb24SJgoEc3BlYxgDIAEoCzISLnRldGhlci52MS'
+    '5Kb2JTcGVjUgRzcGVjElAKCnNlY3JldF9lbnYYBCADKAsyMS50ZXRoZXIudjEuQWdlbnRDb21t'
+    'YW5kLkpvYkNvbW1hbmQuU2VjcmV0RW52RW50cnlSCXNlY3JldEVudho8Cg5TZWNyZXRFbnZFbn'
+    'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgBGqcBCgtTeW5j'
+    'UHJvamVjdBIOCgJpZBgBIAEoCVICaWQSEgoEY2hhdBgCIAEoCVIEY2hhdBIcCglkaXJlY3Rpb2'
+    '4YAyABKAlSCWRpcmVjdGlvbhIQCgNjd2QYBCABKAlSA2N3ZBISCgRyZXBvGAUgASgJUgRyZXBv'
+    'EhYKBmJyYW5jaBgGIAEoCVIGYnJhbmNoEhgKB2V4Y2x1ZGUYByADKAlSB2V4Y2x1ZGUa5wMKCF'
+    'N0YXJ0UnVuEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEAoDY3dkGAIgASgJUgNjd2QSFgoG'
+    'cHJvbXB0GAMgASgJUgZwcm9tcHQSFAoFbW9kZWwYBCABKAlSBW1vZGVsEicKD3Blcm1pc3Npb2'
+    '5fbW9kZRgFIAEoCVIOcGVybWlzc2lvbk1vZGUSEgoEbmFtZRgGIAEoCVIEbmFtZRIWCgZyZXN1'
+    'bWUYByABKAlSBnJlc3VtZRISCgRmb3JrGAggASgIUgRmb3JrEh0KCmNyZWF0ZV9jd2QYCSABKA'
+    'hSCWNyZWF0ZUN3ZBI1CgthdHRhY2htZW50cxgKIAMoCzITLnRldGhlci52MS5BcnRpZmFjdFIL'
+    'YXR0YWNobWVudHMSGAoHc2NyYXRjaBgLIAEoCFIHc2NyYXRjaBItChJyZXN0b3JlX3RyYW5zY3'
+    'JpcHQYDCABKAlSEXJlc3RvcmVUcmFuc2NyaXB0EikKEHJlc3RvcmVfY29kZWJhc2UYDSABKAlS'
+    'D3Jlc3RvcmVDb2RlYmFzZRIpChByZXN0b3JlX3NuYXBzaG90GA4gASgJUg9yZXN0b3JlU25hcH'
+    'Nob3QSIwoNc3lzdGVtX3Byb21wdBgPIAEoCVIMc3lzdGVtUHJvbXB0Gr4BCglTZW5kSW5wdXQS'
+    'GAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCgR0ZXh0GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG'
+    '1lbnRzGAMgAygLMhMudGV0aGVyLnYxLkFydGlmYWN0UgthdHRhY2htZW50cxInCg9wZXJtaXNz'
+    'aW9uX21vZGUYBCABKAlSDnBlcm1pc3Npb25Nb2RlEiMKDXN5c3RlbV9wcm9tcHQYBSABKAlSDH'
+    'N5c3RlbVByb21wdBpHCgtTeW5jSGlzdG9yeRI4Cglwb3NpdGlvbnMYASADKAsyGi50ZXRoZXIu'
+    'djEuSGlzdG9yeVBvc2l0aW9uUglwb3NpdGlvbnMaUgoKSGlzdG9yeUFjaxIYCgdzZXNzaW9uGA'
+    'EgASgJUgdzZXNzaW9uEhIKBGZpbGUYAiABKAlSBGZpbGUSFgoGb2Zmc2V0GAMgASgDUgZvZmZz'
+    'ZXQaVAoKU2VsZlVwZGF0ZRIYCgd2ZXJzaW9uGAEgASgJUgd2ZXJzaW9uEiwKBWFzc2V0GAIgAS'
+    'gLMhYudGV0aGVyLnYxLlVwZGF0ZUFzc2V0UgVhc3NldBo3CgdTZXRNb2RlEhgKB3Nlc3Npb24Y'
+    'ASABKAlSB3Nlc3Npb24SEgoEbW9kZRgCIAEoCVIEbW9kZRolCglJbnRlcnJ1cHQSGAoHc2Vzc2'
+    'lvbhgBIAEoCVIHc2Vzc2lvbhpDCgZNaXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIf'
+    'Cgtmcm9tX29mZnNldBgCIAEoA1IKZnJvbU9mZnNldBomCgpTdG9wTWlycm9yEhgKB3Nlc3Npb2'
+    '4YASABKAlSB3Nlc3Npb24aIAoEU3RvcBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiIKBkZv'
+    'cmdldBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiwKEFVwbG9hZFRyYW5zY3JpcHQSGAoHc2'
+    'Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpdChBTbmFwc2hvdENvZGViYXNlEi8KCGNvZGViYXNlGAEg'
+    'ASgLMhMudGV0aGVyLnYxLkNvZGViYXNlUghjb2RlYmFzZRIYCgdzZXNzaW9uGAIgASgJUgdzZX'
+    'NzaW9uGiUKDVNjYW5Db2RlYmFzZXMSFAoFcm9vdHMYASADKAlSBXJvb3RzGikKDUNhcHR1cmVT'
+    'Y3JlZW4SGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhqXAQoOQmFja3VwU2Vzc2lvbnMSSgoGc3'
+    'RvcmVkGAEgAygLMjIudGV0aGVyLnYxLkFnZW50Q29tbWFuZC5CYWNrdXBTZXNzaW9ucy5TdG9y'
+    'ZWRFbnRyeVIGc3RvcmVkGjkKC1N0b3JlZEVudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbH'
+    'VlGAIgASgDUgV2YWx1ZToCOAEabgoPRmV0Y2hBdHRhY2htZW50EhgKB3Nlc3Npb24YASABKAlS'
+    'B3Nlc3Npb24SEAoDY3dkGAIgASgJUgNjd2QSLwoIYXJ0aWZhY3QYAyABKAsyEy50ZXRoZXIudj'
+    'EuQXJ0aWZhY3RSCGFydGlmYWN0QgQKAm9w');
 
 @$core.Deprecated('Use codebaseDescriptor instead')
 const Codebase$json = {
@@ -3149,3 +3276,169 @@ const Heartbeat$json = {
 /// Descriptor for `Heartbeat`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List heartbeatDescriptor =
     $convert.base64Decode('CglIZWFydGJlYXQ=');
+
+@$core.Deprecated('Use envRefDescriptor instead')
+const EnvRef$json = {
+  '1': 'EnvRef',
+  '2': [
+    {'1': 'repo', '3': 1, '4': 1, '5': 9, '10': 'repo'},
+    {'1': 'file', '3': 2, '4': 1, '5': 9, '10': 'file'},
+    {'1': 'keys', '3': 3, '4': 3, '5': 9, '10': 'keys'},
+  ],
+};
+
+/// Descriptor for `EnvRef`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List envRefDescriptor = $convert.base64Decode(
+    'CgZFbnZSZWYSEgoEcmVwbxgBIAEoCVIEcmVwbxISCgRmaWxlGAIgASgJUgRmaWxlEhIKBGtleX'
+    'MYAyADKAlSBGtleXM=');
+
+@$core.Deprecated('Use jobSpecDescriptor instead')
+const JobSpec$json = {
+  '1': 'JobSpec',
+  '2': [
+    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'node', '3': 2, '4': 1, '5': 9, '10': 'node'},
+    {'1': 'cwd', '3': 3, '4': 1, '5': 9, '10': 'cwd'},
+    {'1': 'command', '3': 4, '4': 1, '5': 9, '10': 'command'},
+    {
+      '1': 'env',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.JobSpec.EnvEntry',
+      '10': 'env'
+    },
+    {
+      '1': 'env_from',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.EnvRef',
+      '10': 'envFrom'
+    },
+    {'1': 'port', '3': 7, '4': 1, '5': 5, '10': 'port'},
+    {'1': 'restart', '3': 8, '4': 1, '5': 9, '10': 'restart'},
+    {'1': 'restart_limit', '3': 9, '4': 1, '5': 5, '10': 'restartLimit'},
+    {'1': 'checkpoint', '3': 10, '4': 1, '5': 9, '10': 'checkpoint'},
+    {'1': 'needs_gpu', '3': 11, '4': 1, '5': 8, '10': 'needsGpu'},
+  ],
+  '3': [JobSpec_EnvEntry$json],
+};
+
+@$core.Deprecated('Use jobSpecDescriptor instead')
+const JobSpec_EnvEntry$json = {
+  '1': 'EnvEntry',
+  '2': [
+    {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
+    {'1': 'value', '3': 2, '4': 1, '5': 9, '10': 'value'},
+  ],
+  '7': {'7': true},
+};
+
+/// Descriptor for `JobSpec`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobSpecDescriptor = $convert.base64Decode(
+    'CgdKb2JTcGVjEhIKBG5hbWUYASABKAlSBG5hbWUSEgoEbm9kZRgCIAEoCVIEbm9kZRIQCgNjd2'
+    'QYAyABKAlSA2N3ZBIYCgdjb21tYW5kGAQgASgJUgdjb21tYW5kEi0KA2VudhgFIAMoCzIbLnRl'
+    'dGhlci52MS5Kb2JTcGVjLkVudkVudHJ5UgNlbnYSLAoIZW52X2Zyb20YBiADKAsyES50ZXRoZX'
+    'IudjEuRW52UmVmUgdlbnZGcm9tEhIKBHBvcnQYByABKAVSBHBvcnQSGAoHcmVzdGFydBgIIAEo'
+    'CVIHcmVzdGFydBIjCg1yZXN0YXJ0X2xpbWl0GAkgASgFUgxyZXN0YXJ0TGltaXQSHgoKY2hlY2'
+    'twb2ludBgKIAEoCVIKY2hlY2twb2ludBIbCgluZWVkc19ncHUYCyABKAhSCG5lZWRzR3B1GjYK'
+    'CEVudkVudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAE=');
+
+@$core.Deprecated('Use jobDescriptor instead')
+const Job$json = {
+  '1': 'Job',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {
+      '1': 'spec',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.JobSpec',
+      '10': 'spec'
+    },
+    {
+      '1': 'state',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.tether.v1.JobState',
+      '10': 'state'
+    },
+    {'1': 'created_ms', '3': 4, '4': 1, '5': 3, '10': 'createdMs'},
+    {'1': 'started_ms', '3': 5, '4': 1, '5': 3, '10': 'startedMs'},
+    {'1': 'ended_ms', '3': 6, '4': 1, '5': 3, '10': 'endedMs'},
+    {'1': 'exit_code', '3': 7, '4': 1, '5': 5, '10': 'exitCode'},
+    {'1': 'pid', '3': 8, '4': 1, '5': 5, '10': 'pid'},
+    {'1': 'restarts', '3': 9, '4': 1, '5': 5, '10': 'restarts'},
+    {'1': 'error', '3': 10, '4': 1, '5': 9, '10': 'error'},
+    {'1': 'updated_ms', '3': 11, '4': 1, '5': 3, '10': 'updatedMs'},
+    {'1': 'address', '3': 12, '4': 1, '5': 9, '10': 'address'},
+    {'1': 'by', '3': 13, '4': 1, '5': 9, '10': 'by'},
+  ],
+};
+
+/// Descriptor for `Job`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobDescriptor = $convert.base64Decode(
+    'CgNKb2ISDgoCaWQYASABKAlSAmlkEiYKBHNwZWMYAiABKAsyEi50ZXRoZXIudjEuSm9iU3BlY1'
+    'IEc3BlYxIpCgVzdGF0ZRgDIAEoDjITLnRldGhlci52MS5Kb2JTdGF0ZVIFc3RhdGUSHQoKY3Jl'
+    'YXRlZF9tcxgEIAEoA1IJY3JlYXRlZE1zEh0KCnN0YXJ0ZWRfbXMYBSABKANSCXN0YXJ0ZWRNcx'
+    'IZCghlbmRlZF9tcxgGIAEoA1IHZW5kZWRNcxIbCglleGl0X2NvZGUYByABKAVSCGV4aXRDb2Rl'
+    'EhAKA3BpZBgIIAEoBVIDcGlkEhoKCHJlc3RhcnRzGAkgASgFUghyZXN0YXJ0cxIUCgVlcnJvch'
+    'gKIAEoCVIFZXJyb3ISHQoKdXBkYXRlZF9tcxgLIAEoA1IJdXBkYXRlZE1zEhgKB2FkZHJlc3MY'
+    'DCABKAlSB2FkZHJlc3MSDgoCYnkYDSABKAlSAmJ5');
+
+@$core.Deprecated('Use jobListDescriptor instead')
+const JobList$json = {
+  '1': 'JobList',
+  '2': [
+    {'1': 'jobs', '3': 1, '4': 3, '5': 11, '6': '.tether.v1.Job', '10': 'jobs'},
+  ],
+};
+
+/// Descriptor for `JobList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobListDescriptor = $convert.base64Decode(
+    'CgdKb2JMaXN0EiIKBGpvYnMYASADKAsyDi50ZXRoZXIudjEuSm9iUgRqb2Jz');
+
+@$core.Deprecated('Use jobReportDescriptor instead')
+const JobReport$json = {
+  '1': 'JobReport',
+  '2': [
+    {'1': 'jobs', '3': 1, '4': 3, '5': 11, '6': '.tether.v1.Job', '10': 'jobs'},
+    {'1': 'full', '3': 2, '4': 1, '5': 8, '10': 'full'},
+  ],
+};
+
+/// Descriptor for `JobReport`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobReportDescriptor = $convert.base64Decode(
+    'CglKb2JSZXBvcnQSIgoEam9icxgBIAMoCzIOLnRldGhlci52MS5Kb2JSBGpvYnMSEgoEZnVsbB'
+    'gCIAEoCFIEZnVsbA==');
+
+@$core.Deprecated('Use jobLogDescriptor instead')
+const JobLog$json = {
+  '1': 'JobLog',
+  '2': [
+    {'1': 'job', '3': 1, '4': 1, '5': 9, '10': 'job'},
+    {'1': 'lines', '3': 2, '4': 3, '5': 9, '10': 'lines'},
+    {'1': 'replace', '3': 3, '4': 1, '5': 8, '10': 'replace'},
+  ],
+};
+
+/// Descriptor for `JobLog`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobLogDescriptor = $convert.base64Decode(
+    'CgZKb2JMb2cSEAoDam9iGAEgASgJUgNqb2ISFAoFbGluZXMYAiADKAlSBWxpbmVzEhgKB3JlcG'
+    'xhY2UYAyABKAhSB3JlcGxhY2U=');
+
+@$core.Deprecated('Use jobLogTailDescriptor instead')
+const JobLogTail$json = {
+  '1': 'JobLogTail',
+  '2': [
+    {'1': 'job', '3': 1, '4': 1, '5': 9, '10': 'job'},
+    {'1': 'lines', '3': 2, '4': 3, '5': 9, '10': 'lines'},
+  ],
+};
+
+/// Descriptor for `JobLogTail`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List jobLogTailDescriptor = $convert.base64Decode(
+    'CgpKb2JMb2dUYWlsEhAKA2pvYhgBIAEoCVIDam9iEhQKBWxpbmVzGAIgAygJUgVsaW5lcw==');

@@ -51,6 +51,8 @@ message Frame {
     UpdateManifest update_available = 42;
     // Where notifications can be fetched from outside the tailnet changed.
     NotifyEndpoint notify_endpoint = 43;
+    // A job was started or changed state (sent to every client).
+    Job job = 44;
 
     // Agent -> hub
     AgentHello agent_hello = 50;
@@ -73,6 +75,10 @@ message Frame {
     HistorySynced history_synced = 59;
     // How a SyncProject went (agent -> hub).
     SyncResult sync_result = 61;
+    // The node's jobs: all of them on connect (full), then each change.
+    JobReport job_report = 62;
+    // New lines of a job's output.
+    JobLog job_log = 63;
     // Also reuses approval_requested, approval_resolved (answered in the
     // terminal) and node_status (agent -> hub).
 
@@ -102,6 +108,16 @@ message NodeStatus {
   repeated string capabilities = 11;
   // What the agent checked about this machine, for the device's checklist.
   repeated DoctorCheck checks = 12;
+  // The machine's hardware, for placing work: GPUs, memory and CPU count.
+  repeated Gpu gpus = 13;
+  int64 memory_bytes = 14;
+  int32 cpus = 15;
+}
+
+message Gpu {
+  string name = 1;
+  // 0 when the agent could not tell.
+  int64 memory_bytes = 2;
 }
 
 // One thing the agent checked: is Claude Code here, are its hooks in, and so on.
@@ -466,6 +482,19 @@ message AgentCommand {
     // Push a project folder to its repository on the hub, or pull it from
     // there; answered with a SyncResult.
     SyncProject sync_project = 19;
+    // Start, stop, pause, resume or restart a job; answered with a JobReport.
+    JobCommand job = 20;
+  }
+
+  message JobCommand {
+    string id = 1;
+    // start, stop, pause, resume, restart.
+    string action = 2;
+    // For start and restart.
+    JobSpec spec = 3;
+    // Values for the spec's env_from, read from the project's sealed files
+    // by the hub. The agent keeps them in memory only, for restarts.
+    map<string, string> secret_env = 4;
   }
 
   // Keeps a remote chat's project folder in step with the hub's repository
@@ -1260,3 +1289,96 @@ message HistoryStatus {
 }
 
 message Heartbeat {}
+
+// ---- Jobs ----
+//
+// A process an agent starts and supervises: a server, a script, a training
+// run. See docs/architecture/jobs.md.
+
+enum JobState {
+  JOB_STATE_UNSPECIFIED = 0;
+  JOB_STATE_STARTING = 1;
+  JOB_STATE_RUNNING = 2;
+  JOB_STATE_PAUSED = 3;
+  // Ended by itself with exit code 0.
+  JOB_STATE_EXITED = 4;
+  // Ended by itself with another code, or could not start.
+  JOB_STATE_FAILED = 5;
+  // Ended because it was asked to.
+  JOB_STATE_STOPPED = 6;
+  // Was running when its agent went away, and is gone now.
+  JOB_STATE_LOST = 7;
+}
+
+// A key from a project's sealed setup file (PUT /api/v1/projects/{repo}/files),
+// put into a job's environment when it starts.
+message EnvRef {
+  string repo = 1;
+  // The file's path in the project, e.g. ".env".
+  string file = 2;
+  // The keys to take; empty takes every key in the file.
+  repeated string keys = 3;
+}
+
+message JobSpec {
+  string name = 1;
+  string node = 2;
+  string cwd = 3;
+  // Run by the platform's shell (sh -c, cmd /c).
+  string command = 4;
+  // Plain values, kept with the job; secrets go in env_from.
+  map<string, string> env = 5;
+  repeated EnvRef env_from = 6;
+  // A server's port: the app links to it over the tailnet.
+  int32 port = 7;
+  // never (default), on-failure or always.
+  string restart = 8;
+  // Restarts at most this many times; 0 means 5.
+  int32 restart_limit = 9;
+  // Run in cwd before a stop, to let the job save its state.
+  string checkpoint = 10;
+  // Needs a machine with a GPU.
+  bool needs_gpu = 11;
+}
+
+message Job {
+  string id = 1;
+  JobSpec spec = 2;
+  JobState state = 3;
+  int64 created_ms = 4;
+  int64 started_ms = 5;
+  int64 ended_ms = 6;
+  int32 exit_code = 7;
+  int32 pid = 8;
+  int32 restarts = 9;
+  // Why it failed or was lost.
+  string error = 10;
+  int64 updated_ms = 11;
+  // http://<machine>:<port> on the tailnet, set by the hub for a job with a port.
+  string address = 12;
+  // Who started it: an app's name, or the MCP.
+  string by = 13;
+}
+
+message JobList {
+  repeated Job jobs = 1;
+}
+
+message JobReport {
+  repeated Job jobs = 1;
+  // Every job the agent has; the hub marks the node's others lost.
+  bool full = 2;
+}
+
+message JobLog {
+  string job = 1;
+  repeated string lines = 2;
+  // The lines are the log's tail so far, not new ones: they replace what the hub has.
+  bool replace = 3;
+}
+
+// GET /api/v1/jobs/{id}/logs?tail=N
+message JobLogTail {
+  string job = 1;
+  repeated string lines = 2;
+}

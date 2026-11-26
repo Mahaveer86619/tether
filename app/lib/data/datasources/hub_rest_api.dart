@@ -205,6 +205,17 @@ class HubRestApi {
 
   Future<pb.UsageSummary> usage() => _get('/usage', pb.UsageSummary());
 
+  Future<pb.JobList> jobs() => _get('/jobs', pb.JobList());
+
+  Future<pb.Job> startJob(pb.JobSpec spec) => _post('/jobs', spec, pb.Job());
+
+  Future<void> jobAction(String job, String action) => _post('/jobs/${Uri.encodeComponent(job)}/$action', null, pb.Job());
+
+  Future<void> forgetJob(String job) => _send(() => _client.delete(_endpoint.api('/jobs/${Uri.encodeComponent(job)}'), headers: _headers), pb.Ack());
+
+  Future<pb.JobLogTail> jobLogs(String job, {int tail = 200}) =>
+      _get('/jobs/${Uri.encodeComponent(job)}/logs', pb.JobLogTail(), query: {'tail': '$tail'});
+
   /// The skills library: proposals waiting for approval and approved skills.
   Future<Map<String, dynamic>> skills() => _jsonMap(() => _client.get(_endpoint.api('/skills'), headers: _headers));
 

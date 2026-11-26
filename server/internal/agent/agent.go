@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
+	"github.com/Mahaveer86619/tether/server/internal/jobs"
 	"github.com/Mahaveer86619/tether/server/internal/wire"
 )
 
@@ -93,6 +94,8 @@ type Agent struct {
 	reported      map[string]*v1.SessionInfo
 	claudeV       string
 	capabilities  []string // tools found on this machine, see capabilities.go
+	hardware      hardware
+	jobs          *jobs.Supervisor
 	mcpState      string   // "ok", or why the hub's MCP server is not registered; see doctor.go
 	brainState    int      // 0 not looked at yet, 1 the hub has a second brain and it is registered, 2 it has none
 }
@@ -134,6 +137,8 @@ func New(cfg Config) (*Agent, error) {
 func (a *Agent) Run(ctx context.Context) error {
 	a.claudeV = claudeVersion(a.cfg.Claude)
 	a.probeCapabilities()
+	go a.probeHardware()
+	a.startJobs()
 	if a.cfg.HookAddr != "" {
 		if err := a.serveHooks(a.cfg.HookAddr); err != nil {
 			return err
@@ -200,6 +205,7 @@ func (a *Agent) session(ctx context.Context) error {
 	a.log.Info("connected to hub", "url", a.cfg.HubURL)
 	a.commitUpdate()
 	a.publish(true)
+	a.publishJobs()
 	go a.checkPlan(ctx)
 
 	go func() {
@@ -225,12 +231,12 @@ func (a *Agent) status() *v1.NodeStatus {
 	host, _ := os.Hostname()
 	a.mu.Lock()
 	running := int32(len(a.runs) + len(a.panes))
-	caps := a.capabilities
+	caps, hw := a.capabilities, a.hardware
 	a.mu.Unlock()
 	return &v1.NodeStatus{
 		Node: a.cfg.Node, Online: true, Os: runtime.GOOS, Hostname: host,
 		ClaudeVersion: a.claudeV, AgentVersion: a.cfg.Version, RunningSessions: running, Capabilities: caps,
-		Checks: a.doctorChecks(),
+		Checks: a.doctorChecks(), Gpus: hw.gpus, MemoryBytes: hw.memory, Cpus: hw.cpus,
 	}
 }
 
@@ -267,6 +273,8 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			go a.setMode(op.SetMode)
 		case *v1.AgentCommand_Backup:
 			go a.backup(op.Backup.Stored)
+		case *v1.AgentCommand_Job:
+			go a.jobCommand(op.Job)
 		case *v1.AgentCommand_SyncProject_:
 			go a.syncProject(op.SyncProject)
 		case *v1.AgentCommand_SelfUpdate_:
@@ -923,6 +931,9 @@ func (a *Agent) shutdown() {
 	defer a.mu.Unlock()
 	for _, r := range a.runs {
 		r.closeInput()
+	}
+	if a.jobs != nil {
+		a.jobs.Close()
 	}
 }
 

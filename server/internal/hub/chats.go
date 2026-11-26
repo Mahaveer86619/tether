@@ -576,8 +576,17 @@ func (h *Hub) leadPrompt(chat, request string) string {
 			continue
 		}
 		m := n.Node + " (" + n.Os + ")"
-		if len(n.Capabilities) > 0 {
-			m += " with " + strings.Join(n.Capabilities, ", ")
+		var with []string
+		for _, c := range n.Capabilities {
+			if c != "gpu" {
+				with = append(with, c)
+			}
+		}
+		if hw := hardwareText(n); hw != "" {
+			with = append(with, hw)
+		}
+		if len(with) > 0 {
+			m += " with " + strings.Join(with, ", ")
 		}
 		if n.Node == hub {
 			m += ", the hub's own machine"

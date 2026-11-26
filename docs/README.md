@@ -36,6 +36,7 @@ Start with [overview.md](product/overview.md) for what Tether is made of and how
 | [sessions.md](architecture/sessions.md) | How Claude Code sessions are discovered, started, mirrored, resumed and forked |
 | [chats.md](architecture/chats.md) | Chats: how they map to sessions, where they run (targets), the lead and its tasks, the context store |
 | [security.md](architecture/security.md) | Trust boundaries, auth, sandboxing, approvals |
+| [jobs.md](architecture/jobs.md) | Jobs: processes agents supervise (stop, pause, resume, logs, secrets), and device hardware |
 | [app.md](architecture/app.md) | The Flutter app: layers, error handling, caching, background sync, every view |
 
 ## Plans (designed, not built)

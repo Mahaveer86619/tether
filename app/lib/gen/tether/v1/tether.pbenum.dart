@@ -117,6 +117,51 @@ class Decision extends $pb.ProtobufEnum {
   const Decision._(super.value, super.name);
 }
 
+class JobState extends $pb.ProtobufEnum {
+  static const JobState JOB_STATE_UNSPECIFIED =
+      JobState._(0, _omitEnumNames ? '' : 'JOB_STATE_UNSPECIFIED');
+  static const JobState JOB_STATE_STARTING =
+      JobState._(1, _omitEnumNames ? '' : 'JOB_STATE_STARTING');
+  static const JobState JOB_STATE_RUNNING =
+      JobState._(2, _omitEnumNames ? '' : 'JOB_STATE_RUNNING');
+  static const JobState JOB_STATE_PAUSED =
+      JobState._(3, _omitEnumNames ? '' : 'JOB_STATE_PAUSED');
+
+  /// Ended by itself with exit code 0.
+  static const JobState JOB_STATE_EXITED =
+      JobState._(4, _omitEnumNames ? '' : 'JOB_STATE_EXITED');
+
+  /// Ended by itself with another code, or could not start.
+  static const JobState JOB_STATE_FAILED =
+      JobState._(5, _omitEnumNames ? '' : 'JOB_STATE_FAILED');
+
+  /// Ended because it was asked to.
+  static const JobState JOB_STATE_STOPPED =
+      JobState._(6, _omitEnumNames ? '' : 'JOB_STATE_STOPPED');
+
+  /// Was running when its agent went away, and is gone now.
+  static const JobState JOB_STATE_LOST =
+      JobState._(7, _omitEnumNames ? '' : 'JOB_STATE_LOST');
+
+  static const $core.List<JobState> values = <JobState>[
+    JOB_STATE_UNSPECIFIED,
+    JOB_STATE_STARTING,
+    JOB_STATE_RUNNING,
+    JOB_STATE_PAUSED,
+    JOB_STATE_EXITED,
+    JOB_STATE_FAILED,
+    JOB_STATE_STOPPED,
+    JOB_STATE_LOST,
+  ];
+
+  static final $core.List<JobState?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 7);
+  static JobState? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const JobState._(super.value, super.name);
+}
+
 class ApprovalRequest_Kind extends $pb.ProtobufEnum {
   static const ApprovalRequest_Kind KIND_UNSPECIFIED =
       ApprovalRequest_Kind._(0, _omitEnumNames ? '' : 'KIND_UNSPECIFIED');
