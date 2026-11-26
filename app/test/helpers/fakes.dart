@@ -7,6 +7,8 @@ import 'package:tether/data/datasources/hub_cache.dart';
 import 'package:tether/data/datasources/hub_endpoint.dart';
 import 'package:tether/data/datasources/hub_socket.dart';
 import 'package:tether/domain/entities/entities.dart';
+import 'package:tether/domain/entities/prompt_desk.dart';
+import 'package:tether/domain/repositories/prompt_desk_repository.dart';
 import 'package:tether/domain/repositories/repositories.dart';
 import 'package:tether/gen/tether/v1/render.pb.dart' as rpb;
 import 'package:tether/gen/tether/v1/tether.pb.dart' as pb;
@@ -924,3 +926,73 @@ class FakeDesktopUpdater implements DesktopUpdater {
   Future<void> checkNow() async => checks++;
 }
 
+
+/// Rules and insights kept in memory.
+class FakePromptDeskRepository implements PromptDeskRepository {
+  FakePromptDeskRepository({List<Rule>? rules, this.stats = const InsightStats(), List<InsightReport>? reports})
+      : rules_ = rules ?? [],
+        reports_ = reports ?? [];
+
+  final List<Rule> rules_;
+  final List<InsightReport> reports_;
+  InsightStats stats;
+  final analyzed = <int>[];
+  final drafted = <(String, String)>[];
+  final statsAsked = <int>[];
+  var _ids = 0;
+
+  /// What the next analysis returns; the default is a running report.
+  InsightReport Function()? onAnalyze;
+
+  @override
+  Future<Result<List<Rule>>> rules() async => Ok([...rules_]);
+
+  @override
+  Future<Result<Rule>> saveRule(Rule rule) async {
+    final saved = Rule(
+      id: rule.id.isEmpty ? 'r${++_ids}' : rule.id,
+      name: rule.name.isEmpty ? rule.text : rule.name,
+      text: rule.text,
+      scope: rule.scope,
+      node: rule.node,
+      cwd: rule.cwd,
+      on: rule.on,
+    );
+    final i = rules_.indexWhere((r) => r.id == saved.id);
+    if (i < 0) {
+      rules_.add(saved);
+    } else {
+      rules_[i] = saved;
+    }
+    return Ok(saved);
+  }
+
+  @override
+  Future<Result<void>> deleteRule(String id) async {
+    rules_.removeWhere((r) => r.id == id);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<InsightStats>> insightStats({int days = 30}) async {
+    statsAsked.add(days);
+    return Ok(stats);
+  }
+
+  @override
+  Future<Result<List<InsightReport>>> insightReports() async => Ok([...reports_]);
+
+  @override
+  Future<Result<InsightReport>> analyze({int days = 30}) async {
+    analyzed.add(days);
+    final r = onAnalyze?.call() ?? InsightReport(id: 'rep${analyzed.length}', session: 'sx', days: days, running: true);
+    reports_.insert(0, r);
+    return Ok(r);
+  }
+
+  @override
+  Future<Result<String>> draftSkillFrom(String title, String idea) async {
+    drafted.add((title, idea));
+    return const Ok('draft-session');
+  }
+}
