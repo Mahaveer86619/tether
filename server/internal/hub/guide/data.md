@@ -12,6 +12,7 @@ One SQLite file on the hub (flag `-db`, default `tether.db` in the hub's working
 | `chat_notes` | `chat`, `kind`, `value`, `updated_ms` | one note per kind per chat (the title, later recaps); plain text |
 | `usage` | `session`, `message_id`, `node`, `model`, `ts_ms`, `input`, `output`, `cache_write`, `cache_read` | **plain**: token counts per assistant message; cost is derived from model prices |
 | `lineage_events` | `session`, `parent`, `kind` (fork, continue, move...), `fork_point`, `by_client`, `at_ms`, `detail` | **plain**: how sessions relate |
+| `limit_samples`, `limit_events` | the plan's limits as each node's `/usage` read them (`account` is the node, `span` is `session5h` or `week`, `label` Claude's words, `percent`, `resets` as text, `at_ms`), kept when they change; and each time a session stopped at a limit (`span`, `reset_ms`, `session`) | **plain** |
 | `audit` | `at_ms`, `actor`, `kind`, `subject`, `detail`, `ok` | **plain**: who did what (commands, MCP calls, approvals, skill actions), append only. Approval decisions are kind `approval`, subject `allow` or `deny`, detail `tool=<name> session=<id>` |
 | `notifications` | `at_ms`, `kind`, `title`, `body`, `chat`, `session` | plain |
 | `artifacts` | files kept on the hub: name, mime, size, sha256, session, node, origin, created_ms | plain; the bytes are in the hub's data folder |

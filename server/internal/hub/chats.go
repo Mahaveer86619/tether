@@ -435,6 +435,7 @@ func (h *Hub) reportTask(c *v1.Chat, task string) {
 	}
 	rep.Blocks, rep.Clipped = h.lastReply(task)
 	if reset, hit := h.limitHit(task, s, time.Now()); hit {
+		h.recordLimitHit(s.Node, task, reset, time.Now())
 		rep.Blocks, rep.Clipped = nil, false
 		h.waitForLimit(c, task, rep, id, reset)
 	}
