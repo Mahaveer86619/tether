@@ -46,6 +46,7 @@ Start with [overview.md](product/overview.md) for what Tether is made of and how
 | [terminal-mode.md](plans/terminal-mode.md) | A second way to see a session: the assistant's own interface, live, with a key row on the phone |
 | [second-brain-rust.md](plans/second-brain-rust.md) | The second brain as one small Rust program beside codebase-memory-mcp: memories, notes linked to code, recall |
 | [remote-projects.md](plans/remote-projects.md) | A chat made remote: the code kept in step on another device through a repo on the hub, secrets served from the vault, live progress |
+| [local-ai.md](plans/local-ai.md) | What to take from Headroom (context compression) and Mirage, and OCR and local retrieval on the GPU device |
 | [token-pool.md](plans/token-pool.md) | Tracking tokens and the 5-hour, day and week limits, learning when you use Tether, scheduling long work into your free time, and a pool where free frames are offered and booked between users |
 | [teams.md](plans/teams.md) | Projects as real objects with a project chat and spawned sessions in the sidebar, one-off chats kept quiet, then users, workspaces, roles and lent devices |
 | [harness.md](plans/harness.md) | What Tether is as a harness, what a harness has, what Tether has and adds, and the order of what is missing |
