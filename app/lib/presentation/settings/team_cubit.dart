@@ -32,9 +32,7 @@ class TeamState extends Equatable {
 /// View model for the team: who is on the hub, inviting and removing them,
 /// and sharing this user's devices with them.
 class TeamCubit extends Cubit<TeamState> {
-  TeamCubit({required ManageTeam team})
-      : _team = team,
-        super(const TeamState());
+  TeamCubit({required this._team}) : super(const TeamState());
 
   final ManageTeam _team;
 

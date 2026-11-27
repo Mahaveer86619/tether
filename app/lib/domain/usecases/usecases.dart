@@ -411,11 +411,11 @@ class PairThisDevice {
   final HubRepository _hub;
   final String name, platform;
 
-  Future<Result<HubConnection>> call(String url, String code, {String fingerprint = ''}) async {
+  Future<Result<HubConnection>> call(String url, String code, {String fingerprint = '', String userName = ''}) async {
     final normalized = normalizeHubUrl(url);
     if (normalized == null) return const Err(ValidationFailure('Enter the hub address, e.g. 100.64.0.1 or ws://100.64.0.1:7420/ws.'));
     if (code.trim().isEmpty) return const Err(ValidationFailure('Enter the pairing code.'));
-    final token = await _hub.pair(url: normalized, code: code.trim(), fingerprint: fingerprint, name: name, platform: platform);
+    final token = await _hub.pair(url: normalized, code: code.trim(), fingerprint: fingerprint, name: name, platform: platform, userName: userName);
     return token.fold(Err.new, (t) => _save(normalized, t, fingerprint: fingerprint));
   }
 }

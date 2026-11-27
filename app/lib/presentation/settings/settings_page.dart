@@ -16,6 +16,7 @@ import 'pairing_widgets.dart';
 import 'codebases_section.dart';
 import 'workspaces_section.dart';
 import 'settings_cubit.dart';
+import 'team_section.dart';
 
 /// Hub connection and appearance. Also the first-run screen.
 class SettingsPage extends StatefulWidget {
@@ -87,6 +88,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     const SizedBox(height: 32),
                     const DevicesSection(),
                     const SizedBox(height: 16),
+                    if (context.select<HubCubit, bool>((h) => h.state.hub.me != null)) ...[
+                      const TeamSection(),
+                      const SizedBox(height: 16),
+                    ],
                     const NotificationsSection(),
                     const SizedBox(height: 32),
                     const _PromptDeskSection(),

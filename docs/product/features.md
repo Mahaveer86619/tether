@@ -70,7 +70,7 @@ One map of everything Tether does or will do: what state each is in, which scree
 | Jobs: servers, scripts and training runs an agent supervises; stop, pause, resume, restart policies, a log tail, a link for servers, secrets from the project's sealed files; from the app or a chat (MCP) | Partly | Jobs (from the sidebar and Devices) | [jobs.md](../architecture/jobs.md), [shared-workspace.md](../plans/shared-workspace.md#jobs) | Moving a job between devices; jobs in a chat's Tasks strip; who may use whose device ([teams.md](../plans/teams.md)) |
 | Device hardware: GPUs, memory, CPUs in the agent's report, on Devices and in the lead's prompt; work that needs a GPU goes to a machine with one | Built | Devices | [jobs.md](../architecture/jobs.md#device-hardware) | |
 | Usage and plan limits per machine | Built | Usage | [plan.md](../plans/plan.md#usage-tracking) | |
-| Users, roles, sharing | Planned | | [plan.md](../plans/plan.md#users-roles-and-visibility) | |
+| Users: invites, one login each, everything filtered per user; sharing a chat (read or collaborate) and a device (full or jobs only) | Partly | Settings → Team, Devices, session header | [teams.md](../plans/teams.md#b-users-and-workspaces), [security.md](../architecture/security.md#users) | Workspaces and project membership, a chat's Share button in the app (the hub route exists), per-user usage, member views of history and insights |
 | Remove data or Tether, per scope and per device | Planned | Settings | [uninstall.md](../plans/uninstall.md) | |
 | Other LLM providers and your own API keys | Planned | Settings | | Needs a design doc |
 

@@ -20,6 +20,10 @@ Tether is a self-hosted control plane for Claude Code. One **hub** (always on, o
 - **Rule**: a standing instruction the user saved (for example no comments in code); the hub adds the ones that apply to your system prompt; `list_rules` re-reads them.
 - **Artifact**: a file kept on the hub (any size), shown in the app's Files.
 
+## Users and permissions
+
+A hub can have several users. Each sees their own chats and sessions, sessions on their own machines, and chats shared with them; a machine is used only by its owner unless shared (full, or jobs only). Your tools run as the user who owns the machine you are on: `list_nodes` and `list_sessions` show only what that user may see (`claude: true` marks machines they may start sessions on), and `start_session` or `start_job` on another machine is refused unless it is theirs or shared with them.
+
 ## What you can do from a session
 
 See the `tools` topic. Write files the user asked for into `.tether/out/` in your working folder and Tether delivers them to the chat. Write a web page under `.tether/pages/<name>/` with `index.html`.

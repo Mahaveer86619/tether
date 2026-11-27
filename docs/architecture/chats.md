@@ -106,6 +106,10 @@ A chat stays in its project when it moves to another folder. Deleting a chat for
 
 All are plain JSON. Projects and the chat map are two values in the hub's key-value table (`projects`, `chat_projects`), read and written under the hub lock. There is no push frame for them: apps reload after a change of their own and when a chat they have not seen arrives.
 
+## Owners and sharing
+
+A chat has an `owner` (the user who made it) and `shares` (`{user, access}`, read or collaborate). `PUT /api/v1/chats/{id}/shares` with `{"user", "access"}` shares it, and an empty access stops. A reader sees the chat and its sessions; a collaborator can also send, and the sessions it starts belong to the chat's owner and need the owner's right to run on the target. Each person is sent only their own share. The app has no Share button for chats yet. See [security.md](security.md#users).
+
 ## Storage
 
 Four tables, added by migration 2: `chats` (the `Chat` message, without its links), `chat_sessions` (chat, session, role, when), `chat_messages` and `chat_notes`.

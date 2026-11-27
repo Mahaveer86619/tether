@@ -13,6 +13,7 @@ import '../ui/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/format.dart';
 import 'cards.dart';
+import 'device_sharing.dart';
 
 /// Everything that makes up Tether, in the order it's set up: the hub, the
 /// machines running its agent, and the apps, each with its version against
@@ -55,6 +56,7 @@ class DevicesPage extends StatelessWidget {
                 style: TextStyle(color: c.muted, fontSize: 13))
           else
             CardGrid(children: [for (final n in others) card(n)]),
+          const DeviceSharingSection(),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(

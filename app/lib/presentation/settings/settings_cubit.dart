@@ -106,10 +106,11 @@ class SettingsCubit extends Cubit<SettingsState> {
     );
   }
 
-  /// Pairs with a one-time code, from a QR code or typed in.
-  Future<void> pair(String url, String code, {String fingerprint = ''}) async {
+  /// Pairs with a one-time code, from a QR code or typed in; with a
+  /// teammate's invite, [userName] is who joins.
+  Future<void> pair(String url, String code, {String fingerprint = '', String userName = ''}) async {
     emit(state.copyWith(saving: true));
-    final result = await _pair(url, code, fingerprint: fingerprint);
+    final result = await _pair(url, code, fingerprint: fingerprint, userName: userName.trim());
     result.fold(
       (f) => emit(state.copyWith(saving: false, failure: f, failureId: state.failureId + 1)),
       (conn) => emit(state.copyWith(saving: false, connection: conn, savedId: state.savedId + 1)),
