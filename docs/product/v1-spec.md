@@ -4,6 +4,8 @@ For the design team. It describes everything the 1.0 app does, what the person u
 
 **Status words.** *Built*: it works today and is tested. *Partly*: it works with gaps, listed. *New*: designed, not built. The 0.x versions continue until every feature here is built and tested; 1.0 is when this document is true.
 
+**Core-first boundary.** The v1 direction changed on 2026-11-28: Tether core is the MVP on every device, and this app is an optional view over hub-owned state. Herdr desktop/Android is an external harness that can replace this app; it is not a Tether app. Chats start at the hub, one Claude Code main agent can delegate parallel work to free-tier Antigravity/OpenCode sub-agents, and token budgeting/fallback belongs to core and syncs to every authorized client. The engine work and gates are in [core-first-v1.md](../plans/core-first-v1.md); screens still follow this spec.
+
 ## Contents
 
 1. [What Tether is](#1-what-tether-is)
@@ -20,17 +22,18 @@ For the design team. It describes everything the 1.0 app does, what the person u
 
 ## 1. What Tether is
 
-Tether is one app that brings all of a person's machines together under an AI coding assistant. Today the assistant is Claude Code. A person with a laptop, a home server and a phone usually has Claude Code on one of them, and the others are cut off from it. Tether connects them: you say what you want in one place, from any device, and the work happens on the right machine, with you able to watch it, answer it, and receive what it makes.
+Tether is a control plane that brings all of a person's machines together under AI coding assistants. The main brain is Claude Code; bounded sub-tasks can run in parallel on free-tier CLIs with larger contexts, such as Antigravity CLI and OpenCode CLI. A person with a laptop, a home server and a phone usually has those tools on only some of them. Tether connects them: you say what you want in one place, from any device, and the work happens on the right machine, with you able to watch it, answer it, and receive what it makes.
 
-It is a **wrapper**, not a replacement. The assistant keeps doing the work in its own tools; Tether adds what is missing around it: a way to reach it from anywhere, a place to see and steer it, a shared memory of what you keep asking for, and a way to get files and results back to the device in your hand.
+It is a **harness**, not a replacement. The assistants keep doing the work in their own tools; Tether adds what is missing around them: a way to reach them from anywhere, a place to see and steer them, shared memory of what you keep asking for, token budgets and fallback, and a way to get files and results back to the device in your hand.
 
 Tether runs on the person's own machines, over their own private network (Tailscale). Nothing is public and nothing leaves that network.
 
 The parts, in plain words:
 
+- **Core**: the hub and agents. It can be installed with no app at all and driven from a shell or MCP client. It owns chats, sessions, jobs, permissions and token budgets.
 - **The hub**: a small server on a machine that is always on. Everything connects to it.
-- **Agents**: a helper on each machine that has the assistant. It starts and watches the assistant's work there.
-- **The app**: on a phone (Android) and on Windows. The thing you are designing.
+- **Agents**: a helper on each machine that runs an assistant profile. It starts and watches the assistant's work there.
+- **The app**: on a phone (Android) and on Windows. An optional view of hub state; the thing you are designing here. Herdr desktop/Android can replace it as the view.
 
 ## 2. Who it is for
 
@@ -46,6 +49,7 @@ What they need, in their words:
 - "Show me what it is doing, in detail if I want and in a line if I don't."
 - "Don't make me set up the same thing twice, or ask it the same thing twice."
 - "Don't lose my work when the network drops."
+- "Show me my token and quota status from any device, and use my free-tier workers for the big reads so I save Claude for reasoning."
 
 ## 3. Words used in the app
 
@@ -487,16 +491,17 @@ Version of the app, the hub and each agent; release notes; licences.
 
 Design these end to end; each crosses several features.
 
-1. **First run, new person** (A1 to A3, B2): install the app → join or set up a hub → add the machine → doctor passes → first chat → first answer. Time to first answer: under five minutes after the hub exists.
-2. **Ask from the phone, work on the laptop** (B2, B4, C1): type "run the tests in the billing project" → Auto picks the laptop and folder → the chat opens → a run card shows progress → one approval arrives → result card.
-3. **Build and deliver** (F2): from the phone, "build a new APK of the app from the laptop" → the chat hands it to the laptop → a run card with steps → the APK appears as a file card with **Download** and **Install** → installed.
-4. **The hub is unreachable** (A4, A5): open the app with the network off → a banner starts the network → the hub answers → the banner goes → the chat continues. Variant: sign-in needed.
-5. **Approve from the lock screen** (I1, D1): a notification "Claude needs you on laptop" with Allow and Deny → one tap → the session continues.
-6. **A routine becomes a skill** (G1, G2): notice "progress?" in Routines → Draft → watch it write → review → approve → next time the assistant uses it and says so.
-7. **Switch to the terminal** (E): in a running chat, flip to Terminal mode → type a slash command with the key row → flip back; nothing lost.
-8. **Get a structured file** (F2, F3, F4): "export the failing rows as CSV" → a table preview in the chat → **Download** → find it later in the chat's Files panel.
-9. **Understand a design** (F6): "give me an interactive wiring guide for this circuit" → a guide card → Open → click through → ask for a change → a new version.
-10. **Clean exit** (J5): remove data on a lost device from another one.
+1. **First run, new person** (A1 to A3, B2): install the hub and agents → pair a machine → first chat from a shell, MCP client, app or Herdr → first answer. An app is optional; time to first answer is under five minutes after the hub exists.
+2. **Core-only, no app** ([core-first-v1.md](../plans/core-first-v1.md)): `tetherctl` creates a chat at the hub → the main Claude Code session starts on a chosen device → core selects free-tier workers for large reads → token status is readable from another device or Herdr.
+3. **Ask from the phone, work on the laptop** (B2, B4, C1): type "run the tests in the billing project" → Auto picks the laptop and folder → the chat opens → a run card shows progress → one approval arrives → result card.
+4. **Build and deliver** (F2): from the phone, "build a new APK of the app from the laptop" → the chat hands it to the laptop → a run card with steps → the APK appears as a file card with **Download** and **Install** → installed.
+5. **The hub is unreachable** (A4, A5): open the app with the network off → a banner starts the network → the hub answers → the banner goes → the chat continues. Variant: sign-in needed.
+6. **Approve from the lock screen** (I1, D1): a notification "Claude needs you on laptop" with Allow and Deny → one tap → the session continues.
+7. **A routine becomes a skill** (G1, G2): notice "progress?" in Routines → Draft → watch it write → review → approve → next time the assistant uses it and says so.
+8. **Switch to the terminal** (E): in a running chat, flip to Terminal mode → type a slash command with the key row → flip back; nothing lost.
+9. **Get a structured file** (F2, F3, F4): "export the failing rows as CSV" → a table preview in the chat → **Download** → find it later in the chat's Files panel.
+10. **Understand a design** (F6): "give me an interactive wiring guide for this circuit" → a guide card → Open → click through → ask for a change → a new version.
+11. **Clean exit** (J5): remove data on a lost device from another one.
 
 ## 7. Screens
 

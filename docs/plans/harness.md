@@ -8,6 +8,8 @@ An agent **harness** is everything around a model that turns it into a working a
 
 The fair name for it is a **multi-device harness and control plane**: Claude Code stays the inner harness (the agent loop and its built-in tools); Tether is the outer one (where it runs, what it is told, what it may do, what it remembers, how you reach it).
 
+The v1 boundary is [core-first](core-first-v1.md): the outer harness is `tether-hub`, `tether-agent`, `tetherctl` and their MCP/REST tools, and it must work with no Flutter app installed. The apps are optional views. Herdr is an external harness that can replace them as the person's window into core; Tether does not vendor or fork it. Claude Code remains the main brain for reasoning, while large-context free-tier CLIs such as Antigravity CLI and OpenCode CLI are configured as parallel sub-agent workers by core, not by a client.
+
 ## A harness, part by part
 
 | Part of a harness | Claude Code alone | In Tether today | Next |

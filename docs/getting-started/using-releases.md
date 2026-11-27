@@ -2,6 +2,8 @@
 
 For when you want Tether running and have no wish to build it. Every part is a download from the [latest release](https://github.com/Mahaveer86619/tether/releases/latest).
 
+Tether core is the MVP: the hub, agents and `tetherctl` are enough to pair a device and drive work from a shell or MCP client. The apps in section 3 are optional views. Herdr desktop/Android is an external alternative to them ([core-first-v1.md](../plans/core-first-v1.md)); it is not included in a Tether release and is not required.
+
 ## What is in a release
 
 | File | What it is |
@@ -57,7 +59,7 @@ From an ordinary (not admin) PowerShell, with `deploy\windows\` from the repo:
 
 It asks for a token once, or take a pairing code instead: `-PairCode ABCDE-FGHJK`. It registers a "Tether Agent" task that runs as you, so it uses your Claude Code login. The Tether app starts it on launch.
 
-## 3. The apps
+## 3. The apps (optional)
 
 **Windows.** Run `Tether-Setup-X.Y.Z.exe`. Once installed, the app offers new releases itself, signed and verified.
 

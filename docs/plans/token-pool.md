@@ -66,6 +66,14 @@ When the limit is hit anyway, the job waits for the reset and carries on by itse
 
 **What was dropped.** Offering a slot of one person's Claude allowance to another would run one person's work on another person's logged-in account. Plans are issued to a person and the terms may not allow sharing, so this is not built. What stays from that idea is the part about a person's own limits: tracking, patterns and scheduling their own deferred work (sections 1 to 3).
 
+## 5. Core-owned routing and fallback
+
+The v1 expansion in [core-first-v1.md](core-first-v1.md#core-owned-token-routing-and-fallback) turns this tracking plan into routing that belongs to the hub, not to the app or any one agent. Every model call records a usage event with user, chat, session, task role, provider, model, tokens, cost estimate and quota state. A provider registry keeps context window, free-tier availability, reasoning strength, speed and user rank.
+
+The hub chooses a provider for each task: the main role keeps Claude Code by default; sub-agent roles prefer large-context free-tier CLIs such as Antigravity CLI and OpenCode CLI. Ranking uses role fit, user preference, quota headroom, capability fit, observed reliability and estimated cost. When a provider is exhausted or rate-limited, the hub moves eligible work to the next provider, records the decision, and syncs the new budget/quota state to every authorized device and user through REST, MCP and hub events.
+
+This is a hard gate for full v1 ([#44](https://github.com/Mahaveer86619/tether/issues/44)); a client-only implementation is not sufficient.
+
 ## Build order
 
 1. **Tracking**: `limit_samples`, `limit_events`, `activity`; per-user and per-model spend; a Usage page with the 5-hour, day and week bars and the cost of a percent.
@@ -74,6 +82,7 @@ When the limit is hit anyway, the job waits for the reset and carries on by itse
 4. **Suggest**: the estimate on send, the ask, the feedback loop.
 5. **Multi-user** ([teams.md](teams.md) step B): users; devices that belong to a user; a device shared with another user for jobs.
 6. **Shared devices**: the sharing limits, free frames from the device's own state, pause and resume around the owner, checkpoints, the booking and the warning.
+7. **Core-owned routing and fallback**: provider registry, task-role policy, budget decisions, automatic fallback and cross-device token status. This gates full v1.
 
 ## Tests
 
@@ -85,6 +94,7 @@ Time is injected, never the wall clock; no real account is read.
 - **Away**: activity during a run pauses it at the step boundary and resumes it in the next frame.
 - **Shared devices**: a job on a device shared for jobs only never starts a Claude session, and a session on a fully shared device is charged to the device owner's usage; a job outside the shared hours or over its memory limit is refused; the owner's return pauses the job at the next check and a resume follows in the next free frame; the warning percentage equals the owner's `P` for the frame; an owner's stop ends the job and its children.
 - **Estimate**: past tasks of known size give an estimate within the stated margin; the threshold decides when the app asks.
+- **Provider routing**: a main task stays on Claude Code by policy; a large-context sub-task ranks a free-tier provider first when it has headroom; an exhausted provider triggers a recorded fallback; two users see only the token status their permissions allow; all connected clients receive the same budget state after a change.
 
 ## Decisions to make
 

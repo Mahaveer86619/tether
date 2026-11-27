@@ -4,8 +4,10 @@ The source of truth is [`proto/tether/v1`](../../proto/tether/v1): `tether.proto
 
 There are two hops:
 
-- **Agent ↔ hub:** carries Claude Code output *raw*. Agents never interpret it.
-- **Hub ↔ app:** carries rendered, typed timeline items. The app never sees Claude Code's raw format.
+- **Agent ↔ hub:** carries the configured CLI's output *raw*. Agents never interpret it.
+- **Hub ↔ client:** carries rendered, typed timeline items plus chat, session, job and token-status events. A client - app, `tetherctl`, MCP caller or Herdr bridge - never sees raw agent output.
+
+The v1 boundary is [core-first-v1.md](../plans/core-first-v1.md): every chat is created and owned at the hub, and Herdr is an external client that consumes this contract instead of a bundled Tether app. Hub-first chat creation, agent profiles, delegation tools and synced token state are added here as the core work lands.
 
 Claude is never instructed how to format replies. Whatever Claude Code emits is accepted as-is and turned into contract types by the hub (`server/internal/render`).
 
@@ -79,7 +81,7 @@ The same commands are available over HTTP, with `Authorization: Bearer <TETHER_T
 | `POST /api/v1/codebases/{id}/snapshot` | | `Ack`. Asks the codebase's node for a fresh snapshot. |
 | `GET /api/v1/codebases/{id}/snapshots` | | `SnapshotList`, newest first |
 | `GET /api/v1/chats` | | `ChatList`, newest first. Also in `Welcome.chats`, and pushed as `chat` frames when one changes. See [chats.md](chats.md). |
-| `POST /api/v1/chats` | `CreateChat {prompt, target, attachments, model, permissionMode, title, clientId}` or `{session}` | `Chat`. Starts the chat's first session where `target` says (or makes a chat of an existing session). |
+| `POST /api/v1/chats` | `CreateChat {prompt, target, attachments, model, permissionMode, title, clientId}` or `{session}` | `Chat`. Starts the chat's first session where `target` says (or makes a chat of an existing session). In v1 this is the canonical hub-owned creation path for every client, with `profile` and `mode` (`main`/`subagent`) added by [#46](https://github.com/Mahaveer86619/tether/issues/46). |
 | `PATCH /api/v1/chats/{id}` | `UpdateChat {title?, archived?}` | `Chat`. An empty title hands naming back to the title job. |
 | `POST /api/v1/chats/{id}/messages` | `SendMessage {text, attachments, clientId}` | `Ack {session}`: the active session, or a new one at the chat's target if that one is gone. |
 | `POST /api/v1/chats/{id}/target` | `SetChatTarget {target, move, text}` | `Chat`. With `move`, the conversation carries over to a new session there. |
