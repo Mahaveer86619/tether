@@ -37,6 +37,9 @@ type run struct {
 	lastActive time.Time
 	stderr     tailBuffer
 	done       chan struct{}
+	// line-protocol CLIs are one-shot: their stdout is plain text and there
+	// is no JSON stdin to write follow-up messages into.
+	generic bool
 }
 
 type startOpts struct {
@@ -48,9 +51,14 @@ type startOpts struct {
 	// A codebase snapshot to restore and run in; cwd is then relative to it.
 	restoreCodebase, restoreSnapshot string
 	systemPrompt                     string
+	profile                          *v1.AgentProfile
+	taskRole, parentTask             string
 }
 
 func (a *Agent) startRun(o startOpts) (*run, error) {
+	if o.profile != nil && o.profile.StatusProtocol == "line" {
+		return a.startLineRun(o)
+	}
 	args := []string{
 		"-p",
 		"--output-format", "stream-json",
@@ -100,6 +108,9 @@ func (r *run) State() (v1.SessionState, string) {
 }
 
 func (r *run) send(text string) error {
+	if r.generic {
+		return errors.New("this CLI takes one prompt per run; send a new message to start another run")
+	}
 	r.setState(v1.SessionState_SESSION_STATE_RUNNING)
 	return r.write(map[string]any{
 		"type":    "user",
@@ -108,6 +119,12 @@ func (r *run) send(text string) error {
 }
 
 func (r *run) interrupt() error {
+	if r.generic {
+		if r.cmd.Process != nil {
+			return r.cmd.Process.Kill()
+		}
+		return nil
+	}
 	return r.write(map[string]any{
 		"type":       "control_request",
 		"request_id": uuid.NewString(),
@@ -144,7 +161,11 @@ func (r *run) answer(approvalID string, allow bool, message string, answers map[
 	return true
 }
 
-func (r *run) closeInput() { _ = r.stdin.Close() }
+func (r *run) closeInput() {
+	if r.stdin != nil {
+		_ = r.stdin.Close()
+	}
+}
 
 func (r *run) write(v any) error {
 	b, err := json.Marshal(v)

@@ -27,6 +27,13 @@ import (
 const usage = `usage: tetherctl [-hub URL] <command> [args]
 
 commands:
+  chats                                       list hub-owned chats
+  chat [-node N] [-cwd DIR] [-profile P] [-mode M] [-model M] [-capability C] [-title T] <prompt>
+                                              start a chat at the hub, no app needed
+  chat-send <chat> <message>                  continue a chat through the hub
+  chat-watch <chat>                           follow a chat's active session
+  profiles                                    list core agent profiles
+  models                                      list core model ranking, budgets and quota states
   nodes                                       list machines
   sessions [-node N] [-n 20]                  list sessions, newest first
   watch <session>                             follow a session live
@@ -60,6 +67,18 @@ func main() {
 	}
 	args := flag.Args()[1:]
 	switch flag.Arg(0) {
+	case "chats":
+		err = c.chats()
+	case "chat":
+		err = c.startChat(args, *hubURL)
+	case "chat-send":
+		err = c.chatSend(args, *hubURL)
+	case "chat-watch":
+		err = c.chatWatch(args)
+	case "profiles":
+		err = c.profiles(*hubURL)
+	case "models":
+		err = c.models(*hubURL)
 	case "nodes":
 		err = c.nodes()
 	case "sessions":
@@ -103,6 +122,7 @@ func fatal(err error) {
 }
 
 type ctl struct {
+	hub     string
 	conn    *wire.Conn
 	welcome *v1.Welcome
 	frames  chan *v1.Frame
@@ -118,7 +138,7 @@ func connect(url, token string) (*ctl, error) {
 	}
 	host, _ := os.Hostname()
 	conn.Send(&v1.Frame{Body: &v1.Frame_ClientHello{ClientHello: &v1.ClientHello{Token: token, ClientName: "tetherctl@" + host, Platform: "cli"}}})
-	c := &ctl{conn: conn, frames: make(chan *v1.Frame, 4096), stdin: bufio.NewReader(os.Stdin)}
+	c := &ctl{hub: url, conn: conn, frames: make(chan *v1.Frame, 4096), stdin: bufio.NewReader(os.Stdin)}
 	go func() {
 		err := conn.Run(func(f *v1.Frame) { c.frames <- f })
 		c.frames <- &v1.Frame{Body: &v1.Frame_Error{Error: &v1.Error{Code: "disconnected", Message: fmt.Sprint(err)}}}
@@ -365,24 +385,162 @@ func (c *ctl) control(cmd string, args []string) error {
 
 // rest calls the hub's REST API, for admin actions with no WebSocket command.
 func rest(hubURL, method, path string, out proto.Message) error {
-	req, err := http.NewRequest(method, wire.HTTPBase(hubURL)+"/api/v1"+path, nil)
+	return restBody(hubURL, method, path, nil, out)
+}
+
+func restBody(hubURL, method, path string, in, out proto.Message) error {
+	var body []byte
+	if in != nil {
+		var err error
+		body, err = protojson.Marshal(in)
+		if err != nil {
+			return err
+		}
+	}
+	req, err := http.NewRequest(method, wire.HTTPBase(hubURL)+"/api/v1"+path, strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+os.Getenv("TETHER_TOKEN"))
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := wire.HTTPClient(os.Getenv("TETHER_HUB_FINGERPRINT")).Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	reply, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s: %s", resp.Status, body)
+		return fmt.Errorf("%s: %s", resp.Status, reply)
 	}
 	if out == nil {
 		return nil
 	}
-	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(body, out)
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(reply, out)
+}
+
+func (c *ctl) chats() error {
+	list := &v1.ChatList{}
+	if err := rest(c.hubURL(), "GET", "/chats", list); err != nil {
+		return err
+	}
+	for _, ch := range list.Chats {
+		where := ""
+		if ch.Target != nil {
+			where = ch.Target.Node
+			if ch.Target.Cwd != "" {
+				where += ":" + ch.Target.Cwd
+			}
+		}
+		fmt.Printf("%s  %-28s %-32s %s  %s\n", ch.Id[:8], ch.Title, where, ch.ActiveSession[:min(8, len(ch.ActiveSession))], ago(ch.UpdatedMs))
+	}
+	return nil
+}
+
+func (c *ctl) resolveChat(prefix string) (*v1.Chat, error) {
+	list := &v1.ChatList{}
+	if err := rest(c.hubURL(), "GET", "/chats", list); err != nil {
+		return nil, err
+	}
+	var hits []*v1.Chat
+	for _, ch := range list.Chats {
+		if strings.HasPrefix(ch.Id, prefix) {
+			hits = append(hits, ch)
+		}
+	}
+	switch len(hits) {
+	case 0:
+		return nil, fmt.Errorf("no chat matches %q", prefix)
+	case 1:
+		return hits[0], nil
+	}
+	return nil, fmt.Errorf("%q matches %d chats", prefix, len(hits))
+}
+
+func (c *ctl) startChat(args []string, hubURL string) error {
+	fs := flag.NewFlagSet("chat", flag.ExitOnError)
+	node := fs.String("node", "", "machine to run on")
+	cwd := fs.String("cwd", "", "folder on that machine")
+	profile := fs.String("profile", "", "core agent profile id")
+	mode := fs.String("mode", "main", "main or subagent")
+	model := fs.String("model", "", "pin a model from token_status, e.g. opencode/big-pickle")
+	capability := fs.String("capability", "", "long_context, reasoning, read, edit, test, review or vision")
+	title := fs.String("title", "", "short title")
+	_ = fs.Parse(args)
+	if fs.NArg() != 1 {
+		return errors.New("chat [-node N] [-cwd DIR] [-profile P] [-model M] [-capability C] <prompt>")
+	}
+	cc := &v1.CreateChat{Prompt: fs.Arg(0), Title: *title, Profile: *profile, Mode: *mode,
+		Model: *model, Capability: *capability, ClientId: uuid.NewString()}
+	if *node != "" || *cwd != "" {
+		cc.Target = &v1.ChatTarget{Mode: "manual", Node: *node, Cwd: *cwd}
+	}
+	ch := &v1.Chat{}
+	if err := restBody(hubURL, "POST", "/chats", cc, ch); err != nil {
+		return err
+	}
+	fmt.Printf("chat %s  lead session %s\n", ch.Id, ch.ActiveSession)
+	return nil
+}
+
+func (c *ctl) chatSend(args []string, hubURL string) error {
+	if len(args) != 2 {
+		return errors.New("chat-send <chat> <message>")
+	}
+	ch, err := c.resolveChat(args[0])
+	if err != nil {
+		return err
+	}
+	m := &v1.SendMessage{Text: args[1], ClientId: uuid.NewString()}
+	return restBody(hubURL, "POST", "/chats/"+ch.Id+"/messages", m, nil)
+}
+
+func (c *ctl) chatWatch(args []string) error {
+	if len(args) != 1 {
+		return errors.New("chat-watch <chat>")
+	}
+	ch, err := c.resolveChat(args[0])
+	if err != nil {
+		return err
+	}
+	if ch.ActiveSession == "" {
+		return errors.New("the chat has no active session yet")
+	}
+	return c.watch([]string{ch.ActiveSession})
+}
+
+func (c *ctl) profiles(hubURL string) error {
+	list := &v1.AgentProfileList{}
+	if err := rest(hubURL, "GET", "/profiles", list); err != nil {
+		return err
+	}
+	for _, p := range list.Profiles {
+		fmt.Printf("%-20s %-9s %-12s %-14s context %d%s\n", p.Id, p.Kind, p.Command, p.StatusProtocol, p.ContextWindow, map[bool]string{true: " free", false: ""}[p.FreeTier])
+	}
+	return nil
+}
+
+func (c *ctl) models(hubURL string) error {
+	status := &v1.TokenStatus{}
+	if err := rest(hubURL, "GET", "/token/status", status); err != nil {
+		return err
+	}
+	fmt.Printf("last decision: %s\nreason: %s\n\n", status.LastDecision, status.LastReason)
+	fmt.Printf("%-5s %-38s %-5s %-11s %10s %10s  %s\n", "RANK", "MODEL", "FREE", "QUOTA", "USED", "BUDGET", "NOTES")
+	for _, b := range status.Providers {
+		budget := "-"
+		if b.BudgetTokens > 0 {
+			budget = fmt.Sprint(b.BudgetTokens)
+		}
+		fmt.Printf("%-5d %-38s %-5t %-11s %10d %10s  %s\n", b.Rank, b.Provider+"/"+b.Model, b.FreeTier, b.QuotaState, b.UsedTokens, budget, b.Notes)
+	}
+	fmt.Println()
+	return c.profiles(hubURL)
+}
+
+func (c *ctl) hubURL() string {
+	return c.hub
 }
 
 func (c *ctl) rebuild(hubURL string, args []string) error {

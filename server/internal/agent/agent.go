@@ -63,7 +63,7 @@ type Config struct {
 	SelfUpdate bool
 	Exe        string
 	Restart    func()
-	Log     *slog.Logger
+	Log        *slog.Logger
 }
 
 type Agent struct {
@@ -90,14 +90,16 @@ type Agent struct {
 	historyNext   []*v1.HistoryPosition // the latest sync request, while one runs
 	historyAsked  bool
 	ended         map[string]*v1.SessionInfo
+	profiles      map[string]*v1.AgentProfile // session -> the profile that launched it
+	lineCWD       map[string]string           // session -> folder for one-shot CLI runs
 	mirrors       map[string]context.CancelFunc
 	reported      map[string]*v1.SessionInfo
 	claudeV       string
 	capabilities  []string // tools found on this machine, see capabilities.go
 	hardware      hardware
 	jobs          *jobs.Supervisor
-	mcpState      string   // "ok", or why the hub's MCP server is not registered; see doctor.go
-	brainState    int      // 0 not looked at yet, 1 the hub has a second brain and it is registered, 2 it has none
+	mcpState      string // "ok", or why the hub's MCP server is not registered; see doctor.go
+	brainState    int    // 0 not looked at yet, 1 the hub has a second brain and it is registered, 2 it has none
 }
 
 func New(cfg Config) (*Agent, error) {
@@ -116,6 +118,8 @@ func New(cfg Config) (*Agent, error) {
 		historyAcks:   make(chan *v1.AgentCommand_HistoryAck, 1),
 		hashes:        map[hashKey]string{},
 		ended:         map[string]*v1.SessionInfo{},
+		profiles:      map[string]*v1.AgentProfile{},
+		lineCWD:       map[string]string{},
 		mirrors:       map[string]context.CancelFunc{},
 		reported:      map[string]*v1.SessionInfo{},
 	}
@@ -258,7 +262,7 @@ func (a *Agent) onFrame(f *v1.Frame) {
 			a.start(startOpts{session: s.Session, cwd: s.Cwd, prompt: s.Prompt, model: s.Model,
 				permissionMode: s.PermissionMode, name: s.Name, resume: s.Resume, fork: s.Fork, createCwd: s.CreateCwd, attachments: s.Attachments,
 				scratch: s.Scratch, restoreTranscript: s.RestoreTranscript, restoreCodebase: s.RestoreCodebase, restoreSnapshot: s.RestoreSnapshot,
-				systemPrompt: s.SystemPrompt})
+				systemPrompt: s.SystemPrompt, profile: s.Profile, taskRole: s.TaskRole, parentTask: s.ParentTask})
 		case *v1.AgentCommand_Snapshot:
 			go a.snapshotCodebase(op.Snapshot.Codebase, op.Snapshot.Session)
 		case *v1.AgentCommand_Scan:
@@ -355,6 +359,14 @@ func (a *Agent) start(o startOpts) {
 		a.sendInput(o.session, o.prompt, o.attachments, o.permissionMode, o.systemPrompt)
 		return
 	}
+	if o.profile != nil {
+		a.mu.Lock()
+		a.profiles[o.session] = o.profile
+		if o.profile.StatusProtocol == "line" {
+			a.lineCWD[o.session] = o.cwd
+		}
+		a.mu.Unlock()
+	}
 	if o.resume != "" && o.cwd == "" {
 		o.cwd = a.index.Cwd(o.resume)
 	}
@@ -403,6 +415,23 @@ func (a *Agent) start(o startOpts) {
 			return
 		}
 		o.prompt += extra
+	}
+	if o.profile != nil && o.profile.StatusProtocol == "line" {
+		if o.resume != "" {
+			a.fail(o.session, errors.New(o.profile.Id+" cannot resume a session; a follow-up starts a new run"))
+			return
+		}
+		r, err := a.startRun(o)
+		if err != nil {
+			a.fail(o.session, err)
+			return
+		}
+		a.mu.Lock()
+		a.runs[o.session] = r
+		delete(a.ended, o.session)
+		a.mu.Unlock()
+		a.sendStatus()
+		return
 	}
 	if a.tmux != nil {
 		a.startTmux(o)
@@ -557,6 +586,17 @@ func (a *Agent) sendInput(session, text string, attachments []*v1.Artifact, mode
 	}
 	if hs, live := a.hookState(session); live && hs.pid != 0 {
 		a.typeIntoTerminal(session, hs.pid, text)
+		return
+	}
+	a.mu.Lock()
+	profile := a.profiles[session]
+	a.mu.Unlock()
+	if profile != nil && profile.StatusProtocol == "line" {
+		prompt := text
+		if systemPrompt != "" {
+			prompt = systemPrompt + "\n\n" + text
+		}
+		a.start(startOpts{session: session, cwd: a.lineCWD[session], prompt: prompt, profile: profile})
 		return
 	}
 	a.start(startOpts{session: session, resume: session, prompt: text, permissionMode: mode, systemPrompt: systemPrompt})

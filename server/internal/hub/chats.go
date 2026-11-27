@@ -19,11 +19,12 @@ import (
 // them. See docs/architecture/chats.md.
 
 const (
-	linkMain    = "main"
-	linkMoved   = "moved"
-	linkFork    = "fork"
-	linkStarted = "started"
-	linkLinked  = "linked"
+	linkMain     = "main"
+	linkMoved    = "moved"
+	linkFork     = "fork"
+	linkStarted  = "started"
+	linkLinked   = "linked"
+	linkSubagent = "subagent"
 
 	targetAuto   = "auto"
 	targetManual = "manual"
@@ -132,6 +133,8 @@ func (h *Hub) createChat(who identity, cc *v1.CreateChat, from string) (*v1.Chat
 			return proto.Clone(existing).(*v1.Chat), nil
 		}
 		c.Title, c.TitleByUser = firstNonEmpty(strings.TrimSpace(cc.Title), s.Title), cc.Title != ""
+		c.Profile = firstNonEmpty(s.Profile, cc.Profile, mainProfileID)
+		c.Mode = firstNonEmpty(cc.Mode, s.TaskRole, "main")
 		c.Target = &v1.ChatTarget{Mode: targetManual, Node: s.Node, Cwd: s.Cwd, Scratch: s.Scratch, State: targetResolved, Reason: "where the session ran"}
 		c.ActiveSession = s.Id
 		h.link(c, s.Id, linkMain)
@@ -142,6 +145,12 @@ func (h *Hub) createChat(who identity, cc *v1.CreateChat, from string) (*v1.Chat
 	if strings.TrimSpace(cc.Prompt) == "" {
 		return nil, invalid("prompt is empty")
 	}
+	c.Mode = firstNonEmpty(cc.Mode, "main")
+	profile, err := h.resolveProfile(cc.Profile, c.Mode)
+	if err != nil {
+		return nil, err
+	}
+	c.Profile = profile.Id
 	target, err := h.resolveTarget(h.asUser(c.Owner), cc.Prompt, cc.Target)
 	if err != nil {
 		return nil, err
@@ -152,7 +161,8 @@ func (h *Hub) createChat(who identity, cc *v1.CreateChat, from string) (*v1.Chat
 		c.Title = autoTitle(cc.Prompt)
 	}
 	cs := &v1.CreateSession{Node: target.Node, Cwd: target.Cwd, Scratch: target.Scratch, Prompt: cc.Prompt,
-		Model: cc.Model, PermissionMode: cc.PermissionMode, Attachments: cc.Attachments}
+		Model: cc.Model, Capability: cc.Capability, PermissionMode: cc.PermissionMode, Attachments: cc.Attachments,
+		Profile: profile.Id, TaskRole: c.Mode}
 	// The chat must exist before the session so the system prompt can name it.
 	h.chats[c.Id] = c
 	system := h.chatPromptWith(c, cs.Node, false, cc.Prompt)
@@ -165,10 +175,13 @@ func (h *Hub) createChat(who identity, cc *v1.CreateChat, from string) (*v1.Chat
 		delete(h.chats, c.Id)
 		return nil, err
 	}
-	if s := h.sessions[id]; s != nil && s.Title != c.Title {
-		next := proto.Clone(s).(*v1.SessionInfo)
-		next.Title = c.Title
-		h.putSession(next)
+	if s := h.sessions[id]; s != nil {
+		c.Profile = firstNonEmpty(s.Profile, c.Profile)
+		if s.Title != c.Title {
+			next := proto.Clone(s).(*v1.SessionInfo)
+			next.Title = c.Title
+			h.putSession(next)
+		}
 	}
 	if !c.TitleByUser {
 		h.noteTitle(c.Id, c.Title)
@@ -434,10 +447,10 @@ func (h *Hub) reportTask(c *v1.Chat, task string) {
 		folder = path.Base(strings.ReplaceAll(s.Cwd, `\`, "/"))
 	}
 	rep := &v1.TaskReport{
-		Failed: s.State == v1.SessionState_SESSION_STATE_ERROR,
-		Title:  clip(firstNonEmpty(s.Title, "a task"), 120),
-		Node:   s.Node,
-		Folder: folder,
+		Failed:  s.State == v1.SessionState_SESSION_STATE_ERROR,
+		Title:   clip(firstNonEmpty(s.Title, "a task"), 120),
+		Node:    s.Node,
+		Folder:  folder,
 		Session: task,
 	}
 	if rep.Failed {
@@ -876,5 +889,31 @@ func (h *Hub) chatRoutes(mux *http.ServeMux) {
 	h.deskRoutes(mux)
 	mux.HandleFunc("GET /api/v1/targets", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.targetSuggestions(userOf(r), r.URL.Query().Get("prompt")), nil
+	}))
+	mux.HandleFunc("GET /api/v1/profiles", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return h.profileCatalog(), nil
+	}))
+	mux.HandleFunc("PUT /api/v1/profiles", h.api(func(r *http.Request) (proto.Message, *opError) {
+		list := &v1.AgentProfileList{}
+		if err := decode(r, list); err != nil {
+			return nil, err
+		}
+		if err := h.setProfiles(list); err != nil {
+			return nil, err
+		}
+		return h.profileCatalog(), nil
+	}))
+	mux.HandleFunc("GET /api/v1/token/status", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return h.tokenStatusFor(h.tokenUser(userOf(r))), nil
+	}))
+	mux.HandleFunc("GET /api/v1/token/events", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return h.tokenEventsFor(h.tokenUser(userOf(r))), nil
+	}))
+	mux.HandleFunc("PUT /api/v1/token/budgets", h.api(func(r *http.Request) (proto.Message, *opError) {
+		set := &v1.BudgetSet{}
+		if err := decode(r, set); err != nil {
+			return nil, err
+		}
+		return h.setBudgets(userOf(r), set)
 	}))
 }

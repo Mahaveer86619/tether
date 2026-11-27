@@ -24,12 +24,13 @@ type Patch struct {
 	Todos    []*v1.Todo
 	TodosSet bool
 	Cost     *float64
+	Usage    *v1.UsageEntry
 	// The permission mode the line was written in.
 	Mode string
 }
 
 func (p *Patch) Empty() bool {
-	return p.Title == "" && p.Model == "" && p.Cwd == "" && p.Version == "" && !p.TodosSet && p.Cost == nil && p.Mode == ""
+	return p.Title == "" && p.Model == "" && p.Cwd == "" && p.Version == "" && !p.TodosSet && p.Cost == nil && p.Usage == nil && p.Mode == ""
 }
 
 // Output is what one raw line produced.
@@ -110,7 +111,13 @@ type rawLine struct {
 	AITitle        string `json:"aiTitle"`
 	CustomTitle    string `json:"customTitle"`
 
-	IsError    bool    `json:"is_error"`
+	IsError bool `json:"is_error"`
+	Usage   struct {
+		InputTokens              int64 `json:"input_tokens"`
+		OutputTokens             int64 `json:"output_tokens"`
+		CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
+	} `json:"usage"`
 	NumTurns   int32   `json:"num_turns"`
 	DurationMs int64   `json:"duration_ms"`
 	Cost       float64 `json:"total_cost_usd"`
@@ -270,6 +277,13 @@ func (b *Builder) Feed(line []byte) Output {
 	case "result":
 		cost := l.Cost
 		out.Patch.Cost = &cost
+		if l.Usage.InputTokens+l.Usage.OutputTokens+l.Usage.CacheCreationInputTokens+l.Usage.CacheReadInputTokens > 0 {
+			out.Patch.Usage = &v1.UsageEntry{
+				MessageId: l.UUID, Model: l.Model, TsMs: b.now().UnixMilli(),
+				Input: l.Usage.InputTokens, Output: l.Usage.OutputTokens,
+				CacheWrite: l.Usage.CacheCreationInputTokens, CacheRead: l.Usage.CacheReadInputTokens,
+			}
+		}
 		emit(&v1.TimelineItem{
 			ItemId: itemID("result", l.UUID, line),
 			Kind: &v1.TimelineItem_Result{Result: &v1.ResultSummary{
