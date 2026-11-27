@@ -68,6 +68,22 @@ On first launch, connect to the hub:
 - **Over Tailscale** (with `-trust-tailnet`): enter the hub machine's name, e.g. `minipc`, and choose **Connect over Tailscale**.
 - **With a pairing code:** on a connected app, **Settings → Add a device** shows a QR code and a code. On the new phone choose **Scan QR code**; on a desktop type the hub address and code. For an agent: `tether-agent pair -hub <url> -token-file <path> CODE`.
 
+## A teammate on your hub
+
+In releases after 0.19.0 several people can use one hub, each with their own login. A teammate needs Tailscale access to the hub's machine (share it with them in Tailscale).
+
+1. **Invite.** On your app: **Settings → Team → Invite**. It shows the hub address and a one-time code, good for 24 hours.
+2. **Join.** The teammate installs the app, and on its setup screen types the hub address, the code and **their name**, then **Pair**. They are now a member, with their own chats.
+3. **Their agent.** On their machine they run the agent, pairing it with a code from **their** app (**Settings → Add a device**): the machine is then theirs.
+4. **Share a device.** On **Devices → Owners and sharing**, the owner of a machine taps **Share**, picks the teammate and **Full access** (Claude sessions, under the owner's Claude login and plan) or **Jobs only**. The chip with their name stops sharing at once.
+
+What each side sees, to check it works:
+
+- Each person sees only their own chats, sessions, approvals, files and notifications, and only their own machines plus the ones shared with them.
+- A teammate starting a chat on your machine without a grant gets "you do not have access to this"; with **Jobs only** a chat is refused but a job starts; with **Full access** it runs.
+- A session on someone else's machine shows "on <name>'s <machine>" in its header; the machine's owner sees it too, marked "started by <name>", and can stop it but not type into it. Its approvals go to the teammate.
+- Stopping the sharing drops the teammate's app connection for a moment; when it comes back the machine is gone from their list.
+
 ## Updating
 
 Hub first, then everything else.

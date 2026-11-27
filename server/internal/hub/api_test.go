@@ -232,3 +232,6 @@ func TestRebuildClearsTimelineButKeepsSeqGrowing(t *testing.T) {
 		t.Fatalf("rebuilt item should get a new seq and the first ord: %v %v", stored, err)
 	}
 }
+
+// rootID is the admin token's identity, for calling the hub directly.
+var rootID = identity{kind: kindAdmin}

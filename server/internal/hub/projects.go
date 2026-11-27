@@ -31,6 +31,7 @@ type project struct {
 	Folders   []projectFolder `json:"folders"`
 	CreatedMs int64           `json:"createdMs"`
 	Chats     []string        `json:"chats"`
+	Owner     string          `json:"owner,omitempty"`
 }
 
 var errProjectNotFound = &opError{"not_found", "no such project", http.StatusNotFound}
@@ -137,8 +138,8 @@ func sameFolder(a, b projectFolder) bool {
 func (h *Hub) fileChats(p project) *opError {
 	m := h.chatProjects()
 	changed := false
-	for id := range h.chats {
-		if m[id] != "" {
+	for id, c := range h.chats {
+		if m[id] != "" || h.chatOwner(c) != firstNonEmpty(p.Owner, h.ownerID) {
 			continue
 		}
 		f := h.chatFolder(id)
@@ -187,11 +188,17 @@ func checkProject(in *project) *opError {
 
 // projectsWithChats is every project with the ids of its chats, oldest
 // first. Caller holds h.mu.
-func (h *Hub) projectsWithChats() []project {
-	list := h.projectList()
+// projectsWithChats is id's projects, each with the chats in it id may see.
+func (h *Hub) projectsWithChats(id identity) []project {
+	var list []project
+	for _, p := range h.projectList() {
+		if h.can(id, actManage, objProject, p.ID) {
+			list = append(list, p)
+		}
+	}
 	byProject := map[string][]string{}
 	for chat, p := range h.chatProjects() {
-		if h.chats[chat] != nil {
+		if h.chats[chat] != nil && h.can(id, actView, objChat, chat) {
 			byProject[p] = append(byProject[p], chat)
 		}
 	}
@@ -235,7 +242,7 @@ func (h *Hub) plainAPI(fn func(*http.Request) (any, *opError)) http.HandlerFunc 
 
 func (h *Hub) projectRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/projects", h.plainAPI(func(r *http.Request) (any, *opError) {
-		return map[string]any{"projects": h.projectsWithChats()}, nil
+		return map[string]any{"projects": h.projectsWithChats(userOf(r))}, nil
 	}))
 	mux.HandleFunc("POST /api/v1/projects", h.plainAPI(func(r *http.Request) (any, *opError) {
 		var in project
@@ -245,7 +252,7 @@ func (h *Hub) projectRoutes(mux *http.ServeMux) {
 		if err := checkProject(&in); err != nil {
 			return nil, err
 		}
-		in.ID, in.CreatedMs = newRuleID(), time.Now().UnixMilli()
+		in.ID, in.CreatedMs, in.Owner = newRuleID(), time.Now().UnixMilli(), firstNonEmpty(userOf(r).userID(), h.ownerID)
 		if err := h.saveProjects(append(h.projectList(), in)); err != nil {
 			return nil, err
 		}
@@ -267,7 +274,7 @@ func (h *Hub) projectRoutes(mux *http.ServeMux) {
 		if err := checkProject(&in); err != nil {
 			return nil, err
 		}
-		in.ID, in.CreatedMs = list[i].ID, list[i].CreatedMs
+		in.ID, in.CreatedMs, in.Owner = list[i].ID, list[i].CreatedMs, list[i].Owner
 		list[i] = in
 		if err := h.saveProjects(list); err != nil {
 			return nil, err
@@ -324,6 +331,9 @@ func (h *Hub) projectRoutes(mux *http.ServeMux) {
 		if err := decodePlain(r, &in); err != nil {
 			return nil, err
 		}
+		if in.Project != "" && !h.can(userOf(r), actManage, objProject, in.Project) {
+			return nil, errProjectNotFound
+		}
 		if err := h.setChatProject(r.PathValue("id"), in.Project); err != nil {
 			return nil, err
 		}
@@ -332,7 +342,7 @@ func (h *Hub) projectRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/chat-projects", h.plainAPI(func(r *http.Request) (any, *opError) {
 		out := map[string]string{}
 		for chat, p := range h.chatProjects() {
-			if h.chats[chat] != nil {
+			if h.chats[chat] != nil && h.can(userOf(r), actView, objChat, chat) {
 				out[chat] = p
 			}
 		}
@@ -346,7 +356,7 @@ func (h *Hub) answerProject(p project) (any, *opError) {
 	if err := h.fileChats(p); err != nil {
 		return nil, err
 	}
-	for _, x := range h.projectsWithChats() {
+	for _, x := range h.projectsWithChats(h.asUser(firstNonEmpty(p.Owner, h.ownerID))) {
 		if x.ID == p.ID {
 			return x, nil
 		}

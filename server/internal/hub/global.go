@@ -75,7 +75,7 @@ func (h *Hub) continueOnHub(session, text, from string) (string, *opError) {
 	next := &v1.SessionInfo{
 		Id: uuid.NewString(), Node: node, Title: info.Title, State: v1.SessionState_SESSION_STATE_RUNNING,
 		CreatedMs: now, UpdatedMs: now, LastPrompt: text, Model: info.Model,
-		Parent: session, Lineage: "continue", Scratch: true, Global: true,
+		Parent: session, Lineage: "continue", Scratch: true, Global: true, Owner: info.Owner,
 	}
 	start := &v1.AgentCommand_StartRun{
 		Session: next.Id, Prompt: text, Model: info.Model, Resume: session, Fork: true, Scratch: true, RestoreTranscript: copy.Id,

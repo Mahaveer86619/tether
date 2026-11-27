@@ -1,6 +1,6 @@
 # Users, teams and projects
 
-Status: step A built (projects, project chats, the sidebar by project); step B planned. It makes **projects** a real thing (today a project is only a folder that chats happen to work in), puts a **project chat with spawned sessions** at the centre of the app, and adds **users** so several people can share one hub and one workspace. It replaces the short "Users, roles and visibility" notes in [plan.md](plan.md#users-roles-and-visibility).
+Status: step A built (projects, project chats, the sidebar by project); B1 built, with device sharing from B3 ([security.md](../architecture/security.md#users)); B2 and the rest of B3 planned. It makes **projects** a real thing (today a project is only a folder that chats happen to work in), puts a **project chat with spawned sessions** at the centre of the app, and adds **users** so several people can share one hub and one workspace. It replaces the short "Users, roles and visibility" notes in [plan.md](plan.md#users-roles-and-visibility).
 
 ## What is wanted
 
@@ -105,9 +105,9 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 0. **Home is clean.** The new-chat screen has no cards (no *Needs you*, *Running now*, no project chips): the greeting and the box. Needs-you and running show as markers in the sidebar instead. **Built.**
 1. **A1.** Project object and a chat's project; *Add to projects* makes a project; the new-chat project picker. (Hub, app.) **Built**: the project is kept beside the chat in plain JSON routes rather than in the contract, so `Project` and `Chat.project` are not in the .proto ([chats.md](../architecture/chats.md#projects)).
 2. **A2.** The sidebar and the phone drawer as above: projects with chats and spawned sessions nested, unfiled folders, quiet one-offs; roll-up of needs-you and running. **Built** ([app.md](../architecture/app.md#sidebar)).
-3. **B1.** Users and invites; devices and chats get an owner; every list filtered by user; the `can` check; the audit log records the user.
+3. **B1.** Users and invites; devices and chats get an owner; every list filtered by user; the `can` check; the audit log records the user. **Built**: users and invites (an invite is a code entered on the app's setup screen), owners on devices, sessions, chats, jobs, projects, notifications and artifacts, `can` with a policy per route, filtered lists and frames, chat shares on the hub (no Share button in the app yet). Hub-wide pages stay the admin's.
 4. **B2.** Workspaces and project membership; sharing a project chat; roles.
-5. **B3.** Lending a device; scopes for rules and skills; a per-user view of usage and cost.
+5. **B3.** Lending a device; scopes for rules and skills; a per-user view of usage and cost. **Device sharing built** (full or jobs only, revocable, audited, on Devices); *ask me first*, job limits, scopes and per-user usage are not.
 6. **B4.** Tailscale identity mapped to users.
 
 ## Tests

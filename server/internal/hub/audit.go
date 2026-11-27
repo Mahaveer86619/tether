@@ -76,3 +76,12 @@ func (h *Hub) auditRoutes(mux *http.ServeMux) {
 		writePlainJSON(w, list)
 	}))
 }
+
+// whoOf names the user behind an identity for the audit log, with the
+// device they used.
+func whoOf(id identity) string {
+	if id.user == nil || id.root() {
+		return actorOf(id)
+	}
+	return id.user.Name + " (" + actorOf(id) + ")"
+}

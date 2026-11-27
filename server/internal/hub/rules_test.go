@@ -79,17 +79,17 @@ func TestAChatsSessionsGetTheRulesInTheirPrompt(t *testing.T) {
 func TestTheGuideIsServedAndExplainsWhereDataLives(t *testing.T) {
 	h := &Hub{}
 	for _, topic := range guideTopics() {
-		if out, err := h.mcpGuide(map[string]any{"topic": topic}); err != nil || len(out) < 200 {
+		if out, err := h.mcpGuide(rootID, map[string]any{"topic": topic}); err != nil || len(out) < 200 {
 			t.Fatalf("%s: %v (%d bytes)", topic, err, len(out))
 		}
 	}
-	out, _ := h.mcpGuide(map[string]any{"topic": "data"})
+	out, _ := h.mcpGuide(rootID, map[string]any{"topic": "data"})
 	for _, table := range []string{"chat_messages", "items", "usage", "audit", "kv"} {
 		if !strings.Contains(out, "`"+table+"`") {
 			t.Fatalf("the data guide does not name %s", table)
 		}
 	}
-	if _, err := h.mcpGuide(map[string]any{"topic": "nope"}); err == nil || !strings.Contains(err.Error(), "overview") {
+	if _, err := h.mcpGuide(rootID, map[string]any{"topic": "nope"}); err == nil || !strings.Contains(err.Error(), "overview") {
 		t.Fatalf("an unknown topic should list the topics: %v", err)
 	}
 }

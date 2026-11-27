@@ -19,7 +19,9 @@ One SQLite file on the hub (flag `-db`, default `tether.db` in the hub's working
 | `codebases`, `snapshots`, `codebase_env` | codebases the agents snapshot, and their sealed .env files | `info` blobs; env files are AES-GCM sealed, never read them |
 | `project_files`, `project_nodes`, `chat_remote` | remote projects: the sealed vault files, which devices may receive them, and the sync state per chat | plain except `sealed` |
 | `jobs` | jobs agents run for the hub: id, node, name, cwd, command, state (starting, running, paused, exited, failed, stopped, lost), started_ms, ended_ms, exit_code, port, info (blob: Job) | plain columns; secrets are never stored, only references to the project's sealed files |
-| `devices` | paired apps and agents: id, token hash, info (blob) | never expose token hashes |
+| `devices` | paired apps and agents: id, token hash, info (blob: Device, with the `user` it belongs to) | never expose token hashes |
+| `users` | `id`, `name`, `role` (admin or member), `created_ms` | **plain**; the oldest is the hub's owner. Sessions, chats, jobs and projects name their owner by this id (`owner` in their blob or JSON); notifications have a `user` column, artifacts an `owner` column |
+| `device_grants` | `node`, `user`, `access` (full or jobs), `granted_ms` | **plain**: who may use whose machine |
 | `kv` | small values by key: the skills library, `rules`, `insights` (saved analyses), workspace roots, update state | JSON for skills, rules and insights |
 | `nodes` | last status each agent reported (blob: NodeStatus: os, capabilities, GPUs, memory, CPUs, versions) | |
 | `history_files`, `history_events`, `history_resets` | the history index of sessions (what was said, when) | plain; used for search and for finding repeated routines |

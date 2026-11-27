@@ -47,10 +47,18 @@ var (
 	errRateLimited = &opError{"rate_limited", "too many failed attempts; try again in a few minutes", http.StatusTooManyRequests}
 )
 
-// identity is who a token belongs to: the admin, or a paired device.
+// identity is who a token belongs to: the admin, or a paired device and
+// the user it belongs to.
 type identity struct {
 	kind   string
 	device *v1.Device
+	user   *v1.User
+}
+
+// pairCode is a pairing code and the user whose device it pairs.
+type pairCode struct {
+	expires time.Time
+	user    string
 }
 
 func (id identity) deviceID() string {
@@ -68,7 +76,9 @@ func hashToken(token string) string {
 // identify checks a token against the admin token and paired devices.
 func (h *Hub) identify(token string) (identity, bool) {
 	if h.cfg.Token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(h.cfg.Token)) == 1 {
-		return identity{kind: kindAdmin}, true
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		return identity{kind: kindAdmin, user: h.users[h.ownerID]}, true
 	}
 	if token == "" {
 		return identity{}, false
@@ -79,13 +89,17 @@ func (h *Hub) identify(token string) (identity, bool) {
 	if d == nil {
 		return identity{}, false
 	}
+	u := h.users[firstNonEmpty(d.User, h.ownerID)]
+	if u == nil {
+		return identity{}, false
+	}
 	if now := time.Now().UnixMilli(); now-d.LastSeenMs > seenEvery.Milliseconds() {
 		d.LastSeenMs = now
 		if err := h.store.PutDevice(d, hashToken(token)); err != nil {
 			h.log.Error("store device", "device", d.Id, "err", err)
 		}
 	}
-	return identity{kind: d.Kind, device: d}, true
+	return identity{kind: d.Kind, device: d, user: u}, true
 }
 
 // identifyFrom also accepts the hub owner's own tailnet machines when the
@@ -96,7 +110,9 @@ func (h *Hub) identifyFrom(token, ip string) (identity, bool) {
 	}
 	if h.cfg.TrustTailnet {
 		if _, own := h.ownDevice(ip); own {
-			return identity{kind: kindTailnet}, true
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			return identity{kind: kindTailnet, user: h.users[h.ownerID]}, true
 		}
 	}
 	return identity{}, false
@@ -135,24 +151,21 @@ func (h *Hub) fail(ip string) {
 	h.mu.Unlock()
 }
 
-// newPairingCode creates a one-time code. Caller holds h.mu.
-func (h *Hub) newPairingCode() (*v1.PairingCode, error) {
+// newPairingCode creates a one-time code that pairs a device of user's.
+// Caller holds h.mu.
+func (h *Hub) newPairingCode(user string) (*v1.PairingCode, error) {
 	now := time.Now()
-	for c, exp := range h.codes {
-		if now.After(exp) {
+	for c, pc := range h.codes {
+		if now.After(pc.expires) {
 			delete(h.codes, c)
 		}
 	}
-	b := make([]byte, codeLen)
-	if _, err := rand.Read(b); err != nil {
+	code, err := h.randomCode()
+	if err != nil {
 		return nil, err
 	}
-	for i := range b {
-		b[i] = codeAlphabet[int(b[i])%len(codeAlphabet)]
-	}
-	code := string(b)
 	exp := now.Add(pairingTTL)
-	h.codes[code] = exp
+	h.codes[code] = pairCode{expires: exp, user: firstNonEmpty(user, h.ownerID)}
 	return &v1.PairingCode{
 		Code:            code[:codeLen/2] + "-" + code[codeLen/2:],
 		ExpiresMs:       exp.UnixMilli(),
@@ -160,12 +173,31 @@ func (h *Hub) newPairingCode() (*v1.PairingCode, error) {
 	}, nil
 }
 
-// pair trades a pairing code for a device token. Caller holds h.mu.
+func (h *Hub) randomCode() (string, error) {
+	b := make([]byte, codeLen)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i := range b {
+		b[i] = codeAlphabet[int(b[i])%len(codeAlphabet)]
+	}
+	return string(b), nil
+}
+
+// pair trades a pairing code, or an invite, for a device token. Caller
+// holds h.mu.
 func (h *Hub) pair(req *v1.PairRequest) (*v1.PairResult, *opError) {
 	code := strings.ToUpper(strings.NewReplacer("-", "", " ", "").Replace(req.Code))
-	exp, ok := h.codes[code]
-	if !ok || time.Now().After(exp) {
+	pc, ok := h.codes[code]
+	_, isInvite := h.invites[code]
+	if isInvite && req.Kind != kindClient {
+		return nil, invalid("an invite is entered in the app")
+	}
+	if !isInvite && (!ok || time.Now().After(pc.expires)) {
 		return nil, errBadCode
+	}
+	if isInvite && strings.TrimSpace(req.UserName) == "" {
+		return nil, invalid("an invite needs the name of the person joining")
 	}
 	name := strings.TrimSpace(req.Name)
 	switch req.Kind {
@@ -180,7 +212,19 @@ func (h *Hub) pair(req *v1.PairRequest) (*v1.PairResult, *opError) {
 	default:
 		return nil, invalid(`kind must be "client" or "node"`)
 	}
-	delete(h.codes, code)
+	user := pc.user
+	if req.Kind == kindNode && h.nodes[name] != nil && h.nodeOwner(name) != user {
+		return nil, errNameTaken
+	}
+	if isInvite {
+		u, err := h.join(code, req.UserName)
+		if err != nil {
+			return nil, err
+		}
+		user = u.Id
+	} else {
+		delete(h.codes, code)
+	}
 
 	// Pairing a node again replaces its old token.
 	if req.Kind == kindNode {
@@ -196,19 +240,23 @@ func (h *Hub) pair(req *v1.PairRequest) (*v1.PairResult, *opError) {
 	}
 	token := hex.EncodeToString(raw)
 	now := time.Now().UnixMilli()
-	d := &v1.Device{Id: uuid.NewString(), Kind: req.Kind, Name: name, Platform: req.Platform, CreatedMs: now, LastSeenMs: now}
+	d := &v1.Device{Id: uuid.NewString(), Kind: req.Kind, Name: name, Platform: req.Platform, CreatedMs: now, LastSeenMs: now, User: user}
 	if err := h.store.PutDevice(d, hashToken(token)); err != nil {
 		return nil, &opError{"internal", err.Error(), http.StatusInternalServerError}
 	}
 	h.devices[hashToken(token)] = d
-	h.log.Info("device paired", "device", d.Id, "kind", d.Kind, "name", d.Name, "platform", d.Platform)
-	return &v1.PairResult{Device: proto.Clone(d).(*v1.Device), Token: token}, nil
+	h.log.Info("device paired", "device", d.Id, "kind", d.Kind, "name", d.Name, "platform", d.Platform, "user", user)
+	return &v1.PairResult{Device: proto.Clone(d).(*v1.Device), Token: token, User: proto.Clone(h.users[user]).(*v1.User)}, nil
 }
 
-func (h *Hub) deviceList() *v1.DeviceList {
+// deviceList is the devices id may see: their own, or all for an admin.
+func (h *Hub) deviceList(id identity) *v1.DeviceList {
 	out := &v1.DeviceList{}
+	all := h.can(id, actAdmin, objHub, "")
 	for _, d := range h.devices {
-		out.Devices = append(out.Devices, proto.Clone(d).(*v1.Device))
+		if all || d.User == id.userID() {
+			out.Devices = append(out.Devices, proto.Clone(d).(*v1.Device))
+		}
 	}
 	sort.Slice(out.Devices, func(i, j int) bool { return out.Devices[i].CreatedMs < out.Devices[j].CreatedMs })
 	return out

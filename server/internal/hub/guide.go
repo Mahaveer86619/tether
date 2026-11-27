@@ -24,7 +24,7 @@ func guideTopics() []string {
 	return out
 }
 
-func (h *Hub) mcpGuide(args map[string]any) (string, error) {
+func (h *Hub) mcpGuide(caller identity, args map[string]any) (string, error) {
 	topic := strings.ToLower(strings.TrimSpace(str(args, "topic")))
 	if topic == "" {
 		topic = "overview"

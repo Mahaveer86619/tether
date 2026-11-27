@@ -222,6 +222,8 @@ class HubRepositoryImpl implements HubRepository {
           nodes: {for (final n in w.nodes) n.node: nodeFromPb(n)},
           sessions: {for (final s in w.sessions) s.id: sessionFromPb(s)},
           chats: {for (final c in w.chats) c.id: chatFromPb(c)},
+          me: () => w.hasMe() ? userFromPb(w.me) : null,
+          users: {for (final u in w.users) u.id: userFromPb(u)},
           update: () => w.hasUpdate() ? releaseFromPb(w.update) : null,
           notifyUrl: w.notifyUrl,
           approvals: {for (final a in w.pendingApprovals) a.approvalId: approvalFromPb(a)},
@@ -674,14 +676,39 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<void>> revokeDevice(String id) => _command(() => _api.revokeDevice(id));
 
   @override
+  Future<Result<List<TeamUser>>> users() => _command(() async => [for (final u in (await _api.users()).users) userFromPb(u)]);
+
+  @override
+  Future<Result<PairingInvite>> createTeamInvite() => _command(() async {
+        final code = await _api.createTeamInvite();
+        return PairingInvite(
+          code: code.code,
+          expires: DateTime.fromMillisecondsSinceEpoch(code.expiresMs.toInt()),
+          hubUrl: _api.endpoint!.ws.toString(),
+          fingerprint: code.certFingerprint.isNotEmpty ? code.certFingerprint : _api.endpoint!.fingerprint,
+        );
+      });
+
+  @override
+  Future<Result<void>> removeUser(String id) => _command(() => _api.removeUser(id));
+
+  @override
+  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access) => _command(() => _api.shareDevice(node, user, access.wire));
+
+  @override
+  Future<Result<void>> unshareDevice(String node, String user) => _command(() => _api.unshareDevice(node, user));
+
+  @override
   Future<Result<String>> pair({
     required String url,
     required String code,
     required String fingerprint,
     required String name,
     required String platform,
+    String userName = '',
   }) =>
-      guard(() async => (await _api.pair(url, fingerprint, pb.PairRequest(code: code, kind: 'client', name: name, platform: platform))).token);
+      guard(() async =>
+          (await _api.pair(url, fingerprint, pb.PairRequest(code: code, kind: 'client', name: name, platform: platform, userName: userName))).token);
 
   @override
   Future<Result<void>> setArchived(String sessionId, {required bool archived}) =>

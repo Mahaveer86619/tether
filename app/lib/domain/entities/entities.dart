@@ -34,6 +34,8 @@ class Node extends Equatable {
     this.gpus = const [],
     this.memoryBytes = 0,
     this.cpus = 0,
+    this.owner = '',
+    this.grants = const [],
   });
 
   /// The machine's hardware, for placing work; 0 when not reported.
@@ -42,6 +44,12 @@ class Node extends Equatable {
 
   final String name;
   final bool online;
+
+  /// The user whose machine it is; empty on a hub before users.
+  final String owner;
+
+  /// Who else may use it; only its owner is told.
+  final List<DeviceGrant> grants;
   final String os, hostname, claudeVersion, agentVersion;
 
   /// What the machine can build or run: "flutter", "android-sdk", "docker"...
@@ -61,7 +69,42 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks, gpus, memoryBytes, cpus];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks, gpus, memoryBytes, cpus, owner, grants];
+}
+
+/// A person on the hub. The hub's owner is the first user and an admin.
+class TeamUser extends Equatable {
+  const TeamUser({required this.id, required this.name, this.role = 'member', this.created});
+
+  final String id, name, role;
+  final DateTime? created;
+
+  bool get isAdmin => role == 'admin';
+
+  @override
+  List<Object?> get props => [id, name, role, created];
+}
+
+/// What a teammate may run on someone's device.
+enum DeviceAccess {
+  full('full', 'Full access', 'Claude sessions and jobs. Sessions run under your Claude Code login and spend your plan.'),
+  jobs('jobs', 'Jobs only', 'Plain processes such as servers and training runs; no Claude sessions.');
+
+  const DeviceAccess(this.wire, this.label, this.blurb);
+  final String wire, label, blurb;
+
+  static DeviceAccess? of(String wire) => values.where((a) => a.wire == wire).firstOrNull;
+}
+
+class DeviceGrant extends Equatable {
+  const DeviceGrant({required this.user, required this.access, this.granted});
+
+  final String user;
+  final DeviceAccess access;
+  final DateTime? granted;
+
+  @override
+  List<Object?> get props => [user, access, granted];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }
@@ -115,7 +158,11 @@ class Session extends Equatable {
     this.modeRevertTo = '',
     this.backedUp,
     this.backedUpBytes = 0,
+    this.owner = '',
   });
+
+  /// The user who started it, or whose machine it was found on.
+  final String owner;
 
   /// The hub's latest background backup of the transcript.
   final DateTime? backedUp;
@@ -186,7 +233,7 @@ class Session extends Equatable {
   List<Object?> get props => [
         id, node, title, cwd, gitBranch, created, updated, messageCount, state, host, attachCommand, //
         lastPrompt, claudeVersion, model, todos, lastCostUsd, error, terminalInput, archived, parent, forkPoint, lineage, scratch, global,
-        permissionMode, modeRevert, modeRevertTo, backedUp, backedUpBytes,
+        permissionMode, modeRevert, modeRevertTo, backedUp, backedUpBytes, owner,
       ];
 }
 
@@ -306,7 +353,26 @@ class HubSnapshot extends Equatable {
     this.projectInfos = const {},
     this.chatProjectIds = const {},
     this.projectsSupported = false,
+    this.me,
+    this.users = const {},
   });
+
+  /// The user this app is signed in as; null on a hub before users.
+  final TeamUser? me;
+
+  /// Everyone on the hub, by id, for showing who owns what.
+  final Map<String, TeamUser> users;
+
+  /// A user's name, or '' when unknown.
+  String userName(String id) => users[id]?.name ?? '';
+
+  /// Whose machine a node is, when it is not this user's own: the name to
+  /// show beside it, or '' for one's own.
+  String ownerOf(String node) {
+    final owner = nodes[node]?.owner ?? '';
+    if (owner.isEmpty || me == null || owner == me!.id) return '';
+    return userName(owner);
+  }
 
   /// Projects made on the hub, by id; empty on a hub before projects.
   final Map<String, ProjectInfo> projectInfos;
@@ -602,6 +668,8 @@ class HubSnapshot extends Equatable {
     Map<String, ProjectInfo>? projectInfos,
     Map<String, String>? chatProjectIds,
     bool? projectsSupported,
+    TeamUser? Function()? me,
+    Map<String, TeamUser>? users,
   }) =>
       HubSnapshot(
         status: status ?? this.status,
@@ -624,10 +692,12 @@ class HubSnapshot extends Equatable {
         projectInfos: projectInfos ?? this.projectInfos,
         chatProjectIds: chatProjectIds ?? this.chatProjectIds,
         projectsSupported: projectsSupported ?? this.projectsSupported,
+        me: me != null ? me() : this.me,
+        users: users ?? this.users,
       );
 
   @override
-  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts, projectInfos, chatProjectIds, projectsSupported];
+  List<Object?> get props => [status, nodes, sessions, approvals, hubVersion, endpoint, lastError, preferences, notifyUrl, hubNode, deviceId, clientIp, artifacts, chats, update, retryAt, attempts, projectInfos, chatProjectIds, projectsSupported, me, users];
 
   static int _byCreated(Approval a, Approval b) => (a.created ?? DateTime(0)).compareTo(b.created ?? DateTime(0));
 }
@@ -982,15 +1052,18 @@ class TailnetDevice extends Equatable {
 
 /// An app or agent paired with its own token.
 class PairedDevice extends Equatable {
-  const PairedDevice({required this.id, required this.kind, required this.name, this.platform = '', this.created, this.lastSeen});
+  const PairedDevice({required this.id, required this.kind, required this.name, this.platform = '', this.created, this.lastSeen, this.user = ''});
 
   final String id, kind, name, platform;
   final DateTime? created, lastSeen;
 
+  /// The user it belongs to.
+  final String user;
+
   bool get isNode => kind == 'node';
 
   @override
-  List<Object?> get props => [id, kind, name, platform, created, lastSeen];
+  List<Object?> get props => [id, kind, name, platform, created, lastSeen, user];
 }
 
 class NewSessionRequest extends Equatable {

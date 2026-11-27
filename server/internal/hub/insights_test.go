@@ -217,10 +217,10 @@ func TestAnalyzeStartsASessionWithTheStatsAndAMaskedSampleAndSavesItsReport(t *t
 		t.Error("the sample holds what it should not")
 	}
 
-	if _, err := h.mcpSaveInsight(map[string]any{"report_id": rep.ID, "summary": "x", "recommendations": []any{map[string]any{"kind": "nope", "title": "t", "text": "x"}}}); err == nil {
+	if _, err := h.mcpSaveInsight(rootID, map[string]any{"report_id": rep.ID, "summary": "x", "recommendations": []any{map[string]any{"kind": "nope", "title": "t", "text": "x"}}}); err == nil {
 		t.Fatal("a bad kind is refused")
 	}
-	msg, err := h.mcpSaveInsight(map[string]any{
+	msg, err := h.mcpSaveInsight(rootID, map[string]any{
 		"report_id": rep.ID, "title": "Long chats", "summary": "Chats run long.",
 		"recommendations": `[{"kind":"rule","title":"No pushing","why":"said in 1 chat","text":"Do not push."},{"kind":"skill","title":"Fix login","text":"Fixes the login."}]`,
 	})

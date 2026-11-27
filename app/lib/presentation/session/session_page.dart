@@ -298,8 +298,15 @@ class SessionHeader extends StatelessWidget {
     final (parent, forks) = context.select<HubCubit, (Session?, List<Session>)>(
       (h) => (h.state.hub.sessions[session.parent], h.state.hub.childrenOf(session.id)),
     );
+    // Someone else's machine, or someone else's work on this user's machine.
+    final (deviceOwner, startedBy) = context.select<HubCubit, (String, String)>((h) {
+      final hub = h.state.hub;
+      final mine = hub.me == null || session.owner.isEmpty || session.owner == hub.me!.id;
+      return (hub.ownerOf(session.node), mine ? '' : hub.userName(session.owner));
+    });
     final details = [
-      session.node,
+      if (deviceOwner.isEmpty) session.node else "on $deviceOwner's ${session.node}",
+      if (startedBy.isNotEmpty) 'started by $startedBy',
       if (session.cwd.isNotEmpty) baseName(session.cwd),
       if (!narrow && session.gitBranch.isNotEmpty) session.gitBranch,
       if (!narrow && session.model.isNotEmpty) shortModel(session.model),

@@ -30,12 +30,14 @@ class PairForm extends StatefulWidget {
 class _PairFormState extends State<PairForm> {
   final _url = TextEditingController();
   final _code = TextEditingController();
+  final _name = TextEditingController();
   String _fingerprint = '';
 
   @override
   void dispose() {
     _url.dispose();
     _code.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -46,7 +48,7 @@ class _PairFormState extends State<PairForm> {
     _url.text = parsed.url;
     _code.text = parsed.code;
     _fingerprint = parsed.fingerprint;
-    context.read<SettingsCubit>().pair(parsed.url, parsed.code, fingerprint: parsed.fingerprint);
+    context.read<SettingsCubit>().pair(parsed.url, parsed.code, fingerprint: parsed.fingerprint, userName: _name.text);
   }
 
   @override
@@ -105,14 +107,20 @@ class _PairFormState extends State<PairForm> {
           autocorrect: false,
           textCapitalization: TextCapitalization.characters,
           style: monoStyle(context, size: 15),
-          decoration: const InputDecoration(labelText: 'Pairing code', hintText: 'ABCDE-FGHJK'),
+          decoration: const InputDecoration(labelText: 'Pairing code or invite', hintText: 'ABCDE-FGHJK'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const Key('pair-name'),
+          controller: _name,
+          decoration: const InputDecoration(labelText: 'Your name', helperText: 'Only when joining with a teammate\'s invite'),
         ),
         const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: OutlinedButton(
             key: const Key('pair'),
-            onPressed: saving ? null : () => context.read<SettingsCubit>().pair(_url.text, _code.text, fingerprint: _fingerprint),
+            onPressed: saving ? null : () => context.read<SettingsCubit>().pair(_url.text, _code.text, fingerprint: _fingerprint, userName: _name.text),
             child: const Text('Pair'),
           ),
         ),

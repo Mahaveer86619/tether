@@ -60,7 +60,7 @@ var jobTools = []mcpTool{
 
 func init() { mcpTools = append(mcpTools, jobTools...) }
 
-func (h *Hub) mcpStartJob(args map[string]any) (string, error) {
+func (h *Hub) mcpStartJob(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	spec := &v1.JobSpec{Command: str(args, "command"), Cwd: str(args, "cwd"), Node: str(args, "node"), Name: str(args, "name"),
@@ -68,22 +68,22 @@ func (h *Hub) mcpStartJob(args map[string]any) (string, error) {
 	if f := str(args, "secrets_from"); f != "" {
 		spec.EnvFrom = []*v1.EnvRef{{File: f}}
 	}
-	j, err := h.startJob(spec, mcpSource)
+	j, err := h.startJob(caller, spec, mcpSource)
 	if err != nil {
 		return "", opErr(err)
 	}
 	return fmt.Sprintf("Started job %s on %s. Check it with job_status and job_logs.", j.Id, j.Spec.Node), nil
 }
 
-func (h *Hub) mcpJobStatus(args map[string]any) (string, error) {
+func (h *Hub) mcpJobStatus(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	id := str(args, "id")
-	if id != "" && h.jobs[id] == nil {
+	if id != "" && !h.can(caller, actView, objJob, id) {
 		return "", fmt.Errorf("unknown job %s", id)
 	}
 	var out []map[string]any
-	for _, j := range h.jobList(str(args, "node")).Jobs {
+	for _, j := range h.jobList(caller, str(args, "node")).Jobs {
 		if id != "" && j.Id != id {
 			continue
 		}
@@ -109,9 +109,12 @@ func (h *Hub) mcpJobStatus(args map[string]any) (string, error) {
 	return jsonText(out)
 }
 
-func (h *Hub) mcpJobLogs(args map[string]any) (string, error) {
+func (h *Hub) mcpJobLogs(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if !h.can(caller, actView, objJob, str(args, "id")) {
+		return "", fmt.Errorf("unknown job %s", str(args, "id"))
+	}
 	t, err := h.jobTail(str(args, "id"), min(num(args, "tail", defaultJobTail), jobLogLines))
 	if err != nil {
 		return "", opErr(err)
@@ -122,10 +125,13 @@ func (h *Hub) mcpJobLogs(args map[string]any) (string, error) {
 	return strings.Join(t.Lines, "\n"), nil
 }
 
-func jobActionTool(action string) func(*Hub, map[string]any) (string, error) {
-	return func(h *Hub, args map[string]any) (string, error) {
+func jobActionTool(action string) func(*Hub, identity, map[string]any) (string, error) {
+	return func(h *Hub, caller identity, args map[string]any) (string, error) {
 		h.mu.Lock()
 		defer h.mu.Unlock()
+		if !h.can(caller, actStop, objJob, str(args, "id")) {
+			return "", fmt.Errorf("unknown job %s", str(args, "id"))
+		}
 		j, err := h.jobAction(str(args, "id"), action, mcpSource)
 		if err != nil {
 			return "", opErr(err)

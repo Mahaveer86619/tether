@@ -9,12 +9,14 @@ type Notification struct {
 	Body    string `json:"body"`
 	Chat    string `json:"chat,omitempty"`
 	Session string `json:"session,omitempty"`
+	// Who it is for.
+	User string `json:"-"`
 }
 
 // AddNotification stores n and returns its id, keeping only the newest keep.
 func (s *Store) AddNotification(n Notification, keep int) (int64, error) {
-	res, err := s.db.Exec(`INSERT INTO notifications (at_ms, kind, title, body, chat, session) VALUES (?, ?, ?, ?, ?, ?)`,
-		n.AtMs, n.Kind, n.Title, n.Body, n.Chat, n.Session)
+	res, err := s.db.Exec(`INSERT INTO notifications (at_ms, kind, title, body, chat, session, user) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		n.AtMs, n.Kind, n.Title, n.Body, n.Chat, n.Session, n.User)
 	if err != nil {
 		return 0, err
 	}
@@ -26,9 +28,11 @@ func (s *Store) AddNotification(n Notification, keep int) (int64, error) {
 	return id, err
 }
 
-// NotificationsAfter lists notifications newer than id, oldest first.
-func (s *Store) NotificationsAfter(id int64, limit int) ([]Notification, error) {
-	rows, err := s.db.Query(`SELECT id, at_ms, kind, title, body, chat, session FROM notifications WHERE id > ? ORDER BY id LIMIT ?`, id, limit)
+// NotificationsAfter lists a user's notifications newer than id, oldest
+// first; user "" lists everyone's.
+func (s *Store) NotificationsAfter(user string, id int64, limit int) ([]Notification, error) {
+	rows, err := s.db.Query(`SELECT id, at_ms, kind, title, body, chat, session, user FROM notifications
+		WHERE id > ? AND (? = '' OR user = ?) ORDER BY id LIMIT ?`, id, user, user, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +40,7 @@ func (s *Store) NotificationsAfter(id int64, limit int) ([]Notification, error) 
 	out := []Notification{}
 	for rows.Next() {
 		var n Notification
-		if err := rows.Scan(&n.ID, &n.AtMs, &n.Kind, &n.Title, &n.Body, &n.Chat, &n.Session); err != nil {
+		if err := rows.Scan(&n.ID, &n.AtMs, &n.Kind, &n.Title, &n.Body, &n.Chat, &n.Session, &n.User); err != nil {
 			return nil, err
 		}
 		out = append(out, n)

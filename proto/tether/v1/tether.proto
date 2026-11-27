@@ -112,6 +112,10 @@ message NodeStatus {
   repeated Gpu gpus = 13;
   int64 memory_bytes = 14;
   int32 cpus = 15;
+  // The user whose device this is, and who else may use it; set by the
+  // hub. grants is sent to the owner only.
+  string owner = 20;
+  repeated DeviceGrant grants = 21;
 }
 
 message Gpu {
@@ -209,6 +213,9 @@ message SessionInfo {
   // The hub's latest backup of the transcript: when, and how big.
   int64 backed_up_ms = 30;
   int64 backed_up_bytes = 31;
+  // The user who started it, or whose device it is when the hub found it
+  // there; set by the hub.
+  string owner = 32;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -398,6 +405,37 @@ message Welcome {
   // The public address that serves only notifications (a Cloudflare tunnel);
   // empty when the hub has none. Changes are sent as NotifyEndpoint.
   string notify_url = 11;
+  // The user this connection belongs to, and everyone on the hub (names
+  // only, for showing who owns what).
+  User me = 12;
+  repeated User users = 13;
+}
+
+// A person using the hub. The hub's owner is the first user and an admin.
+message User {
+  string id = 1;
+  string name = 2;
+  // "admin" or "member".
+  string role = 3;
+  int64 created_ms = 4;
+}
+
+message UserList {
+  repeated User users = 1;
+}
+
+// A teammate's use of a device: "full" (Claude sessions and jobs, run under
+// the device owner's Claude login) or "jobs" (plain processes only).
+message DeviceGrant {
+  string user = 1;
+  string access = 2;
+  int64 granted_ms = 3;
+}
+
+// Who sees a chat besides its owner: "read" or "collaborate".
+message ChatShare {
+  string user = 1;
+  string access = 2;
 }
 
 // Where notifications can be fetched without Tailscale.
@@ -740,6 +778,8 @@ message Device {
   string platform = 4;
   int64 created_ms = 5;
   int64 last_seen_ms = 6;
+  // The user it belongs to.
+  string user = 7;
 }
 
 message DeviceList {
@@ -761,12 +801,16 @@ message PairRequest {
   string kind = 2;
   string name = 3;
   string platform = 4;
+  // With an invite code: the name of the person joining.
+  string user_name = 5;
 }
 
 message PairResult {
   Device device = 1;
   // Shown once; the hub keeps only its hash.
   string token = 2;
+  // Who the device belongs to; a new user when the code was an invite.
+  User user = 3;
 }
 
 // ---- Shared app settings and the tailnet (REST, plus the preferences frame) ----
@@ -930,6 +974,8 @@ message Artifact {
   int64 created_ms = 11;
   // Written by whoever attached it.
   string note = 12;
+  // The user who saved it, for artifacts that belong to no session.
+  string owner = 13;
 }
 
 // POST /api/v1/sessions/{id}/keys. keys are pressed in order: Enter,
@@ -1044,6 +1090,10 @@ message Chat {
   repeated ChatLink sessions = 9;
   // Sent once when the chat is deleted, so clients drop it. Its sessions stay.
   bool deleted = 10;
+  // The user whose chat it is, and who it is shared with (the owner sees
+  // the shares; others see only their own).
+  string owner = 11;
+  repeated ChatShare shares = 12;
 }
 
 // Where a chat's work runs.
@@ -1358,6 +1408,8 @@ message Job {
   string address = 12;
   // Who started it: an app's name, or the MCP.
   string by = 13;
+  // The user who started it; set by the hub.
+  string owner = 14;
 }
 
 message JobList {

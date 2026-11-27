@@ -183,7 +183,7 @@ func (h *Hub) skillLibraryRoutes(mux *http.ServeMux) {
 			}
 			id, _ := r.Context().Value(identityKey{}).(identity)
 			h.mu.Lock()
-			h.audit(actorOf(id), "skill", path.Base(r.URL.Path), r.PathValue("name"), true)
+			h.audit(whoOf(id), "skill", path.Base(r.URL.Path), r.PathValue("name"), true)
 			h.mu.Unlock()
 			writePlainJSON(w, summarize(s))
 		})
@@ -279,7 +279,7 @@ func (h *Hub) activeSkillsPrompt(request string) string {
 
 // ---- hub MCP tools ----
 
-func (h *Hub) mcpListSkills(map[string]any) (string, error) {
+func (h *Hub) mcpListSkills(caller identity, _ map[string]any) (string, error) {
 	active, err := h.lib().Active()
 	if err != nil {
 		return "", err
@@ -291,7 +291,7 @@ func (h *Hub) mcpListSkills(map[string]any) (string, error) {
 	return jsonText(out)
 }
 
-func (h *Hub) mcpReadSkill(args map[string]any) (string, error) {
+func (h *Hub) mcpReadSkill(caller identity, args map[string]any) (string, error) {
 	s, err := h.lib().Get(str(args, "name"))
 	if err != nil || s.Status != "active" {
 		return "", fmt.Errorf("no approved skill called %q; list_skills shows them", str(args, "name"))
@@ -299,7 +299,7 @@ func (h *Hub) mcpReadSkill(args map[string]any) (string, error) {
 	return s.Latest().MD, nil
 }
 
-func (h *Hub) mcpProposeSkill(args map[string]any) (string, error) {
+func (h *Hub) mcpProposeSkill(caller identity, args map[string]any) (string, error) {
 	mutating, _ := args["mutating"].(bool)
 	s, err := h.lib().Propose(str(args, "skill_md"), mutating, str(args, "source"), mcpSource, time.Now().UnixMilli())
 	if err != nil {
@@ -308,7 +308,7 @@ func (h *Hub) mcpProposeSkill(args map[string]any) (string, error) {
 	return "Saved " + s.Name + " for the user to approve in the Tether app. It can't be used until they do.", nil
 }
 
-func (h *Hub) mcpUpdateSkill(args map[string]any) (string, error) {
+func (h *Hub) mcpUpdateSkill(caller identity, args map[string]any) (string, error) {
 	s, err := h.lib().Get(str(args, "name"))
 	if err != nil || s.Status != "active" {
 		return "", fmt.Errorf("no approved skill called %q", str(args, "name"))

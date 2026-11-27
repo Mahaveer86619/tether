@@ -49,14 +49,14 @@ func (h *Hub) loadJobs() error {
 
 func (h *Hub) jobRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/jobs", h.api(func(r *http.Request) (proto.Message, *opError) {
-		return h.jobList(r.URL.Query().Get("node")), nil
+		return h.jobList(userOf(r), r.URL.Query().Get("node")), nil
 	}))
 	mux.HandleFunc("POST /api/v1/jobs", h.api(func(r *http.Request) (proto.Message, *opError) {
 		spec := &v1.JobSpec{}
 		if err := decode(r, spec); err != nil {
 			return nil, err
 		}
-		return h.startJob(spec, clientName(r))
+		return h.startJob(userOf(r), spec, clientName(r))
 	}))
 	mux.HandleFunc("POST /api/v1/jobs/{id}/{action}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return h.jobAction(r.PathValue("id"), r.PathValue("action"), clientName(r))
@@ -70,11 +70,11 @@ func (h *Hub) jobRoutes(mux *http.ServeMux) {
 	}))
 }
 
-// jobList is the jobs, newest first. Caller holds h.mu.
-func (h *Hub) jobList(node string) *v1.JobList {
+// jobList is the jobs id may see, newest first. Caller holds h.mu.
+func (h *Hub) jobList(id identity, node string) *v1.JobList {
 	out := &v1.JobList{}
 	for _, j := range h.jobs {
-		if node == "" || j.Spec.GetNode() == node {
+		if (node == "" || j.Spec.GetNode() == node) && h.can(id, actView, objJob, j.Id) {
 			out.Jobs = append(out.Jobs, proto.Clone(j).(*v1.Job))
 		}
 	}
@@ -84,7 +84,7 @@ func (h *Hub) jobList(node string) *v1.JobList {
 
 // startJob checks a spec, picks a GPU machine for one that needs it and
 // names none, and asks the node to start it. Caller holds h.mu.
-func (h *Hub) startJob(spec *v1.JobSpec, by string) (*v1.Job, *opError) {
+func (h *Hub) startJob(as identity, spec *v1.JobSpec, by string) (*v1.Job, *opError) {
 	spec.Command, spec.Cwd, spec.Node = strings.TrimSpace(spec.Command), strings.TrimSpace(spec.Cwd), strings.TrimSpace(spec.Node)
 	switch {
 	case spec.Command == "" || len(spec.Command) > maxJobCommand:
@@ -108,6 +108,9 @@ func (h *Hub) startJob(spec *v1.JobSpec, by string) (*v1.Job, *opError) {
 	if spec.Node == "" {
 		return nil, invalid("a job needs a device")
 	}
+	if !h.can(as, actRunJob, objNode, spec.Node) {
+		return nil, errForbidden
+	}
 	if spec.NeedsGpu && !nodeHasGPU(h.nodes[spec.Node]) {
 		return nil, invalid(spec.Node + " has no GPU Tether can see; pick a machine with one")
 	}
@@ -120,7 +123,8 @@ func (h *Hub) startJob(spec *v1.JobSpec, by string) (*v1.Job, *opError) {
 		}
 	}
 	now := time.Now().UnixMilli()
-	j := &v1.Job{Id: uuid.NewString()[:8], Spec: spec, State: v1.JobState_JOB_STATE_STARTING, CreatedMs: now, UpdatedMs: now, By: by}
+	j := &v1.Job{Id: uuid.NewString()[:8], Spec: spec, State: v1.JobState_JOB_STATE_STARTING, CreatedMs: now, UpdatedMs: now, By: by,
+		Owner: firstNonEmpty(as.userID(), h.ownerID)}
 	if err := h.sendJob(j, "start"); err != nil {
 		return nil, err
 	}

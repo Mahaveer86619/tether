@@ -226,7 +226,7 @@ func (h *Hub) rulesRoutes(mux *http.ServeMux) {
 	}))
 }
 
-func (h *Hub) mcpListRules(args map[string]any) (string, error) {
+func (h *Hub) mcpListRules(caller identity, args map[string]any) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	rs := rulesFor(h.rulesList(), str(args, "node"), str(args, "cwd"))

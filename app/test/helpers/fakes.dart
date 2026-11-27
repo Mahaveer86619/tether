@@ -306,6 +306,38 @@ class FakeHubRepository implements HubRepository {
   Future<Result<List<HostedPage>>> pages({String session = ''}) async =>
       Ok([for (final p in hostedPages) if (session.isEmpty || p.session == session) p]);
 
+  String joinedAs = '';
+  var team = const [
+    TeamUser(id: 'u1', name: 'Owner', role: 'admin'),
+    TeamUser(id: 'u2', name: 'Teammate'),
+  ];
+  final shares = <(String, String, DeviceAccess?)>[];
+
+  @override
+  Future<Result<List<TeamUser>>> users() async => Ok(team);
+
+  @override
+  Future<Result<PairingInvite>> createTeamInvite() async =>
+      Ok(PairingInvite(code: 'TEAM1-INVIT', expires: DateTime(2030), hubUrl: 'ws://100.64.0.1:7420/ws'));
+
+  @override
+  Future<Result<void>> removeUser(String id) async {
+    team = [for (final u in team) if (u.id != id) u];
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access) async {
+    shares.add((node, user, access));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> unshareDevice(String node, String user) async {
+    shares.add((node, user, null));
+    return const Ok(null);
+  }
+
   @override
   Future<Result<void>> revokeDevice(String id) async {
     devices = devices.where((d) => d.id != id).toList();
@@ -319,8 +351,10 @@ class FakeHubRepository implements HubRepository {
     required String fingerprint,
     required String name,
     required String platform,
+    String userName = '',
   }) async {
     paired.add((url, code, fingerprint));
+    joinedAs = userName;
     return code == 'ABCDE-FGHJK' ? const Ok('device-token') : const Err(UnauthorizedFailure());
   }
 

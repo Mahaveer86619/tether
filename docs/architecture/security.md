@@ -19,6 +19,17 @@ Tether lets a phone run commands on your machines through Claude. These rules ke
   - Machines shared into the tailnet by other users still need a token or a pairing code.
   - Trusted machines are revoked through Tailscale (remove the machine), not in Tether.
 
+## Users
+
+Several people can share one hub ([teams.md](../plans/teams.md#b-users-and-workspaces)). The hub's owner is the first user and an admin; everything from before users existed is theirs. An admin's **Settings → Team → Invite** makes a one-time code (24 hours, kept in memory); the teammate enters it with their name on their app's setup screen and gets a user and a device token. Every device belongs to one user; a pairing code made by a user pairs a device of theirs. A node name another user's agent already has cannot be taken.
+
+- **One check.** `can(user, action, object)` in `server/internal/hub/users.go` decides everything. Every REST route has a policy in `guard.go`, which runs before the handler; a route with no policy is refused to everyone but the admin token, and a test fails if a route is registered without one. MCP tools run as the user who owns the calling agent's machine. WebSocket commands and subscriptions are checked the same way.
+- **Filtered before sending.** The `Welcome`, chat, session, approval, notification, artifact, project and job lists, and every broadcast frame, carry only what the user may see. A node's grants go to its owner only.
+- **What a user sees:** their own chats and sessions; sessions on their own machines, whoever started them; chats shared with them (read, or collaborate to send). Approvals go to the person whose work it is. Hub-wide pages (usage, history search, insights, audit, codebases, workspaces, rules and skills changes, the second brain) are the admin's for now.
+- **Device sharing.** A device is used only by its owner until they share it: **full** (Claude sessions and jobs; they run under the owner's Claude Code login and spend the owner's plan) or **jobs only**. The device's owner sees and can stop everything run on it. Sharing and revoking are in the audit log; revoking closes the teammate's open app connections, which reconnect with the narrower view. A device not shared with someone is never sent their prompt, folder, file or job.
+- **The admin token** is the root: it sees and may do everything, for recovery and `tetherctl`. Apps trusted through the tailnet are the owner.
+- **Removing a user** signs out their devices and drops the grants made to them. What they made stays, visible to the admin token.
+
 ## Claude permissions
 
 - Headless sessions never use `--dangerously-skip-permissions` or `bypassPermissions` by default.

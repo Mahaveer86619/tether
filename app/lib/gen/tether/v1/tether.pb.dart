@@ -950,6 +950,8 @@ class NodeStatus extends $pb.GeneratedMessage {
     $core.Iterable<Gpu>? gpus,
     $fixnum.Int64? memoryBytes,
     $core.int? cpus,
+    $core.String? owner,
+    $core.Iterable<DeviceGrant>? grants,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -967,6 +969,8 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (gpus != null) result.gpus.addAll(gpus);
     if (memoryBytes != null) result.memoryBytes = memoryBytes;
     if (cpus != null) result.cpus = cpus;
+    if (owner != null) result.owner = owner;
+    if (grants != null) result.grants.addAll(grants);
     return result;
   }
 
@@ -1000,6 +1004,9 @@ class NodeStatus extends $pb.GeneratedMessage {
         subBuilder: Gpu.$_createMessage)
     ..aInt64(14, _omitFieldNames ? '' : 'memoryBytes')
     ..aI(15, _omitFieldNames ? '' : 'cpus')
+    ..aOS(20, _omitFieldNames ? '' : 'owner')
+    ..pPM<DeviceGrant>(21, _omitFieldNames ? '' : 'grants',
+        subBuilder: DeviceGrant.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1144,6 +1151,20 @@ class NodeStatus extends $pb.GeneratedMessage {
   $core.bool hasCpus() => $_has(14);
   @$pb.TagNumber(15)
   void clearCpus() => $_clearField(15);
+
+  /// The user whose device this is, and who else may use it; set by the
+  /// hub. grants is sent to the owner only.
+  @$pb.TagNumber(20)
+  $core.String get owner => $_getSZ(15);
+  @$pb.TagNumber(20)
+  set owner($core.String value) => $_setString(15, value);
+  @$pb.TagNumber(20)
+  $core.bool hasOwner() => $_has(15);
+  @$pb.TagNumber(20)
+  void clearOwner() => $_clearField(20);
+
+  @$pb.TagNumber(21)
+  $pb.PbList<DeviceGrant> get grants => $_getList(16);
 }
 
 class Gpu extends $pb.GeneratedMessage {
@@ -1355,6 +1376,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     $core.String? modeRevertTo,
     $fixnum.Int64? backedUpMs,
     $fixnum.Int64? backedUpBytes,
+    $core.String? owner,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -1388,6 +1410,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (modeRevertTo != null) result.modeRevertTo = modeRevertTo;
     if (backedUpMs != null) result.backedUpMs = backedUpMs;
     if (backedUpBytes != null) result.backedUpBytes = backedUpBytes;
+    if (owner != null) result.owner = owner;
     return result;
   }
 
@@ -1438,6 +1461,7 @@ class SessionInfo extends $pb.GeneratedMessage {
     ..aOS(29, _omitFieldNames ? '' : 'modeRevertTo')
     ..aInt64(30, _omitFieldNames ? '' : 'backedUpMs')
     ..aInt64(31, _omitFieldNames ? '' : 'backedUpBytes')
+    ..aOS(32, _omitFieldNames ? '' : 'owner')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1751,6 +1775,17 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasBackedUpBytes() => $_has(30);
   @$pb.TagNumber(31)
   void clearBackedUpBytes() => $_clearField(31);
+
+  /// The user who started it, or whose device it is when the hub found it
+  /// there; set by the hub.
+  @$pb.TagNumber(32)
+  $core.String get owner => $_getSZ(31);
+  @$pb.TagNumber(32)
+  set owner($core.String value) => $_setString(31, value);
+  @$pb.TagNumber(32)
+  $core.bool hasOwner() => $_has(31);
+  @$pb.TagNumber(32)
+  void clearOwner() => $_clearField(32);
 }
 
 /// A session no longer exists on its node (its transcript was deleted).
@@ -3294,6 +3329,8 @@ class Welcome extends $pb.GeneratedMessage {
     $core.Iterable<Chat>? chats,
     UpdateManifest? update,
     $core.String? notifyUrl,
+    User? me,
+    $core.Iterable<User>? users,
   }) {
     final result = Welcome._();
     if (hubVersion != null) result.hubVersion = hubVersion;
@@ -3308,6 +3345,8 @@ class Welcome extends $pb.GeneratedMessage {
     if (chats != null) result.chats.addAll(chats);
     if (update != null) result.update = update;
     if (notifyUrl != null) result.notifyUrl = notifyUrl;
+    if (me != null) result.me = me;
+    if (users != null) result.users.addAll(users);
     return result;
   }
 
@@ -3341,6 +3380,10 @@ class Welcome extends $pb.GeneratedMessage {
     ..aOM<UpdateManifest>(10, _omitFieldNames ? '' : 'update',
         subBuilder: UpdateManifest.$_createMessage)
     ..aOS(11, _omitFieldNames ? '' : 'notifyUrl')
+    ..aOM<User>(12, _omitFieldNames ? '' : 'me',
+        subBuilder: User.$_createMessage)
+    ..pPM<User>(13, _omitFieldNames ? '' : 'users',
+        subBuilder: User.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3450,6 +3493,316 @@ class Welcome extends $pb.GeneratedMessage {
   $core.bool hasNotifyUrl() => $_has(10);
   @$pb.TagNumber(11)
   void clearNotifyUrl() => $_clearField(11);
+
+  /// The user this connection belongs to, and everyone on the hub (names
+  /// only, for showing who owns what).
+  @$pb.TagNumber(12)
+  User get me => $_getN(11);
+  @$pb.TagNumber(12)
+  set me(User value) => $_setField(12, value);
+  @$pb.TagNumber(12)
+  $core.bool hasMe() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearMe() => $_clearField(12);
+  @$pb.TagNumber(12)
+  User ensureMe() => $_ensure(11);
+
+  @$pb.TagNumber(13)
+  $pb.PbList<User> get users => $_getList(12);
+}
+
+/// A person using the hub. The hub's owner is the first user and an admin.
+class User extends $pb.GeneratedMessage {
+  factory User({
+    $core.String? id,
+    $core.String? name,
+    $core.String? role,
+    $fixnum.Int64? createdMs,
+  }) {
+    final result = User._();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (role != null) result.role = role;
+    if (createdMs != null) result.createdMs = createdMs;
+    return result;
+  }
+
+  User._();
+
+  factory User.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      User()..mergeFromBuffer(data, registry);
+  factory User.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      User()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'User',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: User.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'role')
+    ..aInt64(4, _omitFieldNames ? '' : 'createdMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  User clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  User copyWith(void Function(User) updates) =>
+      super.copyWith((message) => updates(message as User)) as User;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use User() / User.new instead')
+  static User create() => User._();
+  static $pb.GeneratedMessage $_createMessage() => User._();
+  @$core.override
+  User createEmptyInstance() => User._();
+  @$core.pragma('dart2js:noInline')
+  static User getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<User>(User.$_createMessage);
+  static User? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  /// "admin" or "member".
+  @$pb.TagNumber(3)
+  $core.String get role => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set role($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRole() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRole() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get createdMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set createdMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCreatedMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCreatedMs() => $_clearField(4);
+}
+
+class UserList extends $pb.GeneratedMessage {
+  factory UserList({
+    $core.Iterable<User>? users,
+  }) {
+    final result = UserList._();
+    if (users != null) result.users.addAll(users);
+    return result;
+  }
+
+  UserList._();
+
+  factory UserList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UserList()..mergeFromBuffer(data, registry);
+  factory UserList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UserList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UserList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UserList.$_createMessage)
+    ..pPM<User>(1, _omitFieldNames ? '' : 'users',
+        subBuilder: User.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserList copyWith(void Function(UserList) updates) =>
+      super.copyWith((message) => updates(message as UserList)) as UserList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UserList() / UserList.new instead')
+  static UserList create() => UserList._();
+  static $pb.GeneratedMessage $_createMessage() => UserList._();
+  @$core.override
+  UserList createEmptyInstance() => UserList._();
+  @$core.pragma('dart2js:noInline')
+  static UserList getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UserList>(UserList.$_createMessage);
+  static UserList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<User> get users => $_getList(0);
+}
+
+/// A teammate's use of a device: "full" (Claude sessions and jobs, run under
+/// the device owner's Claude login) or "jobs" (plain processes only).
+class DeviceGrant extends $pb.GeneratedMessage {
+  factory DeviceGrant({
+    $core.String? user,
+    $core.String? access,
+    $fixnum.Int64? grantedMs,
+  }) {
+    final result = DeviceGrant._();
+    if (user != null) result.user = user;
+    if (access != null) result.access = access;
+    if (grantedMs != null) result.grantedMs = grantedMs;
+    return result;
+  }
+
+  DeviceGrant._();
+
+  factory DeviceGrant.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceGrant()..mergeFromBuffer(data, registry);
+  factory DeviceGrant.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceGrant()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeviceGrant',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: DeviceGrant.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'user')
+    ..aOS(2, _omitFieldNames ? '' : 'access')
+    ..aInt64(3, _omitFieldNames ? '' : 'grantedMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceGrant clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceGrant copyWith(void Function(DeviceGrant) updates) =>
+      super.copyWith((message) => updates(message as DeviceGrant))
+          as DeviceGrant;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeviceGrant() / DeviceGrant.new instead')
+  static DeviceGrant create() => DeviceGrant._();
+  static $pb.GeneratedMessage $_createMessage() => DeviceGrant._();
+  @$core.override
+  DeviceGrant createEmptyInstance() => DeviceGrant._();
+  @$core.pragma('dart2js:noInline')
+  static DeviceGrant getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeviceGrant>(
+          DeviceGrant.$_createMessage);
+  static DeviceGrant? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get user => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set user($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get access => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set access($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccess() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccess() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get grantedMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set grantedMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGrantedMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGrantedMs() => $_clearField(3);
+}
+
+/// Who sees a chat besides its owner: "read" or "collaborate".
+class ChatShare extends $pb.GeneratedMessage {
+  factory ChatShare({
+    $core.String? user,
+    $core.String? access,
+  }) {
+    final result = ChatShare._();
+    if (user != null) result.user = user;
+    if (access != null) result.access = access;
+    return result;
+  }
+
+  ChatShare._();
+
+  factory ChatShare.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ChatShare()..mergeFromBuffer(data, registry);
+  factory ChatShare.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ChatShare()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ChatShare',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ChatShare.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'user')
+    ..aOS(2, _omitFieldNames ? '' : 'access')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatShare clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ChatShare copyWith(void Function(ChatShare) updates) =>
+      super.copyWith((message) => updates(message as ChatShare)) as ChatShare;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ChatShare() / ChatShare.new instead')
+  static ChatShare create() => ChatShare._();
+  static $pb.GeneratedMessage $_createMessage() => ChatShare._();
+  @$core.override
+  ChatShare createEmptyInstance() => ChatShare._();
+  @$core.pragma('dart2js:noInline')
+  static ChatShare getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ChatShare>(ChatShare.$_createMessage);
+  static ChatShare? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get user => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set user($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get access => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set access($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAccess() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAccess() => $_clearField(2);
 }
 
 /// Where notifications can be fetched without Tailscale.
@@ -6907,6 +7260,7 @@ class Device extends $pb.GeneratedMessage {
     $core.String? platform,
     $fixnum.Int64? createdMs,
     $fixnum.Int64? lastSeenMs,
+    $core.String? user,
   }) {
     final result = Device._();
     if (id != null) result.id = id;
@@ -6915,6 +7269,7 @@ class Device extends $pb.GeneratedMessage {
     if (platform != null) result.platform = platform;
     if (createdMs != null) result.createdMs = createdMs;
     if (lastSeenMs != null) result.lastSeenMs = lastSeenMs;
+    if (user != null) result.user = user;
     return result;
   }
 
@@ -6937,6 +7292,7 @@ class Device extends $pb.GeneratedMessage {
     ..aOS(4, _omitFieldNames ? '' : 'platform')
     ..aInt64(5, _omitFieldNames ? '' : 'createdMs')
     ..aInt64(6, _omitFieldNames ? '' : 'lastSeenMs')
+    ..aOS(7, _omitFieldNames ? '' : 'user')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7014,6 +7370,16 @@ class Device extends $pb.GeneratedMessage {
   $core.bool hasLastSeenMs() => $_has(5);
   @$pb.TagNumber(6)
   void clearLastSeenMs() => $_clearField(6);
+
+  /// The user it belongs to.
+  @$pb.TagNumber(7)
+  $core.String get user => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set user($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasUser() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearUser() => $_clearField(7);
 }
 
 class DeviceList extends $pb.GeneratedMessage {
@@ -7156,12 +7522,14 @@ class PairRequest extends $pb.GeneratedMessage {
     $core.String? kind,
     $core.String? name,
     $core.String? platform,
+    $core.String? userName,
   }) {
     final result = PairRequest._();
     if (code != null) result.code = code;
     if (kind != null) result.kind = kind;
     if (name != null) result.name = name;
     if (platform != null) result.platform = platform;
+    if (userName != null) result.userName = userName;
     return result;
   }
 
@@ -7182,6 +7550,7 @@ class PairRequest extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'kind')
     ..aOS(3, _omitFieldNames ? '' : 'name')
     ..aOS(4, _omitFieldNames ? '' : 'platform')
+    ..aOS(5, _omitFieldNames ? '' : 'userName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7242,16 +7611,28 @@ class PairRequest extends $pb.GeneratedMessage {
   $core.bool hasPlatform() => $_has(3);
   @$pb.TagNumber(4)
   void clearPlatform() => $_clearField(4);
+
+  /// With an invite code: the name of the person joining.
+  @$pb.TagNumber(5)
+  $core.String get userName => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set userName($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasUserName() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearUserName() => $_clearField(5);
 }
 
 class PairResult extends $pb.GeneratedMessage {
   factory PairResult({
     Device? device,
     $core.String? token,
+    User? user,
   }) {
     final result = PairResult._();
     if (device != null) result.device = device;
     if (token != null) result.token = token;
+    if (user != null) result.user = user;
     return result;
   }
 
@@ -7271,6 +7652,8 @@ class PairResult extends $pb.GeneratedMessage {
     ..aOM<Device>(1, _omitFieldNames ? '' : 'device',
         subBuilder: Device.$_createMessage)
     ..aOS(2, _omitFieldNames ? '' : 'token')
+    ..aOM<User>(3, _omitFieldNames ? '' : 'user',
+        subBuilder: User.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -7313,6 +7696,18 @@ class PairResult extends $pb.GeneratedMessage {
   $core.bool hasToken() => $_has(1);
   @$pb.TagNumber(2)
   void clearToken() => $_clearField(2);
+
+  /// Who the device belongs to; a new user when the code was an invite.
+  @$pb.TagNumber(3)
+  User get user => $_getN(2);
+  @$pb.TagNumber(3)
+  set user(User value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUser() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUser() => $_clearField(3);
+  @$pb.TagNumber(3)
+  User ensureUser() => $_ensure(2);
 }
 
 /// App settings every connected app shares. PUT /api/v1/preferences.
@@ -8687,6 +9082,7 @@ class Artifact extends $pb.GeneratedMessage {
     $core.String? toolUseId,
     $fixnum.Int64? createdMs,
     $core.String? note,
+    $core.String? owner,
   }) {
     final result = Artifact._();
     if (id != null) result.id = id;
@@ -8701,6 +9097,7 @@ class Artifact extends $pb.GeneratedMessage {
     if (toolUseId != null) result.toolUseId = toolUseId;
     if (createdMs != null) result.createdMs = createdMs;
     if (note != null) result.note = note;
+    if (owner != null) result.owner = owner;
     return result;
   }
 
@@ -8729,6 +9126,7 @@ class Artifact extends $pb.GeneratedMessage {
     ..aOS(10, _omitFieldNames ? '' : 'toolUseId')
     ..aInt64(11, _omitFieldNames ? '' : 'createdMs')
     ..aOS(12, _omitFieldNames ? '' : 'note')
+    ..aOS(13, _omitFieldNames ? '' : 'owner')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -8863,6 +9261,16 @@ class Artifact extends $pb.GeneratedMessage {
   $core.bool hasNote() => $_has(11);
   @$pb.TagNumber(12)
   void clearNote() => $_clearField(12);
+
+  /// The user who saved it, for artifacts that belong to no session.
+  @$pb.TagNumber(13)
+  $core.String get owner => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set owner($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasOwner() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearOwner() => $_clearField(13);
 }
 
 /// POST /api/v1/sessions/{id}/keys. keys are pressed in order: Enter,
@@ -9833,6 +10241,8 @@ class Chat extends $pb.GeneratedMessage {
     $core.String? activeSession,
     $core.Iterable<ChatLink>? sessions,
     $core.bool? deleted,
+    $core.String? owner,
+    $core.Iterable<ChatShare>? shares,
   }) {
     final result = Chat._();
     if (id != null) result.id = id;
@@ -9845,6 +10255,8 @@ class Chat extends $pb.GeneratedMessage {
     if (activeSession != null) result.activeSession = activeSession;
     if (sessions != null) result.sessions.addAll(sessions);
     if (deleted != null) result.deleted = deleted;
+    if (owner != null) result.owner = owner;
+    if (shares != null) result.shares.addAll(shares);
     return result;
   }
 
@@ -9873,6 +10285,9 @@ class Chat extends $pb.GeneratedMessage {
     ..pPM<ChatLink>(9, _omitFieldNames ? '' : 'sessions',
         subBuilder: ChatLink.$_createMessage)
     ..aOB(10, _omitFieldNames ? '' : 'deleted')
+    ..aOS(11, _omitFieldNames ? '' : 'owner')
+    ..pPM<ChatShare>(12, _omitFieldNames ? '' : 'shares',
+        subBuilder: ChatShare.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -9984,6 +10399,20 @@ class Chat extends $pb.GeneratedMessage {
   $core.bool hasDeleted() => $_has(9);
   @$pb.TagNumber(10)
   void clearDeleted() => $_clearField(10);
+
+  /// The user whose chat it is, and who it is shared with (the owner sees
+  /// the shares; others see only their own).
+  @$pb.TagNumber(11)
+  $core.String get owner => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set owner($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasOwner() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearOwner() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbList<ChatShare> get shares => $_getList(11);
 }
 
 /// Where a chat's work runs.
@@ -12618,6 +13047,7 @@ class Job extends $pb.GeneratedMessage {
     $fixnum.Int64? updatedMs,
     $core.String? address,
     $core.String? by,
+    $core.String? owner,
   }) {
     final result = Job._();
     if (id != null) result.id = id;
@@ -12633,6 +13063,7 @@ class Job extends $pb.GeneratedMessage {
     if (updatedMs != null) result.updatedMs = updatedMs;
     if (address != null) result.address = address;
     if (by != null) result.by = by;
+    if (owner != null) result.owner = owner;
     return result;
   }
 
@@ -12664,6 +13095,7 @@ class Job extends $pb.GeneratedMessage {
     ..aInt64(11, _omitFieldNames ? '' : 'updatedMs')
     ..aOS(12, _omitFieldNames ? '' : 'address')
     ..aOS(13, _omitFieldNames ? '' : 'by')
+    ..aOS(14, _omitFieldNames ? '' : 'owner')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -12807,6 +13239,16 @@ class Job extends $pb.GeneratedMessage {
   $core.bool hasBy() => $_has(12);
   @$pb.TagNumber(13)
   void clearBy() => $_clearField(13);
+
+  /// The user who started it; set by the hub.
+  @$pb.TagNumber(14)
+  $core.String get owner => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set owner($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasOwner() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearOwner() => $_clearField(14);
 }
 
 class JobList extends $pb.GeneratedMessage {

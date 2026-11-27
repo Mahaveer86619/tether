@@ -411,11 +411,11 @@ class PairThisDevice {
   final HubRepository _hub;
   final String name, platform;
 
-  Future<Result<HubConnection>> call(String url, String code, {String fingerprint = ''}) async {
+  Future<Result<HubConnection>> call(String url, String code, {String fingerprint = '', String userName = ''}) async {
     final normalized = normalizeHubUrl(url);
     if (normalized == null) return const Err(ValidationFailure('Enter the hub address, e.g. 100.64.0.1 or ws://100.64.0.1:7420/ws.'));
     if (code.trim().isEmpty) return const Err(ValidationFailure('Enter the pairing code.'));
-    final token = await _hub.pair(url: normalized, code: code.trim(), fingerprint: fingerprint, name: name, platform: platform);
+    final token = await _hub.pair(url: normalized, code: code.trim(), fingerprint: fingerprint, name: name, platform: platform, userName: userName);
     return token.fold(Err.new, (t) => _save(normalized, t, fingerprint: fingerprint));
   }
 }
@@ -559,6 +559,18 @@ class RevokeDevice {
   const RevokeDevice(this._hub);
   final HubRepository _hub;
   Future<Result<void>> call(String id) => _hub.revokeDevice(id);
+}
+
+/// The people on the hub, inviting and removing them, and sharing devices
+/// with them.
+class ManageTeam {
+  const ManageTeam(this._hub);
+  final HubRepository _hub;
+  Future<Result<List<TeamUser>>> users() => _hub.users();
+  Future<Result<PairingInvite>> invite() => _hub.createTeamInvite();
+  Future<Result<void>> remove(String id) => _hub.removeUser(id);
+  Future<Result<void>> share(String node, String user, DeviceAccess access) => _hub.shareDevice(node, user, access);
+  Future<Result<void>> unshare(String node, String user) => _hub.unshareDevice(node, user);
 }
 
 /// Unpairs this app: its token is revoked on the hub, then the hub address
