@@ -952,6 +952,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     $core.int? cpus,
     $core.String? owner,
     $core.Iterable<DeviceGrant>? grants,
+    $core.Iterable<DeviceSlot>? slots,
   }) {
     final result = NodeStatus._();
     if (node != null) result.node = node;
@@ -971,6 +972,7 @@ class NodeStatus extends $pb.GeneratedMessage {
     if (cpus != null) result.cpus = cpus;
     if (owner != null) result.owner = owner;
     if (grants != null) result.grants.addAll(grants);
+    if (slots != null) result.slots.addAll(slots);
     return result;
   }
 
@@ -1007,6 +1009,8 @@ class NodeStatus extends $pb.GeneratedMessage {
     ..aOS(20, _omitFieldNames ? '' : 'owner')
     ..pPM<DeviceGrant>(21, _omitFieldNames ? '' : 'grants',
         subBuilder: DeviceGrant.$_createMessage)
+    ..pPM<DeviceSlot>(22, _omitFieldNames ? '' : 'slots',
+        subBuilder: DeviceSlot.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1165,6 +1169,9 @@ class NodeStatus extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(21)
   $pb.PbList<DeviceGrant> get grants => $_getList(16);
+
+  @$pb.TagNumber(22)
+  $pb.PbList<DeviceSlot> get slots => $_getList(17);
 }
 
 class Gpu extends $pb.GeneratedMessage {
@@ -3661,11 +3668,19 @@ class DeviceGrant extends $pb.GeneratedMessage {
     $core.String? user,
     $core.String? access,
     $fixnum.Int64? grantedMs,
+    $core.int? startHour,
+    $core.int? endHour,
+    $core.String? days,
+    $core.String? timezone,
   }) {
     final result = DeviceGrant._();
     if (user != null) result.user = user;
     if (access != null) result.access = access;
     if (grantedMs != null) result.grantedMs = grantedMs;
+    if (startHour != null) result.startHour = startHour;
+    if (endHour != null) result.endHour = endHour;
+    if (days != null) result.days = days;
+    if (timezone != null) result.timezone = timezone;
     return result;
   }
 
@@ -3685,6 +3700,10 @@ class DeviceGrant extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'user')
     ..aOS(2, _omitFieldNames ? '' : 'access')
     ..aInt64(3, _omitFieldNames ? '' : 'grantedMs')
+    ..aI(4, _omitFieldNames ? '' : 'startHour')
+    ..aI(5, _omitFieldNames ? '' : 'endHour')
+    ..aOS(6, _omitFieldNames ? '' : 'days')
+    ..aOS(7, _omitFieldNames ? '' : 'timezone')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3735,6 +3754,321 @@ class DeviceGrant extends $pb.GeneratedMessage {
   $core.bool hasGrantedMs() => $_has(2);
   @$pb.TagNumber(3)
   void clearGrantedMs() => $_clearField(3);
+
+  /// Allowed daily time window (0-23 hours). If start_hour == end_hour (e.g. 0 and 0),
+  /// access is unrestricted 24/7. When start_hour > end_hour (e.g. 20 to 10),
+  /// the window spans overnight (from 20:00 to 10:00 next day).
+  @$pb.TagNumber(4)
+  $core.int get startHour => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set startHour($core.int value) => $_setSignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStartHour() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStartHour() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get endHour => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set endHour($core.int value) => $_setSignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEndHour() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEndHour() => $_clearField(5);
+
+  /// Comma-separated days of week, e.g. "mon,tue,wed,thu,fri,sat,sun". Empty means all.
+  @$pb.TagNumber(6)
+  $core.String get days => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set days($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasDays() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearDays() => $_clearField(6);
+
+  /// IANA timezone e.g. "America/New_York" or "Local". Empty means local node timezone.
+  @$pb.TagNumber(7)
+  $core.String get timezone => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set timezone($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasTimezone() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearTimezone() => $_clearField(7);
+}
+
+/// A reserved time block on a node, giving the user priority/permission to run
+/// jobs and sessions during that period.
+class DeviceSlot extends $pb.GeneratedMessage {
+  factory DeviceSlot({
+    $core.String? id,
+    $core.String? node,
+    $core.String? user,
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $core.String? notes,
+    $fixnum.Int64? createdMs,
+  }) {
+    final result = DeviceSlot._();
+    if (id != null) result.id = id;
+    if (node != null) result.node = node;
+    if (user != null) result.user = user;
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (notes != null) result.notes = notes;
+    if (createdMs != null) result.createdMs = createdMs;
+    return result;
+  }
+
+  DeviceSlot._();
+
+  factory DeviceSlot.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceSlot()..mergeFromBuffer(data, registry);
+  factory DeviceSlot.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceSlot()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeviceSlot',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: DeviceSlot.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'node')
+    ..aOS(3, _omitFieldNames ? '' : 'user')
+    ..aInt64(4, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(5, _omitFieldNames ? '' : 'endMs')
+    ..aOS(6, _omitFieldNames ? '' : 'notes')
+    ..aInt64(7, _omitFieldNames ? '' : 'createdMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceSlot clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceSlot copyWith(void Function(DeviceSlot) updates) =>
+      super.copyWith((message) => updates(message as DeviceSlot)) as DeviceSlot;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeviceSlot() / DeviceSlot.new instead')
+  static DeviceSlot create() => DeviceSlot._();
+  static $pb.GeneratedMessage $_createMessage() => DeviceSlot._();
+  @$core.override
+  DeviceSlot createEmptyInstance() => DeviceSlot._();
+  @$core.pragma('dart2js:noInline')
+  static DeviceSlot getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeviceSlot>(DeviceSlot.$_createMessage);
+  static DeviceSlot? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get node => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set node($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNode() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get user => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set user($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUser() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUser() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get startMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set startMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasStartMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearStartMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get endMs => $_getI64(4);
+  @$pb.TagNumber(5)
+  set endMs($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasEndMs() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearEndMs() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get notes => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set notes($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasNotes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearNotes() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get createdMs => $_getI64(6);
+  @$pb.TagNumber(7)
+  set createdMs($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasCreatedMs() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearCreatedMs() => $_clearField(7);
+}
+
+class DeviceSlotList extends $pb.GeneratedMessage {
+  factory DeviceSlotList({
+    $core.Iterable<DeviceSlot>? slots,
+  }) {
+    final result = DeviceSlotList._();
+    if (slots != null) result.slots.addAll(slots);
+    return result;
+  }
+
+  DeviceSlotList._();
+
+  factory DeviceSlotList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceSlotList()..mergeFromBuffer(data, registry);
+  factory DeviceSlotList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceSlotList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeviceSlotList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: DeviceSlotList.$_createMessage)
+    ..pPM<DeviceSlot>(1, _omitFieldNames ? '' : 'slots',
+        subBuilder: DeviceSlot.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceSlotList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceSlotList copyWith(void Function(DeviceSlotList) updates) =>
+      super.copyWith((message) => updates(message as DeviceSlotList))
+          as DeviceSlotList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeviceSlotList() / DeviceSlotList.new instead')
+  static DeviceSlotList create() => DeviceSlotList._();
+  static $pb.GeneratedMessage $_createMessage() => DeviceSlotList._();
+  @$core.override
+  DeviceSlotList createEmptyInstance() => DeviceSlotList._();
+  @$core.pragma('dart2js:noInline')
+  static DeviceSlotList getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeviceSlotList>(
+          DeviceSlotList.$_createMessage);
+  static DeviceSlotList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<DeviceSlot> get slots => $_getList(0);
+}
+
+class BookSlotRequest extends $pb.GeneratedMessage {
+  factory BookSlotRequest({
+    $core.String? user,
+    $fixnum.Int64? startMs,
+    $fixnum.Int64? endMs,
+    $core.String? notes,
+  }) {
+    final result = BookSlotRequest._();
+    if (user != null) result.user = user;
+    if (startMs != null) result.startMs = startMs;
+    if (endMs != null) result.endMs = endMs;
+    if (notes != null) result.notes = notes;
+    return result;
+  }
+
+  BookSlotRequest._();
+
+  factory BookSlotRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BookSlotRequest()..mergeFromBuffer(data, registry);
+  factory BookSlotRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BookSlotRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BookSlotRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: BookSlotRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'user')
+    ..aInt64(2, _omitFieldNames ? '' : 'startMs')
+    ..aInt64(3, _omitFieldNames ? '' : 'endMs')
+    ..aOS(4, _omitFieldNames ? '' : 'notes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BookSlotRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BookSlotRequest copyWith(void Function(BookSlotRequest) updates) =>
+      super.copyWith((message) => updates(message as BookSlotRequest))
+          as BookSlotRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BookSlotRequest() / BookSlotRequest.new instead')
+  static BookSlotRequest create() => BookSlotRequest._();
+  static $pb.GeneratedMessage $_createMessage() => BookSlotRequest._();
+  @$core.override
+  BookSlotRequest createEmptyInstance() => BookSlotRequest._();
+  @$core.pragma('dart2js:noInline')
+  static BookSlotRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<BookSlotRequest>(
+          BookSlotRequest.$_createMessage);
+  static BookSlotRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get user => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set user($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get startMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set startMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStartMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStartMs() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get endMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set endMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasEndMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearEndMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get notes => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set notes($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNotes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNotes() => $_clearField(4);
 }
 
 /// Who sees a chat besides its owner: "read" or "collaborate".
@@ -12870,6 +13204,8 @@ class JobSpec extends $pb.GeneratedMessage {
     $core.int? restartLimit,
     $core.String? checkpoint,
     $core.bool? needsGpu,
+    $core.bool? queueWhenBusy,
+    $core.String? schedule,
   }) {
     final result = JobSpec._();
     if (name != null) result.name = name;
@@ -12883,6 +13219,8 @@ class JobSpec extends $pb.GeneratedMessage {
     if (restartLimit != null) result.restartLimit = restartLimit;
     if (checkpoint != null) result.checkpoint = checkpoint;
     if (needsGpu != null) result.needsGpu = needsGpu;
+    if (queueWhenBusy != null) result.queueWhenBusy = queueWhenBusy;
+    if (schedule != null) result.schedule = schedule;
     return result;
   }
 
@@ -12915,6 +13253,8 @@ class JobSpec extends $pb.GeneratedMessage {
     ..aI(9, _omitFieldNames ? '' : 'restartLimit')
     ..aOS(10, _omitFieldNames ? '' : 'checkpoint')
     ..aOB(11, _omitFieldNames ? '' : 'needsGpu')
+    ..aOB(12, _omitFieldNames ? '' : 'queueWhenBusy')
+    ..aOS(13, _omitFieldNames ? '' : 'schedule')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -13030,6 +13370,26 @@ class JobSpec extends $pb.GeneratedMessage {
   $core.bool hasNeedsGpu() => $_has(10);
   @$pb.TagNumber(11)
   void clearNeedsGpu() => $_clearField(11);
+
+  /// Queue if the device is currently occupied or outside the free-time window.
+  @$pb.TagNumber(12)
+  $core.bool get queueWhenBusy => $_getBF(11);
+  @$pb.TagNumber(12)
+  set queueWhenBusy($core.bool value) => $_setBool(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasQueueWhenBusy() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearQueueWhenBusy() => $_clearField(12);
+
+  /// Schedule policy: "now", "next_free", or specific slot id.
+  @$pb.TagNumber(13)
+  $core.String get schedule => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set schedule($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasSchedule() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearSchedule() => $_clearField(13);
 }
 
 class Job extends $pb.GeneratedMessage {

@@ -81,6 +81,7 @@ const JobState$json = {
     {'1': 'JOB_STATE_FAILED', '2': 5},
     {'1': 'JOB_STATE_STOPPED', '2': 6},
     {'1': 'JOB_STATE_LOST', '2': 7},
+    {'1': 'JOB_STATE_QUEUED', '2': 8},
   ],
 };
 
@@ -89,7 +90,7 @@ final $typed_data.Uint8List jobStateDescriptor = $convert.base64Decode(
     'CghKb2JTdGF0ZRIZChVKT0JfU1RBVEVfVU5TUEVDSUZJRUQQABIWChJKT0JfU1RBVEVfU1RBUl'
     'RJTkcQARIVChFKT0JfU1RBVEVfUlVOTklORxACEhQKEEpPQl9TVEFURV9QQVVTRUQQAxIUChBK'
     'T0JfU1RBVEVfRVhJVEVEEAQSFAoQSk9CX1NUQVRFX0ZBSUxFRBAFEhUKEUpPQl9TVEFURV9TVE'
-    '9QUEVEEAYSEgoOSk9CX1NUQVRFX0xPU1QQBw==');
+    '9QUEVEEAYSEgoOSk9CX1NUQVRFX0xPU1QQBxIUChBKT0JfU1RBVEVfUVVFVUVEEAg=');
 
 @$core.Deprecated('Use frameDescriptor instead')
 const Frame$json = {
@@ -551,6 +552,14 @@ const NodeStatus$json = {
       '6': '.tether.v1.DeviceGrant',
       '10': 'grants'
     },
+    {
+      '1': 'slots',
+      '3': 22,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.DeviceSlot',
+      '10': 'slots'
+    },
   ],
 };
 
@@ -566,7 +575,7 @@ final $typed_data.Uint8List nodeStatusDescriptor = $convert.base64Decode(
     'tSBmNoZWNrcxIiCgRncHVzGA0gAygLMg4udGV0aGVyLnYxLkdwdVIEZ3B1cxIhCgxtZW1vcnlf'
     'Ynl0ZXMYDiABKANSC21lbW9yeUJ5dGVzEhIKBGNwdXMYDyABKAVSBGNwdXMSFAoFb3duZXIYFC'
     'ABKAlSBW93bmVyEi4KBmdyYW50cxgVIAMoCzIWLnRldGhlci52MS5EZXZpY2VHcmFudFIGZ3Jh'
-    'bnRz');
+    'bnRzEisKBXNsb3RzGBYgAygLMhUudGV0aGVyLnYxLkRldmljZVNsb3RSBXNsb3Rz');
 
 @$core.Deprecated('Use gpuDescriptor instead')
 const Gpu$json = {
@@ -1175,13 +1184,76 @@ const DeviceGrant$json = {
     {'1': 'user', '3': 1, '4': 1, '5': 9, '10': 'user'},
     {'1': 'access', '3': 2, '4': 1, '5': 9, '10': 'access'},
     {'1': 'granted_ms', '3': 3, '4': 1, '5': 3, '10': 'grantedMs'},
+    {'1': 'start_hour', '3': 4, '4': 1, '5': 5, '10': 'startHour'},
+    {'1': 'end_hour', '3': 5, '4': 1, '5': 5, '10': 'endHour'},
+    {'1': 'days', '3': 6, '4': 1, '5': 9, '10': 'days'},
+    {'1': 'timezone', '3': 7, '4': 1, '5': 9, '10': 'timezone'},
   ],
 };
 
 /// Descriptor for `DeviceGrant`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deviceGrantDescriptor = $convert.base64Decode(
     'CgtEZXZpY2VHcmFudBISCgR1c2VyGAEgASgJUgR1c2VyEhYKBmFjY2VzcxgCIAEoCVIGYWNjZX'
-    'NzEh0KCmdyYW50ZWRfbXMYAyABKANSCWdyYW50ZWRNcw==');
+    'NzEh0KCmdyYW50ZWRfbXMYAyABKANSCWdyYW50ZWRNcxIdCgpzdGFydF9ob3VyGAQgASgFUglz'
+    'dGFydEhvdXISGQoIZW5kX2hvdXIYBSABKAVSB2VuZEhvdXISEgoEZGF5cxgGIAEoCVIEZGF5cx'
+    'IaCgh0aW1lem9uZRgHIAEoCVIIdGltZXpvbmU=');
+
+@$core.Deprecated('Use deviceSlotDescriptor instead')
+const DeviceSlot$json = {
+  '1': 'DeviceSlot',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'node', '3': 2, '4': 1, '5': 9, '10': 'node'},
+    {'1': 'user', '3': 3, '4': 1, '5': 9, '10': 'user'},
+    {'1': 'start_ms', '3': 4, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 5, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'notes', '3': 6, '4': 1, '5': 9, '10': 'notes'},
+    {'1': 'created_ms', '3': 7, '4': 1, '5': 3, '10': 'createdMs'},
+  ],
+};
+
+/// Descriptor for `DeviceSlot`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceSlotDescriptor = $convert.base64Decode(
+    'CgpEZXZpY2VTbG90Eg4KAmlkGAEgASgJUgJpZBISCgRub2RlGAIgASgJUgRub2RlEhIKBHVzZX'
+    'IYAyABKAlSBHVzZXISGQoIc3RhcnRfbXMYBCABKANSB3N0YXJ0TXMSFQoGZW5kX21zGAUgASgD'
+    'UgVlbmRNcxIUCgVub3RlcxgGIAEoCVIFbm90ZXMSHQoKY3JlYXRlZF9tcxgHIAEoA1IJY3JlYX'
+    'RlZE1z');
+
+@$core.Deprecated('Use deviceSlotListDescriptor instead')
+const DeviceSlotList$json = {
+  '1': 'DeviceSlotList',
+  '2': [
+    {
+      '1': 'slots',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.DeviceSlot',
+      '10': 'slots'
+    },
+  ],
+};
+
+/// Descriptor for `DeviceSlotList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceSlotListDescriptor = $convert.base64Decode(
+    'Cg5EZXZpY2VTbG90TGlzdBIrCgVzbG90cxgBIAMoCzIVLnRldGhlci52MS5EZXZpY2VTbG90Ug'
+    'VzbG90cw==');
+
+@$core.Deprecated('Use bookSlotRequestDescriptor instead')
+const BookSlotRequest$json = {
+  '1': 'BookSlotRequest',
+  '2': [
+    {'1': 'user', '3': 1, '4': 1, '5': 9, '10': 'user'},
+    {'1': 'start_ms', '3': 2, '4': 1, '5': 3, '10': 'startMs'},
+    {'1': 'end_ms', '3': 3, '4': 1, '5': 3, '10': 'endMs'},
+    {'1': 'notes', '3': 4, '4': 1, '5': 9, '10': 'notes'},
+  ],
+};
+
+/// Descriptor for `BookSlotRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List bookSlotRequestDescriptor = $convert.base64Decode(
+    'Cg9Cb29rU2xvdFJlcXVlc3QSEgoEdXNlchgBIAEoCVIEdXNlchIZCghzdGFydF9tcxgCIAEoA1'
+    'IHc3RhcnRNcxIVCgZlbmRfbXMYAyABKANSBWVuZE1zEhQKBW5vdGVzGAQgASgJUgVub3Rlcw==');
 
 @$core.Deprecated('Use chatShareDescriptor instead')
 const ChatShare$json = {
@@ -3433,6 +3505,8 @@ const JobSpec$json = {
     {'1': 'restart_limit', '3': 9, '4': 1, '5': 5, '10': 'restartLimit'},
     {'1': 'checkpoint', '3': 10, '4': 1, '5': 9, '10': 'checkpoint'},
     {'1': 'needs_gpu', '3': 11, '4': 1, '5': 8, '10': 'needsGpu'},
+    {'1': 'queue_when_busy', '3': 12, '4': 1, '5': 8, '10': 'queueWhenBusy'},
+    {'1': 'schedule', '3': 13, '4': 1, '5': 9, '10': 'schedule'},
   ],
   '3': [JobSpec_EnvEntry$json],
 };
@@ -3454,8 +3528,10 @@ final $typed_data.Uint8List jobSpecDescriptor = $convert.base64Decode(
     'dGhlci52MS5Kb2JTcGVjLkVudkVudHJ5UgNlbnYSLAoIZW52X2Zyb20YBiADKAsyES50ZXRoZX'
     'IudjEuRW52UmVmUgdlbnZGcm9tEhIKBHBvcnQYByABKAVSBHBvcnQSGAoHcmVzdGFydBgIIAEo'
     'CVIHcmVzdGFydBIjCg1yZXN0YXJ0X2xpbWl0GAkgASgFUgxyZXN0YXJ0TGltaXQSHgoKY2hlY2'
-    'twb2ludBgKIAEoCVIKY2hlY2twb2ludBIbCgluZWVkc19ncHUYCyABKAhSCG5lZWRzR3B1GjYK'
-    'CEVudkVudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbHVlGAIgASgJUgV2YWx1ZToCOAE=');
+    'twb2ludBgKIAEoCVIKY2hlY2twb2ludBIbCgluZWVkc19ncHUYCyABKAhSCG5lZWRzR3B1EiYK'
+    'D3F1ZXVlX3doZW5fYnVzeRgMIAEoCFINcXVldWVXaGVuQnVzeRIaCghzY2hlZHVsZRgNIAEoCV'
+    'IIc2NoZWR1bGUaNgoIRW52RW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdmFsdWUYAiABKAlS'
+    'BXZhbHVlOgI4AQ==');
 
 @$core.Deprecated('Use jobDescriptor instead')
 const Job$json = {

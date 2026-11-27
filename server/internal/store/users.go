@@ -28,8 +28,11 @@ func (s *Store) PutUser(u *v1.User) error {
 	return err
 }
 
-// DeleteUser removes a user and every grant made to them.
+// DeleteUser removes a user and every grant and slot made to them.
 func (s *Store) DeleteUser(id string) error {
+	if _, err := s.db.Exec(`DELETE FROM device_slots WHERE user = ?`, id); err != nil {
+		return err
+	}
 	if _, err := s.db.Exec(`DELETE FROM device_grants WHERE user = ?`, id); err != nil {
 		return err
 	}
@@ -39,7 +42,7 @@ func (s *Store) DeleteUser(id string) error {
 
 // Grants returns every device grant, by node and then user.
 func (s *Store) Grants() (map[string]map[string]*v1.DeviceGrant, error) {
-	rows, err := s.db.Query(`SELECT node, user, access, granted_ms FROM device_grants`)
+	rows, err := s.db.Query(`SELECT node, user, access, granted_ms, start_hour, end_hour, days, timezone FROM device_grants`)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +51,7 @@ func (s *Store) Grants() (map[string]map[string]*v1.DeviceGrant, error) {
 	for rows.Next() {
 		var node string
 		g := &v1.DeviceGrant{}
-		if err := rows.Scan(&node, &g.User, &g.Access, &g.GrantedMs); err != nil {
+		if err := rows.Scan(&node, &g.User, &g.Access, &g.GrantedMs, &g.StartHour, &g.EndHour, &g.Days, &g.Timezone); err != nil {
 			return nil, err
 		}
 		if out[node] == nil {
@@ -60,13 +63,53 @@ func (s *Store) Grants() (map[string]map[string]*v1.DeviceGrant, error) {
 }
 
 func (s *Store) PutGrant(node string, g *v1.DeviceGrant) error {
-	_, err := s.db.Exec(`INSERT INTO device_grants (node, user, access, granted_ms) VALUES (?, ?, ?, ?)
-		ON CONFLICT(node, user) DO UPDATE SET access = excluded.access, granted_ms = excluded.granted_ms`, node, g.User, g.Access, g.GrantedMs)
+	_, err := s.db.Exec(`INSERT INTO device_grants (node, user, access, granted_ms, start_hour, end_hour, days, timezone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(node, user) DO UPDATE SET access = excluded.access, granted_ms = excluded.granted_ms,
+			start_hour = excluded.start_hour, end_hour = excluded.end_hour, days = excluded.days, timezone = excluded.timezone`,
+		node, g.User, g.Access, g.GrantedMs, g.StartHour, g.EndHour, g.Days, g.Timezone)
 	return err
 }
 
 func (s *Store) DeleteGrant(node, user string) error {
 	_, err := s.db.Exec(`DELETE FROM device_grants WHERE node = ? AND user = ?`, node, user)
+	return err
+}
+
+// Slots returns every slot booked on node (or all nodes when node == "").
+func (s *Store) Slots(node string) ([]*v1.DeviceSlot, error) {
+	var query string
+	var args []any
+	if node != "" {
+		query = `SELECT id, node, user, start_ms, end_ms, notes, created_ms FROM device_slots WHERE node = ? ORDER BY start_ms`
+		args = append(args, node)
+	} else {
+		query = `SELECT id, node, user, start_ms, end_ms, notes, created_ms FROM device_slots ORDER BY start_ms`
+	}
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.DeviceSlot
+	for rows.Next() {
+		slot := &v1.DeviceSlot{}
+		if err := rows.Scan(&slot.Id, &slot.Node, &slot.User, &slot.StartMs, &slot.EndMs, &slot.Notes, &slot.CreatedMs); err != nil {
+			return nil, err
+		}
+		out = append(out, slot)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) PutSlot(slot *v1.DeviceSlot) error {
+	_, err := s.db.Exec(`INSERT INTO device_slots (id, node, user, start_ms, end_ms, notes, created_ms) VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET node = excluded.node, user = excluded.user, start_ms = excluded.start_ms, end_ms = excluded.end_ms, notes = excluded.notes`,
+		slot.Id, slot.Node, slot.User, slot.StartMs, slot.EndMs, slot.Notes, slot.CreatedMs)
+	return err
+}
+
+func (s *Store) DeleteSlot(id string) error {
+	_, err := s.db.Exec(`DELETE FROM device_slots WHERE id = ?`, id)
 	return err
 }
 

@@ -143,6 +143,10 @@ class JobState extends $pb.ProtobufEnum {
   static const JobState JOB_STATE_LOST =
       JobState._(7, _omitEnumNames ? '' : 'JOB_STATE_LOST');
 
+  /// Waiting for a free device slot or off-peak window.
+  static const JobState JOB_STATE_QUEUED =
+      JobState._(8, _omitEnumNames ? '' : 'JOB_STATE_QUEUED');
+
   static const $core.List<JobState> values = <JobState>[
     JOB_STATE_UNSPECIFIED,
     JOB_STATE_STARTING,
@@ -152,10 +156,11 @@ class JobState extends $pb.ProtobufEnum {
     JOB_STATE_FAILED,
     JOB_STATE_STOPPED,
     JOB_STATE_LOST,
+    JOB_STATE_QUEUED,
   ];
 
   static final $core.List<JobState?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 7);
+      $pb.ProtobufEnum.$_initByValueList(values, 8);
   static JobState? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

@@ -109,6 +109,7 @@ type Hub struct {
 	users        map[string]*v1.User
 	ownerID      string                                // the first user, the hub's owner
 	grants       map[string]map[string]*v1.DeviceGrant // node -> user -> what they may run there
+	slots        map[string][]*v1.DeviceSlot           // node -> booked time slots
 	fails        map[string][]time.Time
 	notifyCh     chan struct{} // closed when a notification is added, see notify.go
 	notifyURL    string        // where the notification tunnel can be reached, see tunnel.go
@@ -176,6 +177,8 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		codes:        map[string]pairCode{},
 		invites:      map[string]invite{},
 		users:        map[string]*v1.User{},
+		grants:       map[string]map[string]*v1.DeviceGrant{},
+		slots:        map[string][]*v1.DeviceSlot{},
 		fails:        map[string][]time.Time{},
 		chats:        map[string]*v1.Chat{},
 		chatOf:       map[string]string{},
@@ -261,6 +264,7 @@ func (h *Hub) Run(ctx context.Context) {
 	go h.retentionLoop(ctx)
 	go h.modeLoop(ctx)
 	go h.limitWaitLoop(ctx)
+	go h.jobScheduleLoop(ctx)
 	go h.backupLoop(ctx)
 	go h.updateLoop(ctx)
 	go h.historyLoop(ctx)
@@ -483,6 +487,16 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 	}
 	if !h.can(as, actRunClaude, objNode, cs.Node) {
 		return "", errForbidden
+	}
+	if ok, reason := h.canUseDeviceNow(as, actRunClaude, cs.Node, time.Now()); !ok {
+		switch reason {
+		case "outside_window":
+			return "", &opError{"device_window_closed", "this device is only available to teammates during off-peak hours", http.StatusForbidden}
+		case "slot_conflict":
+			return "", &opError{"slot_conflict", "another user has reserved this device right now", http.StatusConflict}
+		default:
+			return "", errForbidden
+		}
 	}
 	agent := h.agents[cs.Node]
 	if agent == nil {
@@ -1092,7 +1106,7 @@ func (h *Hub) putSession(info *v1.SessionInfo) {
 
 func (h *Hub) putNode(st *v1.NodeStatus) {
 	// The hub's to say, per client; see nodeFor.
-	st.Owner, st.Grants = "", nil
+	st.Owner, st.Grants, st.Slots = "", nil, nil
 	// Kept while offline, so an app can still tell its own machine's node.
 	if ip := h.agentIPs[st.Node]; ip != "" {
 		st.Ip = ip
