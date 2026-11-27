@@ -312,6 +312,9 @@ class FakeHubRepository implements HubRepository {
     TeamUser(id: 'u2', name: 'Teammate'),
   ];
   final shares = <(String, String, DeviceAccess?)>[];
+  final shareWindows = <(int, int, String, String)>[];
+  final bookings = <(String, String, DateTime, DateTime, String)>[];
+  final cancelledSlots = <String>[];
 
   @override
   Future<Result<List<TeamUser>>> users() async => Ok(team);
@@ -327,14 +330,38 @@ class FakeHubRepository implements HubRepository {
   }
 
   @override
-  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access) async {
+  Future<Result<void>> shareDevice(
+    String node,
+    String user,
+    DeviceAccess access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  }) async {
     shares.add((node, user, access));
+    shareWindows.add((startHour, endHour, days, timezone));
     return const Ok(null);
   }
 
   @override
   Future<Result<void>> unshareDevice(String node, String user) async {
     shares.add((node, user, null));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<List<DeviceSlot>>> deviceSlots(String node) async => const Ok([]);
+
+  @override
+  Future<Result<DeviceSlot>> bookSlot(String node, String user, DateTime start, DateTime end, {String notes = ''}) async {
+    bookings.add((node, user, start, end, notes));
+    return Ok(DeviceSlot(id: 'slot1', node: node, user: user, start: start, end: end, notes: notes));
+  }
+
+  @override
+  Future<Result<void>> cancelSlot(String node, String slot) async {
+    cancelledSlots.add(slot);
     return const Ok(null);
   }
 

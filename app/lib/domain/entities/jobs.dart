@@ -1,15 +1,19 @@
 import 'package:equatable/equatable.dart';
 
 /// See docs/architecture/jobs.md.
-enum JobState { starting, running, paused, exited, failed, stopped, lost, unknown }
+enum JobState { starting, running, paused, queued, exited, failed, stopped, lost, unknown }
 
 extension JobStateInfo on JobState {
   bool get isLive => this == JobState.starting || this == JobState.running || this == JobState.paused;
+
+  /// A queued job is waiting for free time; it can still be stopped.
+  bool get isWaiting => this == JobState.queued;
 
   String get label => switch (this) {
         JobState.starting => 'Starting',
         JobState.running => 'Running',
         JobState.paused => 'Paused',
+        JobState.queued => 'Queued',
         JobState.exited => 'Exited',
         JobState.failed => 'Failed',
         JobState.stopped => 'Stopped',
@@ -61,6 +65,8 @@ class Job extends Equatable {
     this.address = '',
     this.by = '',
     this.removed = false,
+    this.schedule = '',
+    this.queueWhenBusy = false,
   });
 
   final String id, name, node, cwd, command;
@@ -82,9 +88,15 @@ class Job extends Equatable {
   /// The hub forgot it.
   final bool removed;
 
+  /// "next_free", a booked slot id, or empty to run as soon as it is sent.
+  final String schedule;
+  final bool queueWhenBusy;
+
   @override
-  List<Object?> get props =>
-      [id, name, node, cwd, command, state, port, restart, needsGpu, secretFiles, created, started, ended, exitCode, restarts, error, address, by, removed];
+  List<Object?> get props => [
+        id, name, node, cwd, command, state, port, restart, needsGpu, secretFiles, created, started, ended, exitCode, restarts, error, address, by, removed,
+        schedule, queueWhenBusy,
+      ];
 }
 
 class NewJobRequest extends Equatable {
@@ -97,6 +109,8 @@ class NewJobRequest extends Equatable {
     this.restart = RestartPolicy.never,
     this.needsGpu = false,
     this.secretsFrom = '',
+    this.schedule = '',
+    this.queueWhenBusy = false,
   });
 
   final String node, cwd, command, name;
@@ -107,8 +121,12 @@ class NewJobRequest extends Equatable {
   /// A sealed setup file of the project in [cwd] whose keys the job gets.
   final String secretsFrom;
 
+  /// Ask the hub to wait for free time instead of refusing a busy device.
+  final String schedule;
+  final bool queueWhenBusy;
+
   @override
-  List<Object?> get props => [node, cwd, command, name, port, restart, needsGpu, secretsFrom];
+  List<Object?> get props => [node, cwd, command, name, port, restart, needsGpu, secretsFrom, schedule, queueWhenBusy];
 }
 
 enum JobAction { stop, pause, resume, restart }

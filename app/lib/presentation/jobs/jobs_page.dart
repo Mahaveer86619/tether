@@ -115,6 +115,7 @@ Color jobStateColor(BuildContext context, JobState s) {
     JobState.running => c.success,
     JobState.starting => c.info,
     JobState.paused => c.warning,
+    JobState.queued => c.info,
     JobState.failed || JobState.lost => c.danger,
     _ => c.muted,
   };
@@ -191,6 +192,7 @@ class _JobDetail extends StatelessWidget {
     final cubit = context.read<JobsCubit>();
     void act(JobAction a) => cubit.act(job.id, a);
     final live = job.state.isLive;
+    final waiting = job.state.isWaiting;
     return Padding(
       padding: EdgeInsets.fromLTRB(Gap.page(context), Gap.md, Gap.page(context), Gap.md),
       child: Column(
@@ -212,6 +214,7 @@ class _JobDetail extends StatelessWidget {
               job.cwd,
               if (job.restart != RestartPolicy.never) 'restart ${job.restart.label.toLowerCase()}${job.restarts > 0 ? ' (${job.restarts} so far)' : ''}',
               if (job.secretFiles.isNotEmpty) 'secrets from ${job.secretFiles.join(', ')}',
+              if (job.schedule.isNotEmpty) 'when ${job.schedule == 'next_free' ? 'the device is next free' : 'slot ${job.schedule}'}',
               if (job.ended != null && !live) 'exit code ${job.exitCode}',
             ].join(' · '),
             style: Type.meta(context, size: 11),
@@ -241,22 +244,31 @@ class _JobDetail extends StatelessWidget {
                 OutlinedButton.icon(onPressed: busy ? null : () => act(JobAction.pause), icon: const Icon(Icons.pause_rounded, size: 18), label: const Text('Pause')),
               if (job.state == JobState.paused)
                 OutlinedButton.icon(onPressed: busy ? null : () => act(JobAction.resume), icon: const Icon(Icons.play_arrow_rounded, size: 18), label: const Text('Resume')),
-              if (live)
+              if (live || waiting)
                 OutlinedButton.icon(
                   onPressed: busy ? null : () => act(JobAction.stop),
                   style: OutlinedButton.styleFrom(foregroundColor: c.danger),
                   icon: const Icon(Icons.stop_rounded, size: 18),
                   label: const Text('Stop'),
                 ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : () => act(JobAction.restart),
-                icon: const Icon(Icons.replay_rounded, size: 18),
-                label: Text(live ? 'Restart' : 'Start again'),
-              ),
-              if (!live)
+              if (!waiting)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => act(JobAction.restart),
+                  icon: const Icon(Icons.replay_rounded, size: 18),
+                  label: Text(live ? 'Restart' : 'Start again'),
+                ),
+              if (!live && !waiting)
                 TextButton.icon(onPressed: () => cubit.forget(job.id), icon: const Icon(Icons.delete_outline_rounded, size: 18), label: const Text('Remove')),
             ],
           ),
+          if (waiting) ...[
+            const SizedBox(height: Gap.sm),
+            Text(
+              key: const Key('wait-note'),
+              'Waiting for a free window or a booked slot. It starts by itself, and pauses when the window closes so the device owner gets it back.',
+              style: TextStyle(color: c.muted, fontSize: 12),
+            ),
+          ],
           if (job.state.isLive) ...[
             const SizedBox(height: Gap.sm),
             Text(
@@ -358,6 +370,7 @@ class _NewJobDialogState extends State<NewJobDialog> {
   String? _node;
   RestartPolicy _restart = RestartPolicy.never;
   bool _gpu = false;
+  bool _whenFree = false;
   bool _sending = false;
   String? _error;
 
@@ -399,6 +412,8 @@ class _NewJobDialogState extends State<NewJobDialog> {
           restart: _restart,
           needsGpu: _gpu,
           secretsFrom: _secrets.text.trim(),
+          schedule: _whenFree ? 'next_free' : '',
+          queueWhenBusy: _whenFree,
         ));
     if (!mounted) return;
     if (failure == null) {
@@ -476,6 +491,14 @@ class _NewJobDialogState extends State<NewJobDialog> {
                   onChanged: (v) => setState(() => _gpu = v ?? false),
                   title: const Text('Needs the GPU'),
                 ),
+              CheckboxListTile(
+                key: const Key('job-when-free'),
+                contentPadding: EdgeInsets.zero,
+                value: _whenFree,
+                onChanged: (v) => setState(() => _whenFree = v ?? false),
+                title: const Text('Wait for the device to be free'),
+                subtitle: const Text('Queues the job if it is busy or outside your sharing hours; it starts by itself later.'),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: Gap.sm),
                 Text(_error!, key: const Key('job-error'), style: TextStyle(color: c.danger, fontSize: 13)),

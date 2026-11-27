@@ -370,17 +370,41 @@ class HubRestApi {
   Future<void> removeUser(String id) =>
       _send(() => _client.delete(_endpoint.api('/users/${Uri.encodeComponent(id)}'), headers: _headers), pb.Ack());
 
-  Future<void> shareDevice(String node, String user, String access) => _send(
+  Future<void> shareDevice(
+    String node,
+    String user,
+    String access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  }) =>
+      _send(
         () => _client.put(
           _endpoint.api('/nodes/${Uri.encodeComponent(node)}/grants'),
           headers: {..._headers, 'Content-Type': 'application/json'},
-          body: jsonEncode(pb.DeviceGrant(user: user, access: access).toProto3Json()),
+          body: jsonEncode(pb.DeviceGrant(
+            user: user,
+            access: access,
+            startHour: startHour,
+            endHour: endHour,
+            days: days,
+            timezone: timezone,
+          ).toProto3Json()),
         ),
         pb.Ack(),
       );
 
   Future<void> unshareDevice(String node, String user) => _send(
       () => _client.delete(_endpoint.api('/nodes/${Uri.encodeComponent(node)}/grants/${Uri.encodeComponent(user)}'), headers: _headers), pb.Ack());
+
+  Future<pb.DeviceSlotList> deviceSlots(String node) => _get('/nodes/${Uri.encodeComponent(node)}/slots', pb.DeviceSlotList());
+
+  Future<pb.DeviceSlot> bookSlot(String node, pb.BookSlotRequest request) =>
+      _post('/nodes/${Uri.encodeComponent(node)}/slots', request, pb.DeviceSlot());
+
+  Future<void> cancelSlot(String node, String slot) => _send(
+      () => _client.delete(_endpoint.api('/nodes/${Uri.encodeComponent(node)}/slots/${Uri.encodeComponent(slot)}'), headers: _headers), pb.Ack());
 
   /// Trades a pairing code for this device's token. It needs no token, so it
   /// takes the hub's address (and certificate fingerprint) directly.

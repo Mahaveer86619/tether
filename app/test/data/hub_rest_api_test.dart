@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -10,6 +11,7 @@ import 'package:tether/core/error/failures.dart';
 import 'package:tether/data/datasources/hub_endpoint.dart';
 import 'package:tether/data/datasources/hub_rest_api.dart';
 import 'package:tether/data/repositories/failure_mapper.dart';
+import 'package:tether/gen/tether/v1/tether.pb.dart' as pb;
 
 HubRestApi api(MockClientHandler handler, {Duration timeout = const Duration(seconds: 2)}) =>
     HubRestApi(MockClient(handler), clientName: 'test', timeout: timeout)..endpoint = HubEndpoint('ws://100.64.0.1:7420/ws', 'tok');
@@ -96,5 +98,33 @@ void main() {
   test('no endpoint is a network exception, not a crash', () async {
     final rest = HubRestApi(MockClient((_) async => http.Response('{}', 200)), clientName: 't');
     expect(rest.fetchState(), throwsA(isA<NetworkException>()));
+  });
+
+  test('shares a device with the hours window', () async {
+    late http.Request seen;
+    final rest = api((req) async {
+      seen = req;
+      return http.Response('{}', 200);
+    });
+    await rest.shareDevice('laptop', 'u2', 'jobs', startHour: 20, endHour: 8, days: 'mon,tue', timezone: 'UTC');
+    expect(seen.method, 'PUT');
+    expect(seen.url.path, '/api/v1/nodes/laptop/grants');
+    expect(jsonDecode(seen.body), {'user': 'u2', 'access': 'jobs', 'startHour': 20, 'endHour': 8, 'days': 'mon,tue', 'timezone': 'UTC'});
+  });
+
+  test('lists, books and cancels slots', () async {
+    final seen = <http.Request>[];
+    const slot = '{"id":"s1","node":"laptop","user":"u2","startMs":"1000","endMs":"2000"}';
+    final rest = api((req) async {
+      seen.add(req);
+      return http.Response(req.method == 'GET' ? '{"slots":[$slot]}' : req.method == 'POST' ? slot : '{}', 200);
+    });
+    expect((await rest.deviceSlots('laptop')).slots.single.id, 's1');
+    await rest.bookSlot('laptop', pb.BookSlotRequest(user: 'u2', startMs: Int64(1000), endMs: Int64(2000)));
+    await rest.cancelSlot('laptop', 's1');
+    expect(seen.map((r) => r.method), ['GET', 'POST', 'DELETE']);
+    expect(seen[1].url.path, '/api/v1/nodes/laptop/slots');
+    expect(jsonDecode(seen[1].body), {'user': 'u2', 'startMs': '1000', 'endMs': '2000'});
+    expect(seen[2].url.path, '/api/v1/nodes/laptop/slots/s1');
   });
 }

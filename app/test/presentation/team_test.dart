@@ -105,4 +105,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.shares.last, ('laptop', 'u2', null));
   });
+
+  testWidgets('an owner can set sharing hours and book time on a device', (tester) async {
+    final repo = await pump(tester, const DeviceSharingSection());
+
+    await tester.tap(find.byKey(const Key('share-laptop')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-user')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Teammate').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-start-hour')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('01:00').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-end-hour')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('02:00').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('share-days')), 'mon,tue');
+    await tester.enterText(find.byKey(const Key('share-timezone')), 'UTC');
+    await tester.tap(find.byKey(const Key('share-confirm')));
+    await tester.pumpAndSettle();
+    expect(repo.shareWindows.single, (1, 2, 'mon,tue', 'UTC'));
+
+    await tester.tap(find.byKey(const Key('book-laptop')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('slot-confirm')));
+    await tester.pumpAndSettle();
+    final b = repo.bookings.single;
+    expect((b.$1, b.$2, b.$5), ('laptop', 'u1', ''));
+    expect(b.$4.isAfter(b.$3), isTrue);
+  });
 }

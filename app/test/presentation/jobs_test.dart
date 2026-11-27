@@ -224,6 +224,51 @@ void main() {
       expect(find.byType(NewJobDialog), findsNothing);
       await cubit.close();
     });
+
+    testWidgets('the start form can wait for the device to be free', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final repo = FakeJobsRepository([]);
+      final cubit = JobsCubit(jobs: Jobs(repo), logEvery: const Duration(hours: 1));
+      await tester.pumpWidget(app(cubit..start()));
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('new-job')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('job-cwd')), '/work');
+      await tester.enterText(find.byKey(const Key('job-command')), 'python train.py');
+      await tester.tap(find.byKey(const Key('job-when-free')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('job-start')));
+      await tester.pumpAndSettle();
+      expect(
+        repo.started.single,
+        const NewJobRequest(node: 'laptop', cwd: '/work', command: 'python train.py', schedule: 'next_free', queueWhenBusy: true),
+      );
+      await cubit.close();
+    });
+
+    testWidgets('a queued job says it is waiting and can be stopped', (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final waiting = Job(id: 'q1', name: 'trainer q1', node: 'desk', cwd: '/work', command: 'python train.py', state: JobState.queued, schedule: 'next_free', created: DateTime(2026, 11, 26));
+      final repo = FakeJobsRepository([waiting]);
+      final cubit = JobsCubit(jobs: Jobs(repo), logEvery: const Duration(hours: 1));
+      await tester.pumpWidget(app(cubit..start()));
+      await tester.pump();
+
+      await tester.tap(find.text('trainer q1'));
+      await tester.pump();
+      expect(find.text('Queued'), findsNWidgets(2));
+      expect(find.byKey(const Key('wait-note')), findsOneWidget);
+      expect(find.text('Remove'), findsNothing);
+      await tester.tap(find.text('Stop'));
+      await tester.pump();
+      expect(repo.acted.single, ('q1', JobAction.stop));
+      await cubit.close();
+    });
   });
 
   test('hardware reads as one line', () {

@@ -569,8 +569,21 @@ class ManageTeam {
   Future<Result<List<TeamUser>>> users() => _hub.users();
   Future<Result<PairingInvite>> invite() => _hub.createTeamInvite();
   Future<Result<void>> remove(String id) => _hub.removeUser(id);
-  Future<Result<void>> share(String node, String user, DeviceAccess access) => _hub.shareDevice(node, user, access);
+  Future<Result<void>> share(
+    String node,
+    String user,
+    DeviceAccess access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  }) =>
+      _hub.shareDevice(node, user, access, startHour: startHour, endHour: endHour, days: days, timezone: timezone);
   Future<Result<void>> unshare(String node, String user) => _hub.unshareDevice(node, user);
+  Future<Result<List<DeviceSlot>>> slots(String node) => _hub.deviceSlots(node);
+  Future<Result<DeviceSlot>> bookSlot(String node, String user, DateTime start, DateTime end, {String notes = ''}) =>
+      _hub.bookSlot(node, user, start, end, notes: notes);
+  Future<Result<void>> cancelSlot(String node, String slot) => _hub.cancelSlot(node, slot);
 }
 
 /// Unpairs this app: its token is revoked on the hub, then the hub address

@@ -36,6 +36,7 @@ class Node extends Equatable {
     this.cpus = 0,
     this.owner = '',
     this.grants = const [],
+    this.slots = const [],
   });
 
   /// The machine's hardware, for placing work; 0 when not reported.
@@ -50,6 +51,9 @@ class Node extends Equatable {
 
   /// Who else may use it; only its owner is told.
   final List<DeviceGrant> grants;
+
+  /// Booked blocks of time on this device, visible to everyone who can see it.
+  final List<DeviceSlot> slots;
   final String os, hostname, claudeVersion, agentVersion;
 
   /// What the machine can build or run: "flutter", "android-sdk", "docker"...
@@ -69,7 +73,7 @@ class Node extends Equatable {
   final String ip;
 
   @override
-  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks, gpus, memoryBytes, cpus, owner, grants];
+  List<Object?> get props => [name, online, os, hostname, claudeVersion, agentVersion, lastSeen, runningSessions, ip, capabilities, checks, gpus, memoryBytes, cpus, owner, grants, slots];
 }
 
 /// A person on the hub. The hub's owner is the first user and an admin.
@@ -97,14 +101,51 @@ enum DeviceAccess {
 }
 
 class DeviceGrant extends Equatable {
-  const DeviceGrant({required this.user, required this.access, this.granted});
+  const DeviceGrant({
+    required this.user,
+    required this.access,
+    this.granted,
+    this.startHour = 0,
+    this.endHour = 0,
+    this.days = '',
+    this.timezone = '',
+  });
 
   final String user;
   final DeviceAccess access;
   final DateTime? granted;
+  final int startHour, endHour;
+
+  /// Comma-separated weekdays ("mon,tue"), empty for every day.
+  final String days;
+
+  /// IANA time zone, empty for the device's local time.
+  final String timezone;
+
+  bool get allHours => startHour == endHour;
+
+  /// Short form of the hours for a chip or a list row.
+  String get windowLabel {
+    final week = days.split(',').map((d) => d.trim()).where((d) => d.isNotEmpty).map((d) => d.length > 3 ? d.substring(0, 3) : d).join(', ');
+    if (allHours) return week.isEmpty ? 'any time' : 'any time $week';
+    final hours = '${startHour.toString().padLeft(2, '0')}:00–${endHour.toString().padLeft(2, '0')}:00';
+    return week.isEmpty ? hours : '$hours $week';
+  }
 
   @override
-  List<Object?> get props => [user, access, granted];
+  List<Object?> get props => [user, access, granted, startHour, endHour, days, timezone];
+}
+
+/// A block of time reserved on a node for one user.
+class DeviceSlot extends Equatable {
+  const DeviceSlot({required this.id, required this.node, required this.user, required this.start, required this.end, this.notes = '', this.created});
+
+  final String id, node, user, notes;
+  final DateTime start, end;
+  final DateTime? created;
+
+  @override
+  List<Object?> get props => [id, node, user, start, end, notes, created];
 }
 
 enum SessionState { idle, running, awaitingApproval, ready, terminalActive, error }

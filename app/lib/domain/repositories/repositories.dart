@@ -168,10 +168,28 @@ abstract interface class HubRepository {
   Future<Result<void>> removeUser(String id);
 
   /// Lets a teammate use one of this user's devices, or changes how.
-  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access);
+  /// Equal [startHour] and [endHour] leave access open at all hours.
+  Future<Result<void>> shareDevice(
+    String node,
+    String user,
+    DeviceAccess access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  });
 
   /// Takes a teammate's use of a device away, at once.
   Future<Result<void>> unshareDevice(String node, String user);
+
+  /// Booked blocks of time on a device.
+  Future<Result<List<DeviceSlot>>> deviceSlots(String node);
+
+  /// Reserves [start] to [end] on a device for [user].
+  Future<Result<DeviceSlot>> bookSlot(String node, String user, DateTime start, DateTime end, {String notes = ''});
+
+  /// Cancels a booking; the hub only allows its user, the owner or an admin.
+  Future<Result<void>> cancelSlot(String node, String slot);
 
   /// Trades a pairing code, or a teammate's invite with [userName], for
   /// this device's own token.
