@@ -561,6 +561,18 @@ class RevokeDevice {
   Future<Result<void>> call(String id) => _hub.revokeDevice(id);
 }
 
+/// The people on the hub, inviting and removing them, and sharing devices
+/// with them.
+class ManageTeam {
+  const ManageTeam(this._hub);
+  final HubRepository _hub;
+  Future<Result<List<TeamUser>>> users() => _hub.users();
+  Future<Result<PairingInvite>> invite() => _hub.createTeamInvite();
+  Future<Result<void>> remove(String id) => _hub.removeUser(id);
+  Future<Result<void>> share(String node, String user, DeviceAccess access) => _hub.shareDevice(node, user, access);
+  Future<Result<void>> unshare(String node, String user) => _hub.unshareDevice(node, user);
+}
+
 /// Unpairs this app: its token is revoked on the hub, then the hub address
 /// and token are forgotten here, back to the connect screen.
 class DisconnectThisDevice {

@@ -158,13 +158,30 @@ abstract interface class HubRepository {
   /// Revokes a paired device; its token stops working at once.
   Future<Result<void>> revokeDevice(String id);
 
-  /// Trades a pairing code for this device's own token.
+  /// Everyone on the hub.
+  Future<Result<List<TeamUser>>> users();
+
+  /// A one-time code a teammate joins with, in their own app.
+  Future<Result<PairingInvite>> createTeamInvite();
+
+  /// Removes a teammate with their devices; an admin's call.
+  Future<Result<void>> removeUser(String id);
+
+  /// Lets a teammate use one of this user's devices, or changes how.
+  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access);
+
+  /// Takes a teammate's use of a device away, at once.
+  Future<Result<void>> unshareDevice(String node, String user);
+
+  /// Trades a pairing code, or a teammate's invite with [userName], for
+  /// this device's own token.
   Future<Result<String>> pair({
     required String url,
     required String code,
     required String fingerprint,
     required String name,
     required String platform,
+    String userName = '',
   });
 
   /// Marks a session done (or not) on the hub, for every client.

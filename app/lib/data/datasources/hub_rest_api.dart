@@ -362,6 +362,26 @@ class HubRestApi {
   Future<void> revokeDevice(String id) =>
       _send(() => _client.delete(_endpoint.api('/devices/${Uri.encodeComponent(id)}'), headers: _headers), pb.Ack());
 
+  Future<pb.UserList> users() => _get('/users', pb.UserList());
+
+  /// A one-time code a new teammate joins with; admins only.
+  Future<pb.PairingCode> createTeamInvite() => _post('/invites', null, pb.PairingCode());
+
+  Future<void> removeUser(String id) =>
+      _send(() => _client.delete(_endpoint.api('/users/${Uri.encodeComponent(id)}'), headers: _headers), pb.Ack());
+
+  Future<void> shareDevice(String node, String user, String access) => _send(
+        () => _client.put(
+          _endpoint.api('/nodes/${Uri.encodeComponent(node)}/grants'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: jsonEncode(pb.DeviceGrant(user: user, access: access).toProto3Json()),
+        ),
+        pb.Ack(),
+      );
+
+  Future<void> unshareDevice(String node, String user) => _send(
+      () => _client.delete(_endpoint.api('/nodes/${Uri.encodeComponent(node)}/grants/${Uri.encodeComponent(user)}'), headers: _headers), pb.Ack());
+
   /// Trades a pairing code for this device's token. It needs no token, so it
   /// takes the hub's address (and certificate fingerprint) directly.
   Future<pb.PairResult> pair(String wsUrl, String fingerprint, pb.PairRequest body) {

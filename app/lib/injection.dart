@@ -42,6 +42,7 @@ import 'presentation/hub/hub_cubit.dart';
 import 'presentation/session/session_bloc.dart';
 import 'presentation/session/terminal_cubit.dart';
 import 'presentation/settings/devices_cubit.dart';
+import 'presentation/settings/team_cubit.dart';
 import 'presentation/settings/settings_cubit.dart';
 import 'presentation/settings/workspaces_section.dart';
 import 'presentation/routines/routines_cubit.dart';
@@ -137,6 +138,8 @@ void configureDependencies({bool withData = true}) {
     ..registerLazySingleton(() => SetWorkspaceRoot(sl()))
     ..registerLazySingleton(() => ListDevices(sl()))
     ..registerLazySingleton(() => RevokeDevice(sl()))
+    ..registerLazySingleton(() => ManageTeam(sl()))
+    ..registerFactory(() => TeamCubit(team: sl()))
     ..registerLazySingleton(() => DisconnectThisDevice(sl(), sl()))
     // View models
     ..registerFactory(() => NavCubit(watchHub: sl()))

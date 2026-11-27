@@ -24,7 +24,14 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       gpus: [for (final g in n.gpus) Gpu(name: g.name, memoryBytes: g.memoryBytes.toInt())],
       memoryBytes: n.memoryBytes.toInt(),
       cpus: n.cpus,
+      owner: n.owner,
+      grants: [
+        for (final g in n.grants)
+          if (DeviceAccess.of(g.access) != null) DeviceGrant(user: g.user, access: DeviceAccess.of(g.access)!, granted: _time(g.grantedMs)),
+      ],
     );
+
+TeamUser userFromPb(pb.User u) => TeamUser(id: u.id, name: u.name, role: u.role, created: _time(u.createdMs));
 
 SessionState _state(pbe.SessionState s) => switch (s) {
       pbe.SessionState.SESSION_STATE_RUNNING => SessionState.running,
@@ -82,6 +89,7 @@ Session sessionFromPb(pb.SessionInfo s) => Session(
       modeRevertTo: s.modeRevertTo,
       backedUp: _time(s.backedUpMs),
       backedUpBytes: s.backedUpBytes.toInt(),
+      owner: s.owner,
     );
 
 Appearance appearanceFromPb(pb.Preferences p) => Appearance(
@@ -156,6 +164,7 @@ PairedDevice deviceFromPb(pb.Device d) => PairedDevice(
       platform: d.platform,
       created: _time(d.createdMs),
       lastSeen: _time(d.lastSeenMs),
+      user: d.user,
     );
 
 Codebase codebaseFromPb(pb.Codebase c) => Codebase(
