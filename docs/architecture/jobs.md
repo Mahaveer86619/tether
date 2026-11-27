@@ -20,7 +20,7 @@ App ◄──job frames, GET …/logs──────────  Hub ◄─�
 | Records | `<agent data>/jobs/<id>/job.json`: the job without its secrets, its pid, and the process's creation time. Records of jobs that ended more than 7 days ago are deleted at start. |
 | Agent restart | Jobs are not ended when the agent stops or updates itself. At start, the agent reads its records: a process that is still there (same pid and, on Windows, the same creation time) is followed again, in a new Job Object on Windows, and its exit code is then unknown. One that is gone is `lost`: the device restarted or slept. |
 
-States: `starting` (a server until its port takes connections on localhost), `running`, `paused`, `exited`, `failed`, `stopped`, `lost`.
+States: `starting` (a server until its port takes connections on localhost), `running`, `paused`, `queued` (waiting for free time), `exited`, `failed`, `stopped`, `lost`.
 
 ## On the hub (`server/internal/hub/jobs.go`)
 
@@ -30,6 +30,8 @@ States: `starting` (a server until its port takes connections on localhost), `ru
 - **Servers.** A job with a port gets `address`: `http://<machine>:<port>`, with the machine's MagicDNS name from the hub's `tailscale status`, or the address its agent connects from. Nothing is opened beyond the tailnet; the process itself decides which interfaces it listens on.
 - **GPUs.** A job with `needs_gpu` and no node goes to an online machine with the `gpu` capability, the one running fewest jobs. `start_session` takes `needs_gpu` the same way.
 - Every start and action is in the audit log.
+- **Waiting for free time.** A job with `queueWhenBusy`, `schedule: "next_free"` or a booked slot id is created as `queued` when the device is busy or outside the user's allowed hours; a plain job is refused instead. Every 15 seconds the scheduler dispatches waiting jobs in creation order when the window or their slot opens, and pauses running non-owner jobs when it closes. A job tied to a slot waits for that slot even if the grant window is open; a cancelled slot leaves it queued. The owner of a device is never paused.
+- **Who may use a device.** A grant gives a user `full` or `jobs` access, with optional hours, weekdays and a time zone (equal start and end hours mean 24/7; a start after the end spans midnight). A booked `DeviceSlot` gives its user the node for that block; overlapping bookings are refused. The device owner always keeps priority and can cancel any booking.
 
 REST, MCP tools and frames are listed in [protocol.md](protocol.md#jobs).
 
@@ -41,4 +43,4 @@ The agent reports `gpus` (name, memory), `memory_bytes` and `cpus` in its `NodeS
 
 - Moving a job to another device (checkpoint, sync, start there).
 - Showing a job in a chat's Tasks strip.
-- Who may start jobs on whose device. Today any paired app or session can start a job on any connected agent; lending a device to other users is part of [teams.md](../plans/teams.md) (B3).
+- Learned free frames, usage budgets and resource limits for shared devices ([token-pool.md](../plans/token-pool.md#4-shared-devices-the-pool)). Today the owner sets hours and bookings by hand, and a booking does not cap a job's GPU memory or disk use.

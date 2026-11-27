@@ -89,7 +89,7 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 - The owner can grant a teammate **full device access** (per device, revocable at any moment, and recorded). With it the teammate can start sessions and jobs on that device from their own chats, as they would on their own device: one main chat can hand tasks to the devices of several people in the team, as the lead already hands tasks to several of one person's devices.
 - **Those tasks run under the device owner's Claude Code and plan**, so they spend the owner's allowance. The grant says so when it is made, and the owner's usage page shows what was spent by whom.
 - The session appears in the requester's chat, with the device and its owner named. **Approvals go to the person who asked** (the delegator); the device owner sees everything run on their device, can stop any of it, and can set the grant to *ask me first*.
-- A grant can be narrowed to **jobs only** (servers, training runs, long scripts: plain processes that need no Claude login) with limits on hours, GPU memory, CPU, disk and folders ([token-pool.md](token-pool.md#4-shared-devices-the-pool)).
+- A grant can be narrowed to **jobs only** (servers, training runs, long scripts: plain processes that need no Claude login) and to hours, weekdays and a time zone; the user can also book a slot on the device. GPU memory, CPU, disk and folder limits are still planned ([token-pool.md](token-pool.md#4-shared-devices-the-pool)).
 - A device that has not been shared never receives another user's prompt, folder, file or job.
 - Any chat can add devices, its own or teammates', as nodes of its **workspace**, which keeps them in step by sync ([shared-workspace.md](shared-workspace.md)): a chat started on one device can hand work to the others, each with the project in place.
 - The first case: a teammate with a GPU desktop on the tailnet, with their own Claude Code on it. They grant full access; the owner of the hub starts training runs and tasks on it, and the desktop's owner can follow and stop them.
@@ -107,7 +107,7 @@ A user can be in any number of shared workspaces. A single-user hub has only the
 2. **A2.** The sidebar and the phone drawer as above: projects with chats and spawned sessions nested, unfiled folders, quiet one-offs; roll-up of needs-you and running. **Built** ([app.md](../architecture/app.md#sidebar)).
 3. **B1.** Users and invites; devices and chats get an owner; every list filtered by user; the `can` check; the audit log records the user. **Built**: users and invites (an invite is a code entered on the app's setup screen), owners on devices, sessions, chats, jobs, projects, notifications and artifacts, `can` with a policy per route, filtered lists and frames, chat shares on the hub (no Share button in the app yet). Hub-wide pages stay the admin's.
 4. **B2.** Workspaces and project membership; sharing a project chat; roles.
-5. **B3.** Lending a device; scopes for rules and skills; a per-user view of usage and cost. **Device sharing built** (full or jobs only, revocable, audited, on Devices); *ask me first*, job limits, scopes and per-user usage are not.
+5. **B3.** Lending a device; scopes for rules and skills; a per-user view of usage and cost. **Device sharing built** (full or jobs only, revocable, audited, with hours, weekdays, time zones, booked slots and jobs queued for free time on Devices and in Jobs); *ask me first*, resource limits, scopes and per-user usage are not.
 6. **B4.** Tailscale identity mapped to users.
 
 ## Tests
