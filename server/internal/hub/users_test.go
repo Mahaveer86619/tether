@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -554,7 +555,7 @@ func TestEveryRouteRefusesWithoutRights(t *testing.T) {
 	h.mu.Unlock()
 	secrets := []string{tm.ownerChat.Id, tm.ownerChat.ActiveSession, a.Id, project, "owner data", ownerDevice, `"s1"`}
 	fill := map[string]string{
-		"id": "", "action": "stop", "node": "laptop", "user": h.ownerID, "repo": "r1", "name": "x", "version": "1.0.0", "sha": strings.Repeat("a", 64),
+		"id": "", "action": "stop", "node": "laptop", "user": h.ownerID, "repo": "r1", "name": "x", "version": "1.0.0", "sha": strings.Repeat("a", 64), "slot": "s1",
 	}
 	refused := 0
 	for pattern := range routePolicy {
@@ -615,4 +616,376 @@ func TestEveryRouteRefusesWithoutRights(t *testing.T) {
 	}
 	// Nothing reached the owner's machine.
 	noFrame(t, tm.toLaptop, `"x"`)
+}
+
+func TestSlotBooking(t *testing.T) {
+	tm := newTeam(t)
+	srv := tm.srv
+
+	// Before grant: teammate cannot book a slot on owner's laptop
+	startMs := time.Now().Add(1 * time.Hour).UnixMilli()
+	endMs := time.Now().Add(3 * time.Hour).UnixMilli()
+	bookBody := fmt.Sprintf(`{"start_ms":%d,"end_ms":%d,"notes":"deep learning run"}`, startMs, endMs)
+	if status, _ := call(t, srv, "POST", "/api/v1/nodes/laptop/slots", tm.mateTok, bookBody); status != 403 {
+		t.Fatalf("expected 403 before grant, got %d", status)
+	}
+
+	// Owner grants jobs access to mate
+	if status, _ := call(t, srv, "PUT", "/api/v1/nodes/laptop/grants", tm.ownerTok, `{"user":"`+tm.mate.Id+`","access":"jobs"}`); status != 200 {
+		t.Fatalf("grant jobs: %d", status)
+	}
+
+	// Mate books a slot
+	status, body := call(t, srv, "POST", "/api/v1/nodes/laptop/slots", tm.mateTok, bookBody)
+	if status != 200 {
+		t.Fatalf("book slot: %d %s", status, body)
+	}
+	slot := &v1.DeviceSlot{}
+	if err := protojson.Unmarshal([]byte(body), slot); err != nil {
+		t.Fatal(err)
+	}
+	if slot.Id == "" || slot.User != tm.mate.Id || slot.Notes != "deep learning run" {
+		t.Fatalf("unexpected booked slot: %+v", slot)
+	}
+
+	// List slots
+	status, body = call(t, srv, "GET", "/api/v1/nodes/laptop/slots", tm.mateTok, "")
+	if status != 200 {
+		t.Fatalf("list slots: %d %s", status, body)
+	}
+	list := &v1.DeviceSlotList{}
+	if err := protojson.Unmarshal([]byte(body), list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Slots) != 1 || list.Slots[0].Id != slot.Id {
+		t.Fatalf("expected 1 slot, got %+v", list.Slots)
+	}
+
+	// Overlapping booking returns 409 Conflict
+	overlapStart := startMs + 1800000 // +30 mins
+	overlapEnd := endMs + 1800000
+	overlapBody := fmt.Sprintf(`{"start_ms":%d,"end_ms":%d,"notes":"collision"}`, overlapStart, overlapEnd)
+	if status, body := call(t, srv, "POST", "/api/v1/nodes/laptop/slots", tm.mateTok, overlapBody); status != 409 {
+		t.Fatalf("expected 409 for overlapping slot, got %d %s", status, body)
+	}
+
+	// Cancel slot
+	if status, _ := call(t, srv, "DELETE", "/api/v1/nodes/laptop/slots/"+slot.Id, tm.mateTok, ""); status != 200 {
+		t.Fatalf("cancel slot: %d", status)
+	}
+
+	// Verify slot is gone
+	status, body = call(t, srv, "GET", "/api/v1/nodes/laptop/slots", tm.mateTok, "")
+	if status != 200 {
+		t.Fatalf("list slots after cancel: %d", status)
+	}
+	list = &v1.DeviceSlotList{}
+	if err := protojson.Unmarshal([]byte(body), list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Slots) != 0 {
+		t.Fatalf("expected 0 slots after cancel, got %d", len(list.Slots))
+	}
+}
+
+func TestSlotAllowsWorkOutsideGrantWindow(t *testing.T) {
+	tm := newTeam(t)
+	h := tm.h
+	now := time.Now()
+	windowStart := (now.Hour() + 2) % 24
+	windowEnd := (now.Hour() + 4) % 24
+
+	h.mu.Lock()
+	h.grants["laptop"] = map[string]*v1.DeviceGrant{
+		tm.mate.Id: {
+			User:      tm.mate.Id,
+			Access:    accessJobs,
+			GrantedMs: now.UnixMilli(),
+			StartHour: int32(windowStart),
+			EndHour:   int32(windowEnd),
+		},
+	}
+	h.mu.Unlock()
+
+	mate := h.asUser(tm.mate.Id)
+	h.mu.Lock()
+	ok, reason := h.canUseDeviceNow(mate, actRunJob, "laptop", now)
+	h.mu.Unlock()
+	if ok || reason != "outside_window" {
+		t.Fatalf("expected outside_window without a slot, got %v %q", ok, reason)
+	}
+
+	// A booked slot is an explicit allowance, even outside the sharing hours.
+	h.mu.Lock()
+	h.slots["laptop"] = []*v1.DeviceSlot{{
+		Id:      "s1",
+		Node:    "laptop",
+		User:    tm.mate.Id,
+		StartMs: now.Add(-time.Hour).UnixMilli(),
+		EndMs:   now.Add(time.Hour).UnixMilli(),
+	}}
+	ok, reason = h.canUseDeviceNow(mate, actRunJob, "laptop", now)
+	claudeOK, claudeReason := h.canUseDeviceNow(mate, actRunClaude, "laptop", now)
+	h.mu.Unlock()
+	if !ok || reason != "" {
+		t.Fatalf("expected booked slot to allow jobs, got %v %q", ok, reason)
+	}
+	if claudeOK || claudeReason != "requires_full_access" {
+		t.Fatalf("a slot must not grant full access, got %v %q", claudeOK, claudeReason)
+	}
+
+	// Someone else's booking still blocks the device.
+	h.mu.Lock()
+	h.slots["laptop"][0].User = "another-user"
+	ok, reason = h.canUseDeviceNow(mate, actRunJob, "laptop", now)
+	h.mu.Unlock()
+	if ok || reason != "slot_conflict" {
+		t.Fatalf("expected slot_conflict, got %v %q", ok, reason)
+	}
+}
+
+func TestOffPeakWindowLogic(t *testing.T) {
+	// Overnight window: 8 PM (20) to 10 AM (10)
+	g := &v1.DeviceGrant{
+		StartHour: 20,
+		EndHour:   10,
+	}
+
+	loc := time.UTC
+	testCases := []struct {
+		hour     int
+		minute   int
+		expected bool
+	}{
+		{20, 0, true},   // 8:00 PM (window opens)
+		{22, 30, true},  // 10:30 PM (off-peak)
+		{23, 59, true},  // 11:59 PM (off-peak)
+		{0, 0, true},    // midnight (off-peak)
+		{4, 15, true},   // 4:15 AM (off-peak)
+		{9, 59, true},   // 9:59 AM (off-peak)
+		{10, 0, false},  // 10:00 AM (window closes, owner working)
+		{14, 0, false},  // 2:00 PM (daytime)
+		{19, 59, false}, // 7:59 PM (daytime)
+	}
+
+	for _, tc := range testCases {
+		tm := time.Date(2026, 11, 28, tc.hour, tc.minute, 0, 0, loc)
+		got := inTimeWindow(tm, g)
+		if got != tc.expected {
+			t.Errorf("at %02d:%02d expected %v, got %v", tc.hour, tc.minute, tc.expected, got)
+		}
+	}
+
+	// Daytime window: 9 AM (9) to 5 PM (17)
+	dayGrant := &v1.DeviceGrant{StartHour: 9, EndHour: 17}
+	if inTimeWindow(time.Date(2026, 11, 28, 8, 30, 0, 0, loc), dayGrant) {
+		t.Error("expected 8:30 to be outside 9-17 window")
+	}
+	if !inTimeWindow(time.Date(2026, 11, 28, 12, 0, 0, 0, loc), dayGrant) {
+		t.Error("expected 12:00 to be inside 9-17 window")
+	}
+	if inTimeWindow(time.Date(2026, 11, 28, 17, 0, 0, 0, loc), dayGrant) {
+		t.Error("expected 17:00 to be outside 9-17 window")
+	}
+
+	// 24/7 unrestricted
+	allDayGrant := &v1.DeviceGrant{StartHour: 0, EndHour: 0}
+	if !inTimeWindow(time.Date(2026, 11, 28, 14, 0, 0, 0, loc), allDayGrant) {
+		t.Error("expected 24/7 grant to allow 14:00")
+	}
+
+	// Days of week restriction
+	workDaysGrant := &v1.DeviceGrant{StartHour: 20, EndHour: 10, Days: "mon,tue,wed,thu,fri"}
+	monday := time.Date(2026, 11, 30, 22, 0, 0, 0, loc) // Nov 30 2026 is Monday
+	sunday := time.Date(2026, 11, 29, 22, 0, 0, 0, loc) // Nov 29 2026 is Sunday
+	if !inTimeWindow(monday, workDaysGrant) {
+		t.Error("expected Monday to be allowed")
+	}
+	if inTimeWindow(sunday, workDaysGrant) {
+		t.Error("expected Sunday to be blocked")
+	}
+
+	allDayWeekdays := &v1.DeviceGrant{StartHour: 0, EndHour: 0, Days: "mon"}
+	if !inTimeWindow(monday, allDayWeekdays) {
+		t.Error("expected Monday to be allowed with unrestricted hours")
+	}
+	if inTimeWindow(sunday, allDayWeekdays) {
+		t.Error("expected Sunday to be blocked even with unrestricted hours")
+	}
+}
+
+func TestSmartFreeTimeJobScheduler(t *testing.T) {
+	tm := newTeam(t)
+	h := tm.h
+
+	// Setup fake job node on laptop
+	fakeNode := newFakeJobNode(t, h, tm.srv.URL, "laptop", &v1.NodeStatus{Capabilities: []string{"gpu"}})
+
+	now := time.Now()
+	// Set allowed window in the future relative to current time so it is outside window right now
+	windowStart := (now.Hour() + 2) % 24
+	windowEnd := (now.Hour() + 4) % 24
+
+	// Grant jobs access to teammate with future window
+	h.mu.Lock()
+	h.grants["laptop"] = map[string]*v1.DeviceGrant{
+		tm.mate.Id: {
+			User:      tm.mate.Id,
+			Access:    accessJobs,
+			GrantedMs: now.UnixMilli(),
+			StartHour: int32(windowStart),
+			EndHour:   int32(windowEnd),
+		},
+	}
+	h.mu.Unlock()
+
+	mateId := h.asUser(tm.mate.Id)
+	spec := &v1.JobSpec{
+		Node:     "laptop",
+		Cwd:      "/work",
+		Command:  "echo training",
+		Schedule: "next_free",
+	}
+
+	h.mu.Lock()
+	canRun, reason := h.canUseDeviceNow(mateId, actRunJob, "laptop", now)
+	h.mu.Unlock()
+	if canRun || reason != "outside_window" {
+		t.Fatalf("expected outside_window, got canRun=%v, reason=%s", canRun, reason)
+	}
+
+	// Create job as mate with schedule: "next_free"
+	h.mu.Lock()
+	job, opErr := h.startJob(mateId, spec, "mate-app")
+	h.mu.Unlock()
+	if opErr != nil {
+		t.Fatalf("startJob error: %v", opErr)
+	}
+	if job.State != v1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("expected job to be queued, got state: %v", job.State)
+	}
+	if len(fakeNode.commands()) != 0 {
+		t.Fatalf("node should not receive commands while job is queued")
+	}
+
+	// Trigger scheduler at current time -> still outside window, job remains queued
+	h.mu.Lock()
+	h.scheduleJobs(now)
+	h.mu.Unlock()
+	if jobState(h, job.Id) != v1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("expected job to remain queued, got %v", jobState(h, job.Id))
+	}
+
+	// Trigger scheduler during allowed window (windowStart + 30 mins) -> job should start
+	insideWindowTime := time.Date(now.Year(), now.Month(), now.Day(), windowStart, 30, 0, 0, now.Location())
+	h.mu.Lock()
+	h.scheduleJobs(insideWindowTime)
+	h.mu.Unlock()
+	waitUntil(t, "job to transition to running", func() bool {
+		return jobState(h, job.Id) == v1.JobState_JOB_STATE_RUNNING
+	})
+	cmds := fakeNode.commands()
+	if len(cmds) != 1 || cmds[0].Action != "start" {
+		t.Fatalf("expected node to receive start command, got %v", cmds)
+	}
+
+	// Window closes at windowEnd + 5 mins -> scheduler pauses non-owner job to free device for owner
+	windowCloseTime := time.Date(now.Year(), now.Month(), now.Day(), windowEnd, 5, 0, 0, now.Location())
+	h.mu.Lock()
+	h.scheduleJobs(windowCloseTime)
+	h.mu.Unlock()
+	waitUntil(t, "job to pause at window close", func() bool {
+		return jobState(h, job.Id) == v1.JobState_JOB_STATE_PAUSED
+	})
+	cmds = fakeNode.commands()
+	if len(cmds) < 2 || cmds[len(cmds)-1].Action != "pause" {
+		t.Fatalf("expected node to receive pause command, got %v", cmds)
+	}
+
+	// The same window opening again resumes the job instead of leaving it paused.
+	h.mu.Lock()
+	h.scheduleJobs(insideWindowTime)
+	h.mu.Unlock()
+	waitUntil(t, "job to resume when the window opens", func() bool {
+		return jobState(h, job.Id) == v1.JobState_JOB_STATE_RUNNING
+	})
+	cmds = fakeNode.commands()
+	if len(cmds) < 3 || cmds[len(cmds)-1].Action != "resume" {
+		t.Fatalf("expected node to receive resume command, got %v", cmds)
+	}
+}
+
+func TestJobSchedulingContract(t *testing.T) {
+	tm := newTeam(t)
+	h := tm.h
+	newFakeJobNode(t, h, tm.srv.URL, "laptop", &v1.NodeStatus{Capabilities: []string{"gpu"}})
+
+	now := time.Now()
+	windowStart := (now.Hour() + 2) % 24
+	windowEnd := (now.Hour() + 4) % 24
+	h.mu.Lock()
+	h.grants["laptop"] = map[string]*v1.DeviceGrant{
+		tm.mate.Id: {User: tm.mate.Id, Access: accessJobs, GrantedMs: now.UnixMilli(), StartHour: int32(windowStart), EndHour: int32(windowEnd)},
+	}
+	h.mu.Unlock()
+	mate := h.asUser(tm.mate.Id)
+
+	// Without an opt-in, a job outside the window is still refused.
+	h.mu.Lock()
+	_, opErr := h.startJob(mate, &v1.JobSpec{Node: "laptop", Cwd: "/work", Command: "echo now", Schedule: "now"}, "mate-app")
+	h.mu.Unlock()
+	if opErr == nil || opErr.Code != "device_window_closed" {
+		t.Fatalf("expected device_window_closed, got %v", opErr)
+	}
+
+	// queue_when_busy opts a job into waiting for free time.
+	h.mu.Lock()
+	q, opErr := h.startJob(mate, &v1.JobSpec{Node: "laptop", Cwd: "/work", Command: "echo later", QueueWhenBusy: true}, "mate-app")
+	h.mu.Unlock()
+	if opErr != nil || q.State != v1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("expected a queued job, got %v %v", q, opErr)
+	}
+	h.mu.Lock()
+	_, opErr = h.jobAction(q.Id, "stop", "mate-app")
+	h.mu.Unlock()
+	if opErr != nil {
+		t.Fatal(opErr)
+	}
+
+	h.mu.Lock()
+	_, opErr = h.startJob(mate, &v1.JobSpec{Node: "laptop", Cwd: "/work", Command: "echo slot", Schedule: "missing"}, "mate-app")
+	h.mu.Unlock()
+	if opErr == nil || opErr.Code != "not_found" {
+		t.Fatalf("expected not_found for an unknown slot, got %v", opErr)
+	}
+
+	slotStart := now.Add(6 * time.Hour).UnixMilli()
+	slotEnd := now.Add(8 * time.Hour).UnixMilli()
+	h.mu.Lock()
+	slot, slotErr := h.bookSlot(h.asUser(h.ownerID), "laptop", &v1.BookSlotRequest{User: tm.mate.Id, StartMs: slotStart, EndMs: slotEnd})
+	h.mu.Unlock()
+	if slotErr != nil {
+		t.Fatal(slotErr)
+	}
+
+	h.mu.Lock()
+	booked, opErr := h.startJob(mate, &v1.JobSpec{Node: "laptop", Cwd: "/work", Command: "echo booked", Schedule: slot.Id}, "mate-app")
+	h.mu.Unlock()
+	if opErr != nil || booked.State != v1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("expected a queued job for the slot, got %v %v", booked, opErr)
+	}
+
+	// The grant window opening is not enough: a slot-bound job waits for its slot.
+	insideWindow := time.Date(now.Year(), now.Month(), now.Day(), windowStart, 30, 0, 0, now.Location())
+	h.mu.Lock()
+	h.scheduleJobs(insideWindow)
+	h.mu.Unlock()
+	if jobState(h, booked.Id) != v1.JobState_JOB_STATE_QUEUED {
+		t.Fatalf("slot-bound job started before its slot: %v", jobState(h, booked.Id))
+	}
+
+	h.mu.Lock()
+	h.scheduleJobs(time.UnixMilli(slotStart + 60_000))
+	h.mu.Unlock()
+	waitUntil(t, "slot-bound job to start", func() bool { return jobState(h, booked.Id) == v1.JobState_JOB_STATE_RUNNING })
 }

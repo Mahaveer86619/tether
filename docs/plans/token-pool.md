@@ -1,6 +1,6 @@
 # Usage tracking, scheduled work and the token pool
 
-Status: plan. It builds on the usage data the hub already keeps, the usage-limit wait ([chats.md](../architecture/chats.md#tasks-and-the-usage-limit)), the users and workspaces in [teams.md](teams.md) and the deferred jobs of [shared-workspace.md](shared-workspace.md). Insights ([prompt-desk.md](prompt-desk.md#insights)) supplies the task-size estimates.
+Status: partly built. Device sharing by the hour, booked slots and jobs queued for free time are in [jobs.md](../architecture/jobs.md); tracking, patterns, budgets and suggestions are still a plan. It builds on the usage data the hub already keeps, the usage-limit wait ([chats.md](../architecture/chats.md#tasks-and-the-usage-limit)), the users and workspaces in [teams.md](teams.md) and the deferred jobs of [shared-workspace.md](shared-workspace.md). Insights ([prompt-desk.md](prompt-desk.md#insights)) supplies the task-size estimates.
 
 ## What is wanted
 

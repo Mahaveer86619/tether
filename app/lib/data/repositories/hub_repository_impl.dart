@@ -294,6 +294,9 @@ class HubRepositoryImpl implements HubRepository {
         gpus: n.gpus,
         memoryBytes: n.memoryBytes,
         cpus: n.cpus,
+        owner: n.owner,
+        grants: n.grants,
+        slots: n.slots,
       );
 
   /// Keeps sessions that are working subscribed even when no screen shows
@@ -693,10 +696,40 @@ class HubRepositoryImpl implements HubRepository {
   Future<Result<void>> removeUser(String id) => _command(() => _api.removeUser(id));
 
   @override
-  Future<Result<void>> shareDevice(String node, String user, DeviceAccess access) => _command(() => _api.shareDevice(node, user, access.wire));
+  Future<Result<void>> shareDevice(
+    String node,
+    String user,
+    DeviceAccess access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  }) =>
+      _command(() => _api.shareDevice(node, user, access.wire,
+          startHour: startHour, endHour: endHour, days: days, timezone: timezone));
 
   @override
   Future<Result<void>> unshareDevice(String node, String user) => _command(() => _api.unshareDevice(node, user));
+
+  @override
+  Future<Result<List<DeviceSlot>>> deviceSlots(String node) => _command(() async {
+        final list = await _api.deviceSlots(node);
+        return [for (final s in list.slots) deviceSlotFromPb(s)];
+      });
+
+  @override
+  Future<Result<DeviceSlot>> bookSlot(String node, String user, DateTime start, DateTime end, {String notes = ''}) => _command(() async {
+        final slot = await _api.bookSlot(node, pb.BookSlotRequest(
+              user: user,
+              startMs: Int64(start.millisecondsSinceEpoch),
+              endMs: Int64(end.millisecondsSinceEpoch),
+              notes: notes,
+            ));
+        return deviceSlotFromPb(slot);
+      });
+
+  @override
+  Future<Result<void>> cancelSlot(String node, String slot) => _command(() => _api.cancelSlot(node, slot));
 
   @override
   Future<Result<String>> pair({

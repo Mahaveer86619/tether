@@ -2,8 +2,17 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
-## 0.19.0
+## 0.20.0
 
+- **Run servers and long scripts on any device.** Start a job on a device from the app or from a chat, watch its log, and stop, pause or resume it. A device's GPU and memory show on the Devices page and in the lead's list of machines, so work that needs a GPU goes to a machine that has one.
+- **Projects.** A project is a named folder, on one or more devices. Chats sit in a project, and the sessions a chat starts show nested under it in the sidebar, with markers for what needs you and what is running. One-off chats are quieter, below the projects. "Add to projects" on a session turns its folder into a project.
+- **Rewind a chat.** Go back to before any of your messages, or the last one, 2 back or 3 back, and the message returns to the composer to edit. A recap shows where a chat stood when you open it after a break, a context meter shows how big a chat has grown, and past a threshold it offers to continue in a fresh session with a summary.
+- **Standing rules and Insights.** Save rules (for example, don't commit unless asked) for everywhere, one device or one project, and every session in a chat follows them. Insights turns your own history into numbers and, on request, recommendations for rules and skills.
+- **Tasks that hit the usage limit wait and carry on.** A task stopped by the 5-hour limit shows as waiting with the time it resumes, and carries on by itself after the reset.
+- **Cleaner screens.** The new-chat screen is just the box. Tasks a chat starts get a short title instead of their whole first message, the chat's to-do progress shows one segment per step, and a message sent while Claude was busy no longer stays "Queued" after you press Stop.
+- **Share a GPU device on your terms.** An owner can give a teammate jobs-only or full access for chosen hours and days, in a time zone they choose. Outside that window a teammate's session is held back and their new jobs are refused unless they ask to wait.
+- **Book time on a shared device.** Reserve a block on a node so a training run or server has the machine to itself. Overlapping bookings are refused, slots show on the Devices page, and the owner or the person who booked can cancel one at any time.
+- **Jobs wait for free time.** A job can be set to start in the next free window or in a booked slot. It starts by itself when that time arrives, and pauses when the window closes or the slot ends, so the owner gets their device back.
 
 ## 0.18.1
 

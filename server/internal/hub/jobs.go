@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"slices"
@@ -122,9 +123,46 @@ func (h *Hub) startJob(as identity, spec *v1.JobSpec, by string) (*v1.Job, *opEr
 			ref.Repo = repoName(spec.Node, spec.Cwd)
 		}
 	}
-	now := time.Now().UnixMilli()
-	j := &v1.Job{Id: uuid.NewString()[:8], Spec: spec, State: v1.JobState_JOB_STATE_STARTING, CreatedMs: now, UpdatedMs: now, By: by,
-		Owner: firstNonEmpty(as.userID(), h.ownerID)}
+	schedule := spec.GetSchedule()
+	var slot *v1.DeviceSlot
+	if schedule != "" && schedule != "now" && schedule != "next_free" {
+		slot = h.slotByID(spec.Node, schedule)
+		if slot == nil {
+			return nil, &opError{"not_found", "unknown slot: " + schedule, http.StatusNotFound}
+		}
+		if slot.User != as.userID() && !as.root() {
+			return nil, errForbidden
+		}
+	}
+	nowTime := time.Now()
+	now := nowTime.UnixMilli()
+	canRunNow, reason := h.canUseDeviceNow(as, actRunJob, spec.Node, nowTime)
+	if slot != nil && (now < slot.StartMs || now >= slot.EndMs) {
+		canRunNow, reason = false, "slot_not_active"
+	}
+	wantsQueue := spec.GetQueueWhenBusy() || schedule == "next_free" || slot != nil
+	if !canRunNow && !wantsQueue {
+		switch reason {
+		case "outside_window":
+			return nil, &opError{"device_window_closed", "this device is currently outside your allowed sharing window", http.StatusForbidden}
+		case "slot_conflict":
+			return nil, &opError{"slot_conflict", "this device is reserved by another teammate's slot right now", http.StatusConflict}
+		case "slot_not_active":
+			return nil, &opError{"slot_not_active", "your booked slot for this job has not started", http.StatusConflict}
+		default:
+			return nil, errForbidden
+		}
+	}
+	queueIt := !canRunNow
+	owner := firstNonEmpty(as.userID(), h.ownerID)
+	if queueIt {
+		j := &v1.Job{Id: uuid.NewString()[:8], Spec: spec, State: v1.JobState_JOB_STATE_QUEUED, CreatedMs: now, UpdatedMs: now, By: by, Owner: owner}
+		h.putJob(j)
+		h.audit(by, "job", j.Id, "queued on "+spec.Node+": "+clip(spec.Command, 80)+" ("+reason+")", true)
+		return proto.Clone(j).(*v1.Job), nil
+	}
+
+	j := &v1.Job{Id: uuid.NewString()[:8], Spec: spec, State: v1.JobState_JOB_STATE_STARTING, CreatedMs: now, UpdatedMs: now, By: by, Owner: owner}
 	if err := h.sendJob(j, "start"); err != nil {
 		return nil, err
 	}
@@ -241,7 +279,18 @@ func (h *Hub) jobAction(id, action, by string) (*v1.Job, *opError) {
 		return nil, errJobNotFound
 	}
 	switch action {
-	case "stop", "pause", "resume":
+	case "stop":
+		if j.State == v1.JobState_JOB_STATE_QUEUED {
+			j.State = v1.JobState_JOB_STATE_STOPPED
+			j.UpdatedMs = time.Now().UnixMilli()
+			h.putJob(j)
+			h.audit(by, "job", id, "stopped", true)
+			return proto.Clone(j).(*v1.Job), nil
+		}
+		if !jobLive(j.State) {
+			return nil, &opError{"invalid", "the job is not running", http.StatusConflict}
+		}
+	case "pause", "resume":
 		if !jobLive(j.State) {
 			return nil, &opError{"invalid", "the job is not running", http.StatusConflict}
 		}
@@ -262,7 +311,7 @@ func (h *Hub) forgetJob(id string) *opError {
 	if j == nil {
 		return errJobNotFound
 	}
-	if jobLive(j.State) {
+	if jobLive(j.State) || j.State == v1.JobState_JOB_STATE_QUEUED {
 		return &opError{"invalid", "stop the job first", http.StatusConflict}
 	}
 	if conn := h.agents[j.Spec.GetNode()]; conn != nil && h.jobNodes[j.Spec.GetNode()] {
@@ -310,6 +359,9 @@ func (h *Hub) noteJobReport(node string, r *v1.JobReport) {
 		in.Spec.Node = node
 		if cur != nil {
 			in.By = cur.By
+			if in.Owner == "" {
+				in.Owner = cur.Owner
+			}
 			// Only the hub knows which project a reference was resolved in.
 			in.Spec.EnvFrom = cur.Spec.GetEnvFrom()
 			if in.CreatedMs == 0 {
@@ -425,3 +477,126 @@ func (h *Hub) gpuNode() string {
 }
 
 func jobStateName(st v1.JobState) string { return store.JobStateName(st) }
+
+const jobScheduleEvery = 15 * time.Second
+
+func (h *Hub) jobScheduleLoop(ctx context.Context) {
+	t := time.NewTicker(jobScheduleEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-t.C:
+			h.mu.Lock()
+			h.scheduleJobs(now)
+			h.mu.Unlock()
+		}
+	}
+}
+
+// jobWantsAutoResume reports whether a paused job may be picked up again when
+// its device becomes free.
+func jobWantsAutoResume(j *v1.Job) bool {
+	s := j.Spec.GetSchedule()
+	return j.Spec.GetQueueWhenBusy() || s == "next_free" || (s != "" && s != "now")
+}
+
+// jobAwaitingSchedule reports whether a job is waiting for its window to open.
+func jobAwaitingSchedule(j *v1.Job) bool {
+	return j.State == v1.JobState_JOB_STATE_QUEUED ||
+		(j.State == v1.JobState_JOB_STATE_PAUSED && jobWantsAutoResume(j))
+}
+
+// jobSlotReady reports whether a job tied to a booked slot may run at now.
+// A cancelled slot leaves the job queued rather than running early. Caller holds h.mu.
+func (h *Hub) jobSlotReady(j *v1.Job, now time.Time) bool {
+	s := j.Spec.GetSchedule()
+	if s == "" || s == "now" || s == "next_free" {
+		return true
+	}
+	slot := h.slotByID(j.Spec.GetNode(), s)
+	return slot != nil && now.UnixMilli() >= slot.StartMs && now.UnixMilli() < slot.EndMs
+}
+
+// scheduleJobs performs smart free-time allocation:
+// 1. Dispatches queued jobs when off-peak window opens or a booked slot becomes active.
+// 2. Pauses running non-owner jobs when off-peak window closes or another user's booked slot begins.
+// Caller holds h.mu.
+func (h *Hub) scheduleJobs(now time.Time) {
+	// 1. Check running non-owner jobs: pause them if their window closed or a slot conflict arose.
+	for _, j := range h.jobs {
+		if j.State != v1.JobState_JOB_STATE_RUNNING && j.State != v1.JobState_JOB_STATE_STARTING {
+			continue
+		}
+		node := j.Spec.GetNode()
+		owner := h.nodeOwner(node)
+		if j.Owner == owner || j.Owner == h.ownerID {
+			continue
+		}
+		canRun, reason := h.canUseDeviceNow(h.asUser(j.Owner), actRunJob, node, now)
+		if canRun && !h.jobSlotReady(j, now) {
+			canRun, reason = false, "slot_not_active"
+		}
+		if !canRun {
+			_ = h.sendJob(j, "pause")
+			j.State = v1.JobState_JOB_STATE_PAUSED
+			j.UpdatedMs = now.UnixMilli()
+			h.putJob(j)
+			h.audit("scheduler", "job", j.Id, "paused non-owner job ("+reason+") to free device for owner", true)
+		}
+	}
+
+	// 2. Collect queued or auto-paused jobs that can now run
+	var candidates []*v1.Job
+	for _, j := range h.jobs {
+		if jobAwaitingSchedule(j) {
+			candidates = append(candidates, j)
+		}
+	}
+	sort.Slice(candidates, func(i, k int) bool { return candidates[i].CreatedMs < candidates[k].CreatedMs })
+
+	// A paused job waiting for its window does not hold the device; other live jobs do.
+	nodeBusy := map[string]bool{}
+	for _, j := range h.jobs {
+		if jobAwaitingSchedule(j) {
+			continue
+		}
+		if jobLive(j.State) {
+			nodeBusy[j.Spec.GetNode()] = true
+		}
+	}
+
+	for _, j := range candidates {
+		node := j.Spec.GetNode()
+		if h.agents[node] == nil || !h.jobNodes[node] {
+			continue
+		}
+		if nodeBusy[node] {
+			continue
+		}
+		canRun, _ := h.canUseDeviceNow(h.asUser(j.Owner), actRunJob, node, now)
+		if !canRun || !h.jobSlotReady(j, now) {
+			continue
+		}
+		action := "start"
+		if j.State == v1.JobState_JOB_STATE_PAUSED {
+			action = "resume"
+		}
+		if err := h.sendJob(j, action); err != nil {
+			j.State = v1.JobState_JOB_STATE_FAILED
+			j.Error = err.Error()
+			j.UpdatedMs = now.UnixMilli()
+			h.putJob(j)
+			continue
+		}
+		j.State = v1.JobState_JOB_STATE_STARTING
+		if j.StartedMs == 0 {
+			j.StartedMs = now.UnixMilli()
+		}
+		j.UpdatedMs = now.UnixMilli()
+		h.putJob(j)
+		nodeBusy[node] = true
+		h.audit("scheduler", "job", j.Id, "dispatched queued job on "+node, true)
+	}
+}

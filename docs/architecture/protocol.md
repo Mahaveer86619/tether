@@ -194,13 +194,25 @@ Processes an agent supervises for the hub; see [jobs.md](jobs.md).
 | Method and path | Body | Response |
 |---|---|---|
 | `GET /api/v1/jobs?node=` | | `JobList`, newest first |
-| `POST /api/v1/jobs` | `JobSpec {node, cwd, command, name, env, envFrom: [{repo, file, keys}], port, restart, restartLimit, checkpoint, needsGpu}` | `Job` (state `starting`). Without `node`, `needsGpu` picks a machine with a GPU. `503 node_offline`, `409 unsupported` for an agent too old for jobs, `403 forbidden` for a project the node may not receive. |
-| `POST /api/v1/jobs/{id}/stop`, `/pause`, `/resume`, `/restart` | | `Job` as it was; the new state follows as a `job` frame. `409` for stop, pause or resume of a job that is not running. |
-| `DELETE /api/v1/jobs/{id}` | | `Ack`. Forgets an ended job here and on its device. |
+| `POST /api/v1/jobs` | `JobSpec {node, cwd, command, name, env, envFrom: [{repo, file, keys}], port, restart, restartLimit, checkpoint, needsGpu, queueWhenBusy, schedule}` | `Job` (state `starting`, or `queued` when it waits for free time). Without `node`, `needsGpu` picks a machine with a GPU. `403 device_window_closed` outside a grant's hours, `409 slot_conflict` when someone else holds the node; a job with `queueWhenBusy`, `schedule: "next_free"` or a slot id waits instead. `503 node_offline`, `409 unsupported` for an agent too old for jobs, `404 not_found` for an unknown slot. |
+| `POST /api/v1/jobs/{id}/stop`, `/pause`, `/resume`, `/restart` | | `Job` as it was; the new state follows as a `job` frame. `409` for stop, pause or resume of a job that is not running. A `queued` job can be stopped. |
+| `DELETE /api/v1/jobs/{id}` | | `Ack`. Forgets an ended job here and on its device. A `queued` job must be stopped first. |
 | `GET /api/v1/jobs/{id}/logs?tail=N` | | `JobLogTail {lines}`: the last N lines the hub has (200 by default, 2000 at most) |
 
 Frames: `job` (hub → app, whenever a job changes; a job without `spec` was forgotten), `jobReport {jobs, full}` and `jobLog {job, lines, replace}` (agent → hub), and `agentCommand.job {id, action, spec, secretEnv}` (hub → agent; actions `start`, `stop`, `pause`, `resume`, `restart`, `forget`).
 
+### Device sharing and slots
+
+A `DeviceGrant` carries `access` (`full` or `jobs`), optional `startHour`, `endHour`, `days` (`mon,tue,...`, empty for all) and `timezone` (empty for the node's local time). Equal start and end hours mean 24/7; a start after the end is an overnight window. Grants are set with `PUT /api/v1/nodes/{node}/grants` and removed with `DELETE /api/v1/nodes/{node}/grants/{user}`, as before.
+
+| Method and path | Body | Response |
+|---|---|---|
+| `GET /api/v1/nodes/{node}/slots` | | `DeviceSlotList` (earliest start first), in every visible `nodeStatus` too |
+| `POST /api/v1/nodes/{node}/slots` | `BookSlotRequest {user, startMs, endMs, notes}` | `DeviceSlot` (at most 48 hours); `409 slot_conflict` when it overlaps another booking |
+| `DELETE /api/v1/nodes/{node}/slots/{slot}` | | `Ack`; only the person who booked it, the device owner or a hub admin may cancel |
+
+A booked slot gives its user access for that block; the device owner always keeps priority. The scheduler dispatches waiting jobs when their grant window or booked slot opens, and pauses non-owner jobs when it closes.
+
 MCP tools: `start_job`, `job_status`, `job_logs`, `stop_job`, `pause_job`, `resume_job`.
 
-`nodeStatus` also carries the machine's hardware: `gpus [{name, memoryBytes}]`, `memoryBytes`, `cpus`.
+`nodeStatus` also carries the machine's hardware: `gpus [{name, memoryBytes}]`, `memoryBytes`, `cpus`, and the node's `slots` and (to its owner) `grants`.

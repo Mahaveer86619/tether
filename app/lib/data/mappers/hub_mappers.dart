@@ -27,8 +27,28 @@ Node nodeFromPb(pb.NodeStatus n) => Node(
       owner: n.owner,
       grants: [
         for (final g in n.grants)
-          if (DeviceAccess.of(g.access) != null) DeviceGrant(user: g.user, access: DeviceAccess.of(g.access)!, granted: _time(g.grantedMs)),
+          if (DeviceAccess.of(g.access) != null)
+            DeviceGrant(
+              user: g.user,
+              access: DeviceAccess.of(g.access)!,
+              granted: _time(g.grantedMs),
+              startHour: g.startHour,
+              endHour: g.endHour,
+              days: g.days,
+              timezone: g.timezone,
+            ),
       ],
+      slots: [for (final s in n.slots) deviceSlotFromPb(s)],
+    );
+
+DeviceSlot deviceSlotFromPb(pb.DeviceSlot s) => DeviceSlot(
+      id: s.id,
+      node: s.node,
+      user: s.user,
+      start: DateTime.fromMillisecondsSinceEpoch(s.startMs.toInt()),
+      end: DateTime.fromMillisecondsSinceEpoch(s.endMs.toInt()),
+      notes: s.notes,
+      created: _time(s.createdMs),
     );
 
 TeamUser userFromPb(pb.User u) => TeamUser(id: u.id, name: u.name, role: u.role, created: _time(u.createdMs));

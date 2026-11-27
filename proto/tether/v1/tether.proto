@@ -116,6 +116,7 @@ message NodeStatus {
   // hub. grants is sent to the owner only.
   string owner = 20;
   repeated DeviceGrant grants = 21;
+  repeated DeviceSlot slots = 22;
 }
 
 message Gpu {
@@ -430,6 +431,38 @@ message DeviceGrant {
   string user = 1;
   string access = 2;
   int64 granted_ms = 3;
+  // Allowed daily time window (0-23 hours). If start_hour == end_hour (e.g. 0 and 0),
+  // access is unrestricted 24/7. When start_hour > end_hour (e.g. 20 to 10),
+  // the window spans overnight (from 20:00 to 10:00 next day).
+  int32 start_hour = 4;
+  int32 end_hour = 5;
+  // Comma-separated days of week, e.g. "mon,tue,wed,thu,fri,sat,sun". Empty means all.
+  string days = 6;
+  // IANA timezone e.g. "America/New_York" or "Local". Empty means local node timezone.
+  string timezone = 7;
+}
+
+// A reserved time block on a node, giving the user priority/permission to run
+// jobs and sessions during that period.
+message DeviceSlot {
+  string id = 1;
+  string node = 2;
+  string user = 3;
+  int64 start_ms = 4;
+  int64 end_ms = 5;
+  string notes = 6;
+  int64 created_ms = 7;
+}
+
+message DeviceSlotList {
+  repeated DeviceSlot slots = 1;
+}
+
+message BookSlotRequest {
+  string user = 1;
+  int64 start_ms = 2;
+  int64 end_ms = 3;
+  string notes = 4;
 }
 
 // Who sees a chat besides its owner: "read" or "collaborate".
@@ -1358,6 +1391,8 @@ enum JobState {
   JOB_STATE_STOPPED = 6;
   // Was running when its agent went away, and is gone now.
   JOB_STATE_LOST = 7;
+  // Waiting for a free device slot or off-peak window.
+  JOB_STATE_QUEUED = 8;
 }
 
 // A key from a project's sealed setup file (PUT /api/v1/projects/{repo}/files),
@@ -1389,6 +1424,10 @@ message JobSpec {
   string checkpoint = 10;
   // Needs a machine with a GPU.
   bool needs_gpu = 11;
+  // Queue if the device is currently occupied or outside the free-time window.
+  bool queue_when_busy = 12;
+  // Schedule policy: "now", "next_free", or specific slot id.
+  string schedule = 13;
 }
 
 message Job {

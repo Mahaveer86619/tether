@@ -83,6 +83,8 @@ func JobStateName(st v1.JobState) string {
 		return "stopped"
 	case v1.JobState_JOB_STATE_LOST:
 		return "lost"
+	case v1.JobState_JOB_STATE_QUEUED:
+		return "queued"
 	}
 	return "unknown"
 }

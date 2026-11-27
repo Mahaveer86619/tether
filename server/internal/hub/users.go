@@ -98,6 +98,14 @@ func (h *Hub) loadUsers() error {
 		return err
 	}
 	h.grants = grants
+	slots, err := h.store.Slots("")
+	if err != nil {
+		return err
+	}
+	h.slots = map[string][]*v1.DeviceSlot{}
+	for _, s := range slots {
+		h.slots[s.Node] = append(h.slots[s.Node], s)
+	}
 	return nil
 }
 
@@ -298,6 +306,100 @@ func (h *Hub) check(id identity, act action, kind objKind, obj string) *opError 
 	return nil
 }
 
+// inTimeWindow checks if t falls within the grant's allowed time window.
+// If StartHour == EndHour, hours are unrestricted 24/7; days still apply.
+// Overnight windows (e.g. 20:00 to 10:00 next day) are valid when hour >= 20 || hour < 10.
+func inTimeWindow(t time.Time, g *v1.DeviceGrant) bool {
+	if g == nil {
+		return false
+	}
+	if g.Timezone != "" {
+		if loc, err := time.LoadLocation(g.Timezone); err == nil {
+			t = t.In(loc)
+		}
+	}
+	if g.Days != "" {
+		day := strings.ToLower(t.Weekday().String()[:3])
+		matched := false
+		for _, d := range strings.Split(g.Days, ",") {
+			if strings.TrimSpace(d) == day {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	if g.StartHour == g.EndHour {
+		return true
+	}
+	hour := t.Hour()
+	start := int(g.StartHour)
+	end := int(g.EndHour)
+	if start < end {
+		return hour >= start && hour < end
+	}
+	return hour >= start || hour < end
+}
+
+// activeSlot returns the slot active on node at nowMs, or nil.
+func (h *Hub) activeSlot(node string, nowMs int64) *v1.DeviceSlot {
+	for _, s := range h.slots[node] {
+		if nowMs >= s.StartMs && nowMs < s.EndMs {
+			return s
+		}
+	}
+	return nil
+}
+
+// slotByID looks up a booked slot on node. Caller holds h.mu.
+func (h *Hub) slotByID(node, id string) *v1.DeviceSlot {
+	for _, s := range h.slots[node] {
+		if s.Id == id {
+			return s
+		}
+	}
+	return nil
+}
+
+// canUseDeviceNow checks if id can execute compute on node at now.
+// Returns (ok, reason). Reason is empty when ok is true, or one of:
+// "unauthenticated", "no_grant", "slot_conflict", "outside_window".
+func (h *Hub) canUseDeviceNow(id identity, act action, node string, now time.Time) (bool, string) {
+	if id.root() {
+		return true, ""
+	}
+	u := id.userID()
+	if u == "" || h.users[u] == nil {
+		return false, "unauthenticated"
+	}
+	if h.nodeOwner(node) == u {
+		return true, ""
+	}
+	g := h.grants[node][u]
+	slot := h.activeSlot(node, now.UnixMilli())
+	if slot != nil {
+		if slot.User == u {
+			if act == actRunClaude && (g == nil || g.Access != accessFull) {
+				return false, "requires_full_access"
+			}
+			return true, ""
+		}
+		return false, "slot_conflict"
+	}
+	if g == nil {
+		return false, "no_grant"
+	}
+	if act == actRunClaude && g.Access != accessFull {
+		return false, "requires_full_access"
+	}
+	if !inTimeWindow(now, g) {
+		return false, "outside_window"
+	}
+	return true, ""
+}
+
 // asUser is the identity a user's own app would have, for work done on
 // their behalf (a chat's sessions, the hub's own jobs).
 func (h *Hub) asUser(user string) identity {
@@ -317,8 +419,8 @@ func (h *Hub) visibleNodes(id identity) []*v1.NodeStatus {
 	return out
 }
 
-// nodeFor is a node's status as id sees it: its owner, and its grants only
-// for the owner.
+// nodeFor is a node's status as id sees it: its owner, its grants only
+// for the owner (or grantee's own grant), and booked slots.
 func (h *Hub) nodeFor(id identity, n *v1.NodeStatus) *v1.NodeStatus {
 	n = proto.Clone(n).(*v1.NodeStatus)
 	n.Owner = h.nodeOwner(n.Node)
@@ -327,7 +429,13 @@ func (h *Hub) nodeFor(id identity, n *v1.NodeStatus) *v1.NodeStatus {
 			n.Grants = append(n.Grants, proto.Clone(g).(*v1.DeviceGrant))
 		}
 		sort.Slice(n.Grants, func(i, j int) bool { return n.Grants[i].GrantedMs < n.Grants[j].GrantedMs })
+	} else if g := h.grants[n.Node][id.userID()]; g != nil {
+		n.Grants = append(n.Grants, proto.Clone(g).(*v1.DeviceGrant))
 	}
+	for _, s := range h.slots[n.Node] {
+		n.Slots = append(n.Slots, proto.Clone(s).(*v1.DeviceSlot))
+	}
+	sort.Slice(n.Slots, func(i, j int) bool { return n.Slots[i].StartMs < n.Slots[j].StartMs })
 	return n
 }
 
@@ -478,6 +586,15 @@ func (h *Hub) removeUser(id identity, user string) *opError {
 	for _, gs := range h.grants {
 		delete(gs, user)
 	}
+	for node, slist := range h.slots {
+		var kept []*v1.DeviceSlot
+		for _, s := range slist {
+			if s.User != user {
+				kept = append(kept, s)
+			}
+		}
+		h.slots[node] = kept
+	}
 	delete(h.users, user)
 	h.dropAccess(user)
 	h.audit(whoOf(id), "user", "removed", u.Name, true)
@@ -499,7 +616,23 @@ func (h *Hub) grant(id identity, node string, g *v1.DeviceGrant) *opError {
 	if g.User == h.nodeOwner(node) {
 		return invalid("that user owns this device")
 	}
-	g = &v1.DeviceGrant{User: g.User, Access: g.Access, GrantedMs: time.Now().UnixMilli()}
+	if g.StartHour < 0 || g.StartHour > 23 || g.EndHour < 0 || g.EndHour > 23 {
+		return invalid("hours must be between 0 and 23")
+	}
+	if g.Timezone != "" {
+		if _, err := time.LoadLocation(g.Timezone); err != nil {
+			return invalid("unknown timezone: " + g.Timezone)
+		}
+	}
+	g = &v1.DeviceGrant{
+		User:      g.User,
+		Access:    g.Access,
+		GrantedMs: time.Now().UnixMilli(),
+		StartHour: g.StartHour,
+		EndHour:   g.EndHour,
+		Days:      strings.ToLower(strings.TrimSpace(g.Days)),
+		Timezone:  g.Timezone,
+	}
 	if err := h.store.PutGrant(node, g); err != nil {
 		return internalError(err)
 	}
@@ -538,6 +671,96 @@ func (h *Hub) resendNode(node string) {
 	if n := h.nodes[node]; n != nil {
 		h.broadcast(&v1.Frame{Body: &v1.Frame_NodeStatus{NodeStatus: proto.Clone(n).(*v1.NodeStatus)}})
 	}
+}
+
+// ---- slot booking ----
+
+func (h *Hub) listSlots(id identity, node string) (*v1.DeviceSlotList, *opError) {
+	if !h.can(id, actView, objNode, node) {
+		return nil, errForbidden
+	}
+	list := &v1.DeviceSlotList{}
+	for _, s := range h.slots[node] {
+		list.Slots = append(list.Slots, proto.Clone(s).(*v1.DeviceSlot))
+	}
+	sort.Slice(list.Slots, func(i, j int) bool { return list.Slots[i].StartMs < list.Slots[j].StartMs })
+	return list, nil
+}
+
+func (h *Hub) bookSlot(id identity, node string, req *v1.BookSlotRequest) (*v1.DeviceSlot, *opError) {
+	if !h.can(id, actRunJob, objNode, node) && h.nodeOwner(node) != id.userID() {
+		return nil, errForbidden
+	}
+	targetUser := req.User
+	if targetUser == "" {
+		targetUser = id.userID()
+	}
+	if targetUser != id.userID() && h.nodeOwner(node) != id.userID() && !id.root() {
+		return nil, errForbidden
+	}
+	if h.users[targetUser] == nil {
+		return nil, errUnknownUsr
+	}
+	now := time.Now().UnixMilli()
+	if req.StartMs <= 0 || req.EndMs <= 0 || req.EndMs <= req.StartMs {
+		return nil, invalid("start_ms must be before end_ms")
+	}
+	if req.EndMs-req.StartMs > 48*3600*1000 {
+		return nil, invalid("slot duration cannot exceed 48 hours")
+	}
+	for _, existing := range h.slots[node] {
+		if existing.StartMs < req.EndMs && existing.EndMs > req.StartMs {
+			return nil, &opError{"slot_conflict", "this time slot overlaps with an existing booking (" + existing.Id + ")", http.StatusConflict}
+		}
+	}
+	slot := &v1.DeviceSlot{
+		Id:        uuid.NewString()[:8],
+		Node:      node,
+		User:      targetUser,
+		StartMs:   req.StartMs,
+		EndMs:     req.EndMs,
+		Notes:     clip(req.Notes, 200),
+		CreatedMs: now,
+	}
+	if err := h.store.PutSlot(slot); err != nil {
+		return nil, internalError(err)
+	}
+	h.slots[node] = append(h.slots[node], slot)
+	userName := targetUser
+	if u := h.users[targetUser]; u != nil {
+		userName = u.Name
+	}
+	h.audit(whoOf(id), "slot", node, "booked slot for "+userName+": "+slot.Id, true)
+	h.resendNode(node)
+	return proto.Clone(slot).(*v1.DeviceSlot), nil
+}
+
+func (h *Hub) cancelSlot(id identity, node, slotID string) *opError {
+	if !h.can(id, actView, objNode, node) {
+		return errForbidden
+	}
+	var found *v1.DeviceSlot
+	var idx int = -1
+	for i, s := range h.slots[node] {
+		if s.Id == slotID {
+			found = s
+			idx = i
+			break
+		}
+	}
+	if found == nil {
+		return &opError{"not_found", "slot not found", http.StatusNotFound}
+	}
+	if found.User != id.userID() && h.nodeOwner(node) != id.userID() && !id.root() {
+		return errForbidden
+	}
+	if err := h.store.DeleteSlot(slotID); err != nil {
+		return internalError(err)
+	}
+	h.slots[node] = append(h.slots[node][:idx], h.slots[node][idx+1:]...)
+	h.audit(whoOf(id), "slot", node, "cancelled slot "+slotID, true)
+	h.resendNode(node)
+	return nil
 }
 
 // ---- chat sharing ----
@@ -623,6 +846,19 @@ func (h *Hub) userRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("DELETE /api/v1/nodes/{node}/grants/{user}", h.api(func(r *http.Request) (proto.Message, *opError) {
 		return ackOf("", h.revokeGrant(userOf(r), r.PathValue("node"), r.PathValue("user")))
+	}))
+	mux.HandleFunc("GET /api/v1/nodes/{node}/slots", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return h.listSlots(userOf(r), r.PathValue("node"))
+	}))
+	mux.HandleFunc("POST /api/v1/nodes/{node}/slots", h.api(func(r *http.Request) (proto.Message, *opError) {
+		req := &v1.BookSlotRequest{}
+		if err := decode(r, req); err != nil {
+			return nil, err
+		}
+		return h.bookSlot(userOf(r), r.PathValue("node"), req)
+	}))
+	mux.HandleFunc("DELETE /api/v1/nodes/{node}/slots/{slot}", h.api(func(r *http.Request) (proto.Message, *opError) {
+		return ackOf("", h.cancelSlot(userOf(r), r.PathValue("node"), r.PathValue("slot")))
 	}))
 	mux.HandleFunc("PUT /api/v1/chats/{id}/shares", h.api(func(r *http.Request) (proto.Message, *opError) {
 		s := &v1.ChatShare{}

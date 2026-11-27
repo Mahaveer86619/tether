@@ -68,9 +68,32 @@ class TeamCubit extends Cubit<TeamState> {
   }
 
   /// Returns whether it worked; the device's new grants come with its status.
-  Future<bool> share(String node, String user, DeviceAccess access) => _done(_team.share(node, user, access));
+  Future<bool> share(
+    String node,
+    String user,
+    DeviceAccess access, {
+    int startHour = 0,
+    int endHour = 0,
+    String days = '',
+    String timezone = '',
+  }) =>
+      _done(_team.share(node, user, access, startHour: startHour, endHour: endHour, days: days, timezone: timezone));
 
   Future<bool> unshare(String node, String user) => _done(_team.unshare(node, user));
+
+  /// Bookings arrive with the node's status; these only send the command.
+  Future<bool> bookSlot(String node, String user, DateTime start, DateTime end, {String notes = ''}) async {
+    final r = await _team.bookSlot(node, user, start, end, notes: notes);
+    return r.fold(
+      (f) {
+        emit(state.copyWith(failure: f, failureId: state.failureId + 1));
+        return false;
+      },
+      (_) => true,
+    );
+  }
+
+  Future<bool> cancelSlot(String node, String slot) => _done(_team.cancelSlot(node, slot));
 
   Future<bool> _done(Future<Result<void>> call) async {
     final r = await call;

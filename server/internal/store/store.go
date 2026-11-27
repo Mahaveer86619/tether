@@ -231,6 +231,21 @@ var migrations = []string{
 	);
 	ALTER TABLE notifications ADD COLUMN user TEXT NOT NULL DEFAULT '';
 	ALTER TABLE artifacts ADD COLUMN owner TEXT NOT NULL DEFAULT ''`,
+	// Device slot booking and smart free-time allocation.
+	`ALTER TABLE device_grants ADD COLUMN start_hour INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE device_grants ADD COLUMN end_hour INTEGER NOT NULL DEFAULT 0;
+	ALTER TABLE device_grants ADD COLUMN days TEXT NOT NULL DEFAULT '';
+	ALTER TABLE device_grants ADD COLUMN timezone TEXT NOT NULL DEFAULT '';
+	CREATE TABLE IF NOT EXISTS device_slots (
+		id         TEXT PRIMARY KEY,
+		node       TEXT NOT NULL,
+		user       TEXT NOT NULL,
+		start_ms   INTEGER NOT NULL,
+		end_ms     INTEGER NOT NULL,
+		notes      TEXT NOT NULL DEFAULT '',
+		created_ms INTEGER NOT NULL
+	);
+	CREATE INDEX IF NOT EXISTS device_slots_by_node_time ON device_slots (node, start_ms, end_ms)`,
 }
 
 type Store struct {

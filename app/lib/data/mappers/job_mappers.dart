@@ -10,6 +10,7 @@ JobState jobStateFromPb(pbe.JobState s) => switch (s) {
       pbe.JobState.JOB_STATE_STARTING => JobState.starting,
       pbe.JobState.JOB_STATE_RUNNING => JobState.running,
       pbe.JobState.JOB_STATE_PAUSED => JobState.paused,
+      pbe.JobState.JOB_STATE_QUEUED => JobState.queued,
       pbe.JobState.JOB_STATE_EXITED => JobState.exited,
       pbe.JobState.JOB_STATE_FAILED => JobState.failed,
       pbe.JobState.JOB_STATE_STOPPED => JobState.stopped,
@@ -38,6 +39,8 @@ Job jobFromPb(pb.Job j) => Job(
       address: j.address,
       by: j.by,
       removed: !j.hasSpec(),
+      schedule: j.spec.schedule,
+      queueWhenBusy: j.spec.queueWhenBusy,
     );
 
 pb.JobSpec jobSpecToPb(NewJobRequest r) => pb.JobSpec(
@@ -49,4 +52,6 @@ pb.JobSpec jobSpecToPb(NewJobRequest r) => pb.JobSpec(
       restart: r.restart == RestartPolicy.never ? null : r.restart.wire,
       needsGpu: r.needsGpu ? true : null,
       envFrom: r.secretsFrom.isEmpty ? null : [pb.EnvRef(file: r.secretsFrom)],
+      schedule: r.schedule.isEmpty ? null : r.schedule,
+      queueWhenBusy: r.queueWhenBusy ? true : null,
     );

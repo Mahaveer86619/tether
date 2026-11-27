@@ -155,6 +155,9 @@ var routePolicy = map[string]routeCheck{
 	"DELETE /api/v1/users/{user}":               admin,
 	"PUT /api/v1/nodes/{node}/grants":           on(objNode, "node", actManage),
 	"DELETE /api/v1/nodes/{node}/grants/{user}": on(objNode, "node", actManage),
+	"GET /api/v1/nodes/{node}/slots":            on(objNode, "node", actView),
+	"POST /api/v1/nodes/{node}/slots":           on(objNode, "node", actView),
+	"DELETE /api/v1/nodes/{node}/slots/{slot}":  on(objNode, "node", actView),
 
 	"POST /api/v1/sessions":                      anyone, // startSession checks the node
 	"GET /api/v1/sessions/{id}/timeline":         on(objSession, "id", actView),
