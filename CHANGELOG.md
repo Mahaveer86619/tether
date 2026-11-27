@@ -2,6 +2,9 @@
 
 Each release's section becomes its release notes and the notes the apps show. Keep the heading as `## X.Y.Z`.
 
+## 0.19.0
+
+
 ## 0.18.1
 
 - **What a task reports comes back as a card.** When a session you handed to another machine finishes, its result now shows in the chat as a card instead of a grey line: the task's title, the device and folder it ran on, and its reply drawn properly with lists, tables and code. A long reply folds with a fade and a Show all button, and Open goes to the task's own session. A failed task says so in red, with why. Needs the hub and the app both updated; they update themselves.
