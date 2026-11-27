@@ -49,13 +49,13 @@ A reconnect must resolve the hub's chat and session ids first. The app/Herdr is 
 
 ## Main agent and parallel sub-agents
 
-A v1 chat has one main session and zero or more sub-agent sessions. The main brain is Claude Code because it is the reasoning and planning layer. Sub-agent work is delegated to CLIs the person already has installed, initially Antigravity CLI and OpenCode CLI, because their free tiers and larger context windows suit codebase reading and bounded tasks. Tether does not wrap, bundle or replace those CLIs.
+A v1 chat has one main session and zero or more sub-agent sessions. The default main brain is Claude Code because it is the reasoning and planning layer; a chat that names `opencode-main` makes OpenCode CLI the lead instead. Sub-agent work is delegated to CLIs the person already has installed, initially Antigravity CLI and OpenCode CLI, because their free tiers and larger context windows suit codebase reading and bounded tasks. Tether does not wrap, bundle or replace those CLIs.
 
 Core gains an **agent profile** object:
 
 | Field | Meaning |
 |---|---|
-| `id` | stable profile id, e.g. `claude-main`, `antigravity-worker`, `opencode-worker` |
+| `id` | stable profile id: `claude-main`, `opencode-main`, `antigravity-worker`, `opencode-worker` |
 | `kind` | `main` or `subagent` |
 | `command` | per-device command template, e.g. `claude`, `agy`, `opencode` |
 | `model` / `args` | optional model or flags, resolved by core policy |
@@ -63,7 +63,7 @@ Core gains an **agent profile** object:
 | `budget_policy` | which provider/budget this profile may draw from |
 | `status_protocol` | how the CLI reports working/blocked/done and session id |
 
-The main agent receives MCP tools such as `delegate_task`, `wait_for_subagents`, `collect_results`, `cancel_task` and `token_status`. Sub-agents receive only the tools their role needs. The hub limits parallelism by device capacity and token budget, and records each delegated task as a child of the chat.
+The main agent receives MCP tools such as `list_profiles`, `pick_model`, `create_chat`, `delegate_task`, `wait_for_subagents`, `collect_results`, `cancel_task` and `token_status`; `budget_set` is admin-only. Sub-agents receive only the tools their role needs. The hub limits parallelism by device capacity and token budget, and records each delegated task as a child of the chat.
 
 Results return to the main agent as compact summaries with references to full artifacts in the chat context. A failed sub-agent ends its own task; it does not kill the chat or its siblings.
 
@@ -73,7 +73,7 @@ This mirrors Herdr's own model - `hc run --bg --name ...`, `hc send`, `hc wait -
 
 Token handling is not a client feature. The hub records a usage event for every model call it can observe: user, chat, session, task role, provider, model, tokens in/out, cache use, cost estimate, quota remaining and timestamp.
 
-A provider/model registry holds capability and cost metadata: context window, free-tier availability, reasoning strength, speed, edit support and user rank. For each task the hub ranks providers by:
+A provider/model registry holds capability and cost metadata: context window, free-tier availability, reasoning strength, speed, edit support, user rank and privacy notes. Big Pickle is the highest-ranked OpenCode free model and the default auto-pick for large-context work; DeepSeek V4.1 Flash, Hy4 Flash, Mimo V2.6 Flash, Jev 1.13, Beam, Flint 40B, Tidepool/Seaglass Alpha, Iceman and the Nemotron free trials are also in the catalog. For each task the hub ranks providers by:
 
 1. role fit (`main` keeps Claude Code by default; sub-agents prefer large-context free tiers);
 2. user preference and explicit pinning;
@@ -82,7 +82,7 @@ A provider/model registry holds capability and cost metadata: context window, fr
 5. observed latency and reliability;
 6. estimated cost.
 
-When a provider is exhausted, rate-limited or unavailable, the hub picks the next eligible provider, records the decision and tells the agent to switch. Budget changes, quota warnings and fallback decisions are emitted to every authorized device and user, and exposed through `token_status`, `provider_rank` and `budget_set` MCP tools. The same state appears in `Welcome`/frames, REST and `tetherctl`, so all-device and multi-user views agree.
+When a model is exhausted, rate-limited or unavailable, the hub picks the next ranked model, then (for a sub-agent) another eligible profile, and records the decision. Budget changes, quota warnings and fallback decisions are exposed through `token_status`, `pick_model` and `budget_set` MCP tools. The same state appears in `Welcome`, REST and `tetherctl models`, so all-device and multi-user views agree.
 
 This work is a hard dependency for both main/sub-agent orchestration and full v1.
 
