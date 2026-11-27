@@ -239,11 +239,12 @@ func TestAGPUJobGoesToTheMachineWithOneAndTheLeadIsTold(t *testing.T) {
 		t.Fatalf("the lead's prompt should name the GPU: %s", prompt)
 	}
 
-	_, m = rpc(t, srv, "secret", `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"job_status","arguments":{}}}`)
 	var status []map[string]any
-	if err := json.Unmarshal([]byte(toolText(t, m)), &status); err != nil || len(status) != 1 || status[0]["state"] != "running" {
-		t.Fatalf("job_status: %v %v", status, err)
-	}
+	waitUntil(t, "the job to be reported running", func() bool {
+		_, m := rpc(t, srv, "secret", `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"job_status","arguments":{}}}`)
+		status = nil
+		return json.Unmarshal([]byte(toolText(t, m)), &status) == nil && len(status) == 1 && status[0]["state"] == "running"
+	})
 	_, m = rpc(t, srv, "secret", `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"pause_job","arguments":{"id":"`+status[0]["id"].(string)+`"}}}`)
 	if text := toolText(t, m); !strings.Contains(text, "pause") {
 		t.Fatalf("pause_job: %s", text)
