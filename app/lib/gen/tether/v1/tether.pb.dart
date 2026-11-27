@@ -1384,6 +1384,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     $fixnum.Int64? backedUpMs,
     $fixnum.Int64? backedUpBytes,
     $core.String? owner,
+    $core.String? profile,
+    $core.String? taskRole,
+    $core.String? parentTask,
   }) {
     final result = SessionInfo._();
     if (id != null) result.id = id;
@@ -1418,6 +1421,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     if (backedUpMs != null) result.backedUpMs = backedUpMs;
     if (backedUpBytes != null) result.backedUpBytes = backedUpBytes;
     if (owner != null) result.owner = owner;
+    if (profile != null) result.profile = profile;
+    if (taskRole != null) result.taskRole = taskRole;
+    if (parentTask != null) result.parentTask = parentTask;
     return result;
   }
 
@@ -1469,6 +1475,9 @@ class SessionInfo extends $pb.GeneratedMessage {
     ..aInt64(30, _omitFieldNames ? '' : 'backedUpMs')
     ..aInt64(31, _omitFieldNames ? '' : 'backedUpBytes')
     ..aOS(32, _omitFieldNames ? '' : 'owner')
+    ..aOS(33, _omitFieldNames ? '' : 'profile')
+    ..aOS(34, _omitFieldNames ? '' : 'taskRole')
+    ..aOS(35, _omitFieldNames ? '' : 'parentTask')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1793,6 +1802,282 @@ class SessionInfo extends $pb.GeneratedMessage {
   $core.bool hasOwner() => $_has(31);
   @$pb.TagNumber(32)
   void clearOwner() => $_clearField(32);
+
+  /// The core profile that launched it, and its place in a chat's work.
+  @$pb.TagNumber(33)
+  $core.String get profile => $_getSZ(32);
+  @$pb.TagNumber(33)
+  set profile($core.String value) => $_setString(32, value);
+  @$pb.TagNumber(33)
+  $core.bool hasProfile() => $_has(32);
+  @$pb.TagNumber(33)
+  void clearProfile() => $_clearField(33);
+
+  @$pb.TagNumber(34)
+  $core.String get taskRole => $_getSZ(33);
+  @$pb.TagNumber(34)
+  set taskRole($core.String value) => $_setString(33, value);
+  @$pb.TagNumber(34)
+  $core.bool hasTaskRole() => $_has(33);
+  @$pb.TagNumber(34)
+  void clearTaskRole() => $_clearField(34);
+
+  /// The chat task this session was delegated for, when it is a sub-agent.
+  @$pb.TagNumber(35)
+  $core.String get parentTask => $_getSZ(34);
+  @$pb.TagNumber(35)
+  set parentTask($core.String value) => $_setString(34, value);
+  @$pb.TagNumber(35)
+  $core.bool hasParentTask() => $_has(34);
+  @$pb.TagNumber(35)
+  void clearParentTask() => $_clearField(35);
+}
+
+/// A core-owned engine profile. The hub resolves it and sends it to the agent,
+/// so per-device commands and token policy stay outside the client.
+class AgentProfile extends $pb.GeneratedMessage {
+  factory AgentProfile({
+    $core.String? id,
+    $core.String? kind,
+    $core.String? command,
+    $core.String? model,
+    $core.Iterable<$core.String>? args,
+    $core.String? statusProtocol,
+    $core.Iterable<$core.String>? capabilities,
+    $core.String? budgetPolicy,
+    $core.int? contextWindow,
+    $core.bool? freeTier,
+    $core.int? userRank,
+    $core.String? description,
+    $core.String? provider,
+  }) {
+    final result = AgentProfile._();
+    if (id != null) result.id = id;
+    if (kind != null) result.kind = kind;
+    if (command != null) result.command = command;
+    if (model != null) result.model = model;
+    if (args != null) result.args.addAll(args);
+    if (statusProtocol != null) result.statusProtocol = statusProtocol;
+    if (capabilities != null) result.capabilities.addAll(capabilities);
+    if (budgetPolicy != null) result.budgetPolicy = budgetPolicy;
+    if (contextWindow != null) result.contextWindow = contextWindow;
+    if (freeTier != null) result.freeTier = freeTier;
+    if (userRank != null) result.userRank = userRank;
+    if (description != null) result.description = description;
+    if (provider != null) result.provider = provider;
+    return result;
+  }
+
+  AgentProfile._();
+
+  factory AgentProfile.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentProfile()..mergeFromBuffer(data, registry);
+  factory AgentProfile.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentProfile()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentProfile',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentProfile.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'kind')
+    ..aOS(3, _omitFieldNames ? '' : 'command')
+    ..aOS(4, _omitFieldNames ? '' : 'model')
+    ..pPS(5, _omitFieldNames ? '' : 'args')
+    ..aOS(6, _omitFieldNames ? '' : 'statusProtocol')
+    ..pPS(7, _omitFieldNames ? '' : 'capabilities')
+    ..aOS(8, _omitFieldNames ? '' : 'budgetPolicy')
+    ..aI(9, _omitFieldNames ? '' : 'contextWindow')
+    ..aOB(10, _omitFieldNames ? '' : 'freeTier')
+    ..aI(11, _omitFieldNames ? '' : 'userRank')
+    ..aOS(12, _omitFieldNames ? '' : 'description')
+    ..aOS(13, _omitFieldNames ? '' : 'provider')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentProfile clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentProfile copyWith(void Function(AgentProfile) updates) =>
+      super.copyWith((message) => updates(message as AgentProfile))
+          as AgentProfile;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AgentProfile() / AgentProfile.new instead')
+  static AgentProfile create() => AgentProfile._();
+  static $pb.GeneratedMessage $_createMessage() => AgentProfile._();
+  @$core.override
+  AgentProfile createEmptyInstance() => AgentProfile._();
+  @$core.pragma('dart2js:noInline')
+  static AgentProfile getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AgentProfile>(
+          AgentProfile.$_createMessage);
+  static AgentProfile? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  /// "main" or "subagent".
+  @$pb.TagNumber(2)
+  $core.String get kind => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set kind($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKind() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKind() => $_clearField(2);
+
+  /// Command on an agent machine, e.g. claude, agy or opencode.
+  @$pb.TagNumber(3)
+  $core.String get command => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set command($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCommand() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCommand() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get model => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set model($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasModel() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearModel() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.String> get args => $_getList(4);
+
+  /// "claude_stream" for Claude's stream-json, or "line" for plain output.
+  @$pb.TagNumber(6)
+  $core.String get statusProtocol => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set statusProtocol($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasStatusProtocol() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearStatusProtocol() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $pb.PbList<$core.String> get capabilities => $_getList(6);
+
+  @$pb.TagNumber(8)
+  $core.String get budgetPolicy => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set budgetPolicy($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasBudgetPolicy() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearBudgetPolicy() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get contextWindow => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set contextWindow($core.int value) => $_setSignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasContextWindow() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearContextWindow() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.bool get freeTier => $_getBF(9);
+  @$pb.TagNumber(10)
+  set freeTier($core.bool value) => $_setBool(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasFreeTier() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearFreeTier() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.int get userRank => $_getIZ(10);
+  @$pb.TagNumber(11)
+  set userRank($core.int value) => $_setSignedInt32(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasUserRank() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearUserRank() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get description => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set description($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasDescription() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearDescription() => $_clearField(12);
+
+  /// The provider whose budget this profile draws from, when it has one.
+  @$pb.TagNumber(13)
+  $core.String get provider => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set provider($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasProvider() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearProvider() => $_clearField(13);
+}
+
+class AgentProfileList extends $pb.GeneratedMessage {
+  factory AgentProfileList({
+    $core.Iterable<AgentProfile>? profiles,
+  }) {
+    final result = AgentProfileList._();
+    if (profiles != null) result.profiles.addAll(profiles);
+    return result;
+  }
+
+  AgentProfileList._();
+
+  factory AgentProfileList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentProfileList()..mergeFromBuffer(data, registry);
+  factory AgentProfileList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AgentProfileList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AgentProfileList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: AgentProfileList.$_createMessage)
+    ..pPM<AgentProfile>(1, _omitFieldNames ? '' : 'profiles',
+        subBuilder: AgentProfile.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentProfileList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AgentProfileList copyWith(void Function(AgentProfileList) updates) =>
+      super.copyWith((message) => updates(message as AgentProfileList))
+          as AgentProfileList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AgentProfileList() / AgentProfileList.new instead')
+  static AgentProfileList create() => AgentProfileList._();
+  static $pb.GeneratedMessage $_createMessage() => AgentProfileList._();
+  @$core.override
+  AgentProfileList createEmptyInstance() => AgentProfileList._();
+  @$core.pragma('dart2js:noInline')
+  static AgentProfileList getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AgentProfileList>(
+          AgentProfileList.$_createMessage);
+  static AgentProfileList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<AgentProfile> get profiles => $_getList(0);
 }
 
 /// A session no longer exists on its node (its transcript was deleted).
@@ -2849,6 +3134,10 @@ class CreateSession extends $pb.GeneratedMessage {
     $core.bool? createCwd,
     $core.Iterable<$core.String>? attachments,
     $core.bool? scratch,
+    $core.String? profile,
+    $core.String? taskRole,
+    $core.String? parentTask,
+    $core.String? capability,
   }) {
     final result = CreateSession._();
     if (node != null) result.node = node;
@@ -2860,6 +3149,10 @@ class CreateSession extends $pb.GeneratedMessage {
     if (createCwd != null) result.createCwd = createCwd;
     if (attachments != null) result.attachments.addAll(attachments);
     if (scratch != null) result.scratch = scratch;
+    if (profile != null) result.profile = profile;
+    if (taskRole != null) result.taskRole = taskRole;
+    if (parentTask != null) result.parentTask = parentTask;
+    if (capability != null) result.capability = capability;
     return result;
   }
 
@@ -2885,6 +3178,10 @@ class CreateSession extends $pb.GeneratedMessage {
     ..aOB(7, _omitFieldNames ? '' : 'createCwd')
     ..pPS(8, _omitFieldNames ? '' : 'attachments')
     ..aOB(9, _omitFieldNames ? '' : 'scratch')
+    ..aOS(10, _omitFieldNames ? '' : 'profile')
+    ..aOS(11, _omitFieldNames ? '' : 'taskRole')
+    ..aOS(12, _omitFieldNames ? '' : 'parentTask')
+    ..aOS(13, _omitFieldNames ? '' : 'capability')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2987,6 +3284,44 @@ class CreateSession extends $pb.GeneratedMessage {
   $core.bool hasScratch() => $_has(8);
   @$pb.TagNumber(9)
   void clearScratch() => $_clearField(9);
+
+  /// Core profile id, resolved by the hub before the command reaches an agent.
+  @$pb.TagNumber(10)
+  $core.String get profile => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set profile($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasProfile() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearProfile() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.String get taskRole => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set taskRole($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasTaskRole() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearTaskRole() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.String get parentTask => $_getSZ(11);
+  @$pb.TagNumber(12)
+  set parentTask($core.String value) => $_setString(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasParentTask() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearParentTask() => $_clearField(12);
+
+  /// What the task needs from a model: long_context, review, test, etc.
+  @$pb.TagNumber(13)
+  $core.String get capability => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set capability($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasCapability() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearCapability() => $_clearField(13);
 }
 
 /// REST body for POST /api/v1/sessions/{id}/archive.
@@ -3338,6 +3673,8 @@ class Welcome extends $pb.GeneratedMessage {
     $core.String? notifyUrl,
     User? me,
     $core.Iterable<User>? users,
+    AgentProfileList? profiles,
+    TokenStatus? tokenStatus,
   }) {
     final result = Welcome._();
     if (hubVersion != null) result.hubVersion = hubVersion;
@@ -3354,6 +3691,8 @@ class Welcome extends $pb.GeneratedMessage {
     if (notifyUrl != null) result.notifyUrl = notifyUrl;
     if (me != null) result.me = me;
     if (users != null) result.users.addAll(users);
+    if (profiles != null) result.profiles = profiles;
+    if (tokenStatus != null) result.tokenStatus = tokenStatus;
     return result;
   }
 
@@ -3391,6 +3730,10 @@ class Welcome extends $pb.GeneratedMessage {
         subBuilder: User.$_createMessage)
     ..pPM<User>(13, _omitFieldNames ? '' : 'users',
         subBuilder: User.$_createMessage)
+    ..aOM<AgentProfileList>(14, _omitFieldNames ? '' : 'profiles',
+        subBuilder: AgentProfileList.$_createMessage)
+    ..aOM<TokenStatus>(15, _omitFieldNames ? '' : 'tokenStatus',
+        subBuilder: TokenStatus.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3516,6 +3859,30 @@ class Welcome extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(13)
   $pb.PbList<User> get users => $_getList(12);
+
+  /// Core-owned engine choices and token routing, for clients that have no
+  /// separate setup step (Herdr, tetherctl and the optional apps).
+  @$pb.TagNumber(14)
+  AgentProfileList get profiles => $_getN(13);
+  @$pb.TagNumber(14)
+  set profiles(AgentProfileList value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasProfiles() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearProfiles() => $_clearField(14);
+  @$pb.TagNumber(14)
+  AgentProfileList ensureProfiles() => $_ensure(13);
+
+  @$pb.TagNumber(15)
+  TokenStatus get tokenStatus => $_getN(14);
+  @$pb.TagNumber(15)
+  set tokenStatus(TokenStatus value) => $_setField(15, value);
+  @$pb.TagNumber(15)
+  $core.bool hasTokenStatus() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearTokenStatus() => $_clearField(15);
+  @$pb.TagNumber(15)
+  TokenStatus ensureTokenStatus() => $_ensure(14);
 }
 
 /// A person using the hub. The hub's owner is the first user and an admin.
@@ -4800,6 +5167,9 @@ class AgentCommand_StartRun extends $pb.GeneratedMessage {
     $core.String? restoreCodebase,
     $core.String? restoreSnapshot,
     $core.String? systemPrompt,
+    AgentProfile? profile,
+    $core.String? taskRole,
+    $core.String? parentTask,
   }) {
     final result = AgentCommand_StartRun._();
     if (session != null) result.session = session;
@@ -4817,6 +5187,9 @@ class AgentCommand_StartRun extends $pb.GeneratedMessage {
     if (restoreCodebase != null) result.restoreCodebase = restoreCodebase;
     if (restoreSnapshot != null) result.restoreSnapshot = restoreSnapshot;
     if (systemPrompt != null) result.systemPrompt = systemPrompt;
+    if (profile != null) result.profile = profile;
+    if (taskRole != null) result.taskRole = taskRole;
+    if (parentTask != null) result.parentTask = parentTask;
     return result;
   }
 
@@ -4849,6 +5222,10 @@ class AgentCommand_StartRun extends $pb.GeneratedMessage {
     ..aOS(13, _omitFieldNames ? '' : 'restoreCodebase')
     ..aOS(14, _omitFieldNames ? '' : 'restoreSnapshot')
     ..aOS(15, _omitFieldNames ? '' : 'systemPrompt')
+    ..aOM<AgentProfile>(16, _omitFieldNames ? '' : 'profile',
+        subBuilder: AgentProfile.$_createMessage)
+    ..aOS(17, _omitFieldNames ? '' : 'taskRole')
+    ..aOS(18, _omitFieldNames ? '' : 'parentTask')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -5013,6 +5390,36 @@ class AgentCommand_StartRun extends $pb.GeneratedMessage {
   $core.bool hasSystemPrompt() => $_has(14);
   @$pb.TagNumber(15)
   void clearSystemPrompt() => $_clearField(15);
+
+  /// The resolved profile the agent should launch.
+  @$pb.TagNumber(16)
+  AgentProfile get profile => $_getN(15);
+  @$pb.TagNumber(16)
+  set profile(AgentProfile value) => $_setField(16, value);
+  @$pb.TagNumber(16)
+  $core.bool hasProfile() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearProfile() => $_clearField(16);
+  @$pb.TagNumber(16)
+  AgentProfile ensureProfile() => $_ensure(15);
+
+  @$pb.TagNumber(17)
+  $core.String get taskRole => $_getSZ(16);
+  @$pb.TagNumber(17)
+  set taskRole($core.String value) => $_setString(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasTaskRole() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearTaskRole() => $_clearField(17);
+
+  @$pb.TagNumber(18)
+  $core.String get parentTask => $_getSZ(17);
+  @$pb.TagNumber(18)
+  set parentTask($core.String value) => $_setString(17, value);
+  @$pb.TagNumber(18)
+  $core.bool hasParentTask() => $_has(17);
+  @$pb.TagNumber(18)
+  void clearParentTask() => $_clearField(18);
 }
 
 class AgentCommand_SendInput extends $pb.GeneratedMessage {
@@ -9279,6 +9686,741 @@ class UsageSummary extends $pb.GeneratedMessage {
   $pb.PbList<SessionUsage> get sessions => $_getList(1);
 }
 
+/// A provider's place in core's routing policy, as seen by every client.
+class ProviderBudget extends $pb.GeneratedMessage {
+  factory ProviderBudget({
+    $core.String? provider,
+    $core.String? model,
+    $core.int? rank,
+    $core.bool? enabled,
+    $core.bool? freeTier,
+    $fixnum.Int64? budgetTokens,
+    $fixnum.Int64? usedTokens,
+    $fixnum.Int64? remainingTokens,
+    $core.String? quotaState,
+    $core.String? fallbackProvider,
+    $core.int? contextWindow,
+    $core.Iterable<$core.String>? capabilities,
+    $core.String? notes,
+  }) {
+    final result = ProviderBudget._();
+    if (provider != null) result.provider = provider;
+    if (model != null) result.model = model;
+    if (rank != null) result.rank = rank;
+    if (enabled != null) result.enabled = enabled;
+    if (freeTier != null) result.freeTier = freeTier;
+    if (budgetTokens != null) result.budgetTokens = budgetTokens;
+    if (usedTokens != null) result.usedTokens = usedTokens;
+    if (remainingTokens != null) result.remainingTokens = remainingTokens;
+    if (quotaState != null) result.quotaState = quotaState;
+    if (fallbackProvider != null) result.fallbackProvider = fallbackProvider;
+    if (contextWindow != null) result.contextWindow = contextWindow;
+    if (capabilities != null) result.capabilities.addAll(capabilities);
+    if (notes != null) result.notes = notes;
+    return result;
+  }
+
+  ProviderBudget._();
+
+  factory ProviderBudget.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProviderBudget()..mergeFromBuffer(data, registry);
+  factory ProviderBudget.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ProviderBudget()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ProviderBudget',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: ProviderBudget.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'provider')
+    ..aOS(2, _omitFieldNames ? '' : 'model')
+    ..aI(3, _omitFieldNames ? '' : 'rank')
+    ..aOB(4, _omitFieldNames ? '' : 'enabled')
+    ..aOB(5, _omitFieldNames ? '' : 'freeTier')
+    ..aInt64(6, _omitFieldNames ? '' : 'budgetTokens')
+    ..aInt64(7, _omitFieldNames ? '' : 'usedTokens')
+    ..aInt64(8, _omitFieldNames ? '' : 'remainingTokens')
+    ..aOS(9, _omitFieldNames ? '' : 'quotaState')
+    ..aOS(10, _omitFieldNames ? '' : 'fallbackProvider')
+    ..aI(11, _omitFieldNames ? '' : 'contextWindow')
+    ..pPS(12, _omitFieldNames ? '' : 'capabilities')
+    ..aOS(13, _omitFieldNames ? '' : 'notes')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProviderBudget clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ProviderBudget copyWith(void Function(ProviderBudget) updates) =>
+      super.copyWith((message) => updates(message as ProviderBudget))
+          as ProviderBudget;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ProviderBudget() / ProviderBudget.new instead')
+  static ProviderBudget create() => ProviderBudget._();
+  static $pb.GeneratedMessage $_createMessage() => ProviderBudget._();
+  @$core.override
+  ProviderBudget createEmptyInstance() => ProviderBudget._();
+  @$core.pragma('dart2js:noInline')
+  static ProviderBudget getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ProviderBudget>(
+          ProviderBudget.$_createMessage);
+  static ProviderBudget? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get provider => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set provider($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProvider() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProvider() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get model => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set model($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasModel() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearModel() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get rank => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set rank($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRank() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRank() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get enabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set enabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEnabled() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get freeTier => $_getBF(4);
+  @$pb.TagNumber(5)
+  set freeTier($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasFreeTier() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearFreeTier() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get budgetTokens => $_getI64(5);
+  @$pb.TagNumber(6)
+  set budgetTokens($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBudgetTokens() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBudgetTokens() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get usedTokens => $_getI64(6);
+  @$pb.TagNumber(7)
+  set usedTokens($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasUsedTokens() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearUsedTokens() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get remainingTokens => $_getI64(7);
+  @$pb.TagNumber(8)
+  set remainingTokens($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasRemainingTokens() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearRemainingTokens() => $_clearField(8);
+
+  /// "ok", "near_limit", "exhausted" or "unavailable".
+  @$pb.TagNumber(9)
+  $core.String get quotaState => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set quotaState($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasQuotaState() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearQuotaState() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get fallbackProvider => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set fallbackProvider($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasFallbackProvider() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearFallbackProvider() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $core.int get contextWindow => $_getIZ(10);
+  @$pb.TagNumber(11)
+  set contextWindow($core.int value) => $_setSignedInt32(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasContextWindow() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearContextWindow() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $pb.PbList<$core.String> get capabilities => $_getList(11);
+
+  /// Why core ranks this model here: privacy notes, free-tier limits, etc.
+  @$pb.TagNumber(13)
+  $core.String get notes => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set notes($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasNotes() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearNotes() => $_clearField(13);
+}
+
+/// Core-owned token state for one person. Every authorized client sees the
+/// same catalog; budgets and decisions are kept per user.
+class TokenStatus extends $pb.GeneratedMessage {
+  factory TokenStatus({
+    $core.String? user,
+    $core.Iterable<ProviderBudget>? providers,
+    $fixnum.Int64? updatedMs,
+    $core.String? lastDecision,
+    $core.String? lastReason,
+  }) {
+    final result = TokenStatus._();
+    if (user != null) result.user = user;
+    if (providers != null) result.providers.addAll(providers);
+    if (updatedMs != null) result.updatedMs = updatedMs;
+    if (lastDecision != null) result.lastDecision = lastDecision;
+    if (lastReason != null) result.lastReason = lastReason;
+    return result;
+  }
+
+  TokenStatus._();
+
+  factory TokenStatus.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TokenStatus()..mergeFromBuffer(data, registry);
+  factory TokenStatus.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TokenStatus()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TokenStatus',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: TokenStatus.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'user')
+    ..pPM<ProviderBudget>(2, _omitFieldNames ? '' : 'providers',
+        subBuilder: ProviderBudget.$_createMessage)
+    ..aInt64(3, _omitFieldNames ? '' : 'updatedMs')
+    ..aOS(4, _omitFieldNames ? '' : 'lastDecision')
+    ..aOS(5, _omitFieldNames ? '' : 'lastReason')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenStatus clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenStatus copyWith(void Function(TokenStatus) updates) =>
+      super.copyWith((message) => updates(message as TokenStatus))
+          as TokenStatus;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TokenStatus() / TokenStatus.new instead')
+  static TokenStatus create() => TokenStatus._();
+  static $pb.GeneratedMessage $_createMessage() => TokenStatus._();
+  @$core.override
+  TokenStatus createEmptyInstance() => TokenStatus._();
+  @$core.pragma('dart2js:noInline')
+  static TokenStatus getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TokenStatus>(
+          TokenStatus.$_createMessage);
+  static TokenStatus? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get user => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set user($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUser() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUser() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ProviderBudget> get providers => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get updatedMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set updatedMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUpdatedMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUpdatedMs() => $_clearField(3);
+
+  /// The last routing decision, and why it was made.
+  @$pb.TagNumber(4)
+  $core.String get lastDecision => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set lastDecision($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLastDecision() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLastDecision() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get lastReason => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set lastReason($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLastReason() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLastReason() => $_clearField(5);
+}
+
+class TokenStatusList extends $pb.GeneratedMessage {
+  factory TokenStatusList({
+    $core.Iterable<TokenStatus>? statuses,
+  }) {
+    final result = TokenStatusList._();
+    if (statuses != null) result.statuses.addAll(statuses);
+    return result;
+  }
+
+  TokenStatusList._();
+
+  factory TokenStatusList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TokenStatusList()..mergeFromBuffer(data, registry);
+  factory TokenStatusList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TokenStatusList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TokenStatusList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: TokenStatusList.$_createMessage)
+    ..pPM<TokenStatus>(1, _omitFieldNames ? '' : 'statuses',
+        subBuilder: TokenStatus.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenStatusList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TokenStatusList copyWith(void Function(TokenStatusList) updates) =>
+      super.copyWith((message) => updates(message as TokenStatusList))
+          as TokenStatusList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TokenStatusList() / TokenStatusList.new instead')
+  static TokenStatusList create() => TokenStatusList._();
+  static $pb.GeneratedMessage $_createMessage() => TokenStatusList._();
+  @$core.override
+  TokenStatusList createEmptyInstance() => TokenStatusList._();
+  @$core.pragma('dart2js:noInline')
+  static TokenStatusList getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TokenStatusList>(
+          TokenStatusList.$_createMessage);
+  static TokenStatusList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<TokenStatus> get statuses => $_getList(0);
+}
+
+/// PUT /api/v1/token/budgets: admin-only changes to the routing policy.
+class BudgetSet extends $pb.GeneratedMessage {
+  factory BudgetSet({
+    $core.String? provider,
+    $fixnum.Int64? budgetTokens,
+    $core.int? rank,
+    $core.bool? enabled,
+    $core.String? model,
+    $core.String? quotaState,
+  }) {
+    final result = BudgetSet._();
+    if (provider != null) result.provider = provider;
+    if (budgetTokens != null) result.budgetTokens = budgetTokens;
+    if (rank != null) result.rank = rank;
+    if (enabled != null) result.enabled = enabled;
+    if (model != null) result.model = model;
+    if (quotaState != null) result.quotaState = quotaState;
+    return result;
+  }
+
+  BudgetSet._();
+
+  factory BudgetSet.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BudgetSet()..mergeFromBuffer(data, registry);
+  factory BudgetSet.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BudgetSet()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BudgetSet',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: BudgetSet.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'provider')
+    ..aInt64(2, _omitFieldNames ? '' : 'budgetTokens')
+    ..aI(3, _omitFieldNames ? '' : 'rank')
+    ..aOB(4, _omitFieldNames ? '' : 'enabled')
+    ..aOS(5, _omitFieldNames ? '' : 'model')
+    ..aOS(6, _omitFieldNames ? '' : 'quotaState')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BudgetSet clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BudgetSet copyWith(void Function(BudgetSet) updates) =>
+      super.copyWith((message) => updates(message as BudgetSet)) as BudgetSet;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use BudgetSet() / BudgetSet.new instead')
+  static BudgetSet create() => BudgetSet._();
+  static $pb.GeneratedMessage $_createMessage() => BudgetSet._();
+  @$core.override
+  BudgetSet createEmptyInstance() => BudgetSet._();
+  @$core.pragma('dart2js:noInline')
+  static BudgetSet getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BudgetSet>(BudgetSet.$_createMessage);
+  static BudgetSet? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get provider => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set provider($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasProvider() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearProvider() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get budgetTokens => $_getI64(1);
+  @$pb.TagNumber(2)
+  set budgetTokens($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBudgetTokens() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBudgetTokens() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get rank => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set rank($core.int value) => $_setSignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRank() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRank() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.bool get enabled => $_getBF(3);
+  @$pb.TagNumber(4)
+  set enabled($core.bool value) => $_setBool(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasEnabled() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearEnabled() => $_clearField(4);
+
+  /// A provider may hold many models; empty changes the whole provider.
+  @$pb.TagNumber(5)
+  $core.String get model => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set model($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasModel() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearModel() => $_clearField(5);
+
+  /// "ok", "near_limit", "exhausted" or "unavailable"; empty leaves it.
+  @$pb.TagNumber(6)
+  $core.String get quotaState => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set quotaState($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasQuotaState() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearQuotaState() => $_clearField(6);
+}
+
+/// A recorded model call, kept by core for budgeting and fallback.
+class UsageEvent extends $pb.GeneratedMessage {
+  factory UsageEvent({
+    $core.String? id,
+    $core.String? user,
+    $core.String? chat,
+    $core.String? session,
+    $core.String? taskRole,
+    $core.String? provider,
+    $core.String? model,
+    $fixnum.Int64? inputTokens,
+    $fixnum.Int64? outputTokens,
+    $fixnum.Int64? cacheWriteTokens,
+    $fixnum.Int64? cacheReadTokens,
+    $core.double? costUsd,
+    $core.String? quotaState,
+    $fixnum.Int64? atMs,
+  }) {
+    final result = UsageEvent._();
+    if (id != null) result.id = id;
+    if (user != null) result.user = user;
+    if (chat != null) result.chat = chat;
+    if (session != null) result.session = session;
+    if (taskRole != null) result.taskRole = taskRole;
+    if (provider != null) result.provider = provider;
+    if (model != null) result.model = model;
+    if (inputTokens != null) result.inputTokens = inputTokens;
+    if (outputTokens != null) result.outputTokens = outputTokens;
+    if (cacheWriteTokens != null) result.cacheWriteTokens = cacheWriteTokens;
+    if (cacheReadTokens != null) result.cacheReadTokens = cacheReadTokens;
+    if (costUsd != null) result.costUsd = costUsd;
+    if (quotaState != null) result.quotaState = quotaState;
+    if (atMs != null) result.atMs = atMs;
+    return result;
+  }
+
+  UsageEvent._();
+
+  factory UsageEvent.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UsageEvent()..mergeFromBuffer(data, registry);
+  factory UsageEvent.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UsageEvent()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UsageEvent',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UsageEvent.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'user')
+    ..aOS(3, _omitFieldNames ? '' : 'chat')
+    ..aOS(4, _omitFieldNames ? '' : 'session')
+    ..aOS(5, _omitFieldNames ? '' : 'taskRole')
+    ..aOS(6, _omitFieldNames ? '' : 'provider')
+    ..aOS(7, _omitFieldNames ? '' : 'model')
+    ..aInt64(8, _omitFieldNames ? '' : 'inputTokens')
+    ..aInt64(9, _omitFieldNames ? '' : 'outputTokens')
+    ..aInt64(10, _omitFieldNames ? '' : 'cacheWriteTokens')
+    ..aInt64(11, _omitFieldNames ? '' : 'cacheReadTokens')
+    ..aD(12, _omitFieldNames ? '' : 'costUsd')
+    ..aOS(13, _omitFieldNames ? '' : 'quotaState')
+    ..aInt64(14, _omitFieldNames ? '' : 'atMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UsageEvent clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UsageEvent copyWith(void Function(UsageEvent) updates) =>
+      super.copyWith((message) => updates(message as UsageEvent)) as UsageEvent;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UsageEvent() / UsageEvent.new instead')
+  static UsageEvent create() => UsageEvent._();
+  static $pb.GeneratedMessage $_createMessage() => UsageEvent._();
+  @$core.override
+  UsageEvent createEmptyInstance() => UsageEvent._();
+  @$core.pragma('dart2js:noInline')
+  static UsageEvent getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UsageEvent>(UsageEvent.$_createMessage);
+  static UsageEvent? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get user => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set user($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasUser() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearUser() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get chat => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set chat($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasChat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearChat() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get session => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set session($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSession() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSession() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get taskRole => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set taskRole($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasTaskRole() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearTaskRole() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get provider => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set provider($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasProvider() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearProvider() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get model => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set model($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasModel() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearModel() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get inputTokens => $_getI64(7);
+  @$pb.TagNumber(8)
+  set inputTokens($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasInputTokens() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearInputTokens() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get outputTokens => $_getI64(8);
+  @$pb.TagNumber(9)
+  set outputTokens($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasOutputTokens() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearOutputTokens() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get cacheWriteTokens => $_getI64(9);
+  @$pb.TagNumber(10)
+  set cacheWriteTokens($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCacheWriteTokens() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCacheWriteTokens() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $fixnum.Int64 get cacheReadTokens => $_getI64(10);
+  @$pb.TagNumber(11)
+  set cacheReadTokens($fixnum.Int64 value) => $_setInt64(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCacheReadTokens() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCacheReadTokens() => $_clearField(11);
+
+  @$pb.TagNumber(12)
+  $core.double get costUsd => $_getN(11);
+  @$pb.TagNumber(12)
+  set costUsd($core.double value) => $_setDouble(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasCostUsd() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearCostUsd() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get quotaState => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set quotaState($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasQuotaState() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearQuotaState() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $fixnum.Int64 get atMs => $_getI64(13);
+  @$pb.TagNumber(14)
+  set atMs($fixnum.Int64 value) => $_setInt64(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasAtMs() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearAtMs() => $_clearField(14);
+}
+
+class UsageEventList extends $pb.GeneratedMessage {
+  factory UsageEventList({
+    $core.Iterable<UsageEvent>? events,
+  }) {
+    final result = UsageEventList._();
+    if (events != null) result.events.addAll(events);
+    return result;
+  }
+
+  UsageEventList._();
+
+  factory UsageEventList.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UsageEventList()..mergeFromBuffer(data, registry);
+  factory UsageEventList.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UsageEventList()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UsageEventList',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'tether.v1'),
+      createEmptyInstance: UsageEventList.$_createMessage)
+    ..pPM<UsageEvent>(1, _omitFieldNames ? '' : 'events',
+        subBuilder: UsageEvent.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UsageEventList clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UsageEventList copyWith(void Function(UsageEventList) updates) =>
+      super.copyWith((message) => updates(message as UsageEventList))
+          as UsageEventList;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UsageEventList() / UsageEventList.new instead')
+  static UsageEventList create() => UsageEventList._();
+  static $pb.GeneratedMessage $_createMessage() => UsageEventList._();
+  @$core.override
+  UsageEventList createEmptyInstance() => UsageEventList._();
+  @$core.pragma('dart2js:noInline')
+  static UsageEventList getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UsageEventList>(
+          UsageEventList.$_createMessage);
+  static UsageEventList? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<UsageEvent> get events => $_getList(0);
+}
+
 /// A folder on a node that new projects are made in, e.g. ~/projects.
 class WorkspaceRoot extends $pb.GeneratedMessage {
   factory WorkspaceRoot({
@@ -10577,6 +11719,8 @@ class Chat extends $pb.GeneratedMessage {
     $core.bool? deleted,
     $core.String? owner,
     $core.Iterable<ChatShare>? shares,
+    $core.String? profile,
+    $core.String? mode,
   }) {
     final result = Chat._();
     if (id != null) result.id = id;
@@ -10591,6 +11735,8 @@ class Chat extends $pb.GeneratedMessage {
     if (deleted != null) result.deleted = deleted;
     if (owner != null) result.owner = owner;
     if (shares != null) result.shares.addAll(shares);
+    if (profile != null) result.profile = profile;
+    if (mode != null) result.mode = mode;
     return result;
   }
 
@@ -10622,6 +11768,8 @@ class Chat extends $pb.GeneratedMessage {
     ..aOS(11, _omitFieldNames ? '' : 'owner')
     ..pPM<ChatShare>(12, _omitFieldNames ? '' : 'shares',
         subBuilder: ChatShare.$_createMessage)
+    ..aOS(13, _omitFieldNames ? '' : 'profile')
+    ..aOS(14, _omitFieldNames ? '' : 'mode')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -10747,6 +11895,26 @@ class Chat extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(12)
   $pb.PbList<ChatShare> get shares => $_getList(11);
+
+  /// The core profile and role of the chat's lead session.
+  @$pb.TagNumber(13)
+  $core.String get profile => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set profile($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasProfile() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearProfile() => $_clearField(13);
+
+  /// "main" or "subagent"; the hub keeps clients from forking a lead.
+  @$pb.TagNumber(14)
+  $core.String get mode => $_getSZ(13);
+  @$pb.TagNumber(14)
+  set mode($core.String value) => $_setString(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasMode() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearMode() => $_clearField(14);
 }
 
 /// Where a chat's work runs.
@@ -10964,6 +12132,9 @@ class CreateChat extends $pb.GeneratedMessage {
     $core.String? title,
     $core.String? session,
     $core.String? clientId,
+    $core.String? profile,
+    $core.String? mode,
+    $core.String? capability,
   }) {
     final result = CreateChat._();
     if (prompt != null) result.prompt = prompt;
@@ -10974,6 +12145,9 @@ class CreateChat extends $pb.GeneratedMessage {
     if (title != null) result.title = title;
     if (session != null) result.session = session;
     if (clientId != null) result.clientId = clientId;
+    if (profile != null) result.profile = profile;
+    if (mode != null) result.mode = mode;
+    if (capability != null) result.capability = capability;
     return result;
   }
 
@@ -10999,6 +12173,9 @@ class CreateChat extends $pb.GeneratedMessage {
     ..aOS(6, _omitFieldNames ? '' : 'title')
     ..aOS(7, _omitFieldNames ? '' : 'session')
     ..aOS(8, _omitFieldNames ? '' : 'clientId')
+    ..aOS(9, _omitFieldNames ? '' : 'profile')
+    ..aOS(10, _omitFieldNames ? '' : 'mode')
+    ..aOS(11, _omitFieldNames ? '' : 'capability')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -11090,6 +12267,35 @@ class CreateChat extends $pb.GeneratedMessage {
   $core.bool hasClientId() => $_has(7);
   @$pb.TagNumber(8)
   void clearClientId() => $_clearField(8);
+
+  /// Core profile and chat mode; empty profile uses the main default.
+  @$pb.TagNumber(9)
+  $core.String get profile => $_getSZ(8);
+  @$pb.TagNumber(9)
+  set profile($core.String value) => $_setString(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasProfile() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearProfile() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $core.String get mode => $_getSZ(9);
+  @$pb.TagNumber(10)
+  set mode($core.String value) => $_setString(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasMode() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearMode() => $_clearField(10);
+
+  /// What the first session needs from a model; core uses it to rank free tiers.
+  @$pb.TagNumber(11)
+  $core.String get capability => $_getSZ(10);
+  @$pb.TagNumber(11)
+  set capability($core.String value) => $_setString(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasCapability() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearCapability() => $_clearField(11);
 }
 
 /// PATCH /api/v1/chats/{id}. Unset fields stay as they are.
