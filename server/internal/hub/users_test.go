@@ -884,6 +884,7 @@ func TestSmartFreeTimeJobScheduler(t *testing.T) {
 	waitUntil(t, "job to transition to running", func() bool {
 		return jobState(h, job.Id) == v1.JobState_JOB_STATE_RUNNING
 	})
+	waitUntil(t, "start command", func() bool { return fakeNode.lastCommandIs("start") })
 	cmds := fakeNode.commands()
 	if len(cmds) != 1 || cmds[0].Action != "start" {
 		t.Fatalf("expected node to receive start command, got %v", cmds)
@@ -897,6 +898,7 @@ func TestSmartFreeTimeJobScheduler(t *testing.T) {
 	waitUntil(t, "job to pause at window close", func() bool {
 		return jobState(h, job.Id) == v1.JobState_JOB_STATE_PAUSED
 	})
+	waitUntil(t, "pause command", func() bool { return fakeNode.lastCommandIs("pause") })
 	cmds = fakeNode.commands()
 	if len(cmds) < 2 || cmds[len(cmds)-1].Action != "pause" {
 		t.Fatalf("expected node to receive pause command, got %v", cmds)
@@ -909,6 +911,7 @@ func TestSmartFreeTimeJobScheduler(t *testing.T) {
 	waitUntil(t, "job to resume when the window opens", func() bool {
 		return jobState(h, job.Id) == v1.JobState_JOB_STATE_RUNNING
 	})
+	waitUntil(t, "resume command", func() bool { return fakeNode.lastCommandIs("resume") })
 	cmds = fakeNode.commands()
 	if len(cmds) < 3 || cmds[len(cmds)-1].Action != "resume" {
 		t.Fatalf("expected node to receive resume command, got %v", cmds)

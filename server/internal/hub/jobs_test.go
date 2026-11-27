@@ -86,6 +86,13 @@ func (n *fakeJobNode) commands() []*v1.AgentCommand_JobCommand {
 	return append([]*v1.AgentCommand_JobCommand(nil), n.got...)
 }
 
+// The hub can change a job's state before the command reaches the agent, so
+// tests that assert on commands must wait for the agent to receive them.
+func (n *fakeJobNode) lastCommandIs(action string) bool {
+	cmds := n.commands()
+	return len(cmds) > 0 && cmds[len(cmds)-1].Action == action
+}
+
 func getJob(t *testing.T, h *Hub, id string) *v1.Job {
 	t.Helper()
 	h.mu.Lock()
