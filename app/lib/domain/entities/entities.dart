@@ -1694,7 +1694,15 @@ class UpdateAsset extends Equatable {
 
 /// The newest release the hub knows of; see docs/operations/releasing.md.
 class Release extends Equatable {
-  const Release({required this.version, this.notes = '', this.minSupported = '', this.published, this.assets = const {}});
+  const Release({
+    required this.version,
+    this.notes = '',
+    this.minSupported = '',
+    this.minCoreVersion = '',
+    this.track = '',
+    this.published,
+    this.assets = const {},
+  });
 
   final String version;
 
@@ -1703,13 +1711,19 @@ class Release extends Equatable {
 
   /// Apps older than this must update before they carry on.
   final String minSupported;
+
+  /// The oldest hub/core this release can run against.
+  final String minCoreVersion;
+
+  /// "core" or "app"; empty on releases from before the tracks split.
+  final String track;
   final DateTime? published;
 
   /// By platform: android, windows, agent-linux-amd64...
   final Map<String, UpdateAsset> assets;
 
   @override
-  List<Object?> get props => [version, notes, minSupported, published, assets];
+  List<Object?> get props => [version, notes, minSupported, minCoreVersion, track, published, assets];
 }
 
 /// A step most runs of a routine take.

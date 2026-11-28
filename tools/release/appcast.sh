@@ -13,7 +13,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 dist=$(cd "${1:?usage: APPCAST_KEY=dsa_priv.pem appcast.sh dist/<version>}" && pwd)
 key=${APPCAST_KEY:?set APPCAST_KEY to the private key file}
-v=$(tr -d ' \r\n' < "$root/VERSION")
+v=$(sed -n 's/^version: \([0-9.]*\)+.*/\1/p' "$root/app/pubspec.yaml" | tr -d '\r')
 code=$("$root/tools/release/version.sh" code)
 pub=$root/app/dsa_pub.pem
 installer=$dist/Tether-Setup-$v.exe
@@ -53,7 +53,7 @@ cat > "$dist/appcast.xml" <<EOF
       <title>Tether $v</title>
       <description><![CDATA[$notes]]></description>
       <pubDate>$(date -u '+%a, %d %b %Y %H:%M:%S +0000')</pubDate>
-      <enclosure url="https://github.com/$repo/releases/download/v$v/Tether-Setup-$v.exe"
+      <enclosure url="https://github.com/$repo/releases/download/app-v$v/Tether-Setup-$v.exe"
                  sparkle:version="$v+$code"
                  sparkle:os="windows"
                  sparkle:dsaSignature="$sig"

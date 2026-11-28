@@ -116,6 +116,39 @@ func TestAReleaseInTheUpdatesFolderIsServedAndAgentsAreUpdated(t *testing.T) {
 	_ = busy
 }
 
+func TestTheHubReadsItsOwnTrackAndRefusesAppManifests(t *testing.T) {
+	h, srv := newTestHubWith(t)
+	dir := filepath.Join(h.updatesDir(), "0.21.0")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	core := &v1.UpdateManifest{Version: "0.21.0", Track: "core", MinAppVersion: "0.15.0"}
+	b, _ := protojson.MarshalOptions{UseProtoNames: true}.Marshal(core)
+	if err := os.WriteFile(filepath.Join(dir, "core-latest.json"), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	app := &v1.UpdateManifest{Version: "0.22.0", Track: "app", MinCoreVersion: "0.20.0"}
+	b, _ = protojson.MarshalOptions{UseProtoNames: true}.Marshal(app)
+	if err := os.WriteFile(filepath.Join(dir, "latest.json"), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h.mu.Lock()
+	h.loadLocalUpdate()
+	h.mu.Unlock()
+
+	_, body := call(t, srv, "GET", "/api/v1/updates/latest", "secret", "")
+	m := &v1.UpdateManifest{}
+	if protojson.Unmarshal([]byte(body), m) != nil || m.Version != "0.21.0" || m.Track != "core" || m.MinAppVersion != "0.15.0" {
+		t.Fatalf("served the wrong manifest: %s", body)
+	}
+
+	feed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(b) }))
+	defer feed.Close()
+	if _, err := fetchManifest(context.Background(), feed.URL); err == nil {
+		t.Fatal("accepted an app feed as core")
+	}
+}
+
 func TestOldAgentsAreNotAskedToUpdate(t *testing.T) {
 	h, srv := newTestHubWith(t)
 	h.cfg.AutoUpdateAgents = true

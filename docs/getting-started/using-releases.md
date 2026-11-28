@@ -1,21 +1,23 @@
 # Using a release
 
-For when you want Tether running and have no wish to build it. Every part is a download from the [latest release](https://github.com/Mahaveer86619/tether/releases/latest).
+For when you want Tether running and have no wish to build it. Releases come in two independent tracks: [core releases](https://github.com/Mahaveer86619/tether/releases?q=core-v) (`core-vX.Y.Z`) hold the hub, agents and `tetherctl`; [app releases](https://github.com/Mahaveer86619/tether/releases?q=app-v) (`app-vX.Y.Z`) hold the optional Flutter apps. `v0.20.0` was the last combined release.
 
 Tether core is the MVP: the hub, agents and `tetherctl` are enough to pair a device and drive work from a shell or MCP client. The apps in section 3 are optional views. Herdr desktop/Android is an external alternative to them ([core-first-v1.md](../plans/core-first-v1.md)); it is not included in a Tether release and is not required.
 
 ## What is in a release
 
-| File | What it is |
-|---|---|
-| `tether-hub-linux-amd64` | The hub |
-| `tether-agent-linux-amd64`, `tether-agent-windows-amd64.exe` | The agent, per OS |
-| `tetherctl-linux-amd64`, `tetherctl-windows-amd64.exe` | Terminal client for pairing and scripting |
-| `Tether-Setup-X.Y.Z.exe` | Windows app installer (also `tether-windows-X.Y.Z.zip`) |
-| `tether-X.Y.Z.apk` | Android app |
-| `SHA256SUMS`, `latest.json`, `appcast.xml` | Checksums, release manifest and the Windows update feed |
+| File | Track | What it is |
+|---|---|---|
+| `tether-hub-linux-amd64` | core | The hub |
+| `tether-agent-linux-amd64`, `tether-agent-windows-amd64.exe` | core | The agent, per OS |
+| `tetherctl-linux-amd64`, `tetherctl-windows-amd64.exe` | core | Terminal client for pairing and scripting |
+| `tether-herdr-linux-amd64`, `tether-herdr-windows-amd64.exe` | core | Optional MCP sidecar for Herdr panes |
+| `Tether-Setup-X.Y.Z.exe` | app | Windows app installer (also `tether-windows-X.Y.Z.zip`) |
+| `tether-X.Y.Z.apk` | app | Android app |
+| `core-latest.json`, `core-SHA256SUMS` | core | Core manifest and checksums |
+| `app-latest.json`, `app-SHA256SUMS`, `appcast.xml` | app | App manifest, checksums and Windows update feed |
 
-Check a download against `SHA256SUMS` (`sha256sum -c SHA256SUMS --ignore-missing`).
+`latest.json` and `SHA256SUMS` remain as aliases of the track's manifest for older clients. Check a download against the track's checksums (`sha256sum -c core-SHA256SUMS --ignore-missing`). Core manifests carry the oldest app version they work with; app manifests carry the hub version they need.
 
 ## Before you start
 
@@ -88,13 +90,13 @@ What each side sees, to check it works:
 
 ## Updating
 
-Hub first, then everything else.
+Core first, then the app if you use one. The tracks have separate version numbers, so check both pages for what you run.
 
-- **Hub and the hub machine's agent:** download the new binaries and run `install.sh` again, or, if you use the repository's release flow, let CI deploy it.
+- **Hub and the hub machine's agent:** download the core binaries from a `core-vX.Y.Z` release and run `install.sh` again, or let the core release workflow deploy them.
 - **Other agents** update themselves from the hub when idle.
-- **Apps** offer the update in-app.
+- **Apps** offer updates from `app-vX.Y.Z` releases in-app. An app release that needs a newer hub waits until the core is updated.
 
-The hub accepts older clients, and clients need a hub at least as new as they are, which is why the hub goes first. Each device's version is on the **Devices** screen, flagged "update" when it is behind.
+A core manifest says which app versions still work; an app manifest says which hub version it needs. Each device's version is on the **Devices** screen, flagged "update" when it is behind.
 
 ## Troubleshooting
 

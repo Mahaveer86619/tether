@@ -1,235 +1,153 @@
 # Releasing and updating
 
-A release is one version number for everything through `0.20.0`: the hub, the agents, `tetherctl` and both apps. Tagging `vX.Y.Z` builds, publishes and deploys it. The hub's machine can do all of that alone, with no laptop connected. Apps and agents then update from the hub.
+`v0.20.0` was the last unified tag. Since then there are two independent tracks:
 
-For v1, releases split into independent tracks: `core-vX.Y.Z` for the hub, agents, `tetherctl` and MCP surface, and `app-vX.Y.Z` for the optional Flutter apps. The scripts and feeds below still describe the unified process until [split release tracks](../plans/core-first-v1.md#separate-release-tracks) is implemented ([#42](https://github.com/Mahaveer86619/tether/issues/42)); `v0.20.0` remains the last unified tag. Core-only releases must not require an app build, and no `1.0` tag is cut before token routing and fallback are complete.
+| Track | Tag | Version source | What it contains |
+|---|---|---|---|
+| core | `core-vX.Y.Z` | `VERSION` | hub, agents, `tetherctl`, the optional Herdr bridge, MCP/protocol surface; built and deployed without an app |
+| app | `app-vX.Y.Z` | `app/pubspec.yaml` + `app/lib/core/version.dart` | Android APK and Windows app; published without redeploying the hub |
 
-## Versions
+No `1.0` tag is cut until core token routing, budgets and automatic fallback are complete. The Herdr harness itself stays external; only the small `tether-herdr` bridge ships with core.
 
-`VERSION` holds the version. `app/pubspec.yaml` and `app/lib/core/version.dart` must agree with it, and CI checks they do. Change all three at once:
+## Versions and compatibility
+
+Each track has its own version number; they may differ. Bump only the files for the track you are releasing:
 
 ```sh
-tools/release/version.sh set 0.18.0   # also sets the Android versionCode: 1800
-tools/release/version.sh check        # what CI runs; with a tag: check v0.18.0
+tools/release/version.sh set core 0.21.0   # writes VERSION
+tools/release/version.sh set app 0.21.0    # writes pubspec.yaml and version.dart, sets the Android versionCode
+tools/release/version.sh check core-v0.21.0
+tools/release/version.sh check app-v0.21.0
+tools/release/version.sh code              # the app's Android versionCode
 ```
 
-`MIN_SUPPORTED` is the oldest app and agent version that may keep running. Apps below it get a forced update. Raise it only when the hub stops understanding older clients.
+`tools/release/version.sh set X.Y.Z` with no track still bumps both, for local/unified builds. `check` with no tag validates both tracks independently; a tag is checked against its own track only.
 
-Each release's notes are its section in `CHANGELOG.md` (`## X.Y.Z`). They go into the GitHub Release, into `latest.json`, and into the app's "What's new".
+Compatibility files:
+
+- `MIN_SUPPORTED`: the oldest core/agent version a release still accepts; also the app feed's `min_core_version`.
+- `APP_MIN_SUPPORTED`: the oldest app version the core feed accepts as `min_app_version`; a lower app is forced to update.
+
+Each manifest carries `track` and the relevant compatibility field. The hub advertises `min_app_version` in core manifests and in `Welcome.update`. The app holds off offering a release whose `min_core_version` is newer than the hub it is talking to.
+
+Release notes come from `CHANGELOG.md` (`## X.Y.Z`) on either track.
 
 ## Making a release
 
-What goes into a release is decided by hand, and so is merging it. `make release` only starts after that, and does everything from the tag on.
+What goes into a release is decided by hand, and so is merging it. The release flow starts from the tag on `main` and never merges anything.
 
-1. **Merge what belongs in the release.** Review and merge the pull requests into `main`. Nothing in the release flow merges anything.
-2. **Open the release pull request**: the version bump and its changelog section. Write the section's bullets in a file (lines like `- **A title.** What it means for you.`), then:
+1. **Merge what belongs in the track.** Both CI checks on `main`'s latest commit must pass; `FORCE_CI=1` overrides that check.
+2. **Open the release pull request** with the version bump and its changelog section:
 
    ```sh
-   make release-prepare BUMP=patch NOTES=notes.md     # BUMP: patch, minor, major or X.Y.Z
+   make release-prepare TRACK=core BUMP=patch NOTES=notes.md
+   # BUMP: patch, minor, major or X.Y.Z
    ```
 
-   It branches from `origin/main`, runs `version.sh set`, adds the notes as `## X.Y.Z` above the newest section, and opens the pull request. Merge it last. (By hand: `tools/release/version.sh set X.Y.Z`, the changelog section, a pull request.)
+   This branches from `origin/main`, runs `version.sh set <track>`, adds the notes above the newest changelog section, and opens the pull request. Merge it last.
 3. **Release what is on `main`:**
 
    ```sh
-   make release-check     # what would happen; changes nothing
-   make release           # tag, watch the build, deploy, check it
+   make release-check TRACK=core   # what would happen; changes nothing
+   make release-core               # tag, watch the build, deploy core, check it
+   make release-check TRACK=app
+   make release-app                # tag, watch the build, publish the app
    ```
 
-   `tools/release/release.sh` reads `origin/main` without touching your working tree and refuses unless: the version on `main` is newer than the newest release and is not tagged yet, the app's version files agree, the changelog has the section, and the checks on `main`'s latest commit passed (`FORCE_CI=1` overrides that last one). It lists the pull requests still open, asks you to type the tag, tags `main`'s commit `vX.Y.Z`, pushes the tag and follows the release run until it ends. On a failure it prints the failed jobs and the end of their log. Afterwards it checks the release has its installer, APK, update feed and hub binary, that the update feed lists the version, and (through `TETHER_SHIP_HOST` in `.local/ship.env`) that the hub's machine runs it. `make release-status` shows the newest release and the hub's version at any time; `make release-test` runs the script's own tests.
-4. By hand, the same is:
+   `tools/release/release.sh <track> ...` reads `origin/main` without touching your working tree. It checks the track's version files (the app's two files must agree), a matching changelog section, that the version is newer than the newest release of that track, and that the tag does not exist. It asks you to type the tag before pushing it (`YES=1` skips the prompt), follows the workflow until it ends, prints failed logs, then checks the published assets, the track feed and, for core, the deployed hub. `make release-status TRACK=app` shows a track's newest release.
 
-   ```sh
-   git tag -a v0.18.0 -m "Tether 0.18.0" origin/main
-   git push origin v0.18.0
-   ```
+   By hand: `git tag -a core-v0.21.0 -m 0.21.0 origin/main && git push origin core-v0.21.0` (or `app-v...`).
 
-`.github/workflows/release.yml` then runs these jobs:
+### What CI does
 
-   | Job | Runs on | Does |
-   |---|---|---|
-   | `linux` | the hub's machine (self-hosted runner) | `make test`; builds `tether-hub`, `tether-agent` and `tetherctl` for linux-amd64, the agent and tetherctl for windows-amd64, and the APK, signed with the release key from GitHub secrets |
-   | `windows` | GitHub's `windows-latest` | builds the Windows app as `tether-windows-X.Y.Z.zip` |
-   | `publish` | the hub's machine | the GitHub Release with every file, `SHA256SUMS` and `latest.json` |
-   | `deploy` | the hub's machine | `deploy/linux/deploy.sh`; it needs only `linux`, so a Windows failure never blocks the hub |
+`.github/workflows/release-core.yml` (`core-v*`):
 
-   The `deploy` job uses the `minipc` environment. Give it required reviewers in the repo settings to approve each deploy by hand.
+| Job | Runs on | Does |
+|---|---|---|
+| `linux` | the hub's machine (self-hosted) | `make test-go`; builds hub, agent, `tetherctl` and `tether-herdr` for linux-amd64, and agent/tetherctl/herdr for windows-amd64 |
+| `publish` | the hub's machine | writes `core-latest.json`, `SHA256SUMS` and creates the GitHub Release |
+| `deploy` | the hub's machine | `deploy/linux/deploy.sh`, with backup and rollback; needs only `linux` |
 
-`workflow_dispatch` runs the same jobs on a branch, but builds and deploys without publishing.
+`.github/workflows/release-app.yml` (`app-v*`):
+
+| Job | Runs on | Does |
+|---|---|---|
+| `linux` | the hub's machine | builds the signed APK |
+| `windows` | GitHub's `windows-latest` | builds `tether-windows-X.Y.Z.zip`, the installer and signed `appcast.xml` |
+| `publish` | the hub's machine | writes `app-latest.json` and creates the GitHub Release; a failed Windows job still publishes the APK |
+
+`workflow_dispatch` builds without publishing; the core workflow can still deploy if you select that input. The `deploy` job uses the `minipc` environment; give it required reviewers in the repo settings to approve each deploy by hand.
 
 ### Shipping from your laptop
 
-The build machine does not have to be the hub's machine. With `TETHER_SHIP_HOST=user@host` in `.local/ship.env` (not committed), one command does the whole release:
+`make ship` is the old unified manual path (`tools/release/ship.sh`): it bumps both versions, builds everything, deploys over ssh and needs `TETHER_SHIP_HOST` in `.local/ship.env`. Prefer the two track workflows for v1 releases.
 
-```sh
-make ship ARGS=--patch            # 0.17.1 -> 0.17.2: tests, build, deploy
-make ship ARGS="--version 0.18.0 --no-tests"
-```
+On the hub's machine, `make dist-core` / `make dist-app` build one track; `make deploy` deploys a core dist. `make test` checks both server and app, `make test-go` only the server.
 
-`tools/release/ship.sh` refuses to run with uncommitted changes or without a `## X.Y.Z` section in `CHANGELOG.md`, then runs the tests, builds the Go binaries, the APK (signed with `app/android/key.properties`, or the debug key if there is none, so the installed app updates in place), the Windows app, and `latest.json`. It sends `dist/X.Y.Z` to the hub's machine and runs `deploy.sh` there, so the backup, health checks and rollback below all apply. When it finishes, agents on other machines update themselves when idle, and each app shows its update banner. `--no-apk`, `--no-windows` and `--no-tests` skip parts when only the server changed. The transfer goes over your network link, so the APK and the Windows zip are what take the time.
+## Manifests
 
-### By hand on the hub's machine
+`tools/release/manifest.sh <core|app> dist/<version>` writes:
 
-The same steps, without GitHub:
+- `core-latest.json` / `app-latest.json` with `version`, `notes`, `published`, `min_supported`, `platforms`, `track`, and the compatibility field for that track;
+- `<track>-SHA256SUMS`, plus `latest.json` and `SHA256SUMS` as legacy aliases for installed clients and the deploy script.
 
-```sh
-. ~/ci/ci-env.sh          # the toolchains setup-runner.sh installed
-make release-local        # make test, make dist, make deploy
-make dist-go deploy       # when only the server changed: no APK
-```
-
-`make dist` signs the APK with `app/android/key.properties`. Link it from `~/ci/signing` (see [Signing](#signing)). Without it, the build stops.
-
-## `latest.json`
-
-`tools/release/manifest.sh` writes `latest.json` and `SHA256SUMS` into `dist/X.Y.Z/`, using `server/tools/release`:
+Core platforms are `hub-linux-amd64`, `agent-linux-amd64`, `agent-windows-amd64`, `tetherctl-linux-amd64`, `tetherctl-windows-amd64`, `herdr-linux-amd64` and `herdr-windows-amd64`. App platforms are `android` and `windows` (the zip). A generator refuses a dist folder with files from the other track; a unified dist keeps both.
 
 ```json
 {
-  "version": "0.17.0",
-  "notes": "- Updates in the app. …",
-  "published": "2026-10-24T08:00:00Z",
+  "version": "0.21.0",
+  "notes": "- **Faster chats.** …",
+  "published": "2026-11-28T08:00:00Z",
   "min_supported": "0.15.0",
-  "platforms": {
-    "android":             {"name": "tether-0.17.0.apk", "url": "https://github.com/…/v0.17.0/tether-0.17.0.apk", "sha256": "…", "size": 81487523},
-    "windows":             {"name": "tether-windows-0.17.0.zip", …},
-    "agent-linux-amd64":   {"name": "tether-agent-linux-amd64", …},
-    "agent-windows-amd64": {"name": "tether-agent-windows-amd64.exe", …},
-    "hub-linux-amd64":     {"name": "tether-hub-linux-amd64", …},
-    "tetherctl-linux-amd64": …, "tetherctl-windows-amd64": …
-  }
+  "platforms": {"agent-linux-amd64": {"name": "tether-agent-linux-amd64", "url": "https://github.com/…/core-v0.21.0/tether-agent-linux-amd64", "sha256": "…", "size": 12345}},
+  "track": "core",
+  "min_app_version": "0.15.0"
 }
 ```
 
+The app feed instead carries `"track": "app"` and `"min_core_version": "0.15.0"`.
+
 ## Deploying on the hub's machine
 
-`deploy/linux/deploy.sh dist/X.Y.Z` follows the 0.15 deploy, with checks added:
+`deploy/linux/deploy.sh dist/<version>` is core-only:
 
-1. Stops the hub and agent and backs up into `~/tether/backups/<time>-pre-X.Y.Z/`: `hub.db*`, the three binaries and the systemd units. Each binary is also kept as `~/tether/bin/<name>.prev`. It writes `rollback.sh` next to the backup.
-2. Installs the new binaries with `install.sh` and restarts both services. The agent's `KillMode=process` keeps tmux sessions alive.
-3. Copies the release into `~/tether/updates/X.Y.Z/`.
-4. Waits up to a minute for `/healthz` and for `/api/v1/state` to report the new `hubVersion`. If they don't, it removes the release from `updates/`, runs `rollback.sh` (binaries and units; the database stays, since older hubs ignore newer tables) and fails.
-5. Waits up to a minute for the hub's own agent to reconnect with the new version. If it doesn't, it puts `tether-agent.prev` back and fails.
+1. Stops the hub and agent and backs up into `~/tether/backups/<time>-pre-<version>/`: `hub.db*`, the three binaries and systemd units. Each binary is kept as `~/tether/bin/<name>.prev`, with a `rollback.sh` beside the backup.
+2. Installs the new binaries and restarts both services. The agent's `KillMode=process` keeps tmux sessions alive.
+3. Copies the release into `~/tether/updates/<version>/`, where the hub reads it.
+4. Waits for `/healthz` and `/api/v1/state` to report the new `hubVersion`; on failure it removes the release, runs `rollback.sh` and fails.
+5. Waits for the hub's own agent to reconnect with the new version; on failure it restores `tether-agent.prev`.
 
-To undo a deploy that passed: `~/tether/backups/<time>-pre-X.Y.Z/rollback.sh`. Add `--db` to also restore the database from the backup; that drops the WAL files first and loses anything written since.
+To undo a deploy that passed: `~/tether/backups/<time>-pre-<version>/rollback.sh`. Add `--db` to restore the database too; that drops WAL files and loses anything written since.
 
-## How apps and agents update
+## How updates reach clients
 
-**The hub** gets releases two ways:
+**Core.** The deploy puts a release in `<data>/updates/<version>/`. The hub reads `core-latest.json` there at start and every minute (falling back to `latest.json` from before the split). Every 30 minutes it also polls `-update-feed`, whose default is the GitHub `core-latest.json`. It downloads only each agent's binary, checks sha256, then tells every app and agent. A release counts as new when its version is newer or it is the same version with more files; the hub keeps the two newest.
 
-- The deploy puts them in `<data>/updates/<version>/`. The hub reads that folder at start and every minute.
-- Every 30 minutes it polls `-update-feed`, which by default is the GitHub release's `latest.json`. It downloads the files it serves (the APK, the Windows zip, and the agents), checks each against its sha256, and only then takes the release.
+- `GET /api/v1/updates/latest`: the core manifest, with hub links for files the hub holds. Older clients keep using this as their app feed until they are past `MIN_SUPPORTED`.
+- `GET /api/v1/updates/files/<version>/<name>`: the file itself; any token works, node tokens included.
+- `Welcome.update` and `update_available` frames carry the same core manifest, including `min_app_version`.
+- Flags: `-update-feed` (empty turns polling off), `-updates-dir`, `-update-agents` (default on).
 
-A release counts as new when its version is newer, or when it's the same version with more files. That's how the Windows zip, built after the deploy, still arrives. The hub keeps the two newest releases.
+**Agents** from 0.17 update themselves when idle, at most three tries 30 minutes apart: download the hub's asset, check sha256, run `version`, rename the old binary to `.prev`, move the new one in and exit with code 75. On start, three failed attempts to reach the hub restore `.prev`. Turn it off with `-self-update=false`; agents older than 0.17 are updated by hand once.
 
-The hub serves the release at:
+**Apps** read the app track, not the core feed:
 
-- `GET /api/v1/updates/latest`: the manifest. Each file it has gets a link on the hub; the rest keep their GitHub links.
-- `GET /api/v1/updates/files/<version>/<name>`: the file itself. Any token works, node tokens included.
-
-It also sends the manifest in `Welcome.update` and pushes it to every app as an `update_available` frame.
-
-Flags:
-
-- `-update-feed` (empty turns polling off)
-- `-updates-dir`
-- `-update-agents` (default on)
-
-**Apps** (Android) check at start, every 6 hours and whenever the hub pushes a release:
-
-- A newer release shows a banner with **What's new**, **Skip this version** and **Update**. On Android a system notification also announces it, once per version.
-- **Android:** the app reads the release from **GitHub first** (`releases/latest/download/latest.json`) and from the hub, and takes the newer; on a tie GitHub wins, so a published release needs no hub. It downloads the APK (from GitHub, or from the hub for a build only the hub has), checks its sha256 and opens the system installer, which checks the APK is signed with the same key as the installed app. That uses `REQUEST_INSTALL_PACKAGES` and a `FileProvider` on the cache's `updates/` folder. The first time, Android asks to allow installs from Tether.
-- **Windows:** see [Windows updates](#windows-updates). The app has no banner for it; the updater has its own dialog.
-- A release whose `min_supported` is above the app's version replaces the whole app with an update screen, and can't be skipped.
-
-**Agents** from 0.17 update themselves:
-
-- The hub asks an idle agent (no running sessions) that is older than the release, at most three times, 30 minutes apart.
-- The agent:
-  1. downloads its binary from the hub and checks the sha256;
-  2. runs it with `version` to check it starts;
-  3. renames itself to `<exe>.prev`, moves the new binary into place and writes `<exe>.update`;
-  4. exits with code 75. On Linux systemd restarts it; on Windows it first asks Task Scheduler to start "Tether Agent" again.
-- On start, the agent counts the starts in `<exe>.update`. Reaching the hub confirms the update and removes the file. After three starts that never reach the hub, it puts `<exe>.prev` back and restarts.
-- Turn this off with `-self-update=false`. Agents older than 0.17 are updated by hand, once.
+- Android and the app's banner fetch `app-latest.json` from GitHub. If the newest GitHub release is a core release, they find the newest `app-v*` release through the releases API. The hub's `/api/v1/updates/latest` is used only for legacy untracked manifests. A release whose `min_core_version` is newer than the connected hub is not offered.
+- A newer release shows **What's new**, **Skip this version** and **Update**; below the app's `min_supported` it becomes a forced screen. Downloads check sha256. Android uses the same signing key, so installs replace in place.
+- Windows uses the signed appcast described below instead of the banner.
 
 ## Windows updates
 
-The Windows app updates itself with WinSparkle, through the `auto_updater` package. It reads `appcast.xml` from the latest GitHub release (`https://github.com/Mahaveer86619/tether/releases/latest/download/appcast.xml`), and when there is a newer version it shows WinSparkle's own dialog with the release notes. On Install it downloads `Tether-Setup-<version>.exe` from the same release, **checks its signature against the public key built into the app**, closes the app, runs the installer with `/SILENT` and starts the app again. The hub is not involved.
-
-What each part is:
+WinSparkle (through `auto_updater`) reads `appcast.xml` from the newest GitHub release and verifies the installer's DSA signature against the public key built into the app. It shows its own dialog, runs `Tether-Setup-<version>.exe /SILENT` and restarts the app. The hub is not involved.
 
 | Part | Where |
 |---|---|
-| The installer (Inno Setup; per user, into `%LOCALAPPDATA%\Programs\Tether`, the same folder as before, so it upgrades an existing copy in place) | `deploy/windows/tether.iss`, built by `tools/release/build-windows.ps1` when `ISCC.exe` is there (GitHub's Windows runners have it) |
-| The appcast: one item with the installer's URL, size, version (`X.Y.Z+code`, as the app's own version reads), `/SILENT`, the notes from `CHANGELOG.md`, and the **signature** | `tools/release/appcast.sh` |
-| The signing key: a DSA key pair made as WinSparkle's own `generate_keys` does (`openssl dsaparam 4096`, `gendsa`). The **public** half is in the app (`app/dsa_pub.pem`, compiled into `Runner.rc`). The **private** half is the GitHub secret `APPCAST_DSA_PRIVATE_KEY` and a copy kept somewhere safe | `appcast.sh` refuses to write a feed whose signature the app's public key does not verify |
+| Installer (Inno Setup, per user, upgrades in place) | `deploy/windows/tether.iss`, built by `tools/release/build-windows.ps1` when `ISCC.exe` is present |
+| Appcast, with one item, notes and signature | `tools/release/appcast.sh`; URLs point at `app-v<version>` assets |
+| Keys | public `app/dsa_pub.pem`; private GitHub secret `APPCAST_DSA_PRIVATE_KEY`. Lose the private key and installed apps can no longer update themselves. |
 
-**Lose the private key and no installed Windows app can update again**: they would need the new installer by hand. Keep a copy offline.
-
-To make a key pair (once): `openssl dsaparam -out p.pem 4096 && openssl gendsa -out dsa_priv.pem p.pem && openssl dsa -in dsa_priv.pem -pubout -out dsa_pub.pem`, put `dsa_pub.pem` at `app/dsa_pub.pem`, and `dsa_priv.pem` into the secret (`gh secret set APPCAST_DSA_PRIVATE_KEY < dsa_priv.pem`).
-
-An app older than this one (0.17.x) updates through the hub's zip once, to the first release that has the new updater; keep publishing `tether-windows-<version>.zip` until the last of those has moved, then stop.
+To make a key pair (once): `openssl dsaparam -out p.pem 4096 && openssl gendsa -out dsa_priv.pem p.pem && openssl dsa -in dsa_priv.pem -pubout -out dsa_pub.pem`, then put `dsa_pub.pem` at `app/dsa_pub.pem` and the private half in the secret with `gh secret set APPCAST_DSA_PRIVATE_KEY < dsa_priv.pem`.
 
 ## Signing
 
-The APK is signed with a release key, so updates install over each other. The key never goes in the repo; `*.jks`, `*.keystore` and `app/android/key.properties` are ignored.
-
-**The key.** Since 0.17.7 the APK is signed with a release key made for Tether (alias `tether`). Phones that had a build signed with the old debug key (up to 0.17.6) uninstall once and re-pair; after that, updates install over each other. The release build refuses to run without the key, so there is no unsigned or debug-signed fallback in `ship.sh` or `make dist`.
-
-**A new key** (only if the key is lost or leaked; every phone then reinstalls):
-
-```sh
-keytool -genkeypair -v -keystore tether-release.jks -alias tether -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 tether-release.jks > tether-release.jks.b64
-```
-
-Keep the `.jks` and its passwords somewhere safe, outside the repo.
-
-**GitHub secrets** (repo Settings → Secrets and variables → Actions):
-
-| Secret | Value |
-|---|---|
-| `ANDROID_KEYSTORE_BASE64` | the `.b64` file's content |
-| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
-| `ANDROID_KEY_ALIAS` | `tether` (or `androiddebugkey`) |
-| `ANDROID_KEY_PASSWORD` | the key password (empty: same as the keystore's) |
-
-**For `make dist` on the hub's machine:** run `deploy/ci/setup-runner.sh --keystore tether-release.jks`. It asks for the passwords and writes `~/ci/signing/key.properties` (mode 600). Then link it into the checkout:
-
-```sh
-ln -sf ~/ci/signing/key.properties app/android/key.properties
-```
-
-## The self-hosted runner
-
-`deploy/ci/setup-runner.sh` installs everything under `~/ci`, with no `sudo`. It needs `curl`, `tar`, `unzip`, `git` and `xz`.
-
-- Go (`go/`), Temurin JDK 17 (`jdk/`), the Android SDK (`android-sdk/`: platform-tools, the platform and build-tools), and Flutter at the app's version (`flutter/`).
-- Caches in `gopath/`, `go-build/`, `pub-cache/` and `gradle/`. Gradle is capped at 2 GB with two workers, since the machine has about 7 GB and runs other services.
-- `ci-env.sh`, to source for builds by hand.
-- The GitHub Actions runner (`runner/`), registered with the labels `tether,minipc`. It runs as the systemd user service `tether-ci-runner` at lower CPU priority, with `MemoryHigh=5G`.
-
-```sh
-deploy/ci/setup-runner.sh                      # toolchains
-deploy/ci/setup-runner.sh --token <TOKEN>      # and register the runner
-```
-
-The token is a runner registration token, valid for an hour: repo Settings → Actions → Runners → New self-hosted runner. A repo admin can also run:
-
-```sh
-gh api -X POST repos/<owner>/tether/actions/runners/registration-token --jq .token
-```
-
-**Security.** The repo is public, so the self-hosted runner only takes jobs from `release.yml`. Those run on tags and manual dispatch, never on pull requests; `ci.yml` uses GitHub's runners for every push and PR. Also set Settings → Actions → General → "Require approval for all external contributors".
-
-## The repository
-
-- `main` is what's released. Work happens on branches, merged by pull request once `ci` passes.
-- **Branch protection on `main`:**
-  - require a pull request;
-  - require the `ci / server` and `ci / app` checks;
-  - require a linear history;
-  - no force pushes.
-- **Tags** `vX.Y.Z` are releases. Protect them in Settings → Rules: only admins create `v*`.
-- **Never in the repo:** `hub.db`, `secrets.key`, `tether.env`, keystores, `.local/`, `dist/`. See `.gitignore`.
+The APK is signed with a release key; `*.jks`, `*.keystore` and `app/android/key.properties` are never committed. Since 0.17.7 the key alias is `tether`; phones on the old debug key (up to 0.17.6) uninstall once and re-pair. The build refuses to run without the release key. Put `app/android/key.properties` in place and link it from `~/ci/signing` on the hub machine, as described in [from-source.md](../getting-started/from-source.md).

@@ -1,6 +1,6 @@
 # Core-first v1
 
-Status: plan. This is the source of truth for the v1 direction approved on 2026-11-28. It turns the hub, agent and their MCP/REST surface into the MVP; the Flutter apps become optional views.
+Status: core-first direction; the hub/agent foundation and split release tracks are built. Full v1 still waits on the remaining app and design work. This is the source of truth for the direction approved on 2026-11-28: the hub, agent and their MCP/REST surface are the MVP; the Flutter apps are optional views.
 
 GitHub work is tracked in milestone [v1: core-first harness](https://github.com/Mahaveer86619/tether/milestone/1):
 
@@ -19,7 +19,7 @@ The Flutter Android/Windows apps are still useful, but they are no longer requir
 
 Herdr is an external harness (`github.com/herdrdev`), not a Tether app and not a vendored dependency. Herdr desktop/Android apps can replace the Tether apps as the person's window into Tether core. Tether core supplies devices, chats, sessions, jobs, permissions and budgets; Herdr supplies panes, terminal UI and its own agent-status view.
 
-Full v1 is gated on [#44](https://github.com/Mahaveer86619/tether/issues/44): provider ranking, token budgeting and automatic fallback must live in Tether core and be visible from every device and user who is allowed to see it. A client-only solution is not enough.
+Full v1 is gated on [#44](https://github.com/Mahaveer86619/tether/issues/44): provider ranking, token budgeting and automatic fallback must live in Tether core and be visible from every device and user who is allowed to see it. A client-only solution is not enough. That core work is built; the remaining app and design gates still stand between here and a `1.0` tag.
 
 ## Core boundary
 
@@ -97,7 +97,7 @@ Herdr stays external. Tether core does not vendor, fork or depend on Herdr sourc
 - **CLI underneath:** `herdr-core` (`hc`) exposes OpenRPC via `hc schema` and `hc connect` (NDJSON JSON-RPC over stdin/stdout, socket or named pipe) with `terminal.*`, `doc.*`, events and templates. A Tether agent profile can launch a CLI through `hc run --bg` when Herdr is present, without making Herdr mandatory.
 - **Auth:** Tether tokens and user permissions remain on the Tether side; local Herdr sockets remain local to the device. No shared secret is implied by this contract.
 
-The detailed contract belongs in `docs/architecture/protocol.md` when implemented; this plan records the boundary and supported surface.
+Implemented by `tether-herdr` (a stdio MCP sidecar) and [docs/architecture/herdr-bridge.md](../architecture/herdr-bridge.md). The bridge forwards Tether's MCP tools and mirrors hub state into a Herdr pane; Herdr stays external.
 
 ## Separate release tracks
 
@@ -107,18 +107,18 @@ The detailed contract belongs in `docs/architecture/protocol.md` when implemente
 - `app-vX.Y.Z` releases the optional Flutter apps. `app/pubspec.yaml` and `app/lib/core/version.dart` are the app version.
 - A core-only release can be built and deployed without an app build; an app-only release can be published without redeploying the hub.
 - Compatibility is explicit: the core feed advertises required/app-compatible versions and the app manifest advertises its required core version.
-- No `1.0` tag is cut until token routing and fallback are complete.
+- No `1.0` tag is cut until the full definition of done below is met; token routing and fallback are now built in core.
 
-The release scripts, CI, `latest.json`, appcast and release docs change with [#42](https://github.com/Mahaveer86619/tether/issues/42).
+Implemented with [#42](https://github.com/Mahaveer86619/tether/issues/42): `core-latest.json` and `app-latest.json` carry `track`, `min_app_version` and `min_core_version`; the two workflows publish and deploy only their own track.
 
 ## Build order
 
-1. Land this plan and the issue/milestone structure (GitHub prep, done with this plan).
-2. Hub-owned chat creation and session identity (#46), because orchestration and token accounting need a stable chat/session object.
-3. Agent profiles plus main/sub-agent delegation (#45).
-4. Usage events, provider registry, budgets and fallback (#44). Full v1 waits here.
-5. Herdr bridge and contract (#41), once the tools are stable.
-6. Split release tracks and docs (#42, #43).
+1. Land this plan and the issue/milestone structure (done).
+2. Hub-owned chat creation and session identity (#46, done), because orchestration and token accounting need a stable chat/session object.
+3. Agent profiles plus main/sub-agent delegation (#45, done).
+4. Usage events, provider registry, budgets and fallback (#44, done).
+5. Herdr bridge and contract (#41, done: `tether-herdr`).
+6. Split release tracks and docs (#42 and #43, done).
 
 ## Definition of done for full v1
 

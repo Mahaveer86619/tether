@@ -3490,6 +3490,9 @@ const UpdateManifest$json = {
       '6': '.tether.v1.UpdateManifest.PlatformsEntry',
       '10': 'platforms'
     },
+    {'1': 'track', '3': 6, '4': 1, '5': 9, '10': 'track'},
+    {'1': 'min_app_version', '3': 7, '4': 1, '5': 9, '10': 'minAppVersion'},
+    {'1': 'min_core_version', '3': 8, '4': 1, '5': 9, '10': 'minCoreVersion'},
   ],
   '3': [UpdateManifest_PlatformsEntry$json],
 };
@@ -3516,9 +3519,11 @@ final $typed_data.Uint8List updateManifestDescriptor = $convert.base64Decode(
     'Cg5VcGRhdGVNYW5pZmVzdBIYCgd2ZXJzaW9uGAEgASgJUgd2ZXJzaW9uEhQKBW5vdGVzGAIgAS'
     'gJUgVub3RlcxIcCglwdWJsaXNoZWQYAyABKAlSCXB1Ymxpc2hlZBIjCg1taW5fc3VwcG9ydGVk'
     'GAQgASgJUgxtaW5TdXBwb3J0ZWQSRgoJcGxhdGZvcm1zGAUgAygLMigudGV0aGVyLnYxLlVwZG'
-    'F0ZU1hbmlmZXN0LlBsYXRmb3Jtc0VudHJ5UglwbGF0Zm9ybXMaVAoOUGxhdGZvcm1zRW50cnkS'
-    'EAoDa2V5GAEgASgJUgNrZXkSLAoFdmFsdWUYAiABKAsyFi50ZXRoZXIudjEuVXBkYXRlQXNzZX'
-    'RSBXZhbHVlOgI4AQ==');
+    'F0ZU1hbmlmZXN0LlBsYXRmb3Jtc0VudHJ5UglwbGF0Zm9ybXMSFAoFdHJhY2sYBiABKAlSBXRy'
+    'YWNrEiYKD21pbl9hcHBfdmVyc2lvbhgHIAEoCVINbWluQXBwVmVyc2lvbhIoChBtaW5fY29yZV'
+    '92ZXJzaW9uGAggASgJUg5taW5Db3JlVmVyc2lvbhpUCg5QbGF0Zm9ybXNFbnRyeRIQCgNrZXkY'
+    'ASABKAlSA2tleRIsCgV2YWx1ZRgCIAEoCzIWLnRldGhlci52MS5VcGRhdGVBc3NldFIFdmFsdW'
+    'U6AjgB');
 
 @$core.Deprecated('Use historyPositionDescriptor instead')
 const HistoryPosition$json = {

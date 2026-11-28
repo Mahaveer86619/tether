@@ -1,6 +1,6 @@
 # GitHub setup (one-time, for the repo owner)
 
-Releases are built and deployed by GitHub Actions on the hub's machine; see [releasing.md](releasing.md). Until the steps below are done, everything is built and deployed by hand with `make release`.
+Releases are built and deployed by GitHub Actions on the hub's machine; see [releasing.md](releasing.md). Until the steps below are done, everything is built and deployed by hand with `make release-core`.
 
 Today the laptop and the hub's machine both reach GitHub as **MahaveerPanigrahi86619**, which can only read `Mahaveer86619/tether`. Pushing, releases, branch protection and the runner need the owner, **Mahaveer86619**, once.
 
@@ -52,17 +52,17 @@ The apps read releases from GitHub, not from the hub. For that to work:
 1. **The repository is public** (it is). The apps fetch the release files without signing in, and a private repository's release files need a login.
 2. **Add the Windows signing secret** (see [releasing.md](releasing.md#windows-updates)): `APPCAST_DSA_PRIVATE_KEY` is the contents of the private half of the key pair whose public half is in `app/dsa_pub.pem`. From a machine with `gh` logged in as the owner: `gh secret set APPCAST_DSA_PRIVATE_KEY < dsa_priv.pem`. Keep another copy of that file offline; without it no installed Windows app can update.
 3. **The Android secrets** are the four `ANDROID_KEYSTORE_*` ones above.
-4. **Make a release**: bump the version and write its `CHANGELOG.md` section (`tools/release/version.sh set X.Y.Z`), commit, then `git tag -a vX.Y.Z -m "Tether X.Y.Z" && git push origin main vX.Y.Z`. The `release` workflow builds on the self-hosted runner (the APK and the hub, agent and tetherctl binaries) and on GitHub's own Windows runner (the app, its zip, the installer, and the signed `appcast.xml`), makes the GitHub Release with all of them and `latest.json`, and deploys the hub's machine.
-5. **Check the feeds** after the first release; both must answer 200 with no login:
+4. **Make a release**: bump one track and write its `CHANGELOG.md` section (`tools/release/version.sh set core X.Y.Z` or `set app X.Y.Z`), commit, then tag `core-vX.Y.Z` or `app-vX.Y.Z` and push it (or run `make release-core` / `make release-app`). The `release-core` workflow builds the hub, agent, `tetherctl` and the optional Herdr bridge on the self-hosted runner, publishes `core-latest.json` and deploys the hub's machine; no app build is needed. The `release-app` workflow builds the APK there and the Windows app on GitHub's runner, publishes `app-latest.json` and the signed `appcast.xml`, and does not deploy core.
+5. **Check the feeds** after a release; they must answer 200 with no login:
 
    ```sh
-   curl -sI -L https://github.com/Mahaveer86619/tether/releases/latest/download/appcast.xml | head -1
-   curl -sI -L https://github.com/Mahaveer86619/tether/releases/latest/download/latest.json | head -1
+   curl -sI -L https://github.com/Mahaveer86619/tether/releases/latest/download/core-latest.json | head -1
+   curl -sI -L https://github.com/Mahaveer86619/tether/releases/latest/download/app-latest.json | head -1
    ```
 
-   `latest` is the newest release that is not a draft or a pre-release, so do not mark releases as pre-releases.
+   `latest` is the newest release that is not a draft or a pre-release, so do not mark releases as pre-releases. If the newest release is the other track, the app falls back to the releases API to find the latest `app-v*` asset.
 
-`make ship` and `tools/release/ship.sh` still deploy a build straight to the hub from your laptop for trying something out; the apps then see it only through the hub, and only while it is newer than what GitHub has.
+`make ship` and `tools/release/ship.sh` still deploy a unified build straight to the hub from your laptop for trying something out; the apps then see it only through the hub, and only while it is newer than what GitHub has.
 
 ## The signing key
 

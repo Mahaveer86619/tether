@@ -1,27 +1,20 @@
-# Builds, publishes and deploys a release when a vX.Y.Z tag is pushed.
-#   linux    (the hub's machine) tests, builds the Go binaries and the signed APK
-#   windows  (GitHub)            builds the Windows app
-#   publish                      makes the GitHub Release with latest.json
-#   deploy   (the hub's machine) installs the release there, with rollback;
-#                                it needs only the linux job, never Windows
-# See docs/operations/releasing.md.
-name: release
+# Builds and publishes the app track when an app-vX.Y.Z tag is pushed.
+#   linux    (the hub's machine) builds the signed APK
+#   windows  (GitHub)            builds the Windows app and signed appcast
+#   publish                      makes the GitHub Release with app-latest.json
+# No hub deploy is needed. See docs/operations/releasing.md.
+name: release-app
 
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ['app-v*.*.*']
   workflow_dispatch:
-    inputs:
-      deploy:
-        description: Deploy to the hub's machine
-        type: boolean
-        default: true
 
 permissions:
   contents: write
 
 concurrency:
-  group: release
+  group: release-app
   cancel-in-progress: false
 
 jobs:
@@ -37,9 +30,7 @@ jobs:
         run: |
           tag=""
           [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
-          echo "version=$(tools/release/version.sh check $tag)" >> "$GITHUB_OUTPUT"
-      - name: Test
-        run: make test
+          echo "version=$(tools/release/version.sh check "$tag")" >> "$GITHUB_OUTPUT"
       - name: Signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -60,13 +51,13 @@ jobs:
           keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}
           EOF
       - name: Build
-        run: tools/release/build.sh --no-manifest
+        run: tools/release/build.sh app --no-manifest
       - name: Forget the signing key
         if: always()
         run: rm -f app/android/key.properties "$RUNNER_TEMP/release.jks"
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-linux
+          name: dist-app-linux
           path: dist/${{ steps.version.outputs.version }}/
           if-no-files-found: error
           retention-days: 7
@@ -100,7 +91,7 @@ jobs:
           rm -f "$RUNNER_TEMP/dsa_priv.pem"
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-windows
+          name: dist-app-windows
           path: |
             dist/*/tether-windows-*.zip
             dist/*/Tether-Setup-*.exe
@@ -110,45 +101,28 @@ jobs:
 
   publish:
     needs: [linux, windows]
-    # A broken Windows build still publishes the rest; the app's Windows
-    # users then stay on the release before.
+    # A broken Windows build still publishes the APK; Windows users stay on
+    # the release before until it is fixed.
     if: always() && needs.linux.result == 'success' && github.ref_type == 'tag'
     runs-on: [self-hosted, linux, tether]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: dist-linux
+          name: dist-app-linux
           path: dist/${{ needs.linux.outputs.version }}
       - uses: actions/download-artifact@v4
         if: needs.windows.result == 'success'
         with:
-          name: dist-windows
+          name: dist-app-windows
           # The artifact keeps its dist/<version>/ folders, so it unpacks over dist itself.
           path: dist
-      - name: latest.json and SHA256SUMS
-        run: tools/release/manifest.sh "dist/${{ needs.linux.outputs.version }}"
+      - name: app-latest.json and SHA256SUMS
+        run: tools/release/manifest.sh app "dist/${{ needs.linux.outputs.version }}"
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
           V: ${{ needs.linux.outputs.version }}
         run: |
-          python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["notes"])' "dist/$V/latest.json" > "$RUNNER_TEMP/notes.md"
-          gh release create "v$V" --title "Tether $V" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag dist/$V/*
-
-  deploy:
-    needs: [linux]
-    if: github.ref_type == 'tag' || inputs.deploy
-    runs-on: [self-hosted, linux, tether]
-    environment: minipc
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-linux
-          path: dist/${{ needs.linux.outputs.version }}
-      - name: latest.json
-        run: tools/release/manifest.sh "dist/${{ needs.linux.outputs.version }}"
-      - name: Deploy with backup and rollback
-        run: deploy/linux/deploy.sh "dist/${{ needs.linux.outputs.version }}"
+          python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["notes"])' "dist/$V/app-latest.json" > "$RUNNER_TEMP/notes.md"
+          gh release create "app-v$V" --title "Tether app $V" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag dist/$V/*

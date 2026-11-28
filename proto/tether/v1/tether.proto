@@ -1387,8 +1387,14 @@ message UpdateManifest {
   string min_supported = 4;
   // By platform: android, windows (the app as a zip), agent-linux-amd64,
   // agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
-  // tetherctl-windows-amd64.
+  // tetherctl-windows-amd64, herdr-linux-amd64, herdr-windows-amd64.
   map<string, UpdateAsset> platforms = 5;
+  // "core" or "app". Empty on unified releases before the tracks split.
+  string track = 6;
+  // A core feed's oldest compatible app version; empty on app feeds.
+  string min_app_version = 7;
+  // An app feed's required hub/core version; empty on core feeds.
+  string min_core_version = 8;
 }
 
 // ---- History ----

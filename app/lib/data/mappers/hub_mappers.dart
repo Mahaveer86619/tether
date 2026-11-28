@@ -314,6 +314,8 @@ Release? releaseFromPb(pb.UpdateManifest m) => m.version.isEmpty
         version: m.version,
         notes: m.notes,
         minSupported: m.minSupported,
+        minCoreVersion: m.minCoreVersion,
+        track: m.track,
         published: DateTime.tryParse(m.published),
         assets: {for (final e in m.platforms.entries) e.key: UpdateAsset(name: e.value.name, url: e.value.url, sha256: e.value.sha256, size: e.value.size.toInt())},
       );

@@ -10,8 +10,11 @@ const releaseDownloads = 'https://github.com/$githubRepository/releases/latest/d
 /// The Windows updater's feed: an appcast signed with the key built into the app.
 const appcastUrl = '$releaseDownloads/appcast.xml';
 
-/// The release manifest the other platforms read.
-const releaseFeedUrl = '$releaseDownloads/latest.json';
+/// The app track's manifest. Core releases have their own `core-latest.json`.
+const releaseFeedUrl = '$releaseDownloads/app-latest.json';
+
+/// Used when the newest GitHub release is a core release without an app manifest.
+const releasesApi = 'https://api.github.com/repos/$githubRepository/releases?per_page=30';
 
 /// Whether [version] is older than [than] (dotted numbers like 0.14.2).
 /// Builds without a release number ("dev", "") are never called out.

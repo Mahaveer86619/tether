@@ -13164,6 +13164,9 @@ class UpdateManifest extends $pb.GeneratedMessage {
     $core.String? published,
     $core.String? minSupported,
     $core.Iterable<$core.MapEntry<$core.String, UpdateAsset>>? platforms,
+    $core.String? track,
+    $core.String? minAppVersion,
+    $core.String? minCoreVersion,
   }) {
     final result = UpdateManifest._();
     if (version != null) result.version = version;
@@ -13171,6 +13174,9 @@ class UpdateManifest extends $pb.GeneratedMessage {
     if (published != null) result.published = published;
     if (minSupported != null) result.minSupported = minSupported;
     if (platforms != null) result.platforms.addEntries(platforms);
+    if (track != null) result.track = track;
+    if (minAppVersion != null) result.minAppVersion = minAppVersion;
+    if (minCoreVersion != null) result.minCoreVersion = minCoreVersion;
     return result;
   }
 
@@ -13198,6 +13204,9 @@ class UpdateManifest extends $pb.GeneratedMessage {
         valueCreator: UpdateAsset.$_createMessage,
         valueDefaultOrMaker: UpdateAsset.getDefault,
         packageName: const $pb.PackageName('tether.v1'))
+    ..aOS(6, _omitFieldNames ? '' : 'track')
+    ..aOS(7, _omitFieldNames ? '' : 'minAppVersion')
+    ..aOS(8, _omitFieldNames ? '' : 'minCoreVersion')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -13263,9 +13272,39 @@ class UpdateManifest extends $pb.GeneratedMessage {
 
   /// By platform: android, windows (the app as a zip), agent-linux-amd64,
   /// agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
-  /// tetherctl-windows-amd64.
+  /// tetherctl-windows-amd64, herdr-linux-amd64, herdr-windows-amd64.
   @$pb.TagNumber(5)
   $pb.PbMap<$core.String, UpdateAsset> get platforms => $_getMap(4);
+
+  /// "core" or "app". Empty on unified releases before the tracks split.
+  @$pb.TagNumber(6)
+  $core.String get track => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set track($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasTrack() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTrack() => $_clearField(6);
+
+  /// A core feed's oldest compatible app version; empty on app feeds.
+  @$pb.TagNumber(7)
+  $core.String get minAppVersion => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set minAppVersion($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMinAppVersion() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMinAppVersion() => $_clearField(7);
+
+  /// An app feed's required hub/core version; empty on core feeds.
+  @$pb.TagNumber(8)
+  $core.String get minCoreVersion => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set minCoreVersion($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasMinCoreVersion() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearMinCoreVersion() => $_clearField(8);
 }
 
 /// How far the hub has one transcript file. file is "" for the session's

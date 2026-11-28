@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Keeps VERSION, app/pubspec.yaml and app/lib/core/version.dart in step.
-# Usage: version.sh check [vX.Y.Z]   (with a tag, it must match too)
-#        version.sh set X.Y.Z
-#        version.sh code               (the Android versionCode for VERSION)
+# The two release tracks have separate versions: VERSION is core, and the
+# app's files hold the app version. A plain tag means the old unified track.
+# Usage: version.sh check [core-vX.Y.Z|app-vX.Y.Z|vX.Y.Z]
+#        version.sh set [core|app] X.Y.Z   (no track sets both)
+#        version.sh code                   (the app's Android versionCode)
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -11,35 +12,76 @@ dart=$root/app/lib/core/version.dart
 
 # Android needs a growing integer: 0.17.0 -> 1700, 1.2.3 -> 10203.
 code() { IFS=. read -r a b c <<<"$1"; echo $((a * 10000 + b * 100 + c)); }
+app_version() { sed -n 's/^version: \([0-9.]*\)+.*/\1/p' "$pubspec" | tr -d '\r'; }
+dart_version() { sed -n "s/^const appVersion = '\(.*\)';/\1/p" "$dart" | tr -d '\r'; }
 
-current=$(tr -d ' \r\n' < "$root/VERSION")
+core=$(tr -d ' \r\n' < "$root/VERSION")
+app=$(app_version)
+tag_track() {
+  case "${1:-}" in
+  core-v*) echo core ;;
+  app-v*) echo app ;;
+  v*) echo unified ;;
+  *) echo "" ;;
+  esac
+}
+
 case "${1:-check}" in
 set)
-  new=${2:?usage: version.sh set X.Y.Z}
+  track=${2:-}
+  if [ "$track" = core ] || [ "$track" = app ]; then
+    new=${3:?usage: version.sh set [core|app] X.Y.Z}
+  else
+    new=$track
+    track=both
+  fi
   [[ $new =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not X.Y.Z: $new" >&2; exit 2; }
-  printf '%s\n' "$new" > "$root/VERSION"
-  sed -i "s/^version: .*/version: $new+$(code "$new")/" "$pubspec"
-  sed -i "s/^const appVersion = .*/const appVersion = '$new';/" "$dart"
-  echo "version $new (Android versionCode $(code "$new"))"
+  case $track in
+  core) printf '%s\n' "$new" > "$root/VERSION"; echo "core $new" ;;
+  app)
+    sed -i "s/^version: .*/version: $new+$(code "$new")/" "$pubspec"
+    sed -i "s/^const appVersion = .*/const appVersion = '$new';/" "$dart"
+    echo "app $new (Android versionCode $(code "$new"))"
+    ;;
+  both)
+    printf '%s\n' "$new" > "$root/VERSION"
+    sed -i "s/^version: .*/version: $new+$(code "$new")/" "$pubspec"
+    sed -i "s/^const appVersion = .*/const appVersion = '$new';/" "$dart"
+    echo "core and app $new (Android versionCode $(code "$new"))"
+    ;;
+  esac
   ;;
 code)
-  code "$current"
+  code "$app"
   ;;
 check)
-  pub=$(sed -n 's/^version: \([0-9.]*\)+.*/\1/p' "$pubspec" | tr -d '\r')
-  app=$(sed -n "s/^const appVersion = '\(.*\)';/\1/p" "$dart" | tr -d '\r')
+  track=$(tag_track "${2:-}")
   bad=0
-  [ "$pub" = "$current" ] || { echo "app/pubspec.yaml says $pub, VERSION says $current" >&2; bad=1; }
-  [ "$app" = "$current" ] || { echo "app/lib/core/version.dart says $app, VERSION says $current" >&2; bad=1; }
-  if [ -n "${2:-}" ] && [ "${2#v}" != "$current" ]; then
-    echo "tag ${2} doesn't match VERSION $current" >&2
-    bad=1
-  fi
-  [ $bad -eq 0 ] || { echo "fix with: tools/release/version.sh set X.Y.Z" >&2; exit 1; }
-  echo "$current"
+  case $track in
+  core)
+    [[ $core =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad core version: $core" >&2; bad=1; }
+    [ "${2#core-v}" = "$core" ] || { echo "tag $2 doesn't match core $core" >&2; bad=1; }
+    ;;
+  app)
+    [[ $app =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad app version: $app" >&2; bad=1; }
+    [ "$(dart_version)" = "$app" ] || { echo "app/lib/core/version.dart says $(dart_version), pubspec says $app" >&2; bad=1; }
+    [ "${2#app-v}" = "$app" ] || { echo "tag $2 doesn't match app $app" >&2; bad=1; }
+    ;;
+  unified)
+    [ "$core" = "$app" ] || { echo "unified tag needs VERSION $core to match the app $app" >&2; bad=1; }
+    [ "${2#v}" = "$core" ] || { echo "tag $2 doesn't match VERSION $core" >&2; bad=1; }
+    ;;
+  *)
+    [[ $core =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad core version: $core" >&2; bad=1; }
+    [[ $app =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad app version: $app" >&2; bad=1; }
+    [ "$(dart_version)" = "$app" ] || { echo "app/lib/core/version.dart says $(dart_version), pubspec says $app" >&2; bad=1; }
+    ;;
+  esac
+  [ $bad -eq 0 ] || { echo "fix with: tools/release/version.sh set [core|app] X.Y.Z" >&2; exit 1; }
+  case $track in app) echo "$app" ;; *) echo "$core" ;; esac
   ;;
 *)
-  echo "usage: version.sh check [vX.Y.Z] | set X.Y.Z | code" >&2
+  echo "usage: version.sh check [core-vX.Y.Z|app-vX.Y.Z|vX.Y.Z] | set [core|app] X.Y.Z | code" >&2
   exit 2
   ;;
 esac

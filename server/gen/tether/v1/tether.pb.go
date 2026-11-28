@@ -9184,10 +9184,16 @@ type UpdateManifest struct {
 	MinSupported string `protobuf:"bytes,4,opt,name=min_supported,json=minSupported,proto3" json:"min_supported,omitempty"`
 	// By platform: android, windows (the app as a zip), agent-linux-amd64,
 	// agent-windows-amd64, hub-linux-amd64, tetherctl-linux-amd64,
-	// tetherctl-windows-amd64.
-	Platforms     map[string]*UpdateAsset `protobuf:"bytes,5,rep,name=platforms,proto3" json:"platforms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// tetherctl-windows-amd64, herdr-linux-amd64, herdr-windows-amd64.
+	Platforms map[string]*UpdateAsset `protobuf:"bytes,5,rep,name=platforms,proto3" json:"platforms,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// "core" or "app". Empty on unified releases before the tracks split.
+	Track string `protobuf:"bytes,6,opt,name=track,proto3" json:"track,omitempty"`
+	// A core feed's oldest compatible app version; empty on app feeds.
+	MinAppVersion string `protobuf:"bytes,7,opt,name=min_app_version,json=minAppVersion,proto3" json:"min_app_version,omitempty"`
+	// An app feed's required hub/core version; empty on core feeds.
+	MinCoreVersion string `protobuf:"bytes,8,opt,name=min_core_version,json=minCoreVersion,proto3" json:"min_core_version,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdateManifest) Reset() {
@@ -9253,6 +9259,27 @@ func (x *UpdateManifest) GetPlatforms() map[string]*UpdateAsset {
 		return x.Platforms
 	}
 	return nil
+}
+
+func (x *UpdateManifest) GetTrack() string {
+	if x != nil {
+		return x.Track
+	}
+	return ""
+}
+
+func (x *UpdateManifest) GetMinAppVersion() string {
+	if x != nil {
+		return x.MinAppVersion
+	}
+	return ""
+}
+
+func (x *UpdateManifest) GetMinCoreVersion() string {
+	if x != nil {
+		return x.MinCoreVersion
+	}
+	return ""
 }
 
 // How far the hub has one transcript file. file is "" for the session's
@@ -12659,13 +12686,16 @@ const file_tether_v1_tether_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x16\n" +
 	"\x06sha256\x18\x03 \x01(\tR\x06sha256\x12\x12\n" +
-	"\x04size\x18\x04 \x01(\x03R\x04size\"\xa1\x02\n" +
+	"\x04size\x18\x04 \x01(\x03R\x04size\"\x89\x03\n" +
 	"\x0eUpdateManifest\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x14\n" +
 	"\x05notes\x18\x02 \x01(\tR\x05notes\x12\x1c\n" +
 	"\tpublished\x18\x03 \x01(\tR\tpublished\x12#\n" +
 	"\rmin_supported\x18\x04 \x01(\tR\fminSupported\x12F\n" +
-	"\tplatforms\x18\x05 \x03(\v2(.tether.v1.UpdateManifest.PlatformsEntryR\tplatforms\x1aT\n" +
+	"\tplatforms\x18\x05 \x03(\v2(.tether.v1.UpdateManifest.PlatformsEntryR\tplatforms\x12\x14\n" +
+	"\x05track\x18\x06 \x01(\tR\x05track\x12&\n" +
+	"\x0fmin_app_version\x18\a \x01(\tR\rminAppVersion\x12(\n" +
+	"\x10min_core_version\x18\b \x01(\tR\x0eminCoreVersion\x1aT\n" +
 	"\x0ePlatformsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
 	"\x05value\x18\x02 \x01(\v2\x16.tether.v1.UpdateAssetR\x05value:\x028\x01\"\x86\x01\n" +
