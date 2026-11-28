@@ -79,7 +79,9 @@ class UpdateCubit extends Cubit<UpdateState> {
     if (_updates.platform == null) return;
     _hubSub = _watchHub().listen((hub) {
       final r = hub.update;
-      if (r != null && r.version != state.release?.version) _consider(r);
+      // The hub's own announcement is about core; only a legacy untracked
+      // manifest can also be an app release.
+      if (r != null && r.track.isEmpty && r.version != state.release?.version) _consider(r);
       // A hub reached for the first time, or again, may know of a release.
       if (hub.connected && state.release == null && _timer == null) _schedule();
     });
@@ -115,6 +117,13 @@ class UpdateCubit extends Cubit<UpdateState> {
 
   Future<void> _consider(Release r) async {
     if (state.stage == UpdateStage.downloading || state.stage == UpdateStage.installing) return;
+    final core = r.minCoreVersion;
+    final hub = _watchHub.current.hubVersion;
+    if (core.isNotEmpty && hub.isNotEmpty && isOlderVersion(hub, core)) {
+      // The app would not work against this hub; the hub has to go first.
+      emit(const UpdateState());
+      return;
+    }
     if (!isOlderVersion(current, r.version) || _updates.assetFor(r) == null) {
       emit(const UpdateState());
       return;

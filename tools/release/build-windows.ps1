@@ -1,9 +1,10 @@
-# Builds the Windows app for VERSION and zips it into dist\<version>\tether-windows-<version>.zip.
+# Builds the Windows app for the app track and zips it into dist\<version>\tether-windows-<version>.zip.
 # Usage: .\tools\release\build-windows.ps1
 $ErrorActionPreference = 'Stop'
 
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
-$v = (Get-Content (Join-Path $root 'VERSION') -Raw).Trim()
+$pubspec = Get-Content (Join-Path $root 'app\pubspec.yaml') -Raw
+$v = [regex]::Match($pubspec, '(?m)^version:\s*([0-9.]+)\+').Groups[1].Value
 $parts = $v.Split('.')
 $code = [int]$parts[0] * 10000 + [int]$parts[1] * 100 + [int]$parts[2]
 $dist = Join-Path $root "dist\$v"

@@ -28,4 +28,20 @@ check "the intro is kept" "$(sed -n 3p "$tmp/CHANGELOG.md")" "Intro line."
 check "the bullets are in" "$(sed -n 7,8p "$tmp/CHANGELOG.md" | tr '\n' '|')" "- **New.** New text.|- Another.|"
 check "no carriage returns are left" "$(tr -cd '\r' < "$tmp/CHANGELOG.md" | wc -c | tr -d ' ')" 0
 rm -rf "$tmp"
+
+# Each track checks only its own version files.
+tmp=$(mktemp -d)
+mkdir -p "$tmp/tools/release" "$tmp/app/lib/core"
+cp "$here/version.sh" "$tmp/tools/release/version.sh"
+printf '0.21.0\n' > "$tmp/VERSION"
+printf 'version: 0.20.0+2000\n' > "$tmp/app/pubspec.yaml"
+printf "const appVersion = '0.20.0';\n" > "$tmp/app/lib/core/version.dart"
+check "core tag ignores the app version" "$("$tmp/tools/release/version.sh" check core-v0.21.0 2>/dev/null || echo bad)" 0.21.0
+check "app tag checks app files" "$("$tmp/tools/release/version.sh" check app-v0.21.0 2>/dev/null || echo bad)" bad
+check "app tag accepts its own version" "$("$tmp/tools/release/version.sh" check app-v0.20.0 2>/dev/null || echo bad)" 0.20.0
+"$tmp/tools/release/version.sh" set app 0.22.0 > /dev/null
+check "app bump leaves core alone" "$(tr -d '\r\n' < "$tmp/VERSION")" 0.21.0
+check "app bump sets pubspec" "$(sed -n 's/^version: \([0-9.]*\)+.*/\1/p' "$tmp/app/pubspec.yaml")" 0.22.0
+check "app bump sets Dart" "$(sed -n "s/^const appVersion = '\(.*\)';/\1/p" "$tmp/app/lib/core/version.dart")" 0.22.0
+rm -rf "$tmp"
 exit $fail

@@ -55,7 +55,12 @@ tools/release/build.sh "${flags[@]}"
 if [ $windows -eq 1 ]; then
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w tools/release/build-windows.ps1)"
 fi
-tools/release/manifest.sh "$dist"
+(
+  cd server
+  go run ./tools/release -dist "../$dist" -version "$v" \
+    -base-url "https://github.com/${GITHUB_REPOSITORY:-Mahaveer86619/tether}/releases/download/v$v" \
+    -notes ../CHANGELOG.md -min-supported "$(tr -d ' \r\n' < ../MIN_SUPPORTED)" >/dev/null
+)
 
 echo "== send to $host"
 remote=tether/incoming/$v

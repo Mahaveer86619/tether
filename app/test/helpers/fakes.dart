@@ -860,10 +860,16 @@ class FakeUpdateRepository implements UpdateRepository {
   Future<void> notify(String title, String body) async => notifications.add((title, body));
 }
 
-Release release(String version, {String minSupported = '', String notes = '- Faster chats.\n- Fixes.'}) => Release(
+Release release(String version,
+        {String minSupported = '',
+        String minCoreVersion = '',
+        String track = '',
+        String notes = '- Faster chats.\n- Fixes.'}) => Release(
       version: version,
       notes: notes,
       minSupported: minSupported,
+      minCoreVersion: minCoreVersion,
+      track: track,
       assets: {
         'android': UpdateAsset(name: 'tether-$version.apk', url: '/api/v1/updates/files/$version/tether-$version.apk', sha256: 'ab', size: 100),
         'windows': UpdateAsset(name: 'tether-windows-$version.zip', url: '/api/v1/updates/files/$version/tether-windows-$version.zip', sha256: 'cd', size: 100),

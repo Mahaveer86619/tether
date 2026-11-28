@@ -38,7 +38,13 @@ class UpdateRepositoryImpl implements UpdateRepository {
   @override
   Future<Result<Release?>> latest() async {
     final github = await _github();
-    final hub = await guard(() async => releaseFromPb(await _api.latestRelease()));
+    final hub = await guard(() async {
+      final m = await _api.latestRelease();
+      // Before the tracks split the hub's feed was also the app feed. A core
+      // feed must never offer its binaries as an app update.
+      if (m.track.isNotEmpty && m.track != 'app') return null;
+      return releaseFromPb(m);
+    });
     final fromHub = hub.valueOrNull;
     if (github == null) return hub;
     if (fromHub == null || !isOlderVersion(github.version, fromHub.version)) return Ok(github);
@@ -47,14 +53,34 @@ class UpdateRepositoryImpl implements UpdateRepository {
 
   Future<Release?> _github() async {
     try {
-      final res = await _client.get(Uri.parse(releaseFeedUrl)).timeout(const Duration(seconds: 10));
+      final url = await _appFeedUrl() ?? releaseFeedUrl;
+      final res = await _client.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return null;
       final m = pb.UpdateManifest()..mergeFromProto3Json(jsonDecode(utf8.decode(res.bodyBytes)), ignoreUnknownFields: true);
+      if (m.track.isNotEmpty && m.track != 'app') return null;
       return m.version.isEmpty ? null : releaseFromPb(m);
     } on Exception {
       // No answer, or not a release: the hub's copy is used.
       return null;
     }
+  }
+
+  /// GitHub's /latest can point at a core release. Find the newest app release
+  /// from the releases list instead of assuming the last one was an app.
+  Future<String?> _appFeedUrl() async {
+    final res = await _client.get(Uri.parse(releasesApi)).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) return null;
+    final releases = jsonDecode(utf8.decode(res.bodyBytes));
+    if (releases is! List) return null;
+    for (final r in releases) {
+      if (r is! Map || !'${r['tag_name'] ?? ''}'.startsWith('app-v')) continue;
+      final assets = r['assets'];
+      if (assets is! List) continue;
+      for (final a in assets) {
+        if (a is Map && a['name'] == 'app-latest.json') return a['browser_download_url'] as String?;
+      }
+    }
+    return null;
   }
 
   @override

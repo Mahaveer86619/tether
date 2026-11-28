@@ -21,10 +21,11 @@ import (
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
 
-// Releases reach the hub two ways: the deploy script puts a release's
-// latest.json and files in <updates>/<version>/, or the hub polls the
-// GitHub release feed and downloads them there. The hub serves them, tells
-// apps, and moves idle agents to the new version. See docs/operations/releasing.md.
+// Core releases reach the hub two ways: the deploy script puts a release's
+// core-latest.json and files in <updates>/<version>/, or the hub polls the
+// GitHub core feed and downloads them there. The hub serves them, tells apps,
+// and moves idle agents to the new version. App releases use their own feed
+// and never redeploy the hub. See docs/operations/releasing.md.
 
 const (
 	feedEvery        = 30 * time.Minute
@@ -65,7 +66,12 @@ func (h *Hub) loadLocalUpdate() {
 		if !e.IsDir() {
 			continue
 		}
-		m, err := readManifest(filepath.Join(h.updatesDir(), e.Name(), "latest.json"))
+		dir := filepath.Join(h.updatesDir(), e.Name())
+		path := filepath.Join(dir, "core-latest.json")
+		if _, err := os.Stat(path); err != nil {
+			path = filepath.Join(dir, "latest.json") // releases before the tracks split
+		}
+		m, err := readManifest(path)
 		if err != nil || m.Version != e.Name() {
 			continue
 		}
@@ -90,7 +96,17 @@ func readManifest(path string) (*v1.UpdateManifest, error) {
 	if _, ok := parseVersion(m.Version); !ok {
 		return nil, fmt.Errorf("bad version %q", m.Version)
 	}
+	if err := checkCoreTrack(m); err != nil {
+		return nil, err
+	}
 	return m, nil
+}
+
+func checkCoreTrack(m *v1.UpdateManifest) error {
+	if m.Track != "" && m.Track != "core" {
+		return fmt.Errorf("manifest is the %q track, not core", m.Track)
+	}
+	return nil
 }
 
 // setUpdate makes m the known release if it's newer, tells every app and
@@ -217,9 +233,11 @@ func (h *Hub) pollFeed(ctx context.Context) {
 		}
 	}
 	b, _ := protojson.MarshalOptions{UseProtoNames: true, Multiline: true}.Marshal(m)
-	if err := writeAtomic(filepath.Join(dir, "latest.json"), b); err != nil {
-		h.log.Error("save latest.json", "err", err)
-		return
+	for _, name := range []string{"core-latest.json", "latest.json"} {
+		if err := writeAtomic(filepath.Join(dir, name), b); err != nil {
+			h.log.Error("save "+name, "err", err)
+			return
+		}
 	}
 	h.pruneReleases(m.Version)
 	h.mu.Lock()
@@ -252,6 +270,9 @@ func fetchManifest(ctx context.Context, feed string) (*v1.UpdateManifest, error)
 	}
 	if _, ok := parseVersion(m.Version); !ok {
 		return nil, fmt.Errorf("feed has a bad version %q", m.Version)
+	}
+	if err := checkCoreTrack(m); err != nil {
+		return nil, err
 	}
 	return m, nil
 }

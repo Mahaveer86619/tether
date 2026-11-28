@@ -64,6 +64,24 @@ void main() {
       await c.close();
     });
 
+    test('an app release that needs a newer hub is not offered', () async {
+      hub = FakeHubRepository(snapshotWith([]).copyWith(hubVersion: '0.19.0'));
+      updates.release = release('0.18.0', minCoreVersion: '0.20.0');
+      final c = cubit();
+      await c.check();
+      expect(c.state.stage, UpdateStage.none);
+      expect(updates.notifications, isEmpty);
+      await c.close();
+    });
+
+    test('a core manifest announced by the hub is not offered as an app update', () async {
+      final c = cubit()..start();
+      hub.emitHub(hub.current.copyWith(update: () => release('0.18.0', track: 'core')));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(c.state.stage, UpdateStage.none);
+      await c.close();
+    });
+
     test('nothing is offered for the same or an older version', () async {
       updates.release = release('0.17.0');
       final c = cubit();
@@ -192,6 +210,42 @@ void main() {
       expect(got.failureOrNull?.userMessage, contains('checksum'));
       expect(requests.single.headers.containsKey('Authorization'), isFalse, reason: 'the token only goes to the hub');
       expect(dir.listSync(), isEmpty);
+    });
+
+    test('finds the app feed when the newest GitHub release is core', () async {
+      const repoName = 'Mahaveer86619/tether';
+      const appFeed = 'https://github.com/$repoName/releases/download/app-v0.18.0/app-latest.json';
+      final releases = jsonEncode([
+        {'tag_name': 'core-v0.21.0', 'assets': [{'name': 'core-latest.json'}]},
+        {'tag_name': 'app-v0.18.0', 'assets': [{'name': 'app-latest.json', 'browser_download_url': appFeed}]},
+      ]);
+      final appManifest = jsonEncode({
+        'version': '0.18.0',
+        'track': 'app',
+        'min_core_version': '0.19.0',
+        'platforms': {
+          'android': {'name': 'tether-0.18.0.apk', 'url': 'https://example.com/tether-0.18.0.apk', 'sha256': 'ab', 'size': 2},
+        },
+      });
+      final coreManifest = jsonEncode({'version': '0.99.0', 'track': 'core', 'platforms': {}});
+      final seen = <String>[];
+      final client = MockClient((req) async {
+        final url = req.url.toString();
+        seen.add(url);
+        if (url.startsWith('https://api.github.com/repos/$repoName/releases')) return http.Response(releases, 200);
+        if (url == appFeed) return http.Response(appManifest, 200);
+        if (url.contains('/api/v1/updates/latest')) return http.Response(coreManifest, 200);
+        return http.Response('not found', 404);
+      });
+      final api = HubRestApi(client, clientName: 'test')..endpoint = HubEndpoint('ws://100.64.0.1:7420/ws', 'tok');
+      final r = UpdateRepositoryImpl(api: api, client: client, platform: platform, local: SettingsLocalDataSource());
+
+      final got = (await r.latest()).valueOrNull;
+      expect(got?.version, '0.18.0');
+      expect(got?.track, 'app');
+      expect(got?.minCoreVersion, '0.19.0');
+      expect(seen, contains(appFeed));
+      expect(seen.any((u) => u.contains('/api/v1/updates/latest')), isTrue);
     });
   });
 }

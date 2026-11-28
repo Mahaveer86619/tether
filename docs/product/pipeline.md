@@ -8,12 +8,12 @@ The v1 direction is [core-first-v1.md](../plans/core-first-v1.md). The engine wo
 
 | # | Item | Size | Notes |
 |---|---|---|---|
-| C1 | Hub-owned chat creation and stable session identity | L | [#46](https://github.com/Mahaveer86619/tether/issues/46); every client calls the same hub API |
-| C2 | Agent profiles and Claude Code main + parallel Antigravity/OpenCode sub-agents | L | [#45](https://github.com/Mahaveer86619/tether/issues/45); core owns delegation tools and result aggregation |
-| C3 | Core-owned provider ranking, budgets and automatic fallback | XL | [#44](https://github.com/Mahaveer86619/tether/issues/44); hard gate for full v1, synced to every device/user |
-| C4 | Herdr external client bridge and contract | L | [#41](https://github.com/Mahaveer86619/tether/issues/41); no vendoring or forking |
-| C5 | Split core/app release tracks | M | [#42](https://github.com/Mahaveer86619/tether/issues/42); `v0.20.0` stays the last unified tag |
-| C6 | Core-first docs and getting-started updates | S | [#43](https://github.com/Mahaveer86619/tether/issues/43) |
+| ~~C1~~ | ~~Hub-owned chat creation and stable session identity~~ | Done | [#46](https://github.com/Mahaveer86619/tether/issues/46); every client calls the same hub API |
+| ~~C2~~ | ~~Agent profiles and Claude Code main + parallel Antigravity/OpenCode sub-agents~~ | Done | [#45](https://github.com/Mahaveer86619/tether/issues/45); core owns delegation tools and result aggregation |
+| ~~C3~~ | ~~Core-owned provider ranking, budgets and automatic fallback~~ | Done | [#44](https://github.com/Mahaveer86619/tether/issues/44); hard gate for full v1, synced to every device/user |
+| ~~C4~~ | ~~Herdr external client bridge and contract~~ | Done | [#41](https://github.com/Mahaveer86619/tether/issues/41); `tether-herdr` and [herdr-bridge.md](../architecture/herdr-bridge.md), no vendoring or forking |
+| ~~C5~~ | ~~Split core/app release tracks~~ | Done | [#42](https://github.com/Mahaveer86619/tether/issues/42), [releasing.md](../operations/releasing.md); `v0.20.0` stays the last unified tag |
+| ~~C6~~ | ~~Core-first docs and getting-started updates~~ | Done | [#43](https://github.com/Mahaveer86619/tether/issues/43); full v1 still has the app/design items below |
 
 ## While the design team works
 

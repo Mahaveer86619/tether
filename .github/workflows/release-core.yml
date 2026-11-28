@@ -1,0 +1,85 @@
+# Builds, publishes and deploys the core track when a core-vX.Y.Z tag is pushed.
+#   linux    (the hub's machine) tests Go, builds hub/agent/tetherctl/herdr
+#   publish                      makes the GitHub Release with core-latest.json
+#   deploy   (the hub's machine) installs it there, with rollback; needs only linux
+# No app build is needed. See docs/operations/releasing.md.
+name: release-core
+
+on:
+  push:
+    tags: ['core-v*.*.*']
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to the hub's machine
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-core
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: [self-hosted, linux, tether]
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        name: Version
+        run: |
+          tag=""
+          [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
+          echo "version=$(tools/release/version.sh check "$tag")" >> "$GITHUB_OUTPUT"
+      - name: Test
+        run: make test-go
+      - name: Build
+        run: tools/release/build.sh core --no-manifest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-core-linux
+          path: dist/${{ steps.version.outputs.version }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [linux]
+    if: github.ref_type == 'tag'
+    runs-on: [self-hosted, linux, tether]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-core-linux
+          path: dist/${{ needs.linux.outputs.version }}
+      - name: core-latest.json and SHA256SUMS
+        run: tools/release/manifest.sh core "dist/${{ needs.linux.outputs.version }}"
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ needs.linux.outputs.version }}
+        run: |
+          python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["notes"])' "dist/$V/core-latest.json" > "$RUNNER_TEMP/notes.md"
+          gh release create "core-v$V" --title "Tether core $V" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag dist/$V/*
+
+  deploy:
+    needs: [linux]
+    if: github.ref_type == 'tag' || inputs.deploy
+    runs-on: [self-hosted, linux, tether]
+    environment: minipc
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-core-linux
+          path: dist/${{ needs.linux.outputs.version }}
+      - name: core-latest.json
+        run: tools/release/manifest.sh core "dist/${{ needs.linux.outputs.version }}"
+      - name: Deploy with backup and rollback
+        run: deploy/linux/deploy.sh "dist/${{ needs.linux.outputs.version }}"

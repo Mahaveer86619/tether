@@ -126,7 +126,7 @@ The default main profile is `claude-main` (Claude Code). `opencode-main` makes a
 | `delegate_task` | Start a bounded sub-agent in an existing chat; accepts the same profile/model/capability choices. |
 | `wait_for_subagents`, `collect_results`, `cancel_task` | Wait for, gather or stop delegated work without touching the main session. |
 
-A Herdr bridge calls `pick_model` when a pane needs a model, then `create_chat` (or `delegate_task` for a child). `pane.report_agent` and `pane.report_metadata` record the chosen profile and model; `session.snapshot` and `events.subscribe` mirror the hub session into the pane. `hc connect` speaks the same NDJSON JSON-RPC, so `hc send` and `hc wait --children all` work against the mapped sessions. To restore a CLI session outside the hub: `agy --conversation <id>` for Antigravity, or `opencode --session <id>`; a fresh OpenCode task is `opencode run --model opencode/big-pickle "<prompt>"`.
+A Herdr bridge calls `pick_model` when a pane needs a model, then `create_chat` (or `delegate_task` for a child). `pane.report_agent` and `pane.report_metadata` record the chosen profile and model; Herdr's `session.snapshot` and `events.subscribe` reconcile the pane after reconnect. `hc connect` speaks the same NDJSON JSON-RPC, so `hc send` and `hc wait --children all` work against the mapped sessions. The bridge contract, auth and reconnection rules are in [herdr-bridge.md](herdr-bridge.md). To restore a CLI session outside the hub: `agy --conversation <id>` for Antigravity, or `opencode --session <id>`; a fresh OpenCode task is `opencode run --model opencode/big-pickle "<prompt>"`.
 
 ```json
 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
