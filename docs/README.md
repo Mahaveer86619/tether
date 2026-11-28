@@ -32,6 +32,7 @@ Start with [overview.md](product/overview.md) for what Tether is made of and how
 | [overview.md](product/overview.md) | The pieces, how a chat starts, how sessions on different devices are managed |
 | [architecture.md](architecture/architecture.md) | Components, who connects to whom, data flow, technology choices |
 | [protocol.md](architecture/protocol.md) | The wire contract between hub, agents and app: envelope, events, commands, render blocks, tool cards |
+| [herdr-bridge.md](architecture/herdr-bridge.md) | How an external Herdr pane uses Tether's MCP/REST tools and mirrors hub state into agent panes |
 | [hosting.md](architecture/hosting.md) | How sessions run (tmux, headless, your own terminal) and how hooks track their state and approvals |
 | [sessions.md](architecture/sessions.md) | How Claude Code sessions are discovered, started, mirrored, resumed and forked |
 | [chats.md](architecture/chats.md) | Chats: how they map to sessions, where they run (targets), the lead and its tasks, the context store |
