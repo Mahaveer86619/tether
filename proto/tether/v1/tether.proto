@@ -217,6 +217,37 @@ message SessionInfo {
   // The user who started it, or whose device it is when the hub found it
   // there; set by the hub.
   string owner = 32;
+  // The core profile that launched it, and its place in a chat's work.
+  string profile = 33;
+  string task_role = 34;
+  // The chat task this session was delegated for, when it is a sub-agent.
+  string parent_task = 35;
+}
+
+// A core-owned engine profile. The hub resolves it and sends it to the agent,
+// so per-device commands and token policy stay outside the client.
+message AgentProfile {
+  string id = 1;
+  // "main" or "subagent".
+  string kind = 2;
+  // Command on an agent machine, e.g. claude, agy or opencode.
+  string command = 3;
+  string model = 4;
+  repeated string args = 5;
+  // "claude_stream" for Claude's stream-json, or "line" for plain output.
+  string status_protocol = 6;
+  repeated string capabilities = 7;
+  string budget_policy = 8;
+  int32 context_window = 9;
+  bool free_tier = 10;
+  int32 user_rank = 11;
+  string description = 12;
+  // The provider whose budget this profile draws from, when it has one.
+  string provider = 13;
+}
+
+message AgentProfileList {
+  repeated AgentProfile profiles = 1;
 }
 
 // A session no longer exists on its node (its transcript was deleted).
@@ -348,6 +379,12 @@ message CreateSession {
   // A hub session: run on the hub's machine in a fresh scratch folder.
   // node and cwd may be left empty.
   bool scratch = 9;
+  // Core profile id, resolved by the hub before the command reaches an agent.
+  string profile = 10;
+  string task_role = 11;
+  string parent_task = 12;
+  // What the task needs from a model: long_context, review, test, etc.
+  string capability = 13;
 }
 
 // REST body for POST /api/v1/sessions/{id}/archive.
@@ -410,6 +447,10 @@ message Welcome {
   // only, for showing who owns what).
   User me = 12;
   repeated User users = 13;
+  // Core-owned engine choices and token routing, for clients that have no
+  // separate setup step (Herdr, tetherctl and the optional apps).
+  AgentProfileList profiles = 14;
+  TokenStatus token_status = 15;
 }
 
 // A person using the hub. The hub's owner is the first user and an admin.
@@ -612,6 +653,10 @@ message AgentCommand {
     // Passed to Claude Code as --append-system-prompt. Agents before 0.16
     // ignore it, so the hub only sets it for newer ones.
     string system_prompt = 15;
+    // The resolved profile the agent should launch.
+    AgentProfile profile = 16;
+    string task_role = 17;
+    string parent_task = 18;
   }
 
   message SendInput {
@@ -972,6 +1017,74 @@ message UsageSummary {
   repeated SessionUsage sessions = 2;
 }
 
+// A provider's place in core's routing policy, as seen by every client.
+message ProviderBudget {
+  string provider = 1;
+  string model = 2;
+  int32 rank = 3;
+  bool enabled = 4;
+  bool free_tier = 5;
+  int64 budget_tokens = 6;
+  int64 used_tokens = 7;
+  int64 remaining_tokens = 8;
+  // "ok", "near_limit", "exhausted" or "unavailable".
+  string quota_state = 9;
+  string fallback_provider = 10;
+  int32 context_window = 11;
+  repeated string capabilities = 12;
+  // Why core ranks this model here: privacy notes, free-tier limits, etc.
+  string notes = 13;
+}
+
+// Core-owned token state for one person. Every authorized client sees the
+// same catalog; budgets and decisions are kept per user.
+message TokenStatus {
+  string user = 1;
+  repeated ProviderBudget providers = 2;
+  int64 updated_ms = 3;
+  // The last routing decision, and why it was made.
+  string last_decision = 4;
+  string last_reason = 5;
+}
+
+message TokenStatusList {
+  repeated TokenStatus statuses = 1;
+}
+
+// PUT /api/v1/token/budgets: admin-only changes to the routing policy.
+message BudgetSet {
+  string provider = 1;
+  optional int64 budget_tokens = 2;
+  optional int32 rank = 3;
+  optional bool enabled = 4;
+  // A provider may hold many models; empty changes the whole provider.
+  string model = 5;
+  // "ok", "near_limit", "exhausted" or "unavailable"; empty leaves it.
+  string quota_state = 6;
+}
+
+// A recorded model call, kept by core for budgeting and fallback.
+message UsageEvent {
+  string id = 1;
+  string user = 2;
+  string chat = 3;
+  string session = 4;
+  string task_role = 5;
+  string provider = 6;
+  string model = 7;
+  int64 input_tokens = 8;
+  int64 output_tokens = 9;
+  int64 cache_write_tokens = 10;
+  int64 cache_read_tokens = 11;
+  double cost_usd = 12;
+  string quota_state = 13;
+  int64 at_ms = 14;
+}
+
+message UsageEventList {
+  repeated UsageEvent events = 1;
+}
+
 // ---- Workspaces (REST) ----
 
 // A folder on a node that new projects are made in, e.g. ~/projects.
@@ -1127,6 +1240,10 @@ message Chat {
   // the shares; others see only their own).
   string owner = 11;
   repeated ChatShare shares = 12;
+  // The core profile and role of the chat's lead session.
+  string profile = 13;
+  // "main" or "subagent"; the hub keeps clients from forking a lead.
+  string mode = 14;
 }
 
 // Where a chat's work runs.
@@ -1166,6 +1283,11 @@ message CreateChat {
   string session = 7;
   // Made by the client; stamped on the first message like SendMessage's.
   string client_id = 8;
+  // Core profile and chat mode; empty profile uses the main default.
+  string profile = 9;
+  string mode = 10;
+  // What the first session needs from a model; core uses it to rank free tiers.
+  string capability = 11;
 }
 
 // PATCH /api/v1/chats/{id}. Unset fields stay as they are.

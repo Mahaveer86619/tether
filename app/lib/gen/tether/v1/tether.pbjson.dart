@@ -666,6 +666,9 @@ const SessionInfo$json = {
     {'1': 'backed_up_ms', '3': 30, '4': 1, '5': 3, '10': 'backedUpMs'},
     {'1': 'backed_up_bytes', '3': 31, '4': 1, '5': 3, '10': 'backedUpBytes'},
     {'1': 'owner', '3': 32, '4': 1, '5': 9, '10': 'owner'},
+    {'1': 'profile', '3': 33, '4': 1, '5': 9, '10': 'profile'},
+    {'1': 'task_role', '3': 34, '4': 1, '5': 9, '10': 'taskRole'},
+    {'1': 'parent_task', '3': 35, '4': 1, '5': 9, '10': 'parentTask'},
   ],
 };
 
@@ -689,7 +692,59 @@ final $typed_data.Uint8List sessionInfoDescriptor = $convert.base64Decode(
     '9kZRIkCg5tb2RlX3JldmVydF9tcxgcIAEoA1IMbW9kZVJldmVydE1zEiQKDm1vZGVfcmV2ZXJ0'
     'X3RvGB0gASgJUgxtb2RlUmV2ZXJ0VG8SIAoMYmFja2VkX3VwX21zGB4gASgDUgpiYWNrZWRVcE'
     '1zEiYKD2JhY2tlZF91cF9ieXRlcxgfIAEoA1INYmFja2VkVXBCeXRlcxIUCgVvd25lchggIAEo'
-    'CVIFb3duZXI=');
+    'CVIFb3duZXISGAoHcHJvZmlsZRghIAEoCVIHcHJvZmlsZRIbCgl0YXNrX3JvbGUYIiABKAlSCH'
+    'Rhc2tSb2xlEh8KC3BhcmVudF90YXNrGCMgASgJUgpwYXJlbnRUYXNr');
+
+@$core.Deprecated('Use agentProfileDescriptor instead')
+const AgentProfile$json = {
+  '1': 'AgentProfile',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'kind', '3': 2, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'command', '3': 3, '4': 1, '5': 9, '10': 'command'},
+    {'1': 'model', '3': 4, '4': 1, '5': 9, '10': 'model'},
+    {'1': 'args', '3': 5, '4': 3, '5': 9, '10': 'args'},
+    {'1': 'status_protocol', '3': 6, '4': 1, '5': 9, '10': 'statusProtocol'},
+    {'1': 'capabilities', '3': 7, '4': 3, '5': 9, '10': 'capabilities'},
+    {'1': 'budget_policy', '3': 8, '4': 1, '5': 9, '10': 'budgetPolicy'},
+    {'1': 'context_window', '3': 9, '4': 1, '5': 5, '10': 'contextWindow'},
+    {'1': 'free_tier', '3': 10, '4': 1, '5': 8, '10': 'freeTier'},
+    {'1': 'user_rank', '3': 11, '4': 1, '5': 5, '10': 'userRank'},
+    {'1': 'description', '3': 12, '4': 1, '5': 9, '10': 'description'},
+    {'1': 'provider', '3': 13, '4': 1, '5': 9, '10': 'provider'},
+  ],
+};
+
+/// Descriptor for `AgentProfile`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List agentProfileDescriptor = $convert.base64Decode(
+    'CgxBZ2VudFByb2ZpbGUSDgoCaWQYASABKAlSAmlkEhIKBGtpbmQYAiABKAlSBGtpbmQSGAoHY2'
+    '9tbWFuZBgDIAEoCVIHY29tbWFuZBIUCgVtb2RlbBgEIAEoCVIFbW9kZWwSEgoEYXJncxgFIAMo'
+    'CVIEYXJncxInCg9zdGF0dXNfcHJvdG9jb2wYBiABKAlSDnN0YXR1c1Byb3RvY29sEiIKDGNhcG'
+    'FiaWxpdGllcxgHIAMoCVIMY2FwYWJpbGl0aWVzEiMKDWJ1ZGdldF9wb2xpY3kYCCABKAlSDGJ1'
+    'ZGdldFBvbGljeRIlCg5jb250ZXh0X3dpbmRvdxgJIAEoBVINY29udGV4dFdpbmRvdxIbCglmcm'
+    'VlX3RpZXIYCiABKAhSCGZyZWVUaWVyEhsKCXVzZXJfcmFuaxgLIAEoBVIIdXNlclJhbmsSIAoL'
+    'ZGVzY3JpcHRpb24YDCABKAlSC2Rlc2NyaXB0aW9uEhoKCHByb3ZpZGVyGA0gASgJUghwcm92aW'
+    'Rlcg==');
+
+@$core.Deprecated('Use agentProfileListDescriptor instead')
+const AgentProfileList$json = {
+  '1': 'AgentProfileList',
+  '2': [
+    {
+      '1': 'profiles',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.AgentProfile',
+      '10': 'profiles'
+    },
+  ],
+};
+
+/// Descriptor for `AgentProfileList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List agentProfileListDescriptor = $convert.base64Decode(
+    'ChBBZ2VudFByb2ZpbGVMaXN0EjMKCHByb2ZpbGVzGAEgAygLMhcudGV0aGVyLnYxLkFnZW50UH'
+    'JvZmlsZVIIcHJvZmlsZXM=');
 
 @$core.Deprecated('Use sessionRemovedDescriptor instead')
 const SessionRemoved$json = {
@@ -983,6 +1038,10 @@ const CreateSession$json = {
     {'1': 'create_cwd', '3': 7, '4': 1, '5': 8, '10': 'createCwd'},
     {'1': 'attachments', '3': 8, '4': 3, '5': 9, '10': 'attachments'},
     {'1': 'scratch', '3': 9, '4': 1, '5': 8, '10': 'scratch'},
+    {'1': 'profile', '3': 10, '4': 1, '5': 9, '10': 'profile'},
+    {'1': 'task_role', '3': 11, '4': 1, '5': 9, '10': 'taskRole'},
+    {'1': 'parent_task', '3': 12, '4': 1, '5': 9, '10': 'parentTask'},
+    {'1': 'capability', '3': 13, '4': 1, '5': 9, '10': 'capability'},
   ],
 };
 
@@ -992,7 +1051,9 @@ final $typed_data.Uint8List createSessionDescriptor = $convert.base64Decode(
     'oGcHJvbXB0GAMgASgJUgZwcm9tcHQSFAoFbW9kZWwYBCABKAlSBW1vZGVsEicKD3Blcm1pc3Np'
     'b25fbW9kZRgFIAEoCVIOcGVybWlzc2lvbk1vZGUSEgoEbmFtZRgGIAEoCVIEbmFtZRIdCgpjcm'
     'VhdGVfY3dkGAcgASgIUgljcmVhdGVDd2QSIAoLYXR0YWNobWVudHMYCCADKAlSC2F0dGFjaG1l'
-    'bnRzEhgKB3NjcmF0Y2gYCSABKAhSB3NjcmF0Y2g=');
+    'bnRzEhgKB3NjcmF0Y2gYCSABKAhSB3NjcmF0Y2gSGAoHcHJvZmlsZRgKIAEoCVIHcHJvZmlsZR'
+    'IbCgl0YXNrX3JvbGUYCyABKAlSCHRhc2tSb2xlEh8KC3BhcmVudF90YXNrGAwgASgJUgpwYXJl'
+    'bnRUYXNrEh4KCmNhcGFiaWxpdHkYDSABKAlSCmNhcGFiaWxpdHk=');
 
 @$core.Deprecated('Use archiveSessionDescriptor instead')
 const ArchiveSession$json = {
@@ -1126,6 +1187,22 @@ const Welcome$json = {
       '6': '.tether.v1.User',
       '10': 'users'
     },
+    {
+      '1': 'profiles',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.AgentProfileList',
+      '10': 'profiles'
+    },
+    {
+      '1': 'token_status',
+      '3': 15,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.TokenStatus',
+      '10': 'tokenStatus'
+    },
   ],
 };
 
@@ -1140,7 +1217,9 @@ final $typed_data.Uint8List welcomeDescriptor = $convert.base64Decode(
     'ZW50X2lwGAggASgJUghjbGllbnRJcBIlCgVjaGF0cxgJIAMoCzIPLnRldGhlci52MS5DaGF0Ug'
     'VjaGF0cxIxCgZ1cGRhdGUYCiABKAsyGS50ZXRoZXIudjEuVXBkYXRlTWFuaWZlc3RSBnVwZGF0'
     'ZRIdCgpub3RpZnlfdXJsGAsgASgJUglub3RpZnlVcmwSHwoCbWUYDCABKAsyDy50ZXRoZXIudj'
-    'EuVXNlclICbWUSJQoFdXNlcnMYDSADKAsyDy50ZXRoZXIudjEuVXNlclIFdXNlcnM=');
+    'EuVXNlclICbWUSJQoFdXNlcnMYDSADKAsyDy50ZXRoZXIudjEuVXNlclIFdXNlcnMSNwoIcHJv'
+    'ZmlsZXMYDiABKAsyGy50ZXRoZXIudjEuQWdlbnRQcm9maWxlTGlzdFIIcHJvZmlsZXMSOQoMdG'
+    '9rZW5fc3RhdHVzGA8gASgLMhYudGV0aGVyLnYxLlRva2VuU3RhdHVzUgt0b2tlblN0YXR1cw==');
 
 @$core.Deprecated('Use userDescriptor instead')
 const User$json = {
@@ -1679,6 +1758,16 @@ const AgentCommand_StartRun$json = {
     {'1': 'restore_codebase', '3': 13, '4': 1, '5': 9, '10': 'restoreCodebase'},
     {'1': 'restore_snapshot', '3': 14, '4': 1, '5': 9, '10': 'restoreSnapshot'},
     {'1': 'system_prompt', '3': 15, '4': 1, '5': 9, '10': 'systemPrompt'},
+    {
+      '1': 'profile',
+      '3': 16,
+      '4': 1,
+      '5': 11,
+      '6': '.tether.v1.AgentProfile',
+      '10': 'profile'
+    },
+    {'1': 'task_role', '3': 17, '4': 1, '5': 9, '10': 'taskRole'},
+    {'1': 'parent_task', '3': 18, '4': 1, '5': 9, '10': 'parentTask'},
   ],
 };
 
@@ -1907,7 +1996,7 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'RyeRIQCgNrZXkYASABKAlSA2tleRIUCgV2YWx1ZRgCIAEoCVIFdmFsdWU6AjgBGqcBCgtTeW5j'
     'UHJvamVjdBIOCgJpZBgBIAEoCVICaWQSEgoEY2hhdBgCIAEoCVIEY2hhdBIcCglkaXJlY3Rpb2'
     '4YAyABKAlSCWRpcmVjdGlvbhIQCgNjd2QYBCABKAlSA2N3ZBISCgRyZXBvGAUgASgJUgRyZXBv'
-    'EhYKBmJyYW5jaBgGIAEoCVIGYnJhbmNoEhgKB2V4Y2x1ZGUYByADKAlSB2V4Y2x1ZGUa5wMKCF'
+    'EhYKBmJyYW5jaBgGIAEoCVIGYnJhbmNoEhgKB2V4Y2x1ZGUYByADKAlSB2V4Y2x1ZGUa2AQKCF'
     'N0YXJ0UnVuEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24SEAoDY3dkGAIgASgJUgNjd2QSFgoG'
     'cHJvbXB0GAMgASgJUgZwcm9tcHQSFAoFbW9kZWwYBCABKAlSBW1vZGVsEicKD3Blcm1pc3Npb2'
     '5fbW9kZRgFIAEoCVIOcGVybWlzc2lvbk1vZGUSEgoEbmFtZRgGIAEoCVIEbmFtZRIWCgZyZXN1'
@@ -1916,29 +2005,31 @@ final $typed_data.Uint8List agentCommandDescriptor = $convert.base64Decode(
     'YXR0YWNobWVudHMSGAoHc2NyYXRjaBgLIAEoCFIHc2NyYXRjaBItChJyZXN0b3JlX3RyYW5zY3'
     'JpcHQYDCABKAlSEXJlc3RvcmVUcmFuc2NyaXB0EikKEHJlc3RvcmVfY29kZWJhc2UYDSABKAlS'
     'D3Jlc3RvcmVDb2RlYmFzZRIpChByZXN0b3JlX3NuYXBzaG90GA4gASgJUg9yZXN0b3JlU25hcH'
-    'Nob3QSIwoNc3lzdGVtX3Byb21wdBgPIAEoCVIMc3lzdGVtUHJvbXB0Gr4BCglTZW5kSW5wdXQS'
-    'GAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhISCgR0ZXh0GAIgASgJUgR0ZXh0EjUKC2F0dGFjaG'
-    '1lbnRzGAMgAygLMhMudGV0aGVyLnYxLkFydGlmYWN0UgthdHRhY2htZW50cxInCg9wZXJtaXNz'
-    'aW9uX21vZGUYBCABKAlSDnBlcm1pc3Npb25Nb2RlEiMKDXN5c3RlbV9wcm9tcHQYBSABKAlSDH'
-    'N5c3RlbVByb21wdBpHCgtTeW5jSGlzdG9yeRI4Cglwb3NpdGlvbnMYASADKAsyGi50ZXRoZXIu'
-    'djEuSGlzdG9yeVBvc2l0aW9uUglwb3NpdGlvbnMaUgoKSGlzdG9yeUFjaxIYCgdzZXNzaW9uGA'
-    'EgASgJUgdzZXNzaW9uEhIKBGZpbGUYAiABKAlSBGZpbGUSFgoGb2Zmc2V0GAMgASgDUgZvZmZz'
-    'ZXQaVAoKU2VsZlVwZGF0ZRIYCgd2ZXJzaW9uGAEgASgJUgd2ZXJzaW9uEiwKBWFzc2V0GAIgAS'
-    'gLMhYudGV0aGVyLnYxLlVwZGF0ZUFzc2V0UgVhc3NldBo3CgdTZXRNb2RlEhgKB3Nlc3Npb24Y'
-    'ASABKAlSB3Nlc3Npb24SEgoEbW9kZRgCIAEoCVIEbW9kZRolCglJbnRlcnJ1cHQSGAoHc2Vzc2'
-    'lvbhgBIAEoCVIHc2Vzc2lvbhpDCgZNaXJyb3ISGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhIf'
-    'Cgtmcm9tX29mZnNldBgCIAEoA1IKZnJvbU9mZnNldBomCgpTdG9wTWlycm9yEhgKB3Nlc3Npb2'
-    '4YASABKAlSB3Nlc3Npb24aIAoEU3RvcBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiIKBkZv'
-    'cmdldBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGiwKEFVwbG9hZFRyYW5zY3JpcHQSGAoHc2'
-    'Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhpdChBTbmFwc2hvdENvZGViYXNlEi8KCGNvZGViYXNlGAEg'
-    'ASgLMhMudGV0aGVyLnYxLkNvZGViYXNlUghjb2RlYmFzZRIYCgdzZXNzaW9uGAIgASgJUgdzZX'
-    'NzaW9uGiUKDVNjYW5Db2RlYmFzZXMSFAoFcm9vdHMYASADKAlSBXJvb3RzGikKDUNhcHR1cmVT'
-    'Y3JlZW4SGAoHc2Vzc2lvbhgBIAEoCVIHc2Vzc2lvbhqXAQoOQmFja3VwU2Vzc2lvbnMSSgoGc3'
-    'RvcmVkGAEgAygLMjIudGV0aGVyLnYxLkFnZW50Q29tbWFuZC5CYWNrdXBTZXNzaW9ucy5TdG9y'
-    'ZWRFbnRyeVIGc3RvcmVkGjkKC1N0b3JlZEVudHJ5EhAKA2tleRgBIAEoCVIDa2V5EhQKBXZhbH'
-    'VlGAIgASgDUgV2YWx1ZToCOAEabgoPRmV0Y2hBdHRhY2htZW50EhgKB3Nlc3Npb24YASABKAlS'
-    'B3Nlc3Npb24SEAoDY3dkGAIgASgJUgNjd2QSLwoIYXJ0aWZhY3QYAyABKAsyEy50ZXRoZXIudj'
-    'EuQXJ0aWZhY3RSCGFydGlmYWN0QgQKAm9w');
+    'Nob3QSIwoNc3lzdGVtX3Byb21wdBgPIAEoCVIMc3lzdGVtUHJvbXB0EjEKB3Byb2ZpbGUYECAB'
+    'KAsyFy50ZXRoZXIudjEuQWdlbnRQcm9maWxlUgdwcm9maWxlEhsKCXRhc2tfcm9sZRgRIAEoCV'
+    'IIdGFza1JvbGUSHwoLcGFyZW50X3Rhc2sYEiABKAlSCnBhcmVudFRhc2savgEKCVNlbmRJbnB1'
+    'dBIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uEhIKBHRleHQYAiABKAlSBHRleHQSNQoLYXR0YW'
+    'NobWVudHMYAyADKAsyEy50ZXRoZXIudjEuQXJ0aWZhY3RSC2F0dGFjaG1lbnRzEicKD3Blcm1p'
+    'c3Npb25fbW9kZRgEIAEoCVIOcGVybWlzc2lvbk1vZGUSIwoNc3lzdGVtX3Byb21wdBgFIAEoCV'
+    'IMc3lzdGVtUHJvbXB0GkcKC1N5bmNIaXN0b3J5EjgKCXBvc2l0aW9ucxgBIAMoCzIaLnRldGhl'
+    'ci52MS5IaXN0b3J5UG9zaXRpb25SCXBvc2l0aW9ucxpSCgpIaXN0b3J5QWNrEhgKB3Nlc3Npb2'
+    '4YASABKAlSB3Nlc3Npb24SEgoEZmlsZRgCIAEoCVIEZmlsZRIWCgZvZmZzZXQYAyABKANSBm9m'
+    'ZnNldBpUCgpTZWxmVXBkYXRlEhgKB3ZlcnNpb24YASABKAlSB3ZlcnNpb24SLAoFYXNzZXQYAi'
+    'ABKAsyFi50ZXRoZXIudjEuVXBkYXRlQXNzZXRSBWFzc2V0GjcKB1NldE1vZGUSGAoHc2Vzc2lv'
+    'bhgBIAEoCVIHc2Vzc2lvbhISCgRtb2RlGAIgASgJUgRtb2RlGiUKCUludGVycnVwdBIYCgdzZX'
+    'NzaW9uGAEgASgJUgdzZXNzaW9uGkMKBk1pcnJvchIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9u'
+    'Eh8KC2Zyb21fb2Zmc2V0GAIgASgDUgpmcm9tT2Zmc2V0GiYKClN0b3BNaXJyb3ISGAoHc2Vzc2'
+    'lvbhgBIAEoCVIHc2Vzc2lvbhogCgRTdG9wEhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aIgoG'
+    'Rm9yZ2V0EhgKB3Nlc3Npb24YASABKAlSB3Nlc3Npb24aLAoQVXBsb2FkVHJhbnNjcmlwdBIYCg'
+    'dzZXNzaW9uGAEgASgJUgdzZXNzaW9uGl0KEFNuYXBzaG90Q29kZWJhc2USLwoIY29kZWJhc2UY'
+    'ASABKAsyEy50ZXRoZXIudjEuQ29kZWJhc2VSCGNvZGViYXNlEhgKB3Nlc3Npb24YAiABKAlSB3'
+    'Nlc3Npb24aJQoNU2NhbkNvZGViYXNlcxIUCgVyb290cxgBIAMoCVIFcm9vdHMaKQoNQ2FwdHVy'
+    'ZVNjcmVlbhIYCgdzZXNzaW9uGAEgASgJUgdzZXNzaW9uGpcBCg5CYWNrdXBTZXNzaW9ucxJKCg'
+    'ZzdG9yZWQYASADKAsyMi50ZXRoZXIudjEuQWdlbnRDb21tYW5kLkJhY2t1cFNlc3Npb25zLlN0'
+    'b3JlZEVudHJ5UgZzdG9yZWQaOQoLU3RvcmVkRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSFAoFdm'
+    'FsdWUYAiABKANSBXZhbHVlOgI4ARpuCg9GZXRjaEF0dGFjaG1lbnQSGAoHc2Vzc2lvbhgBIAEo'
+    'CVIHc2Vzc2lvbhIQCgNjd2QYAiABKAlSA2N3ZBIvCghhcnRpZmFjdBgDIAEoCzITLnRldGhlci'
+    '52MS5BcnRpZmFjdFIIYXJ0aWZhY3RCBAoCb3A=');
 
 @$core.Deprecated('Use codebaseDescriptor instead')
 const Codebase$json = {
@@ -2592,6 +2683,195 @@ final $typed_data.Uint8List usageSummaryDescriptor = $convert.base64Decode(
     'CgxVc2FnZVN1bW1hcnkSKgoFbm9kZXMYASADKAsyFC50ZXRoZXIudjEuTm9kZVVzYWdlUgVub2'
     'RlcxIzCghzZXNzaW9ucxgCIAMoCzIXLnRldGhlci52MS5TZXNzaW9uVXNhZ2VSCHNlc3Npb25z');
 
+@$core.Deprecated('Use providerBudgetDescriptor instead')
+const ProviderBudget$json = {
+  '1': 'ProviderBudget',
+  '2': [
+    {'1': 'provider', '3': 1, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'model', '3': 2, '4': 1, '5': 9, '10': 'model'},
+    {'1': 'rank', '3': 3, '4': 1, '5': 5, '10': 'rank'},
+    {'1': 'enabled', '3': 4, '4': 1, '5': 8, '10': 'enabled'},
+    {'1': 'free_tier', '3': 5, '4': 1, '5': 8, '10': 'freeTier'},
+    {'1': 'budget_tokens', '3': 6, '4': 1, '5': 3, '10': 'budgetTokens'},
+    {'1': 'used_tokens', '3': 7, '4': 1, '5': 3, '10': 'usedTokens'},
+    {'1': 'remaining_tokens', '3': 8, '4': 1, '5': 3, '10': 'remainingTokens'},
+    {'1': 'quota_state', '3': 9, '4': 1, '5': 9, '10': 'quotaState'},
+    {
+      '1': 'fallback_provider',
+      '3': 10,
+      '4': 1,
+      '5': 9,
+      '10': 'fallbackProvider'
+    },
+    {'1': 'context_window', '3': 11, '4': 1, '5': 5, '10': 'contextWindow'},
+    {'1': 'capabilities', '3': 12, '4': 3, '5': 9, '10': 'capabilities'},
+    {'1': 'notes', '3': 13, '4': 1, '5': 9, '10': 'notes'},
+  ],
+};
+
+/// Descriptor for `ProviderBudget`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List providerBudgetDescriptor = $convert.base64Decode(
+    'Cg5Qcm92aWRlckJ1ZGdldBIaCghwcm92aWRlchgBIAEoCVIIcHJvdmlkZXISFAoFbW9kZWwYAi'
+    'ABKAlSBW1vZGVsEhIKBHJhbmsYAyABKAVSBHJhbmsSGAoHZW5hYmxlZBgEIAEoCFIHZW5hYmxl'
+    'ZBIbCglmcmVlX3RpZXIYBSABKAhSCGZyZWVUaWVyEiMKDWJ1ZGdldF90b2tlbnMYBiABKANSDG'
+    'J1ZGdldFRva2VucxIfCgt1c2VkX3Rva2VucxgHIAEoA1IKdXNlZFRva2VucxIpChByZW1haW5p'
+    'bmdfdG9rZW5zGAggASgDUg9yZW1haW5pbmdUb2tlbnMSHwoLcXVvdGFfc3RhdGUYCSABKAlSCn'
+    'F1b3RhU3RhdGUSKwoRZmFsbGJhY2tfcHJvdmlkZXIYCiABKAlSEGZhbGxiYWNrUHJvdmlkZXIS'
+    'JQoOY29udGV4dF93aW5kb3cYCyABKAVSDWNvbnRleHRXaW5kb3cSIgoMY2FwYWJpbGl0aWVzGA'
+    'wgAygJUgxjYXBhYmlsaXRpZXMSFAoFbm90ZXMYDSABKAlSBW5vdGVz');
+
+@$core.Deprecated('Use tokenStatusDescriptor instead')
+const TokenStatus$json = {
+  '1': 'TokenStatus',
+  '2': [
+    {'1': 'user', '3': 1, '4': 1, '5': 9, '10': 'user'},
+    {
+      '1': 'providers',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.ProviderBudget',
+      '10': 'providers'
+    },
+    {'1': 'updated_ms', '3': 3, '4': 1, '5': 3, '10': 'updatedMs'},
+    {'1': 'last_decision', '3': 4, '4': 1, '5': 9, '10': 'lastDecision'},
+    {'1': 'last_reason', '3': 5, '4': 1, '5': 9, '10': 'lastReason'},
+  ],
+};
+
+/// Descriptor for `TokenStatus`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tokenStatusDescriptor = $convert.base64Decode(
+    'CgtUb2tlblN0YXR1cxISCgR1c2VyGAEgASgJUgR1c2VyEjcKCXByb3ZpZGVycxgCIAMoCzIZLn'
+    'RldGhlci52MS5Qcm92aWRlckJ1ZGdldFIJcHJvdmlkZXJzEh0KCnVwZGF0ZWRfbXMYAyABKANS'
+    'CXVwZGF0ZWRNcxIjCg1sYXN0X2RlY2lzaW9uGAQgASgJUgxsYXN0RGVjaXNpb24SHwoLbGFzdF'
+    '9yZWFzb24YBSABKAlSCmxhc3RSZWFzb24=');
+
+@$core.Deprecated('Use tokenStatusListDescriptor instead')
+const TokenStatusList$json = {
+  '1': 'TokenStatusList',
+  '2': [
+    {
+      '1': 'statuses',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.TokenStatus',
+      '10': 'statuses'
+    },
+  ],
+};
+
+/// Descriptor for `TokenStatusList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List tokenStatusListDescriptor = $convert.base64Decode(
+    'Cg9Ub2tlblN0YXR1c0xpc3QSMgoIc3RhdHVzZXMYASADKAsyFi50ZXRoZXIudjEuVG9rZW5TdG'
+    'F0dXNSCHN0YXR1c2Vz');
+
+@$core.Deprecated('Use budgetSetDescriptor instead')
+const BudgetSet$json = {
+  '1': 'BudgetSet',
+  '2': [
+    {'1': 'provider', '3': 1, '4': 1, '5': 9, '10': 'provider'},
+    {
+      '1': 'budget_tokens',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '9': 0,
+      '10': 'budgetTokens',
+      '17': true
+    },
+    {'1': 'rank', '3': 3, '4': 1, '5': 5, '9': 1, '10': 'rank', '17': true},
+    {
+      '1': 'enabled',
+      '3': 4,
+      '4': 1,
+      '5': 8,
+      '9': 2,
+      '10': 'enabled',
+      '17': true
+    },
+    {'1': 'model', '3': 5, '4': 1, '5': 9, '10': 'model'},
+    {'1': 'quota_state', '3': 6, '4': 1, '5': 9, '10': 'quotaState'},
+  ],
+  '8': [
+    {'1': '_budget_tokens'},
+    {'1': '_rank'},
+    {'1': '_enabled'},
+  ],
+};
+
+/// Descriptor for `BudgetSet`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List budgetSetDescriptor = $convert.base64Decode(
+    'CglCdWRnZXRTZXQSGgoIcHJvdmlkZXIYASABKAlSCHByb3ZpZGVyEigKDWJ1ZGdldF90b2tlbn'
+    'MYAiABKANIAFIMYnVkZ2V0VG9rZW5ziAEBEhcKBHJhbmsYAyABKAVIAVIEcmFua4gBARIdCgdl'
+    'bmFibGVkGAQgASgISAJSB2VuYWJsZWSIAQESFAoFbW9kZWwYBSABKAlSBW1vZGVsEh8KC3F1b3'
+    'RhX3N0YXRlGAYgASgJUgpxdW90YVN0YXRlQhAKDl9idWRnZXRfdG9rZW5zQgcKBV9yYW5rQgoK'
+    'CF9lbmFibGVk');
+
+@$core.Deprecated('Use usageEventDescriptor instead')
+const UsageEvent$json = {
+  '1': 'UsageEvent',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
+    {'1': 'user', '3': 2, '4': 1, '5': 9, '10': 'user'},
+    {'1': 'chat', '3': 3, '4': 1, '5': 9, '10': 'chat'},
+    {'1': 'session', '3': 4, '4': 1, '5': 9, '10': 'session'},
+    {'1': 'task_role', '3': 5, '4': 1, '5': 9, '10': 'taskRole'},
+    {'1': 'provider', '3': 6, '4': 1, '5': 9, '10': 'provider'},
+    {'1': 'model', '3': 7, '4': 1, '5': 9, '10': 'model'},
+    {'1': 'input_tokens', '3': 8, '4': 1, '5': 3, '10': 'inputTokens'},
+    {'1': 'output_tokens', '3': 9, '4': 1, '5': 3, '10': 'outputTokens'},
+    {
+      '1': 'cache_write_tokens',
+      '3': 10,
+      '4': 1,
+      '5': 3,
+      '10': 'cacheWriteTokens'
+    },
+    {
+      '1': 'cache_read_tokens',
+      '3': 11,
+      '4': 1,
+      '5': 3,
+      '10': 'cacheReadTokens'
+    },
+    {'1': 'cost_usd', '3': 12, '4': 1, '5': 1, '10': 'costUsd'},
+    {'1': 'quota_state', '3': 13, '4': 1, '5': 9, '10': 'quotaState'},
+    {'1': 'at_ms', '3': 14, '4': 1, '5': 3, '10': 'atMs'},
+  ],
+};
+
+/// Descriptor for `UsageEvent`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List usageEventDescriptor = $convert.base64Decode(
+    'CgpVc2FnZUV2ZW50Eg4KAmlkGAEgASgJUgJpZBISCgR1c2VyGAIgASgJUgR1c2VyEhIKBGNoYX'
+    'QYAyABKAlSBGNoYXQSGAoHc2Vzc2lvbhgEIAEoCVIHc2Vzc2lvbhIbCgl0YXNrX3JvbGUYBSAB'
+    'KAlSCHRhc2tSb2xlEhoKCHByb3ZpZGVyGAYgASgJUghwcm92aWRlchIUCgVtb2RlbBgHIAEoCV'
+    'IFbW9kZWwSIQoMaW5wdXRfdG9rZW5zGAggASgDUgtpbnB1dFRva2VucxIjCg1vdXRwdXRfdG9r'
+    'ZW5zGAkgASgDUgxvdXRwdXRUb2tlbnMSLAoSY2FjaGVfd3JpdGVfdG9rZW5zGAogASgDUhBjYW'
+    'NoZVdyaXRlVG9rZW5zEioKEWNhY2hlX3JlYWRfdG9rZW5zGAsgASgDUg9jYWNoZVJlYWRUb2tl'
+    'bnMSGQoIY29zdF91c2QYDCABKAFSB2Nvc3RVc2QSHwoLcXVvdGFfc3RhdGUYDSABKAlSCnF1b3'
+    'RhU3RhdGUSEwoFYXRfbXMYDiABKANSBGF0TXM=');
+
+@$core.Deprecated('Use usageEventListDescriptor instead')
+const UsageEventList$json = {
+  '1': 'UsageEventList',
+  '2': [
+    {
+      '1': 'events',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.tether.v1.UsageEvent',
+      '10': 'events'
+    },
+  ],
+};
+
+/// Descriptor for `UsageEventList`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List usageEventListDescriptor = $convert.base64Decode(
+    'Cg5Vc2FnZUV2ZW50TGlzdBItCgZldmVudHMYASADKAsyFS50ZXRoZXIudjEuVXNhZ2VFdmVudF'
+    'IGZXZlbnRz');
+
 @$core.Deprecated('Use workspaceRootDescriptor instead')
 const WorkspaceRoot$json = {
   '1': 'WorkspaceRoot',
@@ -2889,6 +3169,8 @@ const Chat$json = {
       '6': '.tether.v1.ChatShare',
       '10': 'shares'
     },
+    {'1': 'profile', '3': 13, '4': 1, '5': 9, '10': 'profile'},
+    {'1': 'mode', '3': 14, '4': 1, '5': 9, '10': 'mode'},
   ],
 };
 
@@ -2901,7 +3183,8 @@ final $typed_data.Uint8List chatDescriptor = $convert.base64Decode(
     'Y3RpdmVfc2Vzc2lvbhgIIAEoCVINYWN0aXZlU2Vzc2lvbhIvCghzZXNzaW9ucxgJIAMoCzITLn'
     'RldGhlci52MS5DaGF0TGlua1IIc2Vzc2lvbnMSGAoHZGVsZXRlZBgKIAEoCFIHZGVsZXRlZBIU'
     'CgVvd25lchgLIAEoCVIFb3duZXISLAoGc2hhcmVzGAwgAygLMhQudGV0aGVyLnYxLkNoYXRTaG'
-    'FyZVIGc2hhcmVz');
+    'FyZVIGc2hhcmVzEhgKB3Byb2ZpbGUYDSABKAlSB3Byb2ZpbGUSEgoEbW9kZRgOIAEoCVIEbW9k'
+    'ZQ==');
 
 @$core.Deprecated('Use chatTargetDescriptor instead')
 const ChatTarget$json = {
@@ -2956,6 +3239,9 @@ const CreateChat$json = {
     {'1': 'title', '3': 6, '4': 1, '5': 9, '10': 'title'},
     {'1': 'session', '3': 7, '4': 1, '5': 9, '10': 'session'},
     {'1': 'client_id', '3': 8, '4': 1, '5': 9, '10': 'clientId'},
+    {'1': 'profile', '3': 9, '4': 1, '5': 9, '10': 'profile'},
+    {'1': 'mode', '3': 10, '4': 1, '5': 9, '10': 'mode'},
+    {'1': 'capability', '3': 11, '4': 1, '5': 9, '10': 'capability'},
   ],
 };
 
@@ -2965,7 +3251,9 @@ final $typed_data.Uint8List createChatDescriptor = $convert.base64Decode(
     'RldGhlci52MS5DaGF0VGFyZ2V0UgZ0YXJnZXQSIAoLYXR0YWNobWVudHMYAyADKAlSC2F0dGFj'
     'aG1lbnRzEhQKBW1vZGVsGAQgASgJUgVtb2RlbBInCg9wZXJtaXNzaW9uX21vZGUYBSABKAlSDn'
     'Blcm1pc3Npb25Nb2RlEhQKBXRpdGxlGAYgASgJUgV0aXRsZRIYCgdzZXNzaW9uGAcgASgJUgdz'
-    'ZXNzaW9uEhsKCWNsaWVudF9pZBgIIAEoCVIIY2xpZW50SWQ=');
+    'ZXNzaW9uEhsKCWNsaWVudF9pZBgIIAEoCVIIY2xpZW50SWQSGAoHcHJvZmlsZRgJIAEoCVIHcH'
+    'JvZmlsZRISCgRtb2RlGAogASgJUgRtb2RlEh4KCmNhcGFiaWxpdHkYCyABKAlSCmNhcGFiaWxp'
+    'dHk=');
 
 @$core.Deprecated('Use updateChatDescriptor instead')
 const UpdateChat$json = {

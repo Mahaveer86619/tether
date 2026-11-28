@@ -147,6 +147,9 @@ type Hub struct {
 
 	update       *v1.UpdateManifest     // the newest release known
 	agentUpdates map[string]agentUpdate // node -> the update last asked of it
+
+	profiles map[string]*v1.AgentProfile // core-owned engine profiles
+	token    *tokenRouter                // core-owned model ranking and budgets
 }
 
 func New(cfg Config, st *store.Store) (*Hub, error) {
@@ -226,6 +229,12 @@ func New(cfg Config, st *store.Store) (*Hub, error) {
 		return nil, err
 	}
 	if err := h.loadUsers(); err != nil {
+		return nil, err
+	}
+	if err := h.loadProfiles(); err != nil {
+		return nil, err
+	}
+	if err := h.loadTokenRouter(); err != nil {
 		return nil, err
 	}
 	h.loadLocalUpdate()
@@ -381,6 +390,8 @@ func (h *Hub) welcome(id identity, ip string) *v1.Welcome {
 	}
 	w.Users = h.userList()
 	w.Update = h.servedManifest()
+	w.Profiles = h.profileCatalog()
+	w.TokenStatus = proto.Clone(h.ensureTokenStatus(h.tokenUser(id))).(*v1.TokenStatus)
 	return w
 }
 
@@ -505,11 +516,22 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 	if strings.TrimSpace(cs.Prompt) == "" {
 		return "", invalid("prompt is empty")
 	}
+	profile, perr := h.resolveProfile(cs.Profile, cs.TaskRole)
+	if perr != nil {
+		return "", perr
+	}
+	choice, perr := h.routeModel(h.tokenUser(as), profile, cs.Model, firstNonEmpty(cs.TaskRole, "main"), cs.Capability)
+	if perr != nil {
+		return "", perr
+	}
+	profile = choice.profile
+	cs.Model = choice.cliModel()
 	now := time.Now().UnixMilli()
 	info := &v1.SessionInfo{
 		Id: uuid.NewString(), Node: cs.Node, Cwd: cs.Cwd, Title: firstNonEmpty(cs.Name, clip(cs.Prompt, 80)),
 		State: v1.SessionState_SESSION_STATE_RUNNING, CreatedMs: now, UpdatedMs: now, LastPrompt: cs.Prompt, Model: cs.Model,
 		Scratch: cs.Scratch, Owner: firstNonEmpty(as.userID(), h.ownerID),
+		Profile: profile.Id, TaskRole: firstNonEmpty(cs.TaskRole, "main"), ParentTask: cs.ParentTask,
 	}
 	attachments, aerr := h.attachments(cs.Attachments, as, "")
 	if aerr != nil {
@@ -527,6 +549,7 @@ func (h *Hub) startSession(cs *v1.CreateSession, from string, extra startExtra) 
 	agent.Send(command(&v1.AgentCommand{Op: &v1.AgentCommand_Start{Start: &v1.AgentCommand_StartRun{
 		Session: info.Id, Cwd: cs.Cwd, Prompt: prompt, Model: cs.Model, PermissionMode: cs.PermissionMode, Name: cs.Name, CreateCwd: cs.CreateCwd,
 		Attachments: attachments, Scratch: cs.Scratch, SystemPrompt: extra.systemPrompt,
+		Profile: profile, TaskRole: info.TaskRole, ParentTask: info.ParentTask,
 	}}}))
 	return info.Id, nil
 }
@@ -914,6 +937,11 @@ func (h *Hub) applyPatch(s string, p render.Patch) {
 	if p.Cost != nil {
 		n.LastCostUsd = *p.Cost
 	}
+	if p.Usage != nil {
+		u := proto.Clone(p.Usage).(*v1.UsageEntry)
+		u.Session = s
+		h.recordUsageEvent(s, firstNonEmpty(u.Model, n.Model), u.MessageId, u.Input, u.Output, u.CacheWrite, u.CacheRead, n.LastCostUsd, u.TsMs)
+	}
 	// A pending switch wins over transcript lines written before it landed.
 	if p.Mode != "" && !h.switchingMode(s) {
 		n.PermissionMode = p.Mode
@@ -941,6 +969,9 @@ func mergePatch(dst *render.Patch, p render.Patch) {
 	}
 	if p.Cost != nil {
 		dst.Cost = p.Cost
+	}
+	if p.Usage != nil {
+		dst.Usage = p.Usage
 	}
 	if p.Mode != "" {
 		dst.Mode = p.Mode
@@ -1124,6 +1155,15 @@ func (h *Hub) putNode(st *v1.NodeStatus) {
 	h.broadcast(&v1.Frame{Body: &v1.Frame_NodeStatus{NodeStatus: proto.Clone(st).(*v1.NodeStatus)}})
 	if st.Online {
 		h.maybeUpdateAgent(st.Node)
+	}
+}
+
+// broadcastTokenStatus refreshes each client's profile and budget view with
+// connect-time state, so Herdr and the apps agree after a policy change.
+// Caller holds h.mu.
+func (h *Hub) broadcastTokenStatus() {
+	for c := range h.clients {
+		c.conn.Send(&v1.Frame{Body: &v1.Frame_Welcome{Welcome: h.welcome(c.id, c.ip)}})
 	}
 }
 

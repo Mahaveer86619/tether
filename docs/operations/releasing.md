@@ -1,6 +1,8 @@
 # Releasing and updating
 
-A release is one version number for everything: the hub, the agents, `tetherctl` and both apps. Tagging `vX.Y.Z` builds, publishes and deploys it. The hub's machine can do all of that alone, with no laptop connected. Apps and agents then update from the hub.
+A release is one version number for everything through `0.20.0`: the hub, the agents, `tetherctl` and both apps. Tagging `vX.Y.Z` builds, publishes and deploys it. The hub's machine can do all of that alone, with no laptop connected. Apps and agents then update from the hub.
+
+For v1, releases split into independent tracks: `core-vX.Y.Z` for the hub, agents, `tetherctl` and MCP surface, and `app-vX.Y.Z` for the optional Flutter apps. The scripts and feeds below still describe the unified process until [split release tracks](../plans/core-first-v1.md#separate-release-tracks) is implemented ([#42](https://github.com/Mahaveer86619/tether/issues/42)); `v0.20.0` remains the last unified tag. Core-only releases must not require an app build, and no `1.0` tag is cut before token routing and fallback are complete.
 
 ## Versions
 

@@ -48,6 +48,7 @@ Start with [overview.md](product/overview.md) for what Tether is made of and how
 | [remote-projects.md](plans/remote-projects.md) | A chat made remote: the code kept in step on another device through a repo on the hub, secrets served from the vault, live progress |
 | [token-pool.md](plans/token-pool.md) | Tracking tokens and the 5-hour, day and week limits, learning when you use Tether, scheduling long work into your free time, and a pool where free frames are offered and booked between users |
 | [teams.md](plans/teams.md) | Projects as real objects with a project chat and spawned sessions in the sidebar, one-off chats kept quiet, then users, workspaces, roles and lent devices |
+| [core-first-v1.md](plans/core-first-v1.md) | **The v1 direction**: core as the MVP on every device, apps optional, Herdr as an external client, hub-started chats, main/sub-agents, token routing and split release tracks |
 | [harness.md](plans/harness.md) | What Tether is as a harness, what a harness has, what Tether has and adds, and the order of what is missing |
 | [prompt-desk.md](plans/prompt-desk.md) | Rewind a chat to an earlier prompt, saved rules, searching and running skills (scripts included), insights from your own data, context management |
 | [shared-workspace.md](plans/shared-workspace.md) | A real-time workspace held on the hub and kept in step on every device, and jobs (servers, long scripts) that run on any device and can be paused and resumed |

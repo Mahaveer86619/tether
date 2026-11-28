@@ -4,8 +4,10 @@ The source of truth is [`proto/tether/v1`](../../proto/tether/v1): `tether.proto
 
 There are two hops:
 
-- **Agent ↔ hub:** carries Claude Code output *raw*. Agents never interpret it.
-- **Hub ↔ app:** carries rendered, typed timeline items. The app never sees Claude Code's raw format.
+- **Agent ↔ hub:** carries the configured CLI's output *raw*. Agents never interpret it.
+- **Hub ↔ client:** carries rendered, typed timeline items plus chat, session, job and token-status events. A client - app, `tetherctl`, MCP caller or Herdr bridge - never sees raw agent output.
+
+The v1 boundary is [core-first-v1.md](../plans/core-first-v1.md): every chat is created and owned at the hub, and Herdr is an external client that consumes this contract instead of a bundled Tether app. Hub-first chat creation, agent profiles, delegation tools and synced token state are added here as the core work lands.
 
 Claude is never instructed how to format replies. Whatever Claude Code emits is accepted as-is and turned into contract types by the hub (`server/internal/render`).
 
@@ -79,7 +81,7 @@ The same commands are available over HTTP, with `Authorization: Bearer <TETHER_T
 | `POST /api/v1/codebases/{id}/snapshot` | | `Ack`. Asks the codebase's node for a fresh snapshot. |
 | `GET /api/v1/codebases/{id}/snapshots` | | `SnapshotList`, newest first |
 | `GET /api/v1/chats` | | `ChatList`, newest first. Also in `Welcome.chats`, and pushed as `chat` frames when one changes. See [chats.md](chats.md). |
-| `POST /api/v1/chats` | `CreateChat {prompt, target, attachments, model, permissionMode, title, clientId}` or `{session}` | `Chat`. Starts the chat's first session where `target` says (or makes a chat of an existing session). |
+| `POST /api/v1/chats` | `CreateChat {prompt, target, attachments, model, capability, permissionMode, title, clientId, profile, mode}` or `{session}` | `Chat`. Starts the chat's first session where `target` says (or makes a chat of an existing session). In v1 this is the canonical hub-owned creation path for every client: `profile` names a core agent profile, `mode` is `main` or `subagent`, and `capability` lets core pick a model. |
 | `PATCH /api/v1/chats/{id}` | `UpdateChat {title?, archived?}` | `Chat`. An empty title hands naming back to the title job. |
 | `POST /api/v1/chats/{id}/messages` | `SendMessage {text, attachments, clientId}` | `Ack {session}`: the active session, or a new one at the chat's target if that one is gone. |
 | `POST /api/v1/chats/{id}/target` | `SetChatTarget {target, move, text}` | `Chat`. With `move`, the conversation carries over to a new session there. |
@@ -95,12 +97,56 @@ The same commands are available over HTTP, with `Authorization: Bearer <TETHER_T
 | `GET`, `POST /api/v1/projects/{repo}/devices` | `{node, allow}` | The devices allowed to receive the project's files. |
 | `POST /brain/mcp`, `GET /brain/healthz` | one MCP JSON-RPC message or batch | The second brain's MCP server (tether-brain), forwarded by the hub when started with `-brain`; 404 without one, 502 when the brain is down. See [second-brain-rust.md](../plans/second-brain-rust.md). |
 | `GET /api/v1/targets?prompt=` | | `TargetSuggestions {candidates, pick}`: the folders the user works in, best match for the prompt first, and what auto would pick |
+| `GET` / `PUT /api/v1/profiles` | `AgentProfileList` on PUT | The core-owned CLI profiles clients may name. PUT is admin-only; clients cannot supply a command or arguments of their own. |
+| `GET /api/v1/token/status` | | `TokenStatus`: every ranked `ProviderBudget` for the caller, with budget, used and remaining tokens, quota state, privacy notes and the last routing decision. Also in `Welcome.tokenStatus`. |
+| `GET /api/v1/token/events` | | `UsageEventList`: the caller's recent model calls, newest first. |
+| `PUT /api/v1/token/budgets` | `BudgetSet {provider, model, budgetTokens, rank, enabled, quotaState}` | Admin-only. Changes ranking, budget or quota for one model (or a whole provider when `model` is empty); shared with every client on the next `welcome`. |
 
 Agents also use the `SyncProject` command and its `SyncResult` frame (push the folder to the hub's repository, or pull it; see [remote-projects.md](../plans/remote-projects.md)), and `POST /api/v1/codebases/found` (`FoundCodebases`, what a scan of the workspace roots found), `POST /api/v1/codebases/{id}/manifest` (a `SnapshotManifest`; answers `MissingBlobs`), `PUT /api/v1/blobs/{sha}` (one file, checked against its hash), `POST /api/v1/codebases/{id}/snapshots` (records the snapshot), `POST /api/v1/codebases/{id}/error`, and `PUT /api/v1/codebases/{id}/env` (`EnvFiles`, sealed into the vault). To restore, the hub machine's agent reads `GET /api/v1/snapshots/{id}/manifest`, `GET /api/v1/blobs/{sha}` and `GET /api/v1/codebases/{id}/env/files`; the last one only answers requests from the hub's own machine.
 
-Errors are an `Error {code, message}` body with a matching status: `unauthorized` 401, `invalid_code` 401, `invalid` 400, `not_found` 404, `terminal_active` 409, `busy` 409, `rate_limited` 429, `node_offline` 503.
+Errors are an `Error {code, message}` body with a matching status: `unauthorized` 401, `invalid_code` 401, `invalid` 400, `unknown_model` 400, `unknown_profile` 400, `quota_exhausted` 503, `not_found` 404, `terminal_active` 409, `busy` 409, `rate_limited` 429, `node_offline` 503.
 
-Agents send `usageReport` frames with token usage per assistant message, read from the transcripts they index: input, output, cache writes and cache reads. They send what's new after each scan, and everything again on each new hub connection. The hub keeps one row per message in its `usage` table, holding the largest count seen per field.
+## Core-owned routing
+
+A client names a profile and, optionally, a capability or a model. It never supplies a CLI command. The hub resolves `AgentProfile` to an installed CLI (`claude`, `agy` or `opencode`), ranks the models in `TokenStatus`, and writes the chosen model into the session. All devices and users see the same catalog and budget state; a pinned model that is exhausted falls back to the next ranked model, then (for a sub-agent) to another profile.
+
+The default main profile is `claude-main` (Claude Code). `opencode-main` makes an OpenCode CLI session the lead agent; `opencode-worker` and `antigravity-worker` are sub-agents. Big Pickle is the highest-ranked OpenCode free model, so it is the automatic pick for a large-context sub-agent and the explicit pick when a main chat names `opencode-main`. OpenCode free models require OpenCode 1.18.0+; if a machine hides them with `OPENCODE_DISABLE_FREE_MODELS=1`, core marks them unavailable and falls back. The `notes` on each `ProviderBudget` carry the privacy caveat (for example, prompts to Big Pickle may be used to improve the model, while DeepSeek Flash and Hy4 Flash list zero retention).
+
+### MCP tools at `/mcp`
+
+`POST /mcp` takes one JSON-RPC message with `Authorization: Bearer <TETHER_TOKEN>`. `tools/list` returns these tools; `hc schema` in Herdr exposes the same OpenRPC view through a bridge.
+
+| Tool | Does |
+|---|---|
+| `list_profiles` | The core profile catalog: ids, kinds, commands, capabilities and protocol. |
+| `pick_model` | Preview the exact auto-picker result for a role, profile, capability or model pin. |
+| `token_status` | The caller's shared budgets, quota states, privacy notes, last decision and recent usage events. |
+| `budget_set` | Admin only: change rank, budget, enabled flag or quota state for every device. |
+| `create_chat` | Start a hub-owned chat: `mode` (`main`/`subagent`), `profile`, `model`, `capability`, target and first prompt. |
+| `delegate_task` | Start a bounded sub-agent in an existing chat; accepts the same profile/model/capability choices. |
+| `wait_for_subagents`, `collect_results`, `cancel_task` | Wait for, gather or stop delegated work without touching the main session. |
+
+A Herdr bridge calls `pick_model` when a pane needs a model, then `create_chat` (or `delegate_task` for a child). `pane.report_agent` and `pane.report_metadata` record the chosen profile and model; `session.snapshot` and `events.subscribe` mirror the hub session into the pane. `hc connect` speaks the same NDJSON JSON-RPC, so `hc send` and `hc wait --children all` work against the mapped sessions. To restore a CLI session outside the hub: `agy --conversation <id>` for Antigravity, or `opencode --session <id>`; a fresh OpenCode task is `opencode run --model opencode/big-pickle "<prompt>"`.
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
+  "name":"pick_model",
+  "arguments":{"mode":"subagent","capability":"long_context"}
+}}
+```
+
+The result text is JSON: `{"profile":"opencode-worker","provider":"opencode","model":"big-pickle","cli_model":"opencode/big-pickle","reason":"best ranked opencode model for long_context (rank 95, ok)"}`. The same choice is what `delegate_task` makes. To pin Big Pickle as a lead agent:
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{
+  "name":"create_chat",
+  "arguments":{"prompt":"Review this repo","mode":"main","profile":"opencode-main","model":"opencode/big-pickle"}
+}}
+```
+
+Omitting `profile` and `model` keeps Claude Code as the lead. Omitting only `model` lets core auto-pick from the catalog. `budget_set` with `quotaState: "exhausted"` makes core fall back on every device until an admin clears it with `quotaState: "ok"`.
+
+Agents send `usageReport` frames with token usage per assistant message, read from the transcripts they index: input, output, cache writes and cache reads. They send what's new after each scan, and everything again on each new hub connection. The hub keeps one row per message in its `usage` table, holding the largest count seen per field, and applies the same counts to core's `TokenStatus` budgets.
 
 `CreateSession.createCwd` makes the agent create the folder before starting: a new project in a workspace root. On tmux it also accepts Claude Code's folder-trust prompt for that folder, since the user just made it.
 

@@ -2,6 +2,19 @@
 
 What is left to build, in the order that makes sense, so the next development can be planned. [features.md](features.md) says where every feature stands; this page says what to do next and what each step depends on. Sizes: **S** is under a day, **M** a few days, **L** about a week or more, **XL** several weeks or needs its own design first.
 
+## Core-first v1 (do these before calling it 1.0)
+
+The v1 direction is [core-first-v1.md](../plans/core-first-v1.md). The engine work is tracked in [milestone 1](https://github.com/Mahaveer86619/tether/milestone/1) and comes before the rest of this pipeline:
+
+| # | Item | Size | Notes |
+|---|---|---|---|
+| C1 | Hub-owned chat creation and stable session identity | L | [#46](https://github.com/Mahaveer86619/tether/issues/46); every client calls the same hub API |
+| C2 | Agent profiles and Claude Code main + parallel Antigravity/OpenCode sub-agents | L | [#45](https://github.com/Mahaveer86619/tether/issues/45); core owns delegation tools and result aggregation |
+| C3 | Core-owned provider ranking, budgets and automatic fallback | XL | [#44](https://github.com/Mahaveer86619/tether/issues/44); hard gate for full v1, synced to every device/user |
+| C4 | Herdr external client bridge and contract | L | [#41](https://github.com/Mahaveer86619/tether/issues/41); no vendoring or forking |
+| C5 | Split core/app release tracks | M | [#42](https://github.com/Mahaveer86619/tether/issues/42); `v0.20.0` stays the last unified tag |
+| C6 | Core-first docs and getting-started updates | S | [#43](https://github.com/Mahaveer86619/tether/issues/43) |
+
 ## While the design team works
 
 [v1-spec.md](v1-spec.md) is the document for the design team. Their work is the screens; the engine underneath each feature does not wait for them. These can be built now with no UI decisions, in this order, and each ends with something the design can rely on:
@@ -44,7 +57,7 @@ Anything needing the phone or a screen (run card, history views, terminal widget
 | 13 | **Previews in the chat** | L | File card with download, image, text, code, CSV table, audio and video; result card at the end of a turn ([previews-and-guides.md](../plans/previews-and-guides.md#previews-in-the-chat)). Build on 11 |
 | 14 | **Interactive guides** | L | Page card in the chat, `present_page`, the shared kit, versions, an in-app viewer ([previews-and-guides.md](../plans/previews-and-guides.md#interactive-guides)). Uses the existing generated pages; the page card needs 11 |
 | 15 | **Remove data, or Tether** | L | Wipe orders that reach every device, even offline ones, per scope ([uninstall.md](../plans/uninstall.md)) |
-| 16 | **Other LLM providers** | XL | The Claude CLI, your own API keys and base URLs, local servers, custom CLI agents; keys encrypted on the hub; a settings screen. Needs a design doc first (what a "session" means for a provider with no CLI) |
+| 16 | **Other LLM providers** | XL | Folded into C1-C3 for v1: provider ranking and budgets live in core, with Antigravity CLI/OpenCode CLI as sub-agent profiles. More providers and a settings screen follow the [core-first plan](../plans/core-first-v1.md) |
 | 17 | **Notifications** | L | Needs you, finished, ready, something wrong; reaching a sleeping phone is the hard part. Only update and download notifications exist today ([notifications.md](../plans/notifications.md)) |
 | 18 | **First-run and setup** | L | The doctor, the hub installer, a guided flow that assumes nothing about the author's machine ([first-run.md](../plans/first-run.md)) |
 | 18a | **Terminal mode** | L | The assistant's own interface live beside chat mode, with a key row on the phone ([terminal-mode.md](../plans/terminal-mode.md)) |
@@ -77,6 +90,6 @@ Anything needing the phone or a screen (run card, history views, terminal widget
 
 1. **Order of 3-7.** Run card first (it is what the UI overhaul and the Tasks strip both need), or live-following first (what makes the lead feel real)?
 2. **Phone web view.** For interactive guides, is the phone's browser enough, or should guides open inside the app?
-3. **LLM providers.** Is this before 1.0, or after? It is the largest unknown on the list.
+3. ~~**LLM providers.** Is this before 1.0, or after?~~ Decided: before full v1, and owned by core with synced token status ([C3](../plans/core-first-v1.md#core-owned-token-routing-and-fallback)).
 4. **Notifications.** Do they work today, or are they missing? I have not checked.
-5. **1.0 means what?** The sections above assume "the author's setup works well and a second person could install it". If 1.0 means more (other people using one hub), items 23 and 19 move up.
+5. ~~**1.0 means what?**~~ Decided: core-first. Core on every device without an app is the MVP; apps are optional, Herdr is external, and core/app releases have separate tags. Items 23 and 19 remain after the core gate.

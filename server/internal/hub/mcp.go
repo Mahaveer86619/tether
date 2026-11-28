@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	v1 "github.com/Mahaveer86619/tether/server/gen/tether/v1"
 )
 
@@ -58,7 +60,7 @@ func schema(required []string, props map[string]string) map[string]any {
 }
 
 // Tools that change what every user gets.
-var mcpAdminOnly = map[string]bool{"update_skill": true, "save_insight": true}
+var mcpAdminOnly = map[string]bool{"update_skill": true, "save_insight": true, "budget_set": true}
 
 var mcpTools = []mcpTool{
 	{
@@ -142,6 +144,99 @@ var mcpTools = []mcpTool{
 			"needs_gpu": "boolean: the task needs a GPU; without node, a machine with one is picked",
 		}),
 		call: (*Hub).mcpStartSession,
+	},
+	{
+		Name:        "create_chat",
+		Description: "Create a hub-owned chat from a shell or any MCP client. The hub picks or confirms the target, starts the main session and returns the chat id; reconnecting clients reattach to that chat.",
+		InputSchema: schema([]string{"prompt"}, map[string]string{
+			"prompt":          "string: the first message",
+			"node":            "string: machine to run on; omit to let the hub pick",
+			"cwd":             "string: folder on that machine",
+			"scratch":         "boolean: run in a fresh scratch folder on the hub's machine",
+			"profile":         "string: core profile id from list_profiles; default claude-main",
+			"mode":            "string: main or subagent (default main)",
+			"title":           "string: short title; the hub derives one when unset",
+			"model":           "string: pin a model, e.g. opencode/big-pickle; omit to let core pick",
+			"capability":      "string: long_context, reasoning, read, edit, test, review or vision",
+			"permission_mode": "string: Claude Code permission mode",
+		}),
+		call: (*Hub).mcpCreateChat,
+	},
+	{
+		Name:        "list_profiles",
+		Description: "The core engine profiles a chat may use: id, kind, command, capabilities, context window and whether it is a free tier. Ranking and budgets are owned by core, not by the caller.",
+		InputSchema: schema(nil, nil),
+		call:        (*Hub).mcpListProfiles,
+	},
+	{
+		Name:        "pick_model",
+		Description: "Ask core which profile and model it would choose for a task. Use this in Herdr or any MCP client to preview the same auto-picker create_chat and delegate_task use; ranking, free-tier health and budgets are core-owned.",
+		InputSchema: schema(nil, map[string]string{
+			"mode":       "string: main or subagent (default subagent)",
+			"profile":    "string: core profile id; omit for core to pick",
+			"model":      "string: pin a model, e.g. big-pickle or opencode/deepseek-v4.1-flash-free",
+			"capability": "string: long_context, reasoning, read, edit, test, review or vision",
+		}),
+		call: (*Hub).mcpPickModel,
+	},
+	{
+		Name:        "token_status",
+		Description: "The caller's shared token state: every provider and free model, rank, enabled flag, budget, used and remaining tokens, quota state, privacy notes and the last routing decision. The same state is in Welcome and GET /api/v1/token/status.",
+		InputSchema: schema(nil, nil),
+		call:        (*Hub).mcpTokenStatus,
+	},
+	{
+		Name:        "budget_set",
+		Description: "Admin only: change a provider or model's rank, budget, enabled flag or quota state. Set quota_state to exhausted to make core fall back to the next ranked model on every device.",
+		InputSchema: schema([]string{"provider"}, map[string]string{
+			"provider":      "string: provider id, e.g. opencode",
+			"model":         "string: model id; empty changes every model of the provider",
+			"budget_tokens": "integer: 0 means unlimited",
+			"rank":          "integer: higher ranks are tried first",
+			"enabled":       "boolean: allow or block routing to it",
+			"quota_state":   "string: ok, near_limit, exhausted or unavailable",
+		}),
+		call: (*Hub).mcpBudgetSet,
+	},
+	{
+		Name:        "delegate_task",
+		Description: "Start a bounded sub-agent task inside an existing chat. Prefer a large-context free-tier profile for reading a codebase; the hub enforces device and token policy. Returns a task id and session id.",
+		InputSchema: schema([]string{"chat", "prompt"}, map[string]string{
+			"chat":       "string: the chat the main agent is working in",
+			"prompt":     "string: one bounded task for the sub-agent",
+			"node":       "string: machine to run on; omit for the hub's machine",
+			"cwd":        "string: folder on that machine",
+			"profile":    "string: sub-agent profile from list_profiles; core picks when unset",
+			"model":      "string: pin a model from token_status, e.g. opencode/big-pickle",
+			"capability": "string: long_context, read, edit, test, review or vision",
+			"title":      "string: 3 to 6 words, shown instead of the prompt",
+			"needs_gpu":  "boolean: the task needs a GPU",
+		}),
+		call: (*Hub).mcpDelegateTask,
+	},
+	{
+		Name:        "wait_for_subagents",
+		Description: "Wait until every sub-agent task in a chat has finished its turn. Returns each task's id, session, state and a short report.",
+		InputSchema: schema([]string{"chat"}, map[string]string{
+			"chat":            "string: the chat id",
+			"timeout_seconds": "integer: give up after this long (default 300, at most 900)",
+		}),
+		call: (*Hub).mcpWaitForSubagents,
+	},
+	{
+		Name:        "collect_results",
+		Description: "Collect the latest result from every sub-agent task in a chat as compact text. Use full session text only for the one whose detail you need.",
+		InputSchema: schema([]string{"chat"}, map[string]string{
+			"chat": "string: the chat id",
+			"last": "integer: recent timeline items per task (default 6)",
+		}),
+		call: (*Hub).mcpCollectResults,
+	},
+	{
+		Name:        "cancel_task",
+		Description: "Stop one delegated task without touching the chat's main session or its siblings.",
+		InputSchema: schema([]string{"task"}, map[string]string{"task": "string: task id from delegate_task"}),
+		call:        (*Hub).mcpCancelTask,
 	},
 	{
 		Name: "set_chat_target",
@@ -306,6 +401,24 @@ func num(args map[string]any, k string, def int) int {
 	return def
 }
 
+// optNum keeps zero and negative values, unlike num's "positive or default".
+func optNum(args map[string]any, k string) *int64 {
+	f, ok := args[k].(float64)
+	if !ok {
+		return nil
+	}
+	n := int64(f)
+	return &n
+}
+
+func optBool(args map[string]any, k string) *bool {
+	b, ok := args[k].(bool)
+	if !ok {
+		return nil
+	}
+	return &b
+}
+
 func jsonText(v any) (string, error) {
 	b, err := json.MarshalIndent(v, "", "  ")
 	return string(b), err
@@ -398,6 +511,269 @@ func (h *Hub) mcpStartSession(caller identity, args map[string]any) (string, err
 		h.putChat(chat)
 	}
 	return "Started session " + id + " on " + h.sessions[id].Node + ".", nil
+}
+
+func (h *Hub) mcpCreateChat(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	t := &v1.ChatTarget{Mode: targetManual, Node: str(args, "node"), Cwd: str(args, "cwd"), Scratch: args["scratch"] == true, Reason: "started from core"}
+	if t.Node == "" && !t.Scratch {
+		t.Mode = targetAuto
+	}
+	if t.Scratch {
+		t.Node = h.hubNode()
+	}
+	c, err := h.createChat(caller, &v1.CreateChat{
+		Prompt: str(args, "prompt"), Target: t, Title: str(args, "title"), Model: str(args, "model"),
+		Capability: str(args, "capability"), PermissionMode: str(args, "permission_mode"),
+		Profile: str(args, "profile"), Mode: firstNonEmpty(str(args, "mode"), "main"),
+	}, mcpSource)
+	if err != nil {
+		return "", opErr(err)
+	}
+	return "Created chat " + c.Id + " with lead session " + c.ActiveSession + " on " + c.Target.Node + ". Clients reattach to this chat; they do not start a new lead.", nil
+}
+
+func (h *Hub) mcpListProfiles(_ identity, _ map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return jsonText(h.profileCatalog().Profiles)
+}
+
+func (h *Hub) mcpPickModel(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	mode := firstNonEmpty(str(args, "mode"), "subagent")
+	capability, profileID := str(args, "capability"), str(args, "profile")
+	var p *v1.AgentProfile
+	var perr *opError
+	if profileID != "" {
+		p, perr = h.resolveProfile(profileID, mode)
+	} else {
+		p = h.bestProfile(mode, capability)
+		if p == nil && capability != "" {
+			p = h.bestProfile(mode, "")
+		}
+		if p == nil {
+			perr = invalid("no agent profile fits that mode and capability")
+		}
+	}
+	if perr != nil {
+		return "", opErr(perr)
+	}
+	choice, perr := h.routeModel(h.tokenUser(caller), p, str(args, "model"), mode, capability)
+	if perr != nil {
+		return "", opErr(perr)
+	}
+	return jsonText(map[string]any{
+		"profile": choice.profile.Id, "provider": choice.provider,
+		"model": choice.model, "cli_model": choice.cliModel(),
+		"decision": choice.decision(), "reason": choice.reason,
+	})
+}
+
+func (h *Hub) mcpTokenStatus(caller identity, _ map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	user := h.tokenUser(caller)
+	return jsonText(map[string]any{
+		"status": h.tokenStatusFor(user),
+		"events": h.tokenEventsFor(user).Events,
+	})
+}
+
+func (h *Hub) mcpBudgetSet(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	set := &v1.BudgetSet{
+		Provider: str(args, "provider"), Model: str(args, "model"),
+		QuotaState: str(args, "quota_state"), BudgetTokens: optNum(args, "budget_tokens"),
+		Enabled: optBool(args, "enabled"),
+	}
+	if rank := optNum(args, "rank"); rank != nil {
+		r := int32(*rank)
+		set.Rank = &r
+	}
+	status, err := h.setBudgets(caller, set)
+	if err != nil {
+		return "", opErr(err)
+	}
+	return jsonText(status)
+}
+
+func (h *Hub) mcpDelegateTask(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	chat := h.chats[str(args, "chat")]
+	if chat == nil || !h.can(caller, actUse, objChat, chat.Id) {
+		return "", fmt.Errorf("unknown chat %s", str(args, "chat"))
+	}
+	profileID, capability := str(args, "profile"), str(args, "capability")
+	if capability == "" {
+		capability = "long_context"
+	}
+	if profileID == "" {
+		if p := h.bestProfile("subagent", capability); p != nil {
+			profileID = p.Id
+		}
+	}
+	profile, perr := h.resolveProfile(profileID, "subagent")
+	if perr != nil {
+		return "", opErr(perr)
+	}
+	node := str(args, "node")
+	if args["needs_gpu"] == true {
+		if node == "" {
+			if node = h.gpuNode(); node == "" {
+				return "", fmt.Errorf("no machine with a GPU is online")
+			}
+		} else if !nodeHasGPU(h.nodes[node]) {
+			return "", fmt.Errorf("%s has no GPU Tether can see", node)
+		}
+	}
+	scratch := node == ""
+	if scratch {
+		node = h.hubNode()
+	}
+	if node == "" {
+		return "", fmt.Errorf("no agent is online to run the task")
+	}
+	task := uuid.NewString()
+	cs := &v1.CreateSession{
+		Node: node, Cwd: str(args, "cwd"), Prompt: str(args, "prompt"), Scratch: scratch,
+		Model: str(args, "model"), Capability: capability, Profile: profile.Id,
+		TaskRole: "subagent", ParentTask: task, Name: taskTitle(str(args, "title"), str(args, "prompt")),
+	}
+	extra := startExtra{as: caller, systemPrompt: h.chatPromptFor(chat, node, true)}
+	id, err := h.startSession(cs, mcpSource, extra)
+	if err != nil {
+		return "", opErr(err)
+	}
+	h.link(chat, id, linkSubagent+":"+task)
+	h.putChat(chat)
+	chosen := profile.Id
+	if s := h.sessions[id]; s != nil {
+		chosen = firstNonEmpty(s.Profile, chosen)
+	}
+	return jsonText(map[string]any{"task": task, "session": id, "profile": chosen, "model": cs.Model, "node": node})
+}
+
+// subagentLinks returns a chat's delegated tasks, oldest first. Caller holds
+// h.mu.
+func (h *Hub) subagentLinks(c *v1.Chat) []subagentLink {
+	var out []subagentLink
+	for _, l := range c.Sessions {
+		if task, ok := strings.CutPrefix(l.Role, linkSubagent+":"); ok {
+			out = append(out, subagentLink{task: task, session: l.Session})
+		}
+	}
+	return out
+}
+
+type subagentLink struct{ task, session string }
+
+func (h *Hub) subagentsFor(caller identity, chat string) (*v1.Chat, []subagentLink, error) {
+	c := h.chats[chat]
+	if c == nil || !h.can(caller, actUse, objChat, c.Id) {
+		return nil, nil, fmt.Errorf("unknown chat %s", chat)
+	}
+	return c, h.subagentLinks(c), nil
+}
+
+func (h *Hub) mcpWaitForSubagents(caller identity, args map[string]any) (string, error) {
+	deadline := time.Now().Add(time.Duration(min(num(args, "timeout_seconds", 300), mcpWaitMax)) * time.Second)
+	time.Sleep(2 * mcpWaitPoll)
+	for {
+		h.mu.Lock()
+		_, tasks, err := h.subagentsFor(caller, str(args, "chat"))
+		if err != nil {
+			h.mu.Unlock()
+			return "", err
+		}
+		pending := 0
+		for _, t := range tasks {
+			if s := h.sessions[t.session]; s == nil || busy(s.State) {
+				pending++
+			}
+		}
+		done := pending == 0 || time.Now().After(deadline)
+		if done {
+			out, textErr := h.subagentStatus(tasks, 6)
+			h.mu.Unlock()
+			if textErr != nil {
+				return "", textErr
+			}
+			if pending > 0 {
+				return "Some sub-agents are still working.\n\n" + out, nil
+			}
+			return out, nil
+		}
+		h.mu.Unlock()
+		time.Sleep(mcpWaitPoll)
+	}
+}
+
+func (h *Hub) mcpCollectResults(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, tasks, err := h.subagentsFor(caller, str(args, "chat"))
+	if err != nil {
+		return "", err
+	}
+	return h.subagentStatus(tasks, num(args, "last", 6))
+}
+
+// subagentStatus summarises each task; the full transcript stays in its
+// session for the main agent to read when a short report is not enough.
+// Caller holds h.mu.
+func (h *Hub) subagentStatus(tasks []subagentLink, last int) (string, error) {
+	if len(tasks) == 0 {
+		return "No sub-agent tasks in this chat.", nil
+	}
+	var b strings.Builder
+	for _, t := range tasks {
+		s := h.sessions[t.session]
+		fmt.Fprintf(&b, "Task %s, session %s", t.task, t.session)
+		if s != nil {
+			fmt.Fprintf(&b, ", %s on %s (%s)", stateName(s.State), s.Node, firstNonEmpty(s.Profile, "claude-main"))
+		} else {
+			b.WriteString(", session is gone")
+		}
+		b.WriteString("\n")
+		if s != nil {
+			text, err := h.sessionText(s.Id, last)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(clip(text, 6_000))
+			b.WriteString("\n\n")
+		}
+	}
+	return b.String(), nil
+}
+
+func (h *Hub) mcpCancelTask(caller identity, args map[string]any) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	task := str(args, "task")
+	for _, c := range h.chats {
+		if !h.can(caller, actUse, objChat, c.Id) {
+			continue
+		}
+		for _, t := range h.subagentLinks(c) {
+			if t.task != task {
+				continue
+			}
+			if _, err := h.interrupt(t.session); err != nil {
+				return "", opErr(err)
+			}
+			if _, err := h.stop(t.session); err != nil {
+				return "", opErr(err)
+			}
+			return "Stopped task " + task + " and its session " + t.session + ".", nil
+		}
+	}
+	return "", fmt.Errorf("unknown task %s", task)
 }
 
 func (h *Hub) mcpSetChatTarget(caller identity, args map[string]any) (string, error) {
